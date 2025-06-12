@@ -26,7 +26,7 @@ export class EnhancedParticleSystem {
   }
   
   private createBubbleSystem(bounds: THREE.Box3): ParticleSystem {
-    const count = 80
+    const count = 120
     const geometry = new THREE.BufferGeometry()
     
     const positions = new Float32Array(count * 3)
@@ -34,6 +34,7 @@ export class EnhancedParticleSystem {
     const speeds = new Float32Array(count)
     const offsets = new Float32Array(count)
     const phases = new Float32Array(count)
+    const startY = new Float32Array(count)
     
     const size = new THREE.Vector3()
     bounds.getSize(size)
@@ -41,14 +42,17 @@ export class EnhancedParticleSystem {
     bounds.getCenter(center)
     
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = center.x + (Math.random() - 0.5) * size.x * 0.8
-      positions[i * 3 + 1] = bounds.min.y + Math.random() * size.y
-      positions[i * 3 + 2] = center.z + (Math.random() - 0.5) * size.z * 0.8
+      // 泡は水槽の底付近からランダムに生成
+      positions[i * 3] = center.x + (Math.random() - 0.5) * size.x * 0.9
+      positions[i * 3 + 1] = bounds.min.y + Math.random() * 1.0 // 底から1ユニット以内
+      positions[i * 3 + 2] = center.z + (Math.random() - 0.5) * size.z * 0.9
       
-      sizes[i] = Math.random() * 4 + 2
-      speeds[i] = Math.random() * 0.8 + 0.3
-      offsets[i] = Math.random() * 10
+      // より小さく現実的な泡サイズ
+      sizes[i] = Math.random() * 1.5 + 0.5
+      speeds[i] = Math.random() * 0.4 + 0.2  // ゆっくりと上昇
+      offsets[i] = Math.random() * 20
       phases[i] = Math.random() * Math.PI * 2
+      startY[i] = positions[i * 3 + 1]
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
@@ -56,41 +60,51 @@ export class EnhancedParticleSystem {
     geometry.setAttribute('speed', new THREE.BufferAttribute(speeds, 1))
     geometry.setAttribute('offset', new THREE.BufferAttribute(offsets, 1))
     geometry.setAttribute('phase', new THREE.BufferAttribute(phases, 1))
+    geometry.setAttribute('startY', new THREE.BufferAttribute(startY, 1))
     
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
-        color: { value: new THREE.Color(0.8, 0.9, 1.0) }
+        color: { value: new THREE.Color(0.8, 0.9, 1.0) },
+        tankBounds: { value: new THREE.Vector4(bounds.min.y, bounds.max.y, 0, 0) }
       },
       vertexShader: `
         attribute float size;
         attribute float speed;
         attribute float offset;
         attribute float phase;
+        attribute float startY;
         
         varying float vAlpha;
         varying float vSize;
         
         uniform float time;
+        uniform vec4 tankBounds; // min.y, max.y
         
         void main() {
           vec3 pos = position;
           
           float totalTime = time * speed + offset;
-          pos.y = mod(totalTime, 12.0) - 6.0;
+          float travelDistance = tankBounds.y - tankBounds.x; // 水槽の高さ
           
-          float wiggle = sin(totalTime * 3.0 + phase) * 0.2;
+          // 底から天井まで連続的に移動
+          float progress = mod(totalTime * 0.5, 1.0);
+          pos.y = tankBounds.x + progress * travelDistance;
+          
+          // 泡が上昇するにつれて左右に揺れる
+          float wiggle = sin(progress * 10.0 + phase) * 0.1 * progress;
           pos.x += wiggle;
-          pos.z += cos(totalTime * 2.5 + phase) * 0.15;
+          pos.z += cos(progress * 8.0 + phase) * 0.08 * progress;
           
           vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
           gl_Position = projectionMatrix * mvPosition;
           
           vSize = size;
-          gl_PointSize = size * (400.0 / -mvPosition.z);
+          gl_PointSize = size * (300.0 / -mvPosition.z);
           
-          vAlpha = 1.0 - smoothstep(-4.0, 4.0, pos.y);
-          vAlpha *= (0.7 + 0.3 * sin(time * 2.0 + phase));
+          // 水面に近づくほど透明に
+          vAlpha = 1.0 - smoothstep(0.7, 1.0, progress);
+          vAlpha *= (0.8 + 0.2 * sin(time * 3.0 + phase));
         }
       `,
       fragmentShader: `

@@ -13,7 +13,7 @@ export class AudioManager {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       this.masterGain = this.audioContext.createGain()
       this.masterGain.connect(this.audioContext.destination)
-      this.masterGain.gain.setValueAtTime(0.2, this.audioContext.currentTime)
+      this.masterGain.gain.setValueAtTime(0.6, this.audioContext.currentTime)
     } catch (error) {
       console.warn('Web Audio API not supported:', error)
     }
@@ -35,7 +35,7 @@ export class AudioManager {
         const white = Math.random() * 2 - 1
         const brown = (lastOut + (0.02 * white)) / 1.02
         lastOut = brown
-        channelData[i] = brown * 0.1
+        channelData[i] = brown * 0.3
       }
     }
     
@@ -113,7 +113,7 @@ export class AudioManager {
       // Fade in
       this.masterGain.gain.cancelScheduledValues(this.audioContext.currentTime)
       this.masterGain.gain.setValueAtTime(0, this.audioContext.currentTime)
-      this.masterGain.gain.linearRampToValueAtTime(0.2, this.audioContext.currentTime + 1)
+      this.masterGain.gain.linearRampToValueAtTime(0.6, this.audioContext.currentTime + 1)
     } else {
       // Fade out
       this.masterGain.gain.cancelScheduledValues(this.audioContext.currentTime)
@@ -126,7 +126,7 @@ export class AudioManager {
     if (!this.audioContext || !this.masterGain) return
     
     const clampedVolume = Math.max(0, Math.min(1, volume))
-    this.masterGain.gain.setValueAtTime(clampedVolume * 0.2, this.audioContext.currentTime)
+    this.masterGain.gain.setValueAtTime(clampedVolume * 0.6, this.audioContext.currentTime)
   }
   
   public playBubbleSound(): void {

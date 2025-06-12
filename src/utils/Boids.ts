@@ -158,24 +158,43 @@ export class BoidsSystem {
   
   private boundaries(boid: Boid): THREE.Vector3 {
     const steer = new THREE.Vector3()
-    const margin = 1
+    const margin = 2.0
+    const turnForce = 2.0
     
-    if (boid.position.x < this.bounds.min.x + margin) {
-      steer.x = boid.maxSpeed
-    } else if (boid.position.x > this.bounds.max.x - margin) {
-      steer.x = -boid.maxSpeed
+    // 壁への距離を計算
+    const distToMinX = boid.position.x - this.bounds.min.x
+    const distToMaxX = this.bounds.max.x - boid.position.x
+    const distToMinY = boid.position.y - this.bounds.min.y
+    const distToMaxY = this.bounds.max.y - boid.position.y
+    const distToMinZ = boid.position.z - this.bounds.min.z
+    const distToMaxZ = this.bounds.max.z - boid.position.z
+    
+    // 滑らかな回避行動
+    if (distToMinX < margin) {
+      const force = (margin - distToMinX) / margin
+      steer.x += turnForce * force
+    }
+    if (distToMaxX < margin) {
+      const force = (margin - distToMaxX) / margin
+      steer.x -= turnForce * force
     }
     
-    if (boid.position.y < this.bounds.min.y + margin) {
-      steer.y = boid.maxSpeed
-    } else if (boid.position.y > this.bounds.max.y - margin) {
-      steer.y = -boid.maxSpeed
+    if (distToMinY < margin) {
+      const force = (margin - distToMinY) / margin
+      steer.y += turnForce * force
+    }
+    if (distToMaxY < margin) {
+      const force = (margin - distToMaxY) / margin
+      steer.y -= turnForce * force
     }
     
-    if (boid.position.z < this.bounds.min.z + margin) {
-      steer.z = boid.maxSpeed
-    } else if (boid.position.z > this.bounds.max.z - margin) {
-      steer.z = -boid.maxSpeed
+    if (distToMinZ < margin) {
+      const force = (margin - distToMinZ) / margin
+      steer.z += turnForce * force
+    }
+    if (distToMaxZ < margin) {
+      const force = (margin - distToMaxZ) / margin
+      steer.z -= turnForce * force
     }
     
     return steer
@@ -208,7 +227,7 @@ export class BoidsSystem {
       alignmentForce.multiplyScalar(this.params.alignment)
       cohesionForce.multiplyScalar(this.params.cohesion)
       separationForce.multiplyScalar(this.params.separation)
-      boundaryForce.multiplyScalar(2)
+      boundaryForce.multiplyScalar(1.5)
       
       boid.applyForce(alignmentForce)
       boid.applyForce(cohesionForce)
