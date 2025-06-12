@@ -1,15 +1,16 @@
 import * as THREE from 'three'
-import waterVertexShader from '../shaders/water.vert'
-import waterFragmentShader from '../shaders/water.frag'
+import waterVertexShader from '../shaders/advancedWater.vert'
+import waterFragmentShader from '../shaders/advancedWater.frag'
 
 export class WaterSurface {
   private mesh: THREE.Mesh
   private material: THREE.ShaderMaterial
   
   constructor(scene: THREE.Scene, width: number, depth: number, y: number) {
-    const geometry = new THREE.PlaneGeometry(width * 0.98, depth * 0.98, 32, 32)
+    const geometry = new THREE.PlaneGeometry(width * 0.98, depth * 0.98, 64, 64)
     
     const normalTexture = this.createNormalMap()
+    const envMap = this.getEnvironmentMap(scene)
     
     this.material = new THREE.ShaderMaterial({
       vertexShader: waterVertexShader,
@@ -17,7 +18,10 @@ export class WaterSurface {
       uniforms: {
         time: { value: 0 },
         normalMap: { value: normalTexture },
-        cameraPosition: { value: new THREE.Vector3() }
+        envMap: { value: envMap },
+        cameraPosition: { value: new THREE.Vector3() },
+        lightDirection: { value: new THREE.Vector3(0.5, 1.0, 0.5).normalize() },
+        lightColor: { value: new THREE.Vector3(1.0, 1.0, 0.9) }
       },
       transparent: true,
       side: THREE.DoubleSide,
@@ -55,6 +59,10 @@ export class WaterSurface {
     texture.needsUpdate = true
     
     return texture
+  }
+  
+  private getEnvironmentMap(scene: THREE.Scene): THREE.CubeTexture | null {
+    return scene.environment as THREE.CubeTexture
   }
   
   update(time: number, cameraPosition: THREE.Vector3): void {

@@ -1,16 +1,17 @@
 import './styles.css'
 import { AquariumScene } from './components/Scene'
+import { AudioManager } from './components/AudioManager'
 import lottie from 'lottie-web'
 
 class AquariumApp {
   private scene: AquariumScene | null = null
-  private audioElement: HTMLAudioElement
+  private audioManager: AudioManager
   private motionToggle: HTMLInputElement
   private soundToggle: HTMLInputElement
   private prefersReducedMotion: boolean
 
   constructor() {
-    this.audioElement = document.getElementById('water-sound') as HTMLAudioElement
+    this.audioManager = new AudioManager()
     this.motionToggle = document.getElementById('motion-toggle') as HTMLInputElement
     this.soundToggle = document.getElementById('sound-toggle') as HTMLInputElement
     
@@ -149,15 +150,7 @@ class AquariumApp {
     })
     
     this.soundToggle.addEventListener('change', () => {
-      if (this.soundToggle.checked) {
-        this.audioElement.volume = 0.2
-        this.audioElement.play().catch(err => {
-          console.error('Audio play failed:', err)
-          this.soundToggle.checked = false
-        })
-      } else {
-        this.audioElement.pause()
-      }
+      this.audioManager.setEnabled(this.soundToggle.checked)
     })
     
     window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (e) => {

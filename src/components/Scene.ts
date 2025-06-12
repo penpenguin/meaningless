@@ -1,8 +1,10 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { FishSystem } from './Fish'
+import { DetailedFishSystem } from './DetailedFish'
 import { WaterSurface } from './Water'
-import { BubbleSystem } from './Bubbles'
+import { EnhancedParticleSystem } from './EnhancedParticles'
+import { EnvironmentLoader } from './Environment'
+import { AquascapingSystem } from './Aquascaping'
 
 export class AquariumScene {
   private scene: THREE.Scene
@@ -11,9 +13,11 @@ export class AquariumScene {
   private controls: OrbitControls
   private clock: THREE.Clock
   private tank: THREE.Group
-  private fishSystem: FishSystem | null = null
+  private fishSystem: DetailedFishSystem | null = null
   private waterSurface: WaterSurface | null = null
-  private bubbleSystem: BubbleSystem | null = null
+  private particleSystem: EnhancedParticleSystem | null = null
+  private aquascaping: AquascapingSystem | null = null
+  private environmentLoader: EnvironmentLoader
   private animationId: number | null = null
   public motionEnabled = true
 
@@ -22,12 +26,12 @@ export class AquariumScene {
     this.clock = new THREE.Clock()
     
     this.camera = new THREE.PerspectiveCamera(
-      45,
+      35,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     )
-    this.camera.position.set(0, 5, 15)
+    this.camera.position.set(0, 0, 25)
     
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: true,
@@ -36,23 +40,34 @@ export class AquariumScene {
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.2
+    this.renderer.toneMappingExposure = 1.0
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace
     container.appendChild(this.renderer.domElement)
     
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
-    this.controls.dampingFactor = 0.05
-    this.controls.minDistance = 5
-    this.controls.maxDistance = 30
-    this.controls.maxPolarAngle = Math.PI * 0.8
+    this.controls.dampingFactor = 0.02
+    this.controls.minDistance = 15
+    this.controls.maxDistance = 50
+    this.controls.maxPolarAngle = Math.PI * 0.6
+    this.controls.minPolarAngle = Math.PI * 0.2
+    this.controls.enablePan = false
     
     this.tank = new THREE.Group()
     this.scene.add(this.tank)
     
+    this.environmentLoader = new EnvironmentLoader(this.scene)
+    
+    this.init()
+  }
+  
+  private async init(): Promise<void> {
+    await this.environmentLoader.loadHDRI()
     this.setupLighting()
     this.createTank()
+    this.createAquascaping()
     this.createFishSystem()
     this.createWaterEffects()
     this.setupEventListeners()
@@ -85,21 +100,27 @@ export class AquariumScene {
   }
 
   private createTank(): void {
-    const tankWidth = 10
-    const tankHeight = 6
-    const tankDepth = 8
-    const glassThickness = 0.05
+    const tankWidth = 20
+    const tankHeight = 12
+    const tankDepth = 16
+    const glassThickness = 0.1
+    
+    const envMap = this.environmentLoader.getEnvironmentMap()
     
     const glassMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       metalness: 0,
-      roughness: 0,
-      transmission: 0.95,
-      thickness: glassThickness,
+      roughness: 0.02,
+      transmission: 0.98,
+      thickness: glassThickness * 10,
       transparent: true,
-      opacity: 0.3,
-      reflectivity: 0.5,
-      ior: 1.5,
+      opacity: 0.1,
+      reflectivity: 0.8,
+      ior: 1.52,
+      envMap: envMap,
+      envMapIntensity: 1.5,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
       side: THREE.DoubleSide
     })
     
@@ -146,23 +167,31 @@ export class AquariumScene {
     sandMesh.receiveShadow = true
     this.tank.add(sandMesh)
   }
+  
+  private createAquascaping(): void {
+    const tankBounds = new THREE.Box3(
+      new THREE.Vector3(-9.5, -5.5, -7.5),
+      new THREE.Vector3(9.5, 5.5, 7.5)
+    )
+    this.aquascaping = new AquascapingSystem(this.scene, tankBounds)
+  }
 
   private createFishSystem(): void {
     const tankBounds = new THREE.Box3(
-      new THREE.Vector3(-4.5, -2.5, -3.5),
-      new THREE.Vector3(4.5, 2.5, 3.5)
+      new THREE.Vector3(-9.5, -5.5, -7.5),
+      new THREE.Vector3(9.5, 5.5, 7.5)
     )
-    this.fishSystem = new FishSystem(this.scene, tankBounds)
+    this.fishSystem = new DetailedFishSystem(this.scene, tankBounds)
   }
 
   private createWaterEffects(): void {
-    this.waterSurface = new WaterSurface(this.scene, 10, 8, 2.8)
+    this.waterSurface = new WaterSurface(this.scene, 20, 16, 5.8)
     
     const tankBounds = new THREE.Box3(
-      new THREE.Vector3(-4.5, -2.5, -3.5),
-      new THREE.Vector3(4.5, 2.5, 3.5)
+      new THREE.Vector3(-9.5, -5.5, -7.5),
+      new THREE.Vector3(9.5, 5.5, 7.5)
     )
-    this.bubbleSystem = new BubbleSystem(this.scene, tankBounds)
+    this.particleSystem = new EnhancedParticleSystem(this.scene, tankBounds)
   }
 
   public animate = (): void => {
@@ -186,8 +215,12 @@ export class AquariumScene {
       this.waterSurface.update(elapsedTime, this.camera.position)
     }
     
-    if (this.bubbleSystem) {
-      this.bubbleSystem.update(elapsedTime)
+    if (this.particleSystem) {
+      this.particleSystem.update(elapsedTime)
+    }
+    
+    if (this.aquascaping) {
+      this.aquascaping.update(elapsedTime)
     }
     
     this.renderer.render(this.scene, this.camera)
@@ -209,8 +242,11 @@ export class AquariumScene {
     if (this.fishSystem) {
       this.fishSystem.setMotionEnabled(enabled)
     }
-    if (this.bubbleSystem) {
-      this.bubbleSystem.setEnabled(enabled)
+    if (this.particleSystem) {
+      this.particleSystem.setEnabled(enabled)
+    }
+    if (this.aquascaping) {
+      this.aquascaping.setMotionEnabled(enabled)
     }
   }
 
