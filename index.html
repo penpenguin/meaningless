@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="aquarium">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Relaxing real-time aquarium simulation">
+  <title>Aquarium Web App</title>
+  <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+  <div id="loading-screen">
+    <div class="lottie-container" id="lottie-bubbles"></div>
+  </div>
+  
+  <div id="canvas-container"></div>
+  
+  <div class="fixed top-4 right-4 z-50 bg-base-100 bg-opacity-90 p-4 rounded-lg shadow-lg">
+    <div class="form-control mb-2">
+      <label class="label cursor-pointer">
+        <span class="label-text mr-2">Motion</span>
+        <input type="checkbox" id="motion-toggle" class="toggle toggle-primary" checked>
+      </label>
+    </div>
+    <div class="form-control">
+      <label class="label cursor-pointer">
+        <span class="label-text mr-2">Sound</span>
+        <input type="checkbox" id="sound-toggle" class="toggle toggle-primary">
+      </label>
+    </div>
+  </div>
+  
+  <audio id="water-sound" loop preload="auto">
+    <source src="/waterloop.ogg" type="audio/ogg">
+  </audio>
+  
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
