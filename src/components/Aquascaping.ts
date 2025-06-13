@@ -26,7 +26,7 @@ export class AquascapingSystem {
       
       const x = (Math.random() - 0.5) * size.x * 0.7
       const z = (Math.random() - 0.5) * size.z * 0.7
-      const y = bounds.min.y + 0.1
+      const y = bounds.min.y + 0.32  // 砂層の高さに合わせる
       
       seaweedGroup.position.set(x, y, z)
       
@@ -45,15 +45,27 @@ export class AquascapingSystem {
         )
         
         const hue = 0.3 + Math.random() * 0.2 // Green variations
+        
+        // リアルな水草テクスチャを生成
+        const seaweedTexture = this.createSeaweedTexture(hue)
+        const normalMap = this.createSeaweedNormalMap()
+        const roughnessMap = this.createSeaweedRoughnessMap()
+        
         const material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color().setHSL(hue, 0.7, 0.3),
+          map: seaweedTexture,
+          normalMap: normalMap,
+          roughnessMap: roughnessMap,
+          color: new THREE.Color().setHSL(hue, 0.8, 0.4),
           metalness: 0,
-          roughness: 0.8,
-          transmission: 0.3,
-          thickness: 0.1,
+          roughness: 0.9,
+          transmission: 0.4,
+          thickness: 0.15,
           transparent: true,
-          opacity: 0.8,
-          side: THREE.DoubleSide
+          opacity: 0.85,
+          side: THREE.DoubleSide,
+          envMapIntensity: 0.3,
+          clearcoat: 0.1,
+          clearcoatRoughness: 0.8
         })
         
         const segment = new THREE.Mesh(geometry, material)
@@ -83,7 +95,7 @@ export class AquascapingSystem {
       
       const x = (Math.random() - 0.5) * size.x * 0.6
       const z = (Math.random() - 0.5) * size.z * 0.6
-      const y = bounds.min.y + 0.1
+      const y = bounds.min.y + 0.32  // 砂層の高さに合わせる
       
       coralGroup.position.set(x, y, z)
       
@@ -168,7 +180,7 @@ export class AquascapingSystem {
       
       const x = (Math.random() - 0.5) * size.x * 0.8
       const z = (Math.random() - 0.5) * size.z * 0.8
-      const y = bounds.min.y + rockScale * 0.3
+      const y = bounds.min.y + 0.32 + rockScale * 0.1  // 砂層の上に配置
       
       rock.position.set(x, y, z)
       rock.rotation.set(
@@ -236,6 +248,150 @@ export class AquascapingSystem {
     })
   }
   
+  private createSeaweedTexture(hue: number): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+    
+    // ベース色の設定
+    const baseColor = new THREE.Color().setHSL(hue, 0.7, 0.3)
+    const darkColor = new THREE.Color().setHSL(hue, 0.8, 0.15)
+    const lightColor = new THREE.Color().setHSL(hue, 0.6, 0.5)
+    
+    // グラデーション背景
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    gradient.addColorStop(0, lightColor.getStyle())
+    gradient.addColorStop(0.3, baseColor.getStyle())
+    gradient.addColorStop(0.7, baseColor.getStyle())
+    gradient.addColorStop(1, darkColor.getStyle())
+    
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // 水草の縦縞模様（葉脈）
+    ctx.globalCompositeOperation = 'overlay'
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 7) * canvas.width + Math.sin(i) * 20
+      ctx.strokeStyle = `rgba(0, 100, 0, ${0.3 + Math.random() * 0.2})`
+      ctx.lineWidth = 2 + Math.random() * 3
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      // 曲線的な葉脈
+      for (let y = 0; y <= canvas.height; y += 10) {
+        const wave = Math.sin(y * 0.02 + i) * 15
+        ctx.lineTo(x + wave, y)
+      }
+      ctx.stroke()
+    }
+    
+    // 細かい質感
+    ctx.globalCompositeOperation = 'multiply'
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const size = Math.random() * 3
+      const alpha = 0.1 + Math.random() * 0.2
+      
+      ctx.fillStyle = `rgba(0, 80, 0, ${alpha})`
+      ctx.fillRect(x, y, size, size)
+    }
+    
+    ctx.globalCompositeOperation = 'source-over'
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1, 2)
+    
+    return texture
+  }
+  
+  private createSeaweedNormalMap(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+    
+    // ベースカラー（法線マップ用）
+    ctx.fillStyle = '#8080ff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // 縦方向の凹凸（葉脈）
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 7) * canvas.width
+      ctx.strokeStyle = '#6060ff'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      for (let y = 0; y <= canvas.height; y += 5) {
+        const wave = Math.sin(y * 0.02 + i) * 10
+        ctx.lineTo(x + wave, y)
+      }
+      ctx.stroke()
+    }
+    
+    // 細かい凹凸
+    for (let i = 0; i < 150; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const size = 1 + Math.random() * 2
+      
+      ctx.fillStyle = Math.random() > 0.5 ? '#9090ff' : '#7070ff'
+      ctx.fillRect(x, y, size, size)
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1, 2)
+    
+    return texture
+  }
+  
+  private createSeaweedRoughnessMap(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+    
+    // ベースの粗さ
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // ランダムな粗さの変化
+    for (let i = 0; i < 300; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const size = Math.random() * 4
+      const roughness = Math.random() * 255
+      
+      ctx.fillStyle = `rgb(${roughness}, ${roughness}, ${roughness})`
+      ctx.fillRect(x, y, size, size)
+    }
+    
+    // 葉脈部分は滑らか
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 7) * canvas.width
+      ctx.strokeStyle = '#404040'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      for (let y = 0; y <= canvas.height; y += 5) {
+        const wave = Math.sin(y * 0.02 + i) * 10
+        ctx.lineTo(x + wave, y)
+      }
+      ctx.stroke()
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1, 2)
+    
+    return texture
+  }
+
   setMotionEnabled(enabled: boolean): void {
     // Plants can still sway slightly even when motion is reduced
     this.plants.forEach(plant => {
