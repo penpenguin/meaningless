@@ -5,6 +5,7 @@ import waterFragmentShader from '../shaders/advancedWater.frag'
 export class WaterSurface {
   private mesh: THREE.Mesh
   private material: THREE.ShaderMaterial
+  private maxFishCount = 20 // Track up to 20 fish for ripples
   
   constructor(scene: THREE.Scene, width: number, depth: number, y: number) {
     const geometry = new THREE.PlaneGeometry(width * 0.98, depth * 0.98, 64, 64)
@@ -21,7 +22,10 @@ export class WaterSurface {
         envMap: { value: envMap },
         cameraPosition: { value: new THREE.Vector3() },
         lightDirection: { value: new THREE.Vector3(0.5, 1.0, 0.5).normalize() },
-        lightColor: { value: new THREE.Vector3(1.0, 1.0, 0.9) }
+        lightColor: { value: new THREE.Vector3(1.0, 1.0, 0.9) },
+        fishPositions: { value: new Array(this.maxFishCount).fill(new THREE.Vector3(0, -100, 0)) },
+        fishVelocities: { value: new Array(this.maxFishCount).fill(new THREE.Vector3()) },
+        fishCount: { value: 0 }
       },
       transparent: true,
       side: THREE.DoubleSide,
@@ -68,5 +72,16 @@ export class WaterSurface {
   update(time: number, cameraPosition: THREE.Vector3): void {
     this.material.uniforms.time.value = time
     this.material.uniforms.cameraPosition.value.copy(cameraPosition)
+  }
+  
+  updateFishData(fishPositions: THREE.Vector3[], fishVelocities: THREE.Vector3[]): void {
+    const count = Math.min(fishPositions.length, this.maxFishCount)
+    this.material.uniforms.fishCount.value = count
+    
+    // Update fish positions and velocities for ripple effects
+    for (let i = 0; i < count; i++) {
+      this.material.uniforms.fishPositions.value[i].copy(fishPositions[i])
+      this.material.uniforms.fishVelocities.value[i].copy(fishVelocities[i])
+    }
   }
 }

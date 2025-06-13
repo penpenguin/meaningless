@@ -10,7 +10,7 @@ export class AudioManager {
   
   private setupAudioContext(): void {
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      this.audioContext = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
       this.masterGain = this.audioContext.createGain()
       this.masterGain.connect(this.audioContext.destination)
       this.masterGain.gain.setValueAtTime(0.6, this.audioContext.currentTime)

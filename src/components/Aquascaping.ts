@@ -5,6 +5,9 @@ export class AquascapingSystem {
   private plants: THREE.Group[] = []
   private decorations: THREE.Group[] = []
   private time = 0
+  private fishPositions: THREE.Vector3[] = []
+  private fishVelocities: THREE.Vector3[] = []
+  private fishInfluences: Map<THREE.Object3D, { force: number; direction: THREE.Vector3 }> = new Map()
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
     this.group = new THREE.Group()
@@ -59,10 +62,17 @@ export class AquascapingSystem {
         const segment = new THREE.Mesh(geometry, material)
         segment.position.y = j * segmentHeight + segmentHeight / 2
         segment.rotation.z = Math.sin(j * 0.5) * 0.2
+        
+        // Enhanced shadow settings for plants
+        segment.castShadow = true
+        segment.receiveShadow = true
         segment.userData = { 
           originalRotation: segment.rotation.z,
           swayOffset: Math.random() * Math.PI * 2,
-          swayAmplitude: 0.1 + Math.random() * 0.1
+          swayAmplitude: 0.1 + Math.random() * 0.1,
+          segmentIndex: j,
+          maxSegments: segments,
+          flexibility: 1.0 - (j / segments) * 0.3 // Top segments are more flexible
         }
         
         seaweedGroup.add(segment)
@@ -121,6 +131,10 @@ export class AquascapingSystem {
         branch.rotation.z = (Math.random() - 0.5) * 0.5
         branch.rotation.y = (j / branchCount) * Math.PI * 2 + Math.random() * 0.5
         
+        // Enhanced shadow settings for corals
+        branch.castShadow = true
+        branch.receiveShadow = true
+        
         coralGroup.add(branch)
       }
       
@@ -177,6 +191,8 @@ export class AquascapingSystem {
         Math.random() * Math.PI
       )
       
+      // Enhanced shadow settings for rocks
+      rock.castShadow = true
       rock.receiveShadow = true
       
       this.decorations.push(new THREE.Group().add(rock))
@@ -219,18 +235,102 @@ export class AquascapingSystem {
   update(elapsedTime: number): void {
     this.time = elapsedTime
     
-    // Animate seaweed swaying
+    // Update fish influences on plants
+    this.updateFishInfluences()
+    
+    // Animate seaweed swaying with fish proximity effects
     this.plants.forEach((plant) => {
       plant.children.forEach((segment, segmentIndex) => {
         if (segment.userData.originalRotation !== undefined) {
           const swayOffset = segment.userData.swayOffset || 0
           const swayAmplitude = segment.userData.swayAmplitude || 0.1
+          const flexibility = segment.userData.flexibility || 1.0
           
-          const sway = Math.sin(this.time * 0.8 + swayOffset + segmentIndex * 0.3) * swayAmplitude
-          segment.rotation.z = segment.userData.originalRotation + sway
+          // Base swaying motion
+          let sway = Math.sin(this.time * 0.8 + swayOffset + segmentIndex * 0.3) * swayAmplitude
+          let xSway = Math.sin(this.time * 0.5 + swayOffset) * 0.05
           
-          // Add slight x-axis movement
-          segment.rotation.x = Math.sin(this.time * 0.5 + swayOffset) * 0.05
+          // Add fish influence
+          const influence = this.fishInfluences.get(segment)
+          if (influence && influence.force > 0.1) {
+            const fishEffect = influence.force * flexibility
+            
+            // Add disturbance in the direction opposite to fish movement
+            sway += influence.direction.x * fishEffect * 0.5
+            xSway += influence.direction.z * fishEffect * 0.3
+            
+            // Add quick shake effect for fast-moving fish
+            if (influence.force > 0.5) {
+              const shake = Math.sin(this.time * 8 + swayOffset) * fishEffect * 0.2
+              sway += shake
+            }
+          }
+          
+          // Apply rotations with wave propagation through plant
+          const waveDelay = segmentIndex * 0.1
+          segment.rotation.z = segment.userData.originalRotation + sway * Math.sin(this.time + waveDelay)
+          segment.rotation.x = xSway * Math.cos(this.time * 0.7 + waveDelay)
+          
+          // Add slight y-axis twist for more natural movement
+          segment.rotation.y = Math.sin(this.time * 0.3 + swayOffset) * 0.03 * flexibility
+        }
+      })
+    })
+  }
+  
+  updateFishData(fishPositions: THREE.Vector3[], fishVelocities: THREE.Vector3[]): void {
+    this.fishPositions = fishPositions
+    this.fishVelocities = fishVelocities
+  }
+  
+  private updateFishInfluences(): void {
+    // Clear previous influences
+    this.fishInfluences.clear()
+    
+    // Calculate fish influence on each plant segment
+    this.plants.forEach(plant => {
+      plant.children.forEach(segment => {
+        let maxInfluence = 0
+        const influenceDirection = new THREE.Vector3()
+        
+        // Get world position of segment
+        const segmentWorldPos = new THREE.Vector3()
+        segment.getWorldPosition(segmentWorldPos)
+        
+        for (let i = 0; i < this.fishPositions.length; i++) {
+          const fishPos = this.fishPositions[i]
+          const fishVel = this.fishVelocities[i]
+          
+          const distance = segmentWorldPos.distanceTo(fishPos)
+          const fishSpeed = fishVel.length()
+          
+          // Fish influence radius based on speed
+          const influenceRadius = 1.5 + fishSpeed * 2
+          
+          if (distance < influenceRadius) {
+            // Calculate influence strength (closer = stronger, faster = stronger)
+            const proximityFactor = 1 - (distance / influenceRadius)
+            const speedFactor = Math.min(fishSpeed / 2, 1) // Cap at speed 2
+            const influence = proximityFactor * speedFactor
+            
+            if (influence > maxInfluence) {
+              maxInfluence = influence
+              
+              // Direction is away from fish
+              influenceDirection.subVectors(segmentWorldPos, fishPos).normalize()
+              
+              // Add velocity influence for wake effect
+              const wakeInfluence = fishVel.clone().normalize().multiplyScalar(fishSpeed * 0.3)
+              influenceDirection.add(wakeInfluence).normalize()
+            }
+          }
+        }
+        
+        if (maxInfluence > 0.05) {
+          this.fishInfluences.set(segment, {
+            force: maxInfluence,
+            direction: influenceDirection
+          })
         }
       })
     })
@@ -243,8 +343,14 @@ export class AquascapingSystem {
         if (!enabled && segment.userData.originalRotation !== undefined) {
           segment.rotation.z = segment.userData.originalRotation
           segment.rotation.x = 0
+          segment.rotation.y = 0
         }
       })
     })
+    
+    if (!enabled) {
+      // Clear fish influences when motion is disabled
+      this.fishInfluences.clear()
+    }
   }
 }

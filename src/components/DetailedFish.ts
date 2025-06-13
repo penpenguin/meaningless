@@ -24,10 +24,19 @@ export class DetailedFishSystem {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     this.fishCount = isMobile ? 50 : 120
     
+    console.log('Creating fish system with', this.fishCount, 'fish')
+    
+    // Add click handler for feeding
+    this.setupInteraction(scene)
+    
     this.variants = this.createFishVariants()
     this.boids = new BoidsSystem(this.fishCount, bounds)
     
+    console.log('Created boids system with', this.boids.boids.length, 'boids')
+    
     this.createDetailedFishMeshes()
+    
+    console.log('Created fish meshes. Group has', this.group.children.length, 'children')
   }
   
   private createFishVariants(): FishVariant[] {
@@ -66,12 +75,18 @@ export class DetailedFishSystem {
   private createDetailedFishMeshes(): void {
     const fishPerVariant = Math.ceil(this.fishCount / this.variants.length)
     
+    console.log('Creating fish meshes. Fish per variant:', fishPerVariant)
+    
     this.variants.forEach((variant, variantIndex) => {
       const actualCount = Math.min(fishPerVariant, this.fishCount - variantIndex * fishPerVariant)
+      console.log(`Variant ${variantIndex} (${variant.name}): creating ${actualCount} fish`)
+      
       if (actualCount <= 0) return
       
       const fishGeometry = this.createDetailedFishGeometry(variant)
       const fishMaterial = this.createFishMaterial(variant)
+      
+      console.log('Created geometry and material for', variant.name)
       
       const instancedMesh = new THREE.InstancedMesh(
         fishGeometry,
@@ -79,8 +94,11 @@ export class DetailedFishSystem {
         actualCount
       )
       instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+      
+      // Enhanced shadow settings for realistic fish shadows
       instancedMesh.castShadow = true
       instancedMesh.receiveShadow = true
+      instancedMesh.frustumCulled = true
       
       // 個体差のある色を設定
       const colors = new Float32Array(actualCount * 3)
@@ -90,8 +108,10 @@ export class DetailedFishSystem {
         const lightness = 0.5 + Math.random() * 0.3
         
         const color = new THREE.Color()
+        const hslRef = { h: 0, s: 0, l: 0 }
+        variant.primaryColor.getHSL(hslRef)
         color.setHSL(
-          (variant.primaryColor.getHSL({} as any).h + hue) % 1,
+          (hslRef.h + hue) % 1,
           saturation,
           lightness
         )
@@ -104,114 +124,96 @@ export class DetailedFishSystem {
       instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3)
       this.instancedMeshes.push(instancedMesh)
       this.group.add(instancedMesh)
+      
+      console.log('Added instanced mesh to group. Mesh count:', instancedMesh.count)
     })
   }
   
   private createDetailedFishGeometry(variant: FishVariant): THREE.BufferGeometry {
+    // Use simpler but visible fish geometry first
+    return this.createSimpleReliableFish(variant)
+  }
+  
+  private createSimpleReliableFish(variant: FishVariant): THREE.BufferGeometry {
+    // Create simple but visible fish body - start with basic ellipsoid
+    const bodyGeometry = new THREE.SphereGeometry(0.5, 16, 12)
     
-    // メインボディ
-    const bodyShape = new THREE.Shape()
-    bodyShape.moveTo(0, 0)
-    bodyShape.quadraticCurveTo(0.4, 0.25, 0.8, 0.15)
-    bodyShape.quadraticCurveTo(1.2, 0.08, 1.5, 0)
-    bodyShape.quadraticCurveTo(1.2, -0.08, 0.8, -0.15)
-    bodyShape.quadraticCurveTo(0.4, -0.25, 0, 0)
-    
-    const extrudeSettings = {
-      depth: 0.3,
-      bevelEnabled: true,
-      bevelSegments: 3,
-      steps: 2,
-      bevelSize: 0.03,
-      bevelThickness: 0.03
+    // Simple fish-like deformation
+    const positions = bodyGeometry.getAttribute('position')
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i)
+      const y = positions.getY(i)
+      const z = positions.getZ(i)
+      
+      // Simple fish shape - elongate along x-axis and taper toward tail
+      const fishLength = 1.2
+      const fishHeight = 0.6
+      const fishWidth = 0.4
+      
+      // Taper factor (smaller toward the tail)
+      const taper = 1.0 - Math.max(0, x + 0.3) * 0.8
+      
+      const newX = x * fishLength
+      const newY = y * fishHeight * Math.max(0.3, taper)
+      const newZ = z * fishWidth * Math.max(0.3, taper)
+      
+      positions.setXYZ(i, newX, newY, newZ)
     }
     
-    const bodyGeometry = new THREE.ExtrudeGeometry(bodyShape, extrudeSettings)
-    bodyGeometry.center()
-    
-    // 尾ひれ
-    const tailGeometry = new THREE.ConeGeometry(0.2, 0.6, 6)
+    // Add simple tail
+    const tailGeometry = new THREE.ConeGeometry(0.15, 0.4, 8)
     tailGeometry.rotateZ(Math.PI / 2)
-    tailGeometry.translate(-0.8, 0, 0)
+    tailGeometry.translate(-0.6, 0, 0)
     
-    // 胸ひれ
-    const pectoralFinGeometry = new THREE.ConeGeometry(0.08, 0.25, 4)
-    pectoralFinGeometry.rotateZ(-Math.PI / 3)
-    pectoralFinGeometry.rotateY(Math.PI / 6)
-    pectoralFinGeometry.translate(0.3, 0.15, 0.12)
-    
-    const pectoralFinGeometry2 = pectoralFinGeometry.clone()
-    pectoralFinGeometry2.translate(0, -0.3, -0.24)
-    
-    // 背びれ
-    const dorsalFinGeometry = new THREE.ConeGeometry(0.12, 0.4, 5)
-    dorsalFinGeometry.rotateX(Math.PI / 2)
-    dorsalFinGeometry.translate(0.2, 0.2, 0)
-    
-    // 腹びれ
-    const ventralFinGeometry = new THREE.ConeGeometry(0.06, 0.15, 4)
-    ventralFinGeometry.rotateX(-Math.PI / 2)
-    ventralFinGeometry.translate(0.1, -0.18, 0)
-    
-    // ジオメトリを結合
+    // Merge body and tail using BufferGeometryUtils
     const mergedGeometry = new THREE.BufferGeometry()
+    
+    // Simple merge - just copy body geometry for now
     mergedGeometry.copy(bodyGeometry)
     
-    // スケールを適用
+    // Recompute after modifications
+    mergedGeometry.computeVertexNormals()
+    mergedGeometry.computeBoundingBox()
+    mergedGeometry.computeBoundingSphere()
+    
+    // Apply variant scale
     mergedGeometry.scale(variant.scale, variant.scale, variant.scale)
     
     return mergedGeometry
   }
   
+  // Removed complex geometry helper functions for now - can add back once basic visibility is confirmed
+  
   private createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
-    // 魚のテクスチャを手続き的に生成
-    const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 256
-    const ctx = canvas.getContext('2d')!
-    
-    // グラデーション背景
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-    gradient.addColorStop(0, variant.primaryColor.getStyle())
-    gradient.addColorStop(0.5, variant.secondaryColor.getStyle())
-    gradient.addColorStop(1, variant.primaryColor.clone().multiplyScalar(0.7).getStyle())
-    
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // 鱗のパターン
-    ctx.globalCompositeOperation = 'overlay'
-    for (let x = 0; x < canvas.width; x += 12) {
-      for (let y = 0; y < canvas.height; y += 12) {
-        const offsetX = (y % 24 === 0) ? 6 : 0
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + Math.random() * 0.1})`
-        ctx.beginPath()
-        ctx.arc(x + offsetX, y, 4, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-    ctx.globalCompositeOperation = 'source-over'
-    
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    
+    return this.createSimpleVisibleMaterial(variant)
+  }
+  
+  private createSimpleVisibleMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
+    // Simple but effective material that we know will work
     return new THREE.MeshPhysicalMaterial({
-      map: texture,
-      color: 0xffffff,
+      color: variant.primaryColor,
       metalness: 0.1,
-      roughness: 0.3,
+      roughness: 0.4,
       clearcoat: 0.8,
       clearcoatRoughness: 0.2,
-      reflectivity: 0.9,
-      envMapIntensity: 0.5,
+      
+      // Basic subsurface scattering
+      transmission: 0.1,
+      thickness: 0.5,
+      
+      // Make sure it's visible
       transparent: false,
-      side: THREE.FrontSide
+      side: THREE.FrontSide,
+      
+      // Enable shadows
+      flatShading: false
     })
   }
   
-  update(_deltaTime: number, elapsedTime: number): void {
-    this.boids.update()
+  // Removed complex texture generation functions for now - using simple color materials
+  
+  update(deltaTime: number, elapsedTime: number): void {
+    this.boids.update(deltaTime)
     
     let boidIndex = 0
     
@@ -247,15 +249,113 @@ export class DetailedFishSystem {
         const speed = boid.velocity.length()
         this.dummy.rotation.x += speed * 0.3
         
-        const scale = variant.scale * (0.9 + Math.sin(elapsedTime + boidIndex) * 0.05)
-        this.dummy.scale.set(scale, scale, scale)
+        // Tired fish droop slightly
+        if (boid.energy < 0.5) {
+          this.dummy.rotation.x += (0.5 - boid.energy) * 0.2
+        }
+        
+        // Scale based on fish size and variant
+        const baseScale = variant.scale * boid.size
+        const breathingScale = baseScale * (0.95 + Math.sin(elapsedTime * 2 + boidIndex) * 0.05)
+        this.dummy.scale.set(breathingScale, breathingScale, breathingScale)
+        
+        // Leader fish glow effect
+        if (boid.isLeader) {
+          // Leaders are slightly brighter
+          const instanceColors = mesh.instanceColor
+          if (instanceColors) {
+            const color = new THREE.Color()
+            color.setRGB(
+              instanceColors.array[i * 3],
+              instanceColors.array[i * 3 + 1],
+              instanceColors.array[i * 3 + 2]
+            )
+            const brightness = 1.2 + Math.sin(elapsedTime * 3) * 0.1
+            color.multiplyScalar(brightness)
+            instanceColors.setXYZ(i, color.r, color.g, color.b)
+            instanceColors.needsUpdate = true
+          }
+        }
         
         this.dummy.updateMatrix()
         mesh.setMatrixAt(i, this.dummy.matrix)
       }
       
       mesh.instanceMatrix.needsUpdate = true
+      
+      // Material uniforms update removed for simplicity - can add back later if needed
     })
+  }
+  
+  private setupInteraction(scene: THREE.Scene): void {
+    const raycaster = new THREE.Raycaster()
+    const mouse = new THREE.Vector2()
+    
+    const handleClick = (event: MouseEvent) => {
+      // Convert mouse position to normalized device coordinates
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      
+      // Update the picking ray with the camera and mouse position
+      const camera = scene.getObjectByProperty('type', 'PerspectiveCamera') as THREE.PerspectiveCamera
+      if (!camera) return
+      
+      raycaster.setFromCamera(mouse, camera)
+      
+      // Create an invisible plane at water surface for intersection
+      const planeGeometry = new THREE.PlaneGeometry(100, 100)
+      const planeMaterial = new THREE.MeshBasicMaterial({ visible: false })
+      const plane = new THREE.Mesh(planeGeometry, planeMaterial)
+      plane.rotation.x = -Math.PI / 2
+      plane.position.y = 4 // Water surface level
+      
+      const intersects = raycaster.intersectObject(plane)
+      
+      if (intersects.length > 0) {
+        const point = intersects[0].point
+        // Add feeding point at click location
+        this.boids.addFeedingPoint(point)
+        
+        // Visual feedback - create ripple effect
+        this.createFeedingRipple(scene, point)
+      }
+    }
+    
+    window.addEventListener('click', handleClick)
+  }
+  
+  private createFeedingRipple(scene: THREE.Scene, position: THREE.Vector3): void {
+    const rippleGeometry = new THREE.RingGeometry(0.1, 0.5, 32)
+    const rippleMaterial = new THREE.MeshBasicMaterial({
+      color: 0x4169e1,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
+    })
+    
+    const ripple = new THREE.Mesh(rippleGeometry, rippleMaterial)
+    ripple.position.copy(position)
+    ripple.position.y += 0.1
+    ripple.rotation.x = -Math.PI / 2
+    scene.add(ripple)
+    
+    // Animate ripple
+    const startTime = Date.now()
+    const animateRipple = () => {
+      const elapsed = (Date.now() - startTime) / 1000
+      const scale = 1 + elapsed * 3
+      ripple.scale.set(scale, scale, 1)
+      rippleMaterial.opacity = Math.max(0, 0.6 - elapsed * 0.6)
+      
+      if (elapsed < 1) {
+        requestAnimationFrame(animateRipple)
+      } else {
+        scene.remove(ripple)
+        ripple.geometry.dispose()
+        rippleMaterial.dispose()
+      }
+    }
+    animateRipple()
   }
   
   setMotionEnabled(enabled: boolean): void {
@@ -265,5 +365,13 @@ export class DetailedFishSystem {
         boid.acceleration.multiplyScalar(0)
       }
     }
+  }
+  
+  getFishPositions(): THREE.Vector3[] {
+    return this.boids.boids.map(boid => boid.position.clone())
+  }
+  
+  getFishVelocities(): THREE.Vector3[] {
+    return this.boids.boids.map(boid => boid.velocity.clone())
   }
 }

@@ -6,11 +6,17 @@ interface ParticleSystem {
   count: number
 }
 
+import type { SpatialAudioManager } from './SpatialAudio'
+
 export class EnhancedParticleSystem {
   private group: THREE.Group
   private bubbleSystem: ParticleSystem
   private dustSystem: ParticleSystem
   private lightRaysSystem: ParticleSystem
+  private fishBubbleSystem: ParticleSystem
+  private fishTrails: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; age: number; maxAge: number; soundPlayed?: boolean }> = []
+  private spatialAudio: SpatialAudioManager | null = null
+  private camera: THREE.Camera | null = null
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
     this.group = new THREE.Group()
@@ -19,10 +25,12 @@ export class EnhancedParticleSystem {
     this.bubbleSystem = this.createBubbleSystem(bounds)
     this.dustSystem = this.createDustSystem(bounds)
     this.lightRaysSystem = this.createLightRaySystem(bounds)
+    this.fishBubbleSystem = this.createFishBubbleSystem(bounds)
     
     this.group.add(this.bubbleSystem.points)
     this.group.add(this.dustSystem.points)
     this.group.add(this.lightRaysSystem.points)
+    this.group.add(this.fishBubbleSystem.points)
   }
   
   private createBubbleSystem(bounds: THREE.Box3): ParticleSystem {
@@ -309,9 +317,218 @@ export class EnhancedParticleSystem {
     this.bubbleSystem.material.uniforms.time.value = time
     this.dustSystem.material.uniforms.time.value = time
     this.lightRaysSystem.material.uniforms.time.value = time
+    this.fishBubbleSystem.material.uniforms.time.value = time
+    
+    this.updateFishTrails(time)
+    this.triggerRandomBubbleSounds(time)
+  }
+  
+  private triggerRandomBubbleSounds(_time: number): void {
+    // Occasionally play bubble sounds for the general bubble system
+    if (this.spatialAudio && this.camera && Math.random() < 0.02) {
+      // Get a random position from the bubble system
+      const bubblePositions = this.bubbleSystem.points.geometry.attributes.position
+      const randomIndex = Math.floor(Math.random() * this.bubbleSystem.count)
+      
+      const x = bubblePositions.getX(randomIndex)
+      const y = bubblePositions.getY(randomIndex)
+      const z = bubblePositions.getZ(randomIndex)
+      
+      // Only play sound for bubbles near the surface
+      if (y > 4) {
+        const bubblePosition = new THREE.Vector3(x, y, z)
+        const size = Math.random() * 0.8 + 0.2
+        this.spatialAudio.playBubbleSound(bubblePosition, size, this.camera)
+      }
+    }
+  }
+  
+  updateFishData(fishPositions: THREE.Vector3[], fishVelocities: THREE.Vector3[]): void {
+    // Create bubble trails for fast-moving fish
+    for (let i = 0; i < fishPositions.length; i++) {
+      const position = fishPositions[i]
+      const velocity = fishVelocities[i]
+      const speed = velocity.length()
+      
+      // Only generate bubbles for fish moving fast enough
+      if (speed > 0.8 && Math.random() < 0.3) {
+        // Create bubble trail behind fish
+        const trailPosition = position.clone().sub(velocity.clone().normalize().multiplyScalar(0.5))
+        
+        // Add random offset for more natural effect
+        trailPosition.add(new THREE.Vector3(
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.3
+        ))
+        
+        const bubbleTrail = {
+          position: trailPosition,
+          velocity: velocity.clone().multiplyScalar(-0.2).add(new THREE.Vector3(0, 0.05, 0)),
+          age: 0,
+          maxAge: 2 + Math.random() * 3
+        }
+        
+        this.fishTrails.push(bubbleTrail)
+        
+        // Play bubble sound for fish trails
+        if (this.spatialAudio && this.camera && Math.random() < 0.4) {
+          const bubbleSize = 0.3 + Math.random() * 0.4
+          this.spatialAudio.playBubbleSound(trailPosition, bubbleSize, this.camera)
+        }
+      }
+    }
+    
+    // Limit the number of trails
+    if (this.fishTrails.length > 200) {
+      this.fishTrails = this.fishTrails.slice(-200)
+    }
+  }
+  
+  private updateFishTrails(_time: number): void {
+    const deltaTime = 0.016 // Approximate 60fps
+    
+    // Update existing trails
+    this.fishTrails = this.fishTrails.filter(trail => {
+      trail.age += deltaTime
+      trail.position.add(trail.velocity.clone().multiplyScalar(deltaTime))
+      
+      // Apply buoyancy
+      trail.velocity.y += 0.3 * deltaTime
+      
+      // Apply drag
+      trail.velocity.multiplyScalar(0.98)
+      
+      return trail.age < trail.maxAge
+    })
+    
+    // Update fish bubble system positions
+    this.updateFishBubblePositions()
+  }
+  
+  private updateFishBubblePositions(): void {
+    const positions = this.fishBubbleSystem.points.geometry.attributes.position as THREE.BufferAttribute
+    const sizes = this.fishBubbleSystem.points.geometry.attributes.size as THREE.BufferAttribute
+    const alphas = this.fishBubbleSystem.points.geometry.attributes.alpha as THREE.BufferAttribute
+    
+    // Update positions based on fish trails
+    for (let i = 0; i < Math.min(this.fishTrails.length, this.fishBubbleSystem.count); i++) {
+      const trail = this.fishTrails[i]
+      
+      positions.setXYZ(i, trail.position.x, trail.position.y, trail.position.z)
+      
+      // Size based on age (start small, grow, then shrink)
+      const lifeProgress = trail.age / trail.maxAge
+      let sizeMultiplier = 1.0
+      if (lifeProgress < 0.2) {
+        sizeMultiplier = lifeProgress / 0.2
+      } else if (lifeProgress > 0.8) {
+        sizeMultiplier = (1.0 - lifeProgress) / 0.2
+      }
+      sizes.setX(i, 2.0 * sizeMultiplier)
+      
+      // Alpha based on age
+      alphas.setX(i, 1.0 - lifeProgress)
+    }
+    
+    // Hide unused particles
+    for (let i = this.fishTrails.length; i < this.fishBubbleSystem.count; i++) {
+      positions.setXYZ(i, 0, -1000, 0) // Hide off-screen
+      alphas.setX(i, 0)
+    }
+    
+    positions.needsUpdate = true
+    sizes.needsUpdate = true
+    alphas.needsUpdate = true
   }
   
   setEnabled(enabled: boolean): void {
     this.group.visible = enabled
+  }
+  
+  setSpatialAudio(spatialAudio: SpatialAudioManager, camera: THREE.Camera): void {
+    this.spatialAudio = spatialAudio
+    this.camera = camera
+  }
+  
+  private createFishBubbleSystem(_bounds: THREE.Box3): ParticleSystem {
+    const count = 200 // Max fish bubbles
+    const geometry = new THREE.BufferGeometry()
+    
+    const positions = new Float32Array(count * 3)
+    const sizes = new Float32Array(count)
+    const alphas = new Float32Array(count)
+    
+    // Initialize all particles off-screen
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = 0
+      positions[i * 3 + 1] = -1000
+      positions[i * 3 + 2] = 0
+      sizes[i] = 1.0
+      alphas[i] = 0
+    }
+    
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+    geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1))
+    
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        color: { value: new THREE.Color(0.9, 0.95, 1.0) }
+      },
+      vertexShader: `
+        attribute float size;
+        attribute float alpha;
+        
+        varying float vAlpha;
+        varying vec2 vUv;
+        
+        uniform float time;
+        
+        void main() {
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+          
+          gl_PointSize = size * (200.0 / -mvPosition.z);
+          
+          vAlpha = alpha;
+          vUv = gl_PointCoord;
+        }
+      `,
+      fragmentShader: `
+        varying float vAlpha;
+        varying vec2 vUv;
+        uniform vec3 color;
+        uniform float time;
+        
+        void main() {
+          vec2 center = vUv - vec2(0.5);
+          float dist = length(center);
+          
+          if (dist > 0.5) discard;
+          
+          // Create shimmering effect
+          float shimmer = sin(time * 4.0 + dist * 10.0) * 0.1 + 0.9;
+          
+          // Soft circular gradient
+          float alpha = smoothstep(0.5, 0.2, dist) * vAlpha * shimmer;
+          
+          // Add slight blue tint to fish bubbles
+          vec3 finalColor = color * vec3(0.9, 0.95, 1.0);
+          
+          gl_FragColor = vec4(finalColor, alpha * 0.7);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+    
+    return {
+      points: new THREE.Points(geometry, material),
+      material,
+      count
+    }
   }
 }
