@@ -237,7 +237,7 @@ export class AdvancedFishSystem {
       })
       
       // Store material for animation updates without custom shaders
-      ;(material as any).userData = {
+      material.userData = {
         time: 0,
         swimSpeed: 1.0,
         swimOffset: Math.random() * Math.PI * 2
@@ -254,7 +254,7 @@ export class AdvancedFishSystem {
     })
     
     // Store material for animation updates without custom shaders
-    ;(material as any).userData = {
+    material.userData = {
       time: 0,
       swimSpeed: 1.0,
       swimOffset: Math.random() * Math.PI * 2
@@ -374,8 +374,8 @@ export class AdvancedFishSystem {
     this.instancedMeshes.forEach(lodMeshes => {
       lodMeshes.forEach(mesh => {
         const material = mesh.material as THREE.MeshPhongMaterial
-        if ((material as any).userData) {
-          (material as any).userData.time = time
+        if (material.userData) {
+          material.userData.time = time
         }
       })
     })

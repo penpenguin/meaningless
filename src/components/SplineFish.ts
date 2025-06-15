@@ -136,7 +136,7 @@ export class SplineFish {
     }
   }
   
-  private getFishCrossSection(t: number, height: number, width: number, profile: any) {
+  private getFishCrossSection(t: number, height: number, width: number, profile: { head: { radius: number, yOffset: number, aspectRatio: number }, neck: { radius: number, yOffset: number, aspectRatio: number }, body: { radius: number, yOffset: number, aspectRatio: number }, tail: { radius: number, yOffset: number, aspectRatio: number }, end: { radius: number, yOffset: number, aspectRatio: number } }) {
     // Interpolate between profile points based on position along fish
     let radius, yOffset, aspectRatio
     
@@ -204,7 +204,7 @@ export class SplineFish {
     })
     
     // Store animation parameters without custom shaders to avoid compilation errors
-    ;(fishMaterial as any).userData = {
+    fishMaterial.userData = {
       time: 0,
       swimSpeed: this.swimSpeed,
       swimOffset: this.swimOffset
@@ -230,7 +230,7 @@ export class SplineFish {
     this.time += deltaTime
     
     // Update animation parameters
-    const userData = (this.material as any).userData
+    const userData = this.material.userData
     if (userData) {
       userData.time = this.time
     }

@@ -67,7 +67,7 @@ export class AdvancedWaterSurface {
     const originalPositions = new Float32Array(positions)
     
     // Store original positions and wave parameters for advanced animation
-    ;(this.waterGeometry as any).userData = {
+    this.waterGeometry.userData = {
       originalPositions: originalPositions,
       time: 0,
       waveParams: {
@@ -86,7 +86,7 @@ export class AdvancedWaterSurface {
   
   update(_deltaTime: number): void {
     const time = performance.now() * 0.001
-    const userData = (this.waterGeometry as any).userData
+    const userData = this.waterGeometry.userData
     
     if (userData && userData.originalPositions) {
       userData.time = time

@@ -537,7 +537,7 @@ export class SpiralDecorations {
     this.corals.forEach(coral => {
       this.scene.remove(coral)
       coral.children.forEach(branch => {
-        ;(branch as THREE.Mesh).geometry.dispose()
+        (branch as THREE.Mesh).geometry.dispose()
         ;((branch as THREE.Mesh).material as THREE.Material).dispose()
       })
     })

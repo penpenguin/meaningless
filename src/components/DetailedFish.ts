@@ -151,8 +151,9 @@ export class DetailedFishSystem {
         const lightness = 0.5 + Math.random() * 0.3
         
         const color = new THREE.Color()
+        const hslTarget = { h: 0, s: 0, l: 0 }
         color.setHSL(
-          (variant.primaryColor.getHSL({} as any).h + hue) % 1,
+          (variant.primaryColor.getHSL(hslTarget).h + hue) % 1,
           saturation,
           lightness
         )
