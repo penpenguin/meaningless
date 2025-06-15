@@ -2,10 +2,11 @@ export class AudioManager {
   private audioContext: AudioContext | null = null
   private masterGain: GainNode | null = null
   private isEnabled = false
+  private waterAmbientCreated = false
   
   constructor() {
     this.setupAudioContext()
-    this.createWaterAmbient()
+    // Don't create water ambient automatically - wait for setEnabled(true)
   }
   
   private setupAudioContext(): void {
@@ -13,7 +14,7 @@ export class AudioManager {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       this.masterGain = this.audioContext.createGain()
       this.masterGain.connect(this.audioContext.destination)
-      this.masterGain.gain.setValueAtTime(0.6, this.audioContext.currentTime)
+      this.masterGain.gain.setValueAtTime(1.0, this.audioContext.currentTime)
     } catch (error) {
       console.warn('Web Audio API not supported:', error)
     }
@@ -35,7 +36,7 @@ export class AudioManager {
         const white = Math.random() * 2 - 1
         const brown = (lastOut + (0.02 * white)) / 1.02
         lastOut = brown
-        channelData[i] = brown * 0.3
+        channelData[i] = brown * 0.6
       }
     }
     
@@ -60,8 +61,8 @@ export class AudioManager {
     const dryGain = this.audioContext.createGain()
     const wetGain = this.audioContext.createGain()
     
-    dryGain.gain.setValueAtTime(0.8, this.audioContext.currentTime)
-    wetGain.gain.setValueAtTime(0.2, this.audioContext.currentTime)
+    dryGain.gain.setValueAtTime(0.9, this.audioContext.currentTime)
+    wetGain.gain.setValueAtTime(0.3, this.audioContext.currentTime)
     
     // Connect the audio graph
     source.connect(lowPassFilter)
@@ -92,7 +93,7 @@ export class AudioManager {
       
       for (let i = 0; i < length; i++) {
         const decay = Math.pow(1 - i / length, 2)
-        channelData[i] = (Math.random() * 2 - 1) * decay * 0.1
+        channelData[i] = (Math.random() * 2 - 1) * decay * 0.2
       }
     }
     
@@ -105,6 +106,12 @@ export class AudioManager {
     if (!this.audioContext || !this.masterGain) return
     
     if (enabled) {
+      // Create water ambient on first enable
+      if (!this.waterAmbientCreated) {
+        this.createWaterAmbient()
+        this.waterAmbientCreated = true
+      }
+      
       // Resume audio context if needed
       if (this.audioContext.state === 'suspended') {
         this.audioContext.resume()
@@ -113,7 +120,7 @@ export class AudioManager {
       // Fade in
       this.masterGain.gain.cancelScheduledValues(this.audioContext.currentTime)
       this.masterGain.gain.setValueAtTime(0, this.audioContext.currentTime)
-      this.masterGain.gain.linearRampToValueAtTime(0.6, this.audioContext.currentTime + 1)
+      this.masterGain.gain.linearRampToValueAtTime(1.0, this.audioContext.currentTime + 1)
     } else {
       // Fade out
       this.masterGain.gain.cancelScheduledValues(this.audioContext.currentTime)
@@ -126,7 +133,7 @@ export class AudioManager {
     if (!this.audioContext || !this.masterGain) return
     
     const clampedVolume = Math.max(0, Math.min(1, volume))
-    this.masterGain.gain.setValueAtTime(clampedVolume * 0.6, this.audioContext.currentTime)
+    this.masterGain.gain.setValueAtTime(clampedVolume * 1.0, this.audioContext.currentTime)
   }
   
   public playBubbleSound(): void {
@@ -140,7 +147,7 @@ export class AudioManager {
     oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime)
     oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.1)
     
-    gainNode.gain.setValueAtTime(0.05, this.audioContext.currentTime)
+    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime)
     gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1)
     
     oscillator.connect(gainNode)
@@ -164,7 +171,7 @@ export class AudioManager {
     filter.type = 'lowpass'
     filter.frequency.setValueAtTime(200, this.audioContext.currentTime)
     
-    gainNode.gain.setValueAtTime(0.01, this.audioContext.currentTime)
+    gainNode.gain.setValueAtTime(0.03, this.audioContext.currentTime)
     gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.3)
     
     oscillator.connect(filter)

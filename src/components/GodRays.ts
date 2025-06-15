@@ -52,10 +52,24 @@ const GodRaysShader = {
       // 長い光線エフェクト（距離制限なし）
       float longRay = 0.0;
       
-      // 太陽方向からの放射状光線
+      // 太陽方向からの放射状光線（不規則な幅）
       float angle = atan(rayDirection.y, rayDirection.x);
-      float rayPattern = sin(angle * 8.0) * 0.5 + 0.5;  // 8本の光線
-      rayPattern = pow(rayPattern, 3.0);  // より鋭い光線
+      
+      // 複数の周波数を組み合わせて不規則なパターンを作成
+      float rayPattern1 = sin(angle * 8.0) * 0.5 + 0.5;  // 基本の8本
+      float rayPattern2 = sin(angle * 5.0 + 1.57) * 0.3;  // 5本（位相シフト）
+      float rayPattern3 = sin(angle * 11.0 - 0.78) * 0.2;  // 11本（位相シフト）
+      
+      // ノイズのような変化を追加
+      float noisePattern = sin(angle * 23.0) * sin(angle * 17.0) * 0.15;
+      
+      // パターンを組み合わせて不規則な幅を作成
+      float rayPattern = rayPattern1 + rayPattern2 + rayPattern3 + noisePattern;
+      rayPattern = clamp(rayPattern, 0.0, 1.0);
+      
+      // 場所によって異なる鋭さを適用
+      float sharpness = 2.0 + sin(angle * 3.0) * 1.5;
+      rayPattern = pow(rayPattern, sharpness);  // 不規則な鋭さ
       
       // 距離による減衰（より緩やか）
       float distanceFade = 1.0 / (1.0 + distToSun * 0.5);
@@ -63,12 +77,25 @@ const GodRaysShader = {
       // 主要な光線ストリーク
       float mainBeam = rayPattern * distanceFade;
       
-      // 縦方向の光線（太陽が上にある時）
+      // 縦方向の光線（太陽が上にある時）- 不規則な幅
       float verticalBeam = 0.0;
       if (rayCenter.y <= 1.0) {  // 太陽の高度制限を緩和
         float horizontalDist = abs(vUv.x - rayCenter.x);
-        verticalBeam = exp(-horizontalDist * 8.0);  // 指数的減衰で長い光線
+        
+        // 高さに応じた幅の変化を追加
+        float heightVariation = 1.0 + sin(vUv.y * 15.0) * 0.3 + sin(vUv.y * 7.0) * 0.2;
+        float widthFactor = 8.0 * heightVariation;
+        
+        // 複数の光線を重ねて不規則感を出す
+        float beam1 = exp(-horizontalDist * widthFactor);
+        float beam2 = exp(-horizontalDist * (widthFactor * 0.6)) * 0.5;  // より幅広の薄い光線
+        float beam3 = exp(-horizontalDist * (widthFactor * 1.5)) * 0.3;  // より細い光線
+        
+        verticalBeam = beam1 + beam2 + beam3;
         verticalBeam *= smoothstep(min(rayCenter.y, 0.0), 1.0, vUv.y);  // 上から下へ
+        
+        // 局所的な強度変化を追加
+        verticalBeam *= 0.7 + sin(vUv.y * 40.0 + vUv.x * 10.0) * 0.3;
       }
       
       // 画面外でも見える長い光線
@@ -151,7 +178,7 @@ export class GodRaysEffect {
     // Create invisible sun position for GodRay calculation only
     const sunGroup = new THREE.Group()
     this.sunMesh = sunGroup
-    this.sunMesh.position.set(0, 8, 0)  // 水槽上方に配置
+    this.sunMesh.position.set(0, 15, 0)  // 水槽上方に配置
     // Note: sun mesh not added to scene - only used for position calculation
     
     // Set initial parameters for underwater effect
@@ -188,7 +215,7 @@ export class GodRaysEffect {
   update(time: number): void {
     // Keep sun position fixed above tank center with subtle movement
     this.sunMesh.position.x = Math.sin(time * 0.05) * 1.5  // 微妙な横揺れ
-    this.sunMesh.position.y = 8 + Math.sin(time * 0.03) * 0.5  // 微妙な上下
+    this.sunMesh.position.y = 15 + Math.sin(time * 0.03) * 0.5  // 微妙な上下
     this.sunMesh.position.z = Math.cos(time * 0.05) * 1.5  // 微妙な前後
     
     // Calculate sun position in screen space

@@ -26,7 +26,7 @@ export class AquascapingSystem {
       
       const x = (Math.random() - 0.5) * size.x * 0.7
       const z = (Math.random() - 0.5) * size.z * 0.7
-      const y = bounds.min.y + 0.32  // 砂層の高さに合わせる
+      const y = bounds.min.y + 0.42  // 砂層の高さに合わせる
       
       seaweedGroup.position.set(x, y, z)
       
@@ -95,7 +95,7 @@ export class AquascapingSystem {
       
       const x = (Math.random() - 0.5) * size.x * 0.6
       const z = (Math.random() - 0.5) * size.z * 0.6
-      const y = bounds.min.y + 0.32  // 砂層の高さに合わせる
+      const y = bounds.min.y + 0.42  // 砂層の高さに合わせる
       
       coralGroup.position.set(x, y, z)
       
@@ -180,7 +180,7 @@ export class AquascapingSystem {
       
       const x = (Math.random() - 0.5) * size.x * 0.8
       const z = (Math.random() - 0.5) * size.z * 0.8
-      const y = bounds.min.y + 0.32 + rockScale * 0.1  // 砂層の上に配置
+      const y = bounds.min.y + 0.42 + rockScale * 0.1  // 砂層の上に配置
       
       rock.position.set(x, y, z)
       rock.rotation.set(

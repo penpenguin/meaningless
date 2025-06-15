@@ -73,7 +73,7 @@ export class AdvancedAquariumScene {
       0.1,
       1000
     )
-    this.camera.position.set(0, -2, 8)  // 高さを下げて水中下部視点
+    this.camera.position.set(0, -2, 12)  // 高さを下げて水中下部視点
   }
   
   private setupRenderer(container: HTMLElement): void {
@@ -264,7 +264,7 @@ export class AdvancedAquariumScene {
   
   private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number, glassThickness: number): void {
     // 円形床の半径を計算（幅と奥行きの小さい方を基準）
-    const radius = Math.min(tankWidth, tankDepth) / 2 - glassThickness
+    const radius = Math.min(tankWidth, tankDepth) / 2 + 1.5
     
     // 円形ベース層
     const baseGeometry = new THREE.CylinderGeometry(
@@ -279,7 +279,7 @@ export class AdvancedAquariumScene {
       metalness: 0.05
     })
     const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial)
-    baseMesh.position.y = -tankHeight / 2 + 0.15
+    baseMesh.position.y = -tankHeight / 2 + 0.25
     baseMesh.receiveShadow = true
     this.tank.add(baseMesh)
     
@@ -362,7 +362,7 @@ export class AdvancedAquariumScene {
     })
     
     const sandMesh = new THREE.Mesh(sandGeometry, sandMaterial)
-    sandMesh.position.y = -tankHeight / 2 + 0.32  // ベース層より少し上
+    sandMesh.position.y = -tankHeight / 2 + 0.42  // ベース層より少し上
     sandMesh.receiveShadow = true
     sandMesh.castShadow = false
     this.tank.add(sandMesh)
