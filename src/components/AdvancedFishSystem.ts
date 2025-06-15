@@ -356,7 +356,7 @@ export class AdvancedFishSystem {
     })
   }
   
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     const startTime = performance.now()
     
     // Update boids systems

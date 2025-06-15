@@ -16,10 +16,10 @@ export class DetailedFishSystem {
   private fishCount: number
   private dummy = new THREE.Object3D()
   private variants: FishVariant[]
-  private randomOffsets: Float32Array
-  private swimPhases: Float32Array
-  private speedMultipliers: Float32Array
-  private wanderTargets: THREE.Vector3[]
+  private randomOffsets: Float32Array = new Float32Array()
+  private swimPhases: Float32Array = new Float32Array()
+  private speedMultipliers: Float32Array = new Float32Array()
+  private wanderTargets: THREE.Vector3[] = []
   private lastWanderUpdate: number = 0
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {

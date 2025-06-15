@@ -233,6 +233,13 @@ class AdvancedAquariumApp {
       console.log('Auto-optimization: Reduced water quality to low')
     }
   }
+  
+  dispose(): void {
+    if (this.performanceMonitor) {
+      clearInterval(this.performanceMonitor)
+      this.performanceMonitor = null
+    }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

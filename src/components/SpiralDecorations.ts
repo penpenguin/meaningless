@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 
+// Unused - kept for reference
+/*
 interface SpiralParams {
   a: number      // Spiral scaling factor
   b: number      // Spiral tightness
@@ -8,12 +10,24 @@ interface SpiralParams {
   segments: number
 }
 
+interface SpiralParams {
+  a: number
+  b: number  
+  height: number
+  rotations: number
+  segments: number
+}
+*/
+
+// Unused - kept for reference
+/*
 const SHELL_TYPES = {
   nautilus: { a: 1, b: 0.17, height: 5, rotations: 30, segments: 100 },
   conch: { a: 0.5, b: 0.25, height: 8, rotations: 20, segments: 80 },
   snail: { a: 0.8, b: 0.15, height: 3, rotations: 25, segments: 90 },
   coral: { a: 0.3, b: 0.3, height: 12, rotations: 40, segments: 120 }
 }
+*/
 
 export class SpiralDecorations {
   private shells: THREE.Mesh[] = []
@@ -30,6 +44,8 @@ export class SpiralDecorations {
     // Light beams removed - GodRay effect handles lighting now
   }
   
+  // Unused - kept for reference
+  /*
   private createLightBeam(
     position: THREE.Vector3,
     intensity: number,
@@ -72,7 +88,10 @@ export class SpiralDecorations {
     this.scene.add(lightBeam)
     this.lightBeams.push(lightBeam)
   }
+  */
   
+  // Unused - kept for reference
+  /*
   private createShell(
     type: keyof typeof SHELL_TYPES,
     position: THREE.Vector3,
@@ -107,7 +126,10 @@ export class SpiralDecorations {
     this.scene.add(shell)
     this.shells.push(shell)
   }
+  */
   
+  // Unused - kept for reference
+  /*
   private createCoral(
     position: THREE.Vector3,
     scale: number,
@@ -165,7 +187,10 @@ export class SpiralDecorations {
     this.scene.add(coralGroup)
     this.corals.push(coralGroup as any)
   }
+  */
   
+  // Unused - kept for reference
+  /*
   private createSpiralGeometry(params: SpiralParams): THREE.BufferGeometry {
     const { a, b, height, rotations, segments } = params
     
@@ -398,7 +423,10 @@ export class SpiralDecorations {
     
     return geometry
   }
+  */
   
+  // Unused methods - commented out to fix build errors
+  /*
   private createCoralBranch(params: SpiralParams): THREE.BufferGeometry {
     // Create simple coral using basic geometry to avoid NaN issues
     try {
@@ -451,6 +479,7 @@ export class SpiralDecorations {
       time: 0
     }
   }
+  */
   
   update(deltaTime: number): void {
     // Light beam animation (光線の微妙な動き)

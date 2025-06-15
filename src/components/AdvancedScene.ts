@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { DetailedFishSystem } from './DetailedFish'
-import { AdvancedWaterSurface } from './AdvancedWater'
+// import { AdvancedWaterSurface } from './AdvancedWater'
 import { EnhancedParticleSystem } from './EnhancedParticles'
 import { EnvironmentLoader } from './Environment'
 import { AquascapingSystem } from './Aquascaping'
@@ -28,7 +28,7 @@ export class AdvancedAquariumScene {
   
   // Advanced components
   private fishSystem: DetailedFishSystem | null = null
-  private waterSurface: AdvancedWaterSurface | null = null
+  // private waterSurface: AdvancedWaterSurface | null = null
   private particleSystem: EnhancedParticleSystem | null = null
   private aquascaping: AquascapingSystem | null = null
   private spiralDecorations: SpiralDecorations | null = null
@@ -213,10 +213,10 @@ export class AdvancedAquariumScene {
     const tankDepth = 18
     const glassThickness = 0.12
     
-    const envMap = this.environmentLoader.getEnvironmentMap()
+    // const envMap = this.environmentLoader.getEnvironmentMap()
     
     // Invisible glass material for water tank walls
-    const glassMaterial = new THREE.MeshPhysicalMaterial({
+    /* const glassMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       metalness: 0,
       roughness: 0.01,
@@ -226,7 +226,7 @@ export class AdvancedAquariumScene {
       opacity: 0.0,  // 完全に透明
       visible: false, // レンダリングしない
       side: THREE.DoubleSide
-    })
+    }) */
     
     // Invisible tank frame
     const frameGeometry = new THREE.BoxGeometry(
@@ -262,7 +262,7 @@ export class AdvancedAquariumScene {
     this.createSubstrate(tankWidth, tankHeight, tankDepth, glassThickness)
   }
   
-  private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number, glassThickness: number): void {
+  private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number, _glassThickness: number): void {
     // 円形床の半径を計算（幅と奥行きの小さい方を基準）
     const radius = Math.min(tankWidth, tankDepth) / 2 + 1.5
     
@@ -349,7 +349,7 @@ export class AdvancedAquariumScene {
     
     // リアルな砂のテクスチャを生成
     const sandTexture = this.createSandTexture()
-    const sandNormalMap = this.createSandNormalMap()
+    // const sandNormalMap = this.createSandNormalMap()
     
     const sandMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
@@ -419,6 +419,8 @@ export class AdvancedAquariumScene {
     return texture
   }
 
+  // Unused - kept for reference
+  /*
   private createSandNormalMap(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas')
     canvas.width = 512
@@ -455,6 +457,7 @@ export class AdvancedAquariumScene {
     
     return texture
   }
+  */
   
   private createSpiralDecorations(): void {
     this.spiralDecorations = new SpiralDecorations(this.scene)
@@ -602,7 +605,7 @@ export class AdvancedAquariumScene {
     this.controls.autoRotate = enabled
   }
   
-  public setWaterQuality(quality: 'low' | 'medium' | 'high'): void {
+  public setWaterQuality(_quality: 'low' | 'medium' | 'high'): void {
     // Water surface removed - no water quality settings needed
     // if (this.waterSurface) {
     //   const material = this.waterSurface.getMesh().material as any
