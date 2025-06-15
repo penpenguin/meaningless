@@ -9,24 +9,18 @@ interface ParticleSystem {
 export class EnhancedParticleSystem {
   private group: THREE.Group
   private bubbleSystem: ParticleSystem
-  private dustSystem: ParticleSystem
-  private lightRaysSystem: ParticleSystem
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
     this.group = new THREE.Group()
     scene.add(this.group)
     
     this.bubbleSystem = this.createBubbleSystem(bounds)
-    this.dustSystem = this.createDustSystem(bounds)
-    this.lightRaysSystem = this.createLightRaySystem(bounds)
     
     this.group.add(this.bubbleSystem.points)
-    this.group.add(this.dustSystem.points)
-    this.group.add(this.lightRaysSystem.points)
   }
   
   private createBubbleSystem(bounds: THREE.Box3): ParticleSystem {
-    const count = 120
+    const count = 40  // 泡の数を大幅に削減（120→40）
     const geometry = new THREE.BufferGeometry()
     
     const positions = new Float32Array(count * 3)
@@ -47,9 +41,9 @@ export class EnhancedParticleSystem {
       positions[i * 3 + 1] = bounds.min.y + Math.random() * 1.0 // 底から1ユニット以内
       positions[i * 3 + 2] = center.z + (Math.random() - 0.5) * size.z * 0.9
       
-      // より小さく現実的な泡サイズ
-      sizes[i] = Math.random() * 1.5 + 0.5
-      speeds[i] = Math.random() * 0.4 + 0.2  // ゆっくりと上昇
+      // より小さく控えめな泡サイズ
+      sizes[i] = Math.random() * 0.8 + 0.3  // サイズを縮小（1.5+0.5 → 0.8+0.3）
+      speeds[i] = Math.random() * 0.3 + 0.15  // よりゆっくりと上昇
       offsets[i] = Math.random() * 20
       phases[i] = Math.random() * Math.PI * 2
       startY[i] = positions[i * 3 + 1]
@@ -65,7 +59,7 @@ export class EnhancedParticleSystem {
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
-        color: { value: new THREE.Color(0.8, 0.9, 1.0) },
+        color: { value: new THREE.Color(0.9, 0.95, 1.0) },  // より透明感のある薄い色
         tankBounds: { value: new THREE.Vector4(bounds.min.y, bounds.max.y, 0, 0) }
       },
       vertexShader: `
@@ -102,9 +96,9 @@ export class EnhancedParticleSystem {
           vSize = size;
           gl_PointSize = size * (300.0 / -mvPosition.z);
           
-          // 水面に近づくほど透明に
-          vAlpha = 1.0 - smoothstep(0.7, 1.0, progress);
-          vAlpha *= (0.8 + 0.2 * sin(time * 3.0 + phase));
+          // 全体的に透明感を高める
+          vAlpha = (1.0 - smoothstep(0.8, 1.0, progress)) * 0.4;  // 基本透明度を下げる
+          vAlpha *= (0.6 + 0.2 * sin(time * 2.0 + phase));  // より微妙な変化
         }
       `,
       fragmentShader: `
@@ -118,10 +112,12 @@ export class EnhancedParticleSystem {
           
           if (dist > 0.5) discard;
           
-          float alpha = smoothstep(0.5, 0.2, dist) * vAlpha * 0.8;
+          // よりソフトで透明感のある泡
+          float alpha = smoothstep(0.5, 0.1, dist) * vAlpha * 0.3;  // 透明度をさらに下げる
           
-          float highlight = smoothstep(0.3, 0.1, dist);
-          vec3 finalColor = color + vec3(highlight * 0.5);
+          // より控えめなハイライト
+          float highlight = smoothstep(0.4, 0.15, dist);
+          vec3 finalColor = color + vec3(highlight * 0.2);  // ハイライトを控えめに
           
           gl_FragColor = vec4(finalColor, alpha);
         }
@@ -138,177 +134,10 @@ export class EnhancedParticleSystem {
     }
   }
   
-  private createDustSystem(bounds: THREE.Box3): ParticleSystem {
-    const count = 200
-    const geometry = new THREE.BufferGeometry()
-    
-    const positions = new Float32Array(count * 3)
-    const sizes = new Float32Array(count)
-    const velocities = new Float32Array(count * 3)
-    const life = new Float32Array(count)
-    
-    const size = new THREE.Vector3()
-    bounds.getSize(size)
-    const center = new THREE.Vector3()
-    bounds.getCenter(center)
-    
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = center.x + (Math.random() - 0.5) * size.x
-      positions[i * 3 + 1] = center.y + (Math.random() - 0.5) * size.y
-      positions[i * 3 + 2] = center.z + (Math.random() - 0.5) * size.z
-      
-      sizes[i] = Math.random() * 1.5 + 0.5
-      
-      velocities[i * 3] = (Math.random() - 0.5) * 0.02
-      velocities[i * 3 + 1] = Math.random() * 0.01 + 0.005
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02
-      
-      life[i] = Math.random()
-    }
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-    geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3))
-    geometry.setAttribute('life', new THREE.BufferAttribute(life, 1))
-    
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        color: { value: new THREE.Color(0.9, 0.8, 0.6) }
-      },
-      vertexShader: `
-        attribute float size;
-        attribute vec3 velocity;
-        attribute float life;
-        
-        varying float vAlpha;
-        
-        uniform float time;
-        
-        void main() {
-          vec3 pos = position + velocity * time * 100.0;
-          
-          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-          
-          gl_PointSize = size * (200.0 / -mvPosition.z);
-          
-          vAlpha = sin(life + time * 0.5) * 0.3 + 0.2;
-        }
-      `,
-      fragmentShader: `
-        varying float vAlpha;
-        uniform vec3 color;
-        
-        void main() {
-          vec2 center = gl_PointCoord - vec2(0.5);
-          float dist = length(center);
-          
-          if (dist > 0.5) discard;
-          
-          float alpha = (1.0 - dist * 2.0) * vAlpha;
-          
-          gl_FragColor = vec4(color, alpha);
-        }
-      `,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    })
-    
-    return {
-      points: new THREE.Points(geometry, material),
-      material,
-      count
-    }
-  }
   
-  private createLightRaySystem(bounds: THREE.Box3): ParticleSystem {
-    const count = 50
-    const geometry = new THREE.BufferGeometry()
-    
-    const positions = new Float32Array(count * 3)
-    const sizes = new Float32Array(count)
-    const intensities = new Float32Array(count)
-    const phases = new Float32Array(count)
-    
-    const size = new THREE.Vector3()
-    bounds.getSize(size)
-    const center = new THREE.Vector3()
-    bounds.getCenter(center)
-    
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = center.x + (Math.random() - 0.5) * size.x * 0.9
-      positions[i * 3 + 1] = center.y + (Math.random() - 0.5) * size.y * 0.9
-      positions[i * 3 + 2] = center.z + (Math.random() - 0.5) * size.z * 0.9
-      
-      sizes[i] = Math.random() * 8 + 4
-      intensities[i] = Math.random() * 0.5 + 0.3
-      phases[i] = Math.random() * Math.PI * 2
-    }
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-    geometry.setAttribute('intensity', new THREE.BufferAttribute(intensities, 1))
-    geometry.setAttribute('phase', new THREE.BufferAttribute(phases, 1))
-    
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        color: { value: new THREE.Color(1.0, 0.95, 0.8) }
-      },
-      vertexShader: `
-        attribute float size;
-        attribute float intensity;
-        attribute float phase;
-        
-        varying float vAlpha;
-        varying float vIntensity;
-        
-        uniform float time;
-        
-        void main() {
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-          
-          gl_PointSize = size * (300.0 / -mvPosition.z);
-          
-          vIntensity = intensity;
-          vAlpha = (sin(time * 0.8 + phase) * 0.5 + 0.5) * intensity;
-        }
-      `,
-      fragmentShader: `
-        varying float vAlpha;
-        varying float vIntensity;
-        uniform vec3 color;
-        
-        void main() {
-          vec2 center = gl_PointCoord - vec2(0.5);
-          float dist = length(center);
-          
-          if (dist > 0.5) discard;
-          
-          float alpha = smoothstep(0.5, 0.0, dist) * vAlpha * 0.4;
-          
-          gl_FragColor = vec4(color, alpha);
-        }
-      `,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    })
-    
-    return {
-      points: new THREE.Points(geometry, material),
-      material,
-      count
-    }
-  }
   
   update(time: number): void {
     this.bubbleSystem.material.uniforms.time.value = time
-    this.dustSystem.material.uniforms.time.value = time
-    this.lightRaysSystem.material.uniforms.time.value = time
   }
   
   setEnabled(enabled: boolean): void {

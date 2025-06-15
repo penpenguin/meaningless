@@ -19,13 +19,13 @@ export class Boid {
   constructor(x: number, y: number, z: number) {
     this.position = new THREE.Vector3(x, y, z)
     this.velocity = new THREE.Vector3(
-      (Math.random() - 0.5) * 2,
-      (Math.random() - 0.5) * 2,
-      (Math.random() - 0.5) * 2
+      (Math.random() - 0.5) * 0.2,   // 非常にゆっくりとした初期速度
+      (Math.random() - 0.5) * 0.2,
+      (Math.random() - 0.5) * 0.2
     )
     this.acceleration = new THREE.Vector3()
-    this.maxSpeed = 0.5
-    this.maxForce = 0.03
+    this.maxSpeed = 0.08 + Math.random() * 0.06  // 非常に穏やかな速度範囲
+    this.maxForce = 0.004 + Math.random() * 0.003 // 非常に滑らかな動き
   }
   
   applyForce(force: THREE.Vector3): void {
@@ -71,12 +71,12 @@ export class BoidsSystem {
     this.boids = []
     this.bounds = bounds
     this.params = {
-      alignment: 1.0,
-      cohesion: 0.8,
-      separation: 1.5,
-      maxSpeed: 0.5,
-      maxForce: 0.03,
-      neighborRadius: 2
+      alignment: 0.4,      // より強い直線的な同調
+      cohesion: 0.08,      // 群れ感を弱めて直線性を向上
+      separation: 1.5,     // 分離力を弱めて直線維持
+      maxSpeed: 0.12,      // 非常にゆっくりとした優雅な動き
+      maxForce: 0.006,     // 非常に小さな力でゆったりした動き
+      neighborRadius: 3.0  // 狭い認識範囲で直線性向上
     }
     
     const size = new THREE.Vector3()
@@ -215,6 +215,18 @@ export class BoidsSystem {
     return neighbors
   }
   
+  setSeparation(value: number): void {
+    this.params.separation = value
+  }
+  
+  setAlignment(value: number): void {
+    this.params.alignment = value
+  }
+  
+  setCohesion(value: number): void {
+    this.params.cohesion = value
+  }
+
   update(): void {
     for (const boid of this.boids) {
       const neighbors = this.getNeighbors(boid)

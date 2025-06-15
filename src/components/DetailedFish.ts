@@ -16,16 +16,24 @@ export class DetailedFishSystem {
   private fishCount: number
   private dummy = new THREE.Object3D()
   private variants: FishVariant[]
+  private randomOffsets: Float32Array = new Float32Array()
+  private swimPhases: Float32Array = new Float32Array()
+  private speedMultipliers: Float32Array = new Float32Array()
+  private wanderTargets: THREE.Vector3[] = []
+  private lastWanderUpdate: number = 0
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
     this.group = new THREE.Group()
     scene.add(this.group)
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    this.fishCount = isMobile ? 50 : 120
+    this.fishCount = isMobile ? 25 : 60
     
     this.variants = this.createFishVariants()
     this.boids = new BoidsSystem(this.fishCount, bounds)
+    
+    // Initialize randomness arrays
+    this.initializeRandomness()
     
     this.createDetailedFishMeshes()
   }
@@ -36,31 +44,84 @@ export class DetailedFishSystem {
         name: 'Tropical',
         primaryColor: new THREE.Color(0xff6b35),
         secondaryColor: new THREE.Color(0xffd700),
-        scale: 1.0,
+        scale: 0.5,
         speed: 1.0
       },
       {
         name: 'Angelfish',
         primaryColor: new THREE.Color(0x87ceeb),
         secondaryColor: new THREE.Color(0x4169e1),
-        scale: 1.3,
+        scale: 0.65,
         speed: 0.8
       },
       {
         name: 'Neon',
         primaryColor: new THREE.Color(0x00ffff),
         secondaryColor: new THREE.Color(0xff1493),
-        scale: 0.7,
+        scale: 0.35,
         speed: 1.5
       },
       {
         name: 'Goldfish',
         primaryColor: new THREE.Color(0xffd700),
         secondaryColor: new THREE.Color(0xff8c00),
-        scale: 1.1,
+        scale: 0.55,
         speed: 0.9
       }
     ]
+  }
+  
+  private initializeRandomness(): void {
+    // Create arrays for individual fish randomness
+    this.randomOffsets = new Float32Array(this.fishCount)
+    this.swimPhases = new Float32Array(this.fishCount)
+    this.speedMultipliers = new Float32Array(this.fishCount)
+    this.wanderTargets = []
+    
+    for (let i = 0; i < this.fishCount; i++) {
+      // Random offset for animations (0 to 2π)
+      this.randomOffsets[i] = Math.random() * Math.PI * 2
+      
+      // Random swim phase for different timing
+      this.swimPhases[i] = Math.random() * Math.PI * 2
+      
+      // Random speed multiplier (0.3 to 0.7) - 非常にゆったり
+      this.speedMultipliers[i] = 0.3 + Math.random() * 0.4
+      
+      // Random wander target for individual exploration
+      this.wanderTargets.push(new THREE.Vector3(
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 14,
+        (Math.random() - 0.5) * 16
+      ))
+    }
+  }
+  
+  private updateWanderTargets(elapsedTime: number): void {
+    // 魚らしいゆっくりとした目標変更（5-12秒）
+    if (elapsedTime - this.lastWanderUpdate > 5000 + Math.random() * 7000) {
+      this.lastWanderUpdate = elapsedTime
+      
+      // 少数の魚が新しい関心を持つ（20%）
+      const updateCount = Math.floor(this.fishCount * 0.2)
+      for (let i = 0; i < updateCount; i++) {
+        const fishIndex = Math.floor(Math.random() * this.fishCount)
+        
+        // 現在位置から適度な距離の新しい目標
+        const currentPos = this.boids.boids[fishIndex]?.position || new THREE.Vector3()
+        const direction = new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2
+        ).normalize()
+        
+        const newTarget = currentPos.clone().add(
+          direction.multiplyScalar(3 + Math.random() * 5)  // 3-8ユニット先
+        )
+        
+        this.wanderTargets[fishIndex].copy(newTarget)
+      }
+    }
   }
   
   private createDetailedFishMeshes(): void {
@@ -90,8 +151,9 @@ export class DetailedFishSystem {
         const lightness = 0.5 + Math.random() * 0.3
         
         const color = new THREE.Color()
+        const hslTarget = { h: 0, s: 0, l: 0 }
         color.setHSL(
-          (variant.primaryColor.getHSL({} as any).h + hue) % 1,
+          (variant.primaryColor.getHSL(hslTarget).h + hue) % 1,
           saturation,
           lightness
         )
@@ -211,6 +273,44 @@ export class DetailedFishSystem {
   }
   
   update(_deltaTime: number, elapsedTime: number): void {
+    // Update wander targets periodically
+    this.updateWanderTargets(elapsedTime)
+    
+    // Add strong individual wander behavior to break up schooling
+    this.boids.boids.forEach((boid, index) => {
+      if (index < this.wanderTargets.length) {
+        // 非常に弱い放浪力で非常にゆったりした動き
+        const wanderForce = this.wanderTargets[index].clone().sub(boid.position)
+        wanderForce.normalize().multiplyScalar(0.003 * this.speedMultipliers[index])
+        
+        // 非常に小さなジッターで非常にゆったりした動き
+        const jitter = new THREE.Vector3(
+          (Math.random() - 0.5) * 0.001,
+          (Math.random() - 0.5) * 0.001,
+          (Math.random() - 0.5) * 0.001
+        )
+        
+        // 非常に小さなノイズ力で非常にゆったりした動き
+        const noiseForce = new THREE.Vector3(
+          Math.sin(elapsedTime * 0.06 + this.randomOffsets[index]) * 0.001,
+          Math.sin(elapsedTime * 0.05 + this.randomOffsets[index] * 2) * 0.0008,
+          Math.sin(elapsedTime * 0.04 + this.randomOffsets[index] * 3) * 0.001
+        )
+        
+        // 稀な方向転換を更に減らして直線性を向上
+        if (Math.random() < 0.001) {  // 0.1% chance per frame - 非常に稀
+          const curiosityForce = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.02,
+            (Math.random() - 0.5) * 0.015,
+            (Math.random() - 0.5) * 0.02
+          )
+          boid.acceleration.add(curiosityForce)
+        }
+        
+        boid.acceleration.add(wanderForce).add(jitter).add(noiseForce)
+      }
+    })
+    
     this.boids.update()
     
     let boidIndex = 0
@@ -222,33 +322,88 @@ export class DetailedFishSystem {
       for (let i = 0; i < instanceCount && boidIndex < this.boids.boids.length; i++, boidIndex++) {
         const boid = this.boids.boids[boidIndex]
         
+        // Individual randomness factors
+        const randomOffset = this.randomOffsets[boidIndex]
+        const swimPhase = this.swimPhases[boidIndex]
+        const speedMult = this.speedMultipliers[boidIndex]
+        
         this.dummy.position.copy(boid.position)
         
-        // 泳ぎの方向に向ける
+        // 魚を進行方向に正しく向ける（魚の先端が前方向）
         const direction = boid.velocity.clone().normalize()
         if (direction.length() > 0) {
-          this.dummy.lookAt(
-            boid.position.x + direction.x,
-            boid.position.y + direction.y,
-            boid.position.z + direction.z
+          // 方向転換にノイズを追加（より自然な魚の動き）
+          const turnNoise = new THREE.Vector3(
+            // 水平方向のノイズ（左右の方向転換）
+            Math.sin(elapsedTime * 0.8 + randomOffset) * 0.15 + 
+            Math.sin(elapsedTime * 1.3 + randomOffset * 2) * 0.08,
+            
+            // 垂直方向のノイズ（上下の方向転換）
+            Math.sin(elapsedTime * 0.6 + randomOffset + 1) * 0.12 + 
+            Math.sin(elapsedTime * 1.1 + randomOffset * 3) * 0.06,
+            
+            // 奥行き方向のノイズ（前後の方向転換）
+            Math.sin(elapsedTime * 0.7 + randomOffset + 2) * 0.1 + 
+            Math.sin(elapsedTime * 1.2 + randomOffset * 4) * 0.05
           )
+          
+          // ランダムな瞬間的方向変化（魚の気まぐれ）
+          if (Math.random() < 0.008) {  // 0.8%の確率で突然の方向転換
+            const suddenTurn = new THREE.Vector3(
+              (Math.random() - 0.5) * 0.4,
+              (Math.random() - 0.5) * 0.3,
+              (Math.random() - 0.5) * 0.35
+            )
+            turnNoise.add(suddenTurn)
+          }
+          
+          direction.add(turnNoise).normalize()
+          
+          // 魚の先端を進行方向に向ける
+          // 魚ジオメトリは-X方向を向いているので、進行方向との角度を計算
+          const forward = new THREE.Vector3(-1, 0, 0) // 魚の前方向（-X）
+          
+          // 進行方向への回転を計算
+          const quaternion = new THREE.Quaternion()
+          quaternion.setFromUnitVectors(forward, direction)
+          this.dummy.setRotationFromQuaternion(quaternion)
         }
         
-        // 体の揺れ
-        const wiggleSpeed = variant.speed * 8
-        const wiggle = Math.sin(elapsedTime * wiggleSpeed + boidIndex) * 0.08
+        // 魚らしい優雅な体の揺れ
+        const swimFreq = variant.speed * speedMult * (2 + Math.sin(randomOffset) * 1)
+        const wiggle = Math.sin(elapsedTime * swimFreq + swimPhase) * (0.03 + Math.sin(randomOffset * 2) * 0.02)
         this.dummy.rotation.z += wiggle
         
-        // 尾ひれの動き
-        const tailWave = Math.sin(elapsedTime * wiggleSpeed * 2 + boidIndex) * 0.15
+        // 尾ひれの自然な推進動作
+        const tailFreq = swimFreq * (1.8 + Math.sin(randomOffset * 3) * 0.4)
+        const tailWave = Math.sin(elapsedTime * tailFreq + swimPhase * 1.5) * (0.08 + Math.sin(randomOffset * 4) * 0.04)
         this.dummy.rotation.y += tailWave
         
-        // 速度に応じたピッチング
+        // 滑らかな進行方向調整
         const speed = boid.velocity.length()
-        this.dummy.rotation.x += speed * 0.3
+        const pitchIntensity = 0.5 + Math.sin(randomOffset * 5) * 0.3
+        this.dummy.rotation.x += speed * pitchIntensity * 0.8
         
-        const scale = variant.scale * (0.9 + Math.sin(elapsedTime + boidIndex) * 0.05)
+        // 魚らしい浮遊感（ゆっくりとした上下動）
+        const floatWave = Math.sin(elapsedTime * 0.8 + randomOffset) * 0.015 * speedMult
+        this.dummy.position.y += floatWave
+        
+        // 微細な横揺れ
+        const sideDrift = Math.sin(elapsedTime * 0.6 + randomOffset * 2) * 0.008 * speedMult
+        this.dummy.position.x += sideDrift
+        
+        // 自然な呼吸のようなサイズ変化
+        const breathingSpeed = 0.4 + Math.sin(randomOffset * 6) * 0.2
+        const breathing = Math.sin(elapsedTime * breathingSpeed + swimPhase) * 0.015 + 1.0
+        const scale = variant.scale * breathing * (0.98 + Math.sin(randomOffset * 7) * 0.04)
         this.dummy.scale.set(scale, scale, scale)
+        
+        // 突然の停止・方向転換を減らして直線性を維持
+        if (Math.random() < 0.0002) {  // 非常に稀に
+          // 温和な方向調整のみ
+          const gentleTurn = (Math.random() - 0.5) * 0.1
+          this.dummy.rotation.y += gentleTurn
+        }
         
         this.dummy.updateMatrix()
         mesh.setMatrixAt(i, this.dummy.matrix)

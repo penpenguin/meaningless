@@ -1,19 +1,26 @@
 import './styles.css'
-import { AquariumScene } from './components/Scene'
+import { AdvancedAquariumScene } from './components/AdvancedScene'
 import { AudioManager } from './components/AudioManager'
 import lottie from 'lottie-web'
 
-class AquariumApp {
-  private scene: AquariumScene | null = null
+class AdvancedAquariumApp {
+  private scene: AdvancedAquariumScene | null = null
   private audioManager: AudioManager
   private motionToggle: HTMLInputElement
   private soundToggle: HTMLInputElement
+  private effectsToggle: HTMLInputElement
+  private qualitySelect: HTMLSelectElement
+  private statsDisplay: HTMLElement
   private prefersReducedMotion: boolean
+  private performanceMonitor: number | null = null  // Used in startPerformanceMonitoring()
 
   constructor() {
     this.audioManager = new AudioManager()
     this.motionToggle = document.getElementById('motion-toggle') as HTMLInputElement
     this.soundToggle = document.getElementById('sound-toggle') as HTMLInputElement
+    this.effectsToggle = document.getElementById('effects-toggle') as HTMLInputElement
+    this.qualitySelect = document.getElementById('quality-select') as HTMLSelectElement
+    this.statsDisplay = document.getElementById('stats-display') as HTMLElement
     
     this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     
@@ -28,9 +35,10 @@ class AquariumApp {
     const container = document.getElementById('canvas-container')
     if (!container) return
     
-    this.scene = new AquariumScene(container)
+    this.scene = new AdvancedAquariumScene(container)
     
     this.setupEventListeners()
+    this.startPerformanceMonitoring()
     
     if (this.prefersReducedMotion) {
       this.motionToggle.checked = false
@@ -143,14 +151,33 @@ class AquariumApp {
   }
 
   private setupEventListeners(): void {
-    this.motionToggle.addEventListener('change', () => {
+    this.motionToggle?.addEventListener('change', () => {
       if (this.scene) {
         this.scene.setMotionEnabled(this.motionToggle.checked)
       }
     })
     
-    this.soundToggle.addEventListener('change', () => {
+    this.soundToggle?.addEventListener('change', () => {
       this.audioManager.setEnabled(this.soundToggle.checked)
+    })
+    
+    this.effectsToggle?.addEventListener('change', () => {
+      if (this.scene) {
+        this.scene.setAdvancedEffects(this.effectsToggle.checked)
+      }
+    })
+    
+    this.qualitySelect?.addEventListener('change', () => {
+      if (this.scene) {
+        const quality = this.qualitySelect.value as 'low' | 'medium' | 'high'
+        this.scene.setWaterQuality(quality)
+        
+        // Auto-adjust other settings based on quality
+        if (quality === 'low') {
+          this.effectsToggle.checked = false
+          this.scene.setAdvancedEffects(false)
+        }
+      }
     })
     
     window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (e) => {
@@ -162,8 +189,59 @@ class AquariumApp {
       }
     })
   }
+  
+  private startPerformanceMonitoring(): void {
+    this.performanceMonitor = setInterval(() => {
+      if (this.scene && this.statsDisplay) {
+        const stats = this.scene.getPerformanceStats()
+        this.statsDisplay.innerHTML = `
+          <div>FPS: ${stats.fps}</div>
+          <div>Frame Time: ${stats.frameTime.toFixed(1)}ms</div>
+          <div>Fish Visible: ${stats.fishVisible}</div>
+          <div>Draw Calls: ${stats.drawCalls}</div>
+        `
+        
+        // Auto-optimize performance if needed
+        if (stats.fps < 30 && stats.fps > 0) {
+          this.autoOptimizePerformance()
+        }
+      }
+    }, 1000)
+  }
+  
+  private autoOptimizePerformance(): void {
+    if (!this.scene) return
+    
+    // Gradually reduce quality settings
+    if (this.effectsToggle.checked) {
+      this.effectsToggle.checked = false
+      this.scene.setAdvancedEffects(false)
+      console.log('Auto-optimization: Disabled advanced effects')
+      return
+    }
+    
+    if (this.qualitySelect.value === 'high') {
+      this.qualitySelect.value = 'medium'
+      this.scene.setWaterQuality('medium')
+      console.log('Auto-optimization: Reduced water quality to medium')
+      return
+    }
+    
+    if (this.qualitySelect.value === 'medium') {
+      this.qualitySelect.value = 'low'
+      this.scene.setWaterQuality('low')
+      console.log('Auto-optimization: Reduced water quality to low')
+    }
+  }
+  
+  dispose(): void {
+    if (this.performanceMonitor) {
+      clearInterval(this.performanceMonitor)
+      this.performanceMonitor = null
+    }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  new AquariumApp()
+  new AdvancedAquariumApp()
 })
