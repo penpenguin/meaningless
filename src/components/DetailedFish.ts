@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BoidsSystem } from '../utils/Boids'
 
 interface FishVariant {
@@ -216,12 +217,25 @@ export class DetailedFishSystem {
     ventralFinGeometry.translate(0.1, -0.18, 0)
     
     // ジオメトリを結合
-    const mergedGeometry = new THREE.BufferGeometry()
-    mergedGeometry.copy(bodyGeometry)
-    
+    const geometries = [
+      bodyGeometry,
+      tailGeometry,
+      pectoralFinGeometry,
+      pectoralFinGeometry2,
+      dorsalFinGeometry,
+      ventralFinGeometry
+    ]
+
+    let mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries)
+    if (!mergedGeometry) {
+      // Fallback to body geometry only on failure
+      mergedGeometry = bodyGeometry
+    }
+
     // スケールを適用
     mergedGeometry.scale(variant.scale, variant.scale, variant.scale)
-    
+    mergedGeometry.computeVertexNormals()
+
     return mergedGeometry
   }
   
