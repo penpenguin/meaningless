@@ -6,7 +6,15 @@ describe('DetailedFishSystem geometry merging', () => {
   test('createDetailedFishGeometry merges mixed index geometries safely', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const variant = {
+    type TestVariant = {
+      name: string
+      primaryColor: THREE.Color
+      secondaryColor: THREE.Color
+      scale: number
+      speed: number
+    }
+
+    const variant: TestVariant = {
       name: 'specimen',
       primaryColor: new THREE.Color('#ffffff'),
       secondaryColor: new THREE.Color('#000000'),
@@ -17,7 +25,7 @@ describe('DetailedFishSystem geometry merging', () => {
     // Bypass constructor side effects; the method does not rely on instance state.
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const { createDetailedFishGeometry } = DetailedFishSystem.prototype as unknown as {
-      createDetailedFishGeometry: (variant: typeof variant) => THREE.BufferGeometry
+      createDetailedFishGeometry: (variant: TestVariant) => THREE.BufferGeometry
     }
     const createGeometry = createDetailedFishGeometry.bind(instance)
 
