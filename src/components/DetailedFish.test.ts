@@ -16,7 +16,10 @@ describe('DetailedFishSystem geometry merging', () => {
 
     // Bypass constructor side effects; the method does not rely on instance state.
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
-    const createGeometry = (instance as any).createDetailedFishGeometry.bind(instance)
+    const { createDetailedFishGeometry } = DetailedFishSystem.prototype as unknown as {
+      createDetailedFishGeometry: (variant: typeof variant) => THREE.BufferGeometry
+    }
+    const createGeometry = createDetailedFishGeometry.bind(instance)
 
     const geometry = createGeometry(variant) as THREE.BufferGeometry
 
