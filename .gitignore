@@ -5,6 +5,8 @@ logs
 **/*.back.*
 
 node_modules
+.DS_Store
+dist/
 bower_components
 
 *.sublime*

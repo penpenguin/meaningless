@@ -5,18 +5,25 @@ export class AudioManager {
   private waterAmbientCreated = false
   
   constructor() {
-    this.setupAudioContext()
+    // AudioContext の生成は初回有効化まで遅延させる
     // Don't create water ambient automatically - wait for setEnabled(true)
   }
   
-  private setupAudioContext(): void {
+  private setupAudioContext(): boolean {
+    if (this.audioContext && this.masterGain) return true
+    
     try {
-      this.audioContext = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+      const AudioContextConstructor = window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      this.audioContext = new AudioContextConstructor()
       this.masterGain = this.audioContext.createGain()
       this.masterGain.connect(this.audioContext.destination)
       this.masterGain.gain.setValueAtTime(1.0, this.audioContext.currentTime)
+      return true
     } catch (error) {
       console.warn('Web Audio API not supported:', error)
+      this.audioContext = null
+      this.masterGain = null
+      return false
     }
   }
   
@@ -103,9 +110,9 @@ export class AudioManager {
   public setEnabled(enabled: boolean): void {
     this.isEnabled = enabled
     
-    if (!this.audioContext || !this.masterGain) return
-    
     if (enabled) {
+      if (!this.setupAudioContext() || !this.audioContext || !this.masterGain) return
+      
       // Create water ambient on first enable
       if (!this.waterAmbientCreated) {
         this.createWaterAmbient()
@@ -123,15 +130,17 @@ export class AudioManager {
       this.masterGain.gain.linearRampToValueAtTime(1.0, this.audioContext.currentTime + 1)
     } else {
       // Fade out
-      this.masterGain.gain.cancelScheduledValues(this.audioContext.currentTime)
-      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, this.audioContext.currentTime)
-      this.masterGain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.5)
+      if (this.audioContext && this.masterGain) {
+        this.masterGain.gain.cancelScheduledValues(this.audioContext.currentTime)
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, this.audioContext.currentTime)
+        this.masterGain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.5)
+      }
     }
   }
   
   public setVolume(volume: number): void {
     if (!this.audioContext || !this.masterGain) return
-    
+
     const clampedVolume = Math.max(0, Math.min(1, volume))
     this.masterGain.gain.setValueAtTime(clampedVolume * 1.0, this.audioContext.currentTime)
   }
