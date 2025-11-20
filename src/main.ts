@@ -12,7 +12,7 @@ class AdvancedAquariumApp {
   private qualitySelect: HTMLSelectElement
   private statsDisplay: HTMLElement
   private prefersReducedMotion: boolean
-  private performanceMonitor: number | null = null  // Used in startPerformanceMonitoring()
+  private performanceMonitor: ReturnType<typeof setInterval> | null = null  // Used in startPerformanceMonitoring()
 
   constructor() {
     this.audioManager = new AudioManager()

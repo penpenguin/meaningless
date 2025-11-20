@@ -1,5 +1,11 @@
 # Repository Guidelines
 
+## Serena Tooling Expectations
+- Default to Serena's MCP integrations whenever you need context; it centralizes specs, saved memories, and helper scripts so agents stay in sync.
+- Kick off each session by opening the Serena Instructions Manual (call `mcp__serena__initial_instructions`) and listing resources via `list_mcp_resources` to learn what's already documented before poking around the repo.
+- Use `read_mcp_resource` (or the parameterized templates) instead of ad-hoc browsing when you need docs from `docs/` or historical decisions, and record new findings with `write_memory` so future agents inherit them.
+- Favor Serena's memory + resource workflow during hand-offs (e.g., summarize outstanding bugs, feature flags, or test gaps) to minimize institutional knowledge loss.
+
 ## プロジェクト構成
 - `src/main.ts`: Vite エントリ。シーン初期化と UI トグルを束ねる。
 - `src/components/`: 水面・魚群・泡・サウンドなど主要クラス群（例: `AdvancedScene`, `Water`, `Fish`, `AudioManager`）。
@@ -35,8 +41,3 @@
 ## セキュリティ / 設定メモ
 - Secrets は扱わない。鍵・トークンを `public/` 以下に置かない。
 - `vite.config.ts` で alias や plugin を追加する際は開発・本番の両方で動作確認し、必要なら設定を README に追記。
-
-## Serena 活用ガイド
-- 作業開始前に本ドキュメントを確認し、`serena` でプロジェクトを開いた上で要件整理・計画立案を行う。
-- コード探索は `rg` など高速ツールを優先し、依頼や権限が必要な操作は Serena の承認フローを通す。
-- 変更提案や実装時は Serena に t-wada TDD を遵守する手順（最小の失敗テスト追加 → 実装 → リファクタ）を明示して依頼する。***
