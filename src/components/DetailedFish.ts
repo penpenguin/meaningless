@@ -226,7 +226,11 @@ export class DetailedFishSystem {
       ventralFinGeometry
     ]
 
-    let mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries)
+    const nonIndexedGeometries = geometries.map(geometry =>
+      geometry.index ? geometry.toNonIndexed() : geometry
+    )
+
+    let mergedGeometry = BufferGeometryUtils.mergeGeometries(nonIndexedGeometries)
     if (!mergedGeometry) {
       // Fallback to body geometry only on failure
       mergedGeometry = bodyGeometry
