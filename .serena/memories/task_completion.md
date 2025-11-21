@@ -1,0 +1,1 @@
+Before sending a PR, run `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` to ensure code quality, types, tests, and production build all pass. Verify the 3D scene visually via `npm run dev` if UI-affecting changes were made. Include relevant screenshots/notes in PR if visuals are impacted.

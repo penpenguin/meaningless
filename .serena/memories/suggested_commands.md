@@ -1,0 +1,1 @@
+Setup: `npm install`. Dev server: `npm run dev`. Production build: `npm run build`, preview with `npm run preview`. Type check: `npm run typecheck`. Unit tests: `npm run test` (Vitest). Lint: `npm run lint`. Run individual Vitest interactively with `npx vitest`. Use `npm run lint -- --fix` for auto-fixes if needed.

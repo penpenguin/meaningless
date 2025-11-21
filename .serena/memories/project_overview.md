@@ -1,0 +1,1 @@
+Aquarium Web App is a Three.js + TypeScript single-page experience that simulates a realistic aquarium in the browser. The repo uses Vite for build/dev, TailwindCSS + DaisyUI for styling, and Vitest for tests. Source lives in src/ with shaders, components, utils, and tests; static assets go under public/. Entry point is src/main.ts configuring the Three.js scene and UI toggles.
