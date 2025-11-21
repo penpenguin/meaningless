@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 import { AdvancedFishSystem } from '../AdvancedFishSystem'
+import type { BoidsSystem } from '../../utils/Boids'
 
 type TestBoid = { position: THREE.Vector3; velocity: THREE.Vector3 }
 
@@ -44,7 +45,9 @@ const createSystem = (boids: TestBoid[]): AdvancedFishSystem => {
     ]
   ])
 
-  system['boidsSystems'] = new Map([['Test', { boids }]])
+  system['boidsSystems'] = new Map<string, BoidsSystem>([
+    ['Test', { boids } as unknown as BoidsSystem]
+  ])
 
   system['renderStats'] = { visibleFish: 0, culledFish: 0, frameTime: 0 }
 
