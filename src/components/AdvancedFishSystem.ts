@@ -35,6 +35,8 @@ export class AdvancedFishSystem {
   private totalFishCount: number
   private frustum = new THREE.Frustum()
   private cameraMatrix = new THREE.Matrix4()
+  private tempDirection = new THREE.Vector3()
+  private tempSphere = new THREE.Sphere()
   
   // Performance monitoring
   private renderStats = {
@@ -325,8 +327,9 @@ export class AdvancedFishSystem {
           }
           
           // Frustum culling
-          const boundingSphere = new THREE.Sphere(boid.position, 2)
-          if (!this.frustum.intersectsSphere(boundingSphere)) {
+          this.tempSphere.center.copy(boid.position)
+          this.tempSphere.radius = 2
+          if (!this.frustum.intersectsSphere(this.tempSphere)) {
             this.renderStats.culledFish++
             continue
           }
@@ -336,12 +339,13 @@ export class AdvancedFishSystem {
           // Update instance matrix
           this.dummy.position.copy(boid.position)
           
-          const direction = boid.velocity.clone().normalize()
-          if (direction.length() > 0) {
+          this.tempDirection.copy(boid.velocity)
+          if (this.tempDirection.lengthSq() > 0) {
+            this.tempDirection.normalize()
             this.dummy.lookAt(
-              boid.position.x + direction.x,
-              boid.position.y + direction.y,
-              boid.position.z + direction.z
+              boid.position.x + this.tempDirection.x,
+              boid.position.y + this.tempDirection.y,
+              boid.position.z + this.tempDirection.z
             )
           }
           
