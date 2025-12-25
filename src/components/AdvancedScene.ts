@@ -605,24 +605,24 @@ export class AdvancedAquariumScene {
     this.controls.autoRotate = enabled
   }
   
-  public setWaterQuality(_quality: 'low' | 'medium' | 'high'): void {
-    // Water surface removed - no water quality settings needed
-    // if (this.waterSurface) {
-    //   const material = this.waterSurface.getMesh().material as any
-    //   if (material.uniforms) {
-    //     switch (quality) {
-    //       case 'low':
-    //         material.uniforms.distortionScale.value = 2.0
-    //         break
-    //       case 'medium':
-    //         material.uniforms.distortionScale.value = 3.7
-    //         break
-    //       case 'high':
-    //         material.uniforms.distortionScale.value = 5.5
-    //         break
-    //     }
-    //   }
-    // }
+  public setWaterQuality(quality: 'low' | 'medium' | 'high'): void {
+    const pixelRatioCap = quality === 'low' ? 1 : quality === 'medium' ? 1.5 : 2
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap))
+    this.renderer.setSize(window.innerWidth, window.innerHeight)
+
+    if (this.composer) {
+      this.composer.setSize(window.innerWidth, window.innerHeight)
+    }
+
+    if (this.godRaysEffect) {
+      this.godRaysEffect.resize(window.innerWidth, window.innerHeight)
+    }
+
+    this.renderer.shadowMap.enabled = quality !== 'low'
+
+    if (this.fishSystem) {
+      this.fishSystem.setQuality(quality)
+    }
   }
 
   private setupEventListeners(): void {

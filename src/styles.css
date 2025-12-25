@@ -21,6 +21,13 @@ body {
   position: relative;
 }
 
+#tweakpane-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+}
+
 #loading-screen {
   position: fixed;
   top: 0;
