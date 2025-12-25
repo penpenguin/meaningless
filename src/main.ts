@@ -1,28 +1,71 @@
 import './styles.css'
+import { Pane } from 'tweakpane'
 import { AdvancedAquariumScene } from './components/AdvancedScene'
 import { AudioManager } from './components/AudioManager'
 import lottie from 'lottie-web'
 
+type QualityLevel = 'low' | 'medium' | 'high'
+
+type TweakpaneChangeEvent<T> = {
+  value: T
+}
+
+type TweakpaneBinding<T> = {
+  on: (eventName: 'change', handler: (event: TweakpaneChangeEvent<T>) => void) => void
+}
+
+type TweakpaneFolder = {
+  addBinding: <T extends object, K extends keyof T>(
+    target: T,
+    key: K,
+    params?: {
+      label?: string
+      options?: Record<string, T[K]>
+      readonly?: boolean
+    }
+  ) => TweakpaneBinding<T[K]>
+}
+
+type PaneApi = Pane & {
+  addFolder: (params: { title: string; expanded?: boolean }) => TweakpaneFolder
+  refresh: () => void
+}
+
 class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
   private audioManager: AudioManager
-  private motionToggle: HTMLInputElement
-  private soundToggle: HTMLInputElement
-  private effectsToggle: HTMLInputElement
-  private qualitySelect: HTMLSelectElement
-  private statsDisplay: HTMLElement
-  private prefersReducedMotion: boolean
-  private performanceMonitor: ReturnType<typeof setInterval> | null = null  // Used in startPerformanceMonitoring()
+  private pane: PaneApi | null = null
+  private settings: {
+    motion: boolean
+    sound: boolean
+    effects: boolean
+    quality: QualityLevel
+  }
+  private stats: {
+    fps: number
+    frameTime: number
+    fishVisible: number
+    drawCalls: number
+  }
+  private performanceMonitor: ReturnType<typeof setInterval> | null = null
+  private motionMediaQuery: MediaQueryList
+  private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
 
   constructor() {
     this.audioManager = new AudioManager()
-    this.motionToggle = document.getElementById('motion-toggle') as HTMLInputElement
-    this.soundToggle = document.getElementById('sound-toggle') as HTMLInputElement
-    this.effectsToggle = document.getElementById('effects-toggle') as HTMLInputElement
-    this.qualitySelect = document.getElementById('quality-select') as HTMLSelectElement
-    this.statsDisplay = document.getElementById('stats-display') as HTMLElement
-    
-    this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    this.motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    this.settings = {
+      motion: !this.motionMediaQuery.matches,
+      sound: false,
+      effects: true,
+      quality: 'high'
+    }
+    this.stats = {
+      fps: 0,
+      frameTime: 0,
+      fishVisible: 0,
+      drawCalls: 0
+    }
     
     this.init()
   }
@@ -36,14 +79,11 @@ class AdvancedAquariumApp {
     if (!container) return
     
     this.scene = new AdvancedAquariumScene(container)
-    
+
+    this.setupPane()
     this.setupEventListeners()
+    this.applySettings()
     this.startPerformanceMonitoring()
-    
-    if (this.prefersReducedMotion) {
-      this.motionToggle.checked = false
-      this.scene.setMotionEnabled(false)
-    }
     
     this.scene.start()
     
@@ -150,56 +190,80 @@ class AdvancedAquariumApp {
     })
   }
 
-  private setupEventListeners(): void {
-    this.motionToggle?.addEventListener('change', () => {
+  private applySettings(): void {
+    if (!this.scene) return
+    this.scene.setMotionEnabled(this.settings.motion)
+    this.audioManager.setEnabled(this.settings.sound)
+    this.scene.setAdvancedEffects(this.settings.effects)
+    this.scene.setWaterQuality(this.settings.quality)
+  }
+
+  private setupPane(): void {
+    const container = document.getElementById('tweakpane-container')
+    this.pane = new Pane({ container: container ?? undefined }) as PaneApi
+    const pane = this.pane
+
+    const settingsFolder = pane.addFolder({ title: 'Settings' })
+    settingsFolder.addBinding(this.settings, 'motion', { label: 'Motion' }).on('change', (event: TweakpaneChangeEvent<boolean>) => {
       if (this.scene) {
-        this.scene.setMotionEnabled(this.motionToggle.checked)
+        this.scene.setMotionEnabled(event.value)
       }
     })
-    
-    this.soundToggle?.addEventListener('change', () => {
-      this.audioManager.setEnabled(this.soundToggle.checked)
+    settingsFolder.addBinding(this.settings, 'sound', { label: 'Sound' }).on('change', (event: TweakpaneChangeEvent<boolean>) => {
+      this.audioManager.setEnabled(event.value)
     })
-    
-    this.effectsToggle?.addEventListener('change', () => {
+    settingsFolder.addBinding(this.settings, 'effects', { label: 'Effects' }).on('change', (event: TweakpaneChangeEvent<boolean>) => {
       if (this.scene) {
-        this.scene.setAdvancedEffects(this.effectsToggle.checked)
+        this.scene.setAdvancedEffects(event.value)
       }
     })
-    
-    this.qualitySelect?.addEventListener('change', () => {
+    settingsFolder.addBinding(this.settings, 'quality', {
+      label: 'Quality',
+      options: { Low: 'low', Medium: 'medium', High: 'high' }
+    }).on('change', (event: TweakpaneChangeEvent<QualityLevel>) => {
       if (this.scene) {
-        const quality = this.qualitySelect.value as 'low' | 'medium' | 'high'
-        this.scene.setWaterQuality(quality)
-        
-        // Auto-adjust other settings based on quality
-        if (quality === 'low') {
-          this.effectsToggle.checked = false
+        this.scene.setWaterQuality(event.value)
+      }
+
+      if (event.value === 'low') {
+        this.settings.effects = false
+        if (this.scene) {
           this.scene.setAdvancedEffects(false)
         }
+        this.pane?.refresh()
       }
     })
-    
-    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (e) => {
-      if (e.matches) {
-        this.motionToggle.checked = false
+
+    const statsFolder = pane.addFolder({ title: 'Stats', expanded: false })
+    statsFolder.addBinding(this.stats, 'fps', { label: 'FPS', readonly: true })
+    statsFolder.addBinding(this.stats, 'frameTime', { label: 'Frame Time', readonly: true })
+    statsFolder.addBinding(this.stats, 'fishVisible', { label: 'Fish Visible', readonly: true })
+    statsFolder.addBinding(this.stats, 'drawCalls', { label: 'Draw Calls', readonly: true })
+  }
+
+  private setupEventListeners(): void {
+    this.motionMediaHandler = (event) => {
+      if (event.matches) {
+        this.settings.motion = false
         if (this.scene) {
           this.scene.setMotionEnabled(false)
         }
+        this.pane?.refresh()
       }
-    })
+    }
+
+    this.motionMediaQuery.addEventListener('change', this.motionMediaHandler)
   }
   
   private startPerformanceMonitoring(): void {
     this.performanceMonitor = setInterval(() => {
-      if (this.scene && this.statsDisplay) {
+      if (this.scene) {
         const stats = this.scene.getPerformanceStats()
-        this.statsDisplay.innerHTML = `
-          <div>FPS: ${stats.fps}</div>
-          <div>Frame Time: ${stats.frameTime.toFixed(1)}ms</div>
-          <div>Fish Visible: ${stats.fishVisible}</div>
-          <div>Draw Calls: ${stats.drawCalls}</div>
-        `
+        this.stats.fps = stats.fps
+        this.stats.frameTime = Number(stats.frameTime.toFixed(1))
+        this.stats.fishVisible = stats.fishVisible
+        this.stats.drawCalls = stats.drawCalls
+        this.pane?.refresh()
         
         // Auto-optimize performance if needed
         if (stats.fps < 30 && stats.fps > 0) {
@@ -213,23 +277,26 @@ class AdvancedAquariumApp {
     if (!this.scene) return
     
     // Gradually reduce quality settings
-    if (this.effectsToggle.checked) {
-      this.effectsToggle.checked = false
+    if (this.settings.effects) {
+      this.settings.effects = false
       this.scene.setAdvancedEffects(false)
+      this.pane?.refresh()
       console.log('Auto-optimization: Disabled advanced effects')
       return
     }
     
-    if (this.qualitySelect.value === 'high') {
-      this.qualitySelect.value = 'medium'
+    if (this.settings.quality === 'high') {
+      this.settings.quality = 'medium'
       this.scene.setWaterQuality('medium')
+      this.pane?.refresh()
       console.log('Auto-optimization: Reduced water quality to medium')
       return
     }
     
-    if (this.qualitySelect.value === 'medium') {
-      this.qualitySelect.value = 'low'
+    if (this.settings.quality === 'medium') {
+      this.settings.quality = 'low'
       this.scene.setWaterQuality('low')
+      this.pane?.refresh()
       console.log('Auto-optimization: Reduced water quality to low')
     }
   }
@@ -239,9 +306,46 @@ class AdvancedAquariumApp {
       clearInterval(this.performanceMonitor)
       this.performanceMonitor = null
     }
+
+    if (this.motionMediaHandler) {
+      this.motionMediaQuery.removeEventListener('change', this.motionMediaHandler)
+      this.motionMediaHandler = null
+    }
+
+    if (this.pane) {
+      this.pane.dispose()
+      this.pane = null
+    }
+
+    if (this.scene) {
+      this.scene.dispose()
+      this.scene = null
+    }
+
+    this.audioManager.dispose()
   }
 }
 
+let app: AdvancedAquariumApp | null = null
+
+const startApp = (): void => {
+  if (app) {
+    app.dispose()
+  }
+  app = new AdvancedAquariumApp()
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  new AdvancedAquariumApp()
+  startApp()
 })
+
+window.addEventListener('beforeunload', () => {
+  app?.dispose()
+})
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    app?.dispose()
+    app = null
+  })
+}
