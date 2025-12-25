@@ -14,7 +14,8 @@
   "dependencies": {
     "caniuse-lite": "^1.0.30001756",
     "lottie-web": "^5.12.2",
-    "three": "^0.161.0"
+    "three": "^0.161.0",
+    "tweakpane": "^4.0.5"
   },
   "devDependencies": {
     "@types/node": "^22.9.3",

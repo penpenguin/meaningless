@@ -22,6 +22,19 @@ export class DetailedFishSystem {
   private speedMultipliers: Float32Array = new Float32Array()
   private wanderTargets: THREE.Vector3[] = []
   private lastWanderUpdate: number = 0
+  private baseInstanceCounts: number[] = []
+  private tempWanderForce = new THREE.Vector3()
+  private tempJitter = new THREE.Vector3()
+  private tempNoiseForce = new THREE.Vector3()
+  private tempDirection = new THREE.Vector3()
+  private tempTurnNoise = new THREE.Vector3()
+  private tempSuddenTurn = new THREE.Vector3()
+  private tempCuriosityForce = new THREE.Vector3()
+  private tempForward = new THREE.Vector3(-1, 0, 0)
+  private tempQuaternion = new THREE.Quaternion()
+  private tempCurrentPos = new THREE.Vector3()
+  private tempWanderDirection = new THREE.Vector3()
+  private tempWanderTarget = new THREE.Vector3()
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
     this.group = new THREE.Group()
@@ -100,7 +113,7 @@ export class DetailedFishSystem {
   
   private updateWanderTargets(elapsedTime: number): void {
     // 魚らしいゆっくりとした目標変更（5-12秒）
-    if (elapsedTime - this.lastWanderUpdate > 5000 + Math.random() * 7000) {
+    if (elapsedTime - this.lastWanderUpdate > 5 + Math.random() * 7) {
       this.lastWanderUpdate = elapsedTime
       
       // 少数の魚が新しい関心を持つ（20%）
@@ -109,18 +122,24 @@ export class DetailedFishSystem {
         const fishIndex = Math.floor(Math.random() * this.fishCount)
         
         // 現在位置から適度な距離の新しい目標
-        const currentPos = this.boids.boids[fishIndex]?.position || new THREE.Vector3()
-        const direction = new THREE.Vector3(
+        const boid = this.boids.boids[fishIndex]
+        if (boid) {
+          this.tempCurrentPos.copy(boid.position)
+        } else {
+          this.tempCurrentPos.set(0, 0, 0)
+        }
+
+        this.tempWanderDirection.set(
           (Math.random() - 0.5) * 2,
           (Math.random() - 0.5) * 2,
           (Math.random() - 0.5) * 2
         ).normalize()
-        
-        const newTarget = currentPos.clone().add(
-          direction.multiplyScalar(3 + Math.random() * 5)  // 3-8ユニット先
-        )
-        
-        this.wanderTargets[fishIndex].copy(newTarget)
+
+        this.tempWanderTarget.copy(this.tempWanderDirection)
+          .multiplyScalar(3 + Math.random() * 5)  // 3-8ユニット先
+          .add(this.tempCurrentPos)
+
+        this.wanderTargets[fishIndex].copy(this.tempWanderTarget)
       }
     }
   }
@@ -168,6 +187,8 @@ export class DetailedFishSystem {
       this.instancedMeshes.push(instancedMesh)
       this.group.add(instancedMesh)
     })
+
+    this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)
   }
   
   private createDetailedFishGeometry(variant: FishVariant): THREE.BufferGeometry {
@@ -298,18 +319,18 @@ export class DetailedFishSystem {
     this.boids.boids.forEach((boid, index) => {
       if (index < this.wanderTargets.length) {
         // 非常に弱い放浪力で非常にゆったりした動き
-        const wanderForce = this.wanderTargets[index].clone().sub(boid.position)
-        wanderForce.normalize().multiplyScalar(0.003 * this.speedMultipliers[index])
+        this.tempWanderForce.copy(this.wanderTargets[index]).sub(boid.position)
+        this.tempWanderForce.normalize().multiplyScalar(0.003 * this.speedMultipliers[index])
         
         // 非常に小さなジッターで非常にゆったりした動き
-        const jitter = new THREE.Vector3(
+        this.tempJitter.set(
           (Math.random() - 0.5) * 0.001,
           (Math.random() - 0.5) * 0.001,
           (Math.random() - 0.5) * 0.001
         )
         
         // 非常に小さなノイズ力で非常にゆったりした動き
-        const noiseForce = new THREE.Vector3(
+        this.tempNoiseForce.set(
           Math.sin(elapsedTime * 0.06 + this.randomOffsets[index]) * 0.001,
           Math.sin(elapsedTime * 0.05 + this.randomOffsets[index] * 2) * 0.0008,
           Math.sin(elapsedTime * 0.04 + this.randomOffsets[index] * 3) * 0.001
@@ -317,15 +338,15 @@ export class DetailedFishSystem {
         
         // 稀な方向転換を更に減らして直線性を向上
         if (Math.random() < 0.001) {  // 0.1% chance per frame - 非常に稀
-          const curiosityForce = new THREE.Vector3(
+          this.tempCuriosityForce.set(
             (Math.random() - 0.5) * 0.02,
             (Math.random() - 0.5) * 0.015,
             (Math.random() - 0.5) * 0.02
           )
-          boid.acceleration.add(curiosityForce)
+          boid.acceleration.add(this.tempCuriosityForce)
         }
         
-        boid.acceleration.add(wanderForce).add(jitter).add(noiseForce)
+        boid.acceleration.add(this.tempWanderForce).add(this.tempJitter).add(this.tempNoiseForce)
       }
     })
     
@@ -348,10 +369,10 @@ export class DetailedFishSystem {
         this.dummy.position.copy(boid.position)
         
         // 魚を進行方向に正しく向ける（魚の先端が前方向）
-        const direction = boid.velocity.clone().normalize()
-        if (direction.length() > 0) {
+        this.tempDirection.copy(boid.velocity)
+        if (this.tempDirection.lengthSq() > 0) {
           // 方向転換にノイズを追加（より自然な魚の動き）
-          const turnNoise = new THREE.Vector3(
+          this.tempTurnNoise.set(
             // 水平方向のノイズ（左右の方向転換）
             Math.sin(elapsedTime * 0.8 + randomOffset) * 0.15 + 
             Math.sin(elapsedTime * 1.3 + randomOffset * 2) * 0.08,
@@ -367,24 +388,22 @@ export class DetailedFishSystem {
           
           // ランダムな瞬間的方向変化（魚の気まぐれ）
           if (Math.random() < 0.008) {  // 0.8%の確率で突然の方向転換
-            const suddenTurn = new THREE.Vector3(
+            this.tempSuddenTurn.set(
               (Math.random() - 0.5) * 0.4,
               (Math.random() - 0.5) * 0.3,
               (Math.random() - 0.5) * 0.35
             )
-            turnNoise.add(suddenTurn)
+            this.tempTurnNoise.add(this.tempSuddenTurn)
           }
           
-          direction.add(turnNoise).normalize()
+          this.tempDirection.normalize()
+          this.tempDirection.add(this.tempTurnNoise).normalize()
           
           // 魚の先端を進行方向に向ける
           // 魚ジオメトリは-X方向を向いているので、進行方向との角度を計算
-          const forward = new THREE.Vector3(-1, 0, 0) // 魚の前方向（-X）
-          
           // 進行方向への回転を計算
-          const quaternion = new THREE.Quaternion()
-          quaternion.setFromUnitVectors(forward, direction)
-          this.dummy.setRotationFromQuaternion(quaternion)
+          this.tempQuaternion.setFromUnitVectors(this.tempForward, this.tempDirection)
+          this.dummy.setRotationFromQuaternion(this.tempQuaternion)
         }
         
         // 魚らしい優雅な体の揺れ
@@ -438,5 +457,17 @@ export class DetailedFishSystem {
         boid.acceleration.multiplyScalar(0)
       }
     }
+  }
+
+  setQuality(quality: 'low' | 'medium' | 'high'): void {
+    const qualityScale = quality === 'low' ? 0.5 : quality === 'medium' ? 0.75 : 1
+    if (this.baseInstanceCounts.length === 0) {
+      this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)
+    }
+
+    this.instancedMeshes.forEach((mesh, index) => {
+      const baseCount = this.baseInstanceCounts[index] ?? mesh.count
+      mesh.count = Math.max(1, Math.floor(baseCount * qualityScale))
+    })
   }
 }
