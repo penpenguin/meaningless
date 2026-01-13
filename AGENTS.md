@@ -41,3 +41,10 @@
 ## セキュリティ / 設定メモ
 - Secrets は扱わない。鍵・トークンを `public/` 以下に置かない。
 - `vite.config.ts` で alias や plugin を追加する際は開発・本番の両方で動作確認し、必要なら設定を README に追記。
+
+## Active Technologies
+- TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, TailwindCSS 3.4, DaisyUI 4.6, Tweakpane 4.0, vite-plugin-glsl 1.5 (001-aquarium-editor)
+- localStorage（保存スロット/オートセーブ）、インメモリ（カレント状態） (001-aquarium-editor)
+
+## Recent Changes
+- 001-aquarium-editor: Added TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, TailwindCSS 3.4, DaisyUI 4.6, Tweakpane 4.0, vite-plugin-glsl 1.5

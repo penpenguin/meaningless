@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { DetailedFishSystem } from './DetailedFish'
+import type { FishGroup, Theme } from '../types/aquarium'
 // import { AdvancedWaterSurface } from './AdvancedWater'
 import { EnhancedParticleSystem } from './EnhancedParticles'
 import { EnvironmentLoader } from './Environment'
@@ -48,6 +49,10 @@ export class AdvancedAquariumScene {
   }
   private fpsCounter = 0
   private lastStatsUpdate = 0
+  private readonly performanceThresholds = {
+    medium: 50,
+    low: 30
+  }
   
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene()
@@ -600,6 +605,12 @@ export class AdvancedAquariumScene {
   public getPerformanceStats(): PerformanceStats {
     return { ...this.stats }
   }
+
+  public getPerformanceTier(fps: number): 'high' | 'medium' | 'low' {
+    if (fps <= this.performanceThresholds.low) return 'low'
+    if (fps <= this.performanceThresholds.medium) return 'medium'
+    return 'high'
+  }
   
   public enableAutoRotate(enabled: boolean): void {
     this.controls.autoRotate = enabled
@@ -623,6 +634,20 @@ export class AdvancedAquariumScene {
     if (this.fishSystem) {
       this.fishSystem.setQuality(quality)
     }
+  }
+
+  public applyTheme(theme: Theme): void {
+    this.scene.background = new THREE.Color(theme.waterTint)
+    if (this.scene.fog) {
+      this.scene.fog.color = new THREE.Color(theme.waterTint)
+      ;(this.scene.fog as THREE.FogExp2).density = theme.fogDensity
+    } else {
+      this.scene.fog = new THREE.FogExp2(theme.waterTint, theme.fogDensity)
+    }
+  }
+
+  public applyFishGroups(groups: FishGroup[]): void {
+    this.fishSystem?.setFishGroups(groups)
   }
 
   private setupEventListeners(): void {

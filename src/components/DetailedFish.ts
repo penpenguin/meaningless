@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BoidsSystem } from '../utils/Boids'
+import type { FishGroup, Tuning } from '../types/aquarium'
 
 interface FishVariant {
   name: string
@@ -15,6 +16,7 @@ export class DetailedFishSystem {
   private instancedMeshes: THREE.InstancedMesh[] = []
   private boids: BoidsSystem
   private fishCount: number
+  private bounds: THREE.Box3
   private dummy = new THREE.Object3D()
   private variants: FishVariant[]
   private randomOffsets: Float32Array = new Float32Array()
@@ -39,6 +41,8 @@ export class DetailedFishSystem {
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
     this.group = new THREE.Group()
     scene.add(this.group)
+
+    this.bounds = bounds
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     this.fishCount = isMobile ? 25 : 60
@@ -50,6 +54,38 @@ export class DetailedFishSystem {
     this.initializeRandomness()
     
     this.createDetailedFishMeshes()
+  }
+
+  applyTuning(tuning: Partial<Tuning>): void {
+    if (tuning.speed !== undefined) {
+      const speed = tuning.speed
+      this.boids.params.maxSpeed = speed
+      this.boids.boids.forEach((boid) => {
+        boid.maxSpeed = speed
+      })
+    }
+    if (tuning.cohesion !== undefined) {
+      this.boids.params.cohesion = tuning.cohesion
+    }
+    if (tuning.separation !== undefined) {
+      this.boids.params.separation = tuning.separation
+    }
+    if (tuning.alignment !== undefined) {
+      this.boids.params.alignment = tuning.alignment
+    }
+  }
+
+  setFishGroups(groups: FishGroup[]): void {
+    const sanitized = groups.filter((group) => group.count > 0)
+    const totalCount = sanitized.reduce((sum, group) => sum + group.count, 0)
+    const countsPerVariant = this.mapGroupsToVariantCounts(sanitized)
+
+    this.rebuildFishSystem(totalCount, countsPerVariant)
+
+    const first = sanitized[0]
+    if (first?.tuning) {
+      this.applyTuning(first.tuning)
+    }
   }
   
   private createFishVariants(): FishVariant[] {
@@ -144,11 +180,15 @@ export class DetailedFishSystem {
     }
   }
   
-  private createDetailedFishMeshes(): void {
-    const fishPerVariant = Math.ceil(this.fishCount / this.variants.length)
-    
+  private createDetailedFishMeshes(countsPerVariant?: number[]): void {
+    const fallbackCounts = this.variants.map((_variant, index) => {
+      const fishPerVariant = Math.ceil(this.fishCount / this.variants.length)
+      return Math.max(0, Math.min(fishPerVariant, this.fishCount - index * fishPerVariant))
+    })
+    const counts = countsPerVariant ?? fallbackCounts
+
     this.variants.forEach((variant, variantIndex) => {
-      const actualCount = Math.min(fishPerVariant, this.fishCount - variantIndex * fishPerVariant)
+      const actualCount = counts[variantIndex] ?? 0
       if (actualCount <= 0) return
       
       const fishGeometry = this.createDetailedFishGeometry(variant)
@@ -189,6 +229,63 @@ export class DetailedFishSystem {
     })
 
     this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)
+  }
+
+  private rebuildFishSystem(totalCount: number, countsPerVariant: number[]): void {
+    this.clearMeshes()
+
+    this.fishCount = Math.max(0, totalCount)
+    this.boids = new BoidsSystem(this.fishCount, this.bounds)
+    this.initializeRandomness()
+    this.createDetailedFishMeshes(countsPerVariant)
+  }
+
+  private clearMeshes(): void {
+    this.instancedMeshes.forEach((mesh) => {
+      this.group.remove(mesh)
+      mesh.geometry.dispose()
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((material) => material.dispose())
+      } else if (mesh.material instanceof THREE.Material) {
+        mesh.material.dispose()
+      }
+    })
+    this.instancedMeshes = []
+  }
+
+  private mapGroupsToVariantCounts(groups: FishGroup[]): number[] {
+    const counts = new Array(this.variants.length).fill(0)
+    groups.forEach((group) => {
+      const index = this.resolveVariantIndex(group.speciesId)
+      counts[index] += group.count
+    })
+    return counts
+  }
+
+  private resolveVariantIndex(speciesId: string): number {
+    const normalized = speciesId.toLowerCase()
+    const directMatch = this.variants.findIndex((variant) =>
+      normalized.includes(variant.name.toLowerCase())
+    )
+    if (directMatch >= 0) return directMatch
+    if (normalized.includes('neon')) {
+      return this.safeVariantIndex('neon')
+    }
+    if (normalized.includes('clown')) {
+      return this.safeVariantIndex('tropical')
+    }
+    if (normalized.includes('angel')) {
+      return this.safeVariantIndex('angelfish')
+    }
+    if (normalized.includes('gold')) {
+      return this.safeVariantIndex('goldfish')
+    }
+    return 0
+  }
+
+  private safeVariantIndex(name: string): number {
+    const index = this.variants.findIndex((variant) => variant.name.toLowerCase() === name)
+    return index >= 0 ? index : 0
   }
   
   private createDetailedFishGeometry(variant: FishVariant): THREE.BufferGeometry {

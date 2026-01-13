@@ -100,27 +100,33 @@ class FakeAudioContext {
 }
 
 describe('AudioManager', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type GlobalWithAudio = typeof globalThis & {
-    window: any
-    AudioContext: typeof AudioContext
-    webkitAudioContext: typeof AudioContext
-  }
+  let originalAudioContext: typeof AudioContext | undefined
+  let originalWebkitAudioContext: typeof AudioContext | undefined
 
   beforeEach(() => {
     FakeAudioContext.instances = 0
     const audioContext = FakeAudioContext as unknown as typeof AudioContext
-    const globalWithAudio = globalThis as GlobalWithAudio
-    globalWithAudio.window = { AudioContext: audioContext, webkitAudioContext: audioContext }
-    globalWithAudio.AudioContext = audioContext
-    globalWithAudio.webkitAudioContext = audioContext
+    const windowWithAudio = window as typeof window & { webkitAudioContext?: typeof AudioContext }
+    originalAudioContext = window.AudioContext
+    originalWebkitAudioContext = windowWithAudio.webkitAudioContext
+
+    window.AudioContext = audioContext
+    windowWithAudio.webkitAudioContext = audioContext
   })
 
   afterEach(() => {
-    const globalWithAudio = globalThis as Partial<GlobalWithAudio>
-    Reflect.deleteProperty(globalWithAudio, 'window')
-    Reflect.deleteProperty(globalWithAudio, 'AudioContext')
-    Reflect.deleteProperty(globalWithAudio, 'webkitAudioContext')
+    const windowWithAudio = window as typeof window & { webkitAudioContext?: typeof AudioContext }
+    if (originalAudioContext) {
+      window.AudioContext = originalAudioContext
+    } else {
+      Reflect.deleteProperty(window, 'AudioContext')
+    }
+
+    if (originalWebkitAudioContext) {
+      windowWithAudio.webkitAudioContext = originalWebkitAudioContext
+    } else {
+      Reflect.deleteProperty(window, 'webkitAudioContext')
+    }
   })
 
   it('does not create audio context until audio is enabled', () => {
@@ -145,11 +151,9 @@ describe('AudioManager', () => {
 
   it('loads and loops the underwater ambient on enable', async () => {
     const arrayBuffer = new ArrayBuffer(8)
-    const fetchMock = vi.fn(async () => ({
-      arrayBuffer: async () => arrayBuffer
-    }))
-    const globalWithAudio = globalThis as GlobalWithAudio
-    globalWithAudio.window.fetch = fetchMock
+    const response = new Response(arrayBuffer)
+    const fetchMock = vi.fn(async () => response)
+    window.fetch = fetchMock as unknown as typeof fetch
 
     const manager = new AudioManager({ underwaterLoopUrl: '/underwater-loop.wav' })
     manager.setEnabled(true)

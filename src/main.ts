@@ -2,6 +2,10 @@ import './styles.css'
 import { Pane } from 'tweakpane'
 import { AdvancedAquariumScene } from './components/AdvancedScene'
 import { AudioManager } from './components/AudioManager'
+import { createEditorOverlay } from './components/EditorOverlay'
+import { createAquariumStore } from './utils/aquariumStore'
+import { setupAutosaveOnEditEnd } from './utils/autosave'
+import { handleReducedMotionPreference } from './utils/motionPreference'
 import lottie from 'lottie-web'
 
 type QualityLevel = 'low' | 'medium' | 'high'
@@ -35,6 +39,10 @@ class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
   private audioManager: AudioManager
   private pane: PaneApi | null = null
+  private overlay: HTMLDivElement | null = null
+  private store = createAquariumStore()
+  private storeUnsubscribe: (() => void) | null = null
+  private autosaveUnsubscribe: (() => void) | null = null
   private settings: {
     motion: boolean
     sound: boolean
@@ -50,6 +58,7 @@ class AdvancedAquariumApp {
   private performanceMonitor: ReturnType<typeof setInterval> | null = null
   private motionMediaQuery: MediaQueryList
   private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
+  private keyHandler: ((event: KeyboardEvent) => void) | null = null
 
   constructor() {
     this.audioManager = new AudioManager()
@@ -80,6 +89,7 @@ class AdvancedAquariumApp {
     
     this.scene = new AdvancedAquariumScene(container)
 
+    this.setupEditorOverlay()
     this.setupPane()
     this.setupEventListeners()
     this.applySettings()
@@ -196,6 +206,10 @@ class AdvancedAquariumApp {
     this.audioManager.setEnabled(this.settings.sound)
     this.scene.setAdvancedEffects(this.settings.effects)
     this.scene.setWaterQuality(this.settings.quality)
+    this.store.updateSettings({
+      motionEnabled: this.settings.motion,
+      soundEnabled: this.settings.sound
+    })
   }
 
   private setupPane(): void {
@@ -208,9 +222,11 @@ class AdvancedAquariumApp {
       if (this.scene) {
         this.scene.setMotionEnabled(event.value)
       }
+      this.store.updateSettings({ motionEnabled: event.value })
     })
     settingsFolder.addBinding(this.settings, 'sound', { label: 'Sound' }).on('change', (event: TweakpaneChangeEvent<boolean>) => {
       this.audioManager.setEnabled(event.value)
+      this.store.updateSettings({ soundEnabled: event.value })
     })
     settingsFolder.addBinding(this.settings, 'effects', { label: 'Effects' }).on('change', (event: TweakpaneChangeEvent<boolean>) => {
       if (this.scene) {
@@ -241,18 +257,47 @@ class AdvancedAquariumApp {
     statsFolder.addBinding(this.stats, 'drawCalls', { label: 'Draw Calls', readonly: true })
   }
 
+  private setupEditorOverlay(): void {
+    if (this.overlay) {
+      this.overlay.remove()
+    }
+
+    this.overlay = createEditorOverlay({ store: this.store })
+    document.body.appendChild(this.overlay)
+
+    if (this.storeUnsubscribe) {
+      this.storeUnsubscribe()
+    }
+    this.storeUnsubscribe = this.store.subscribe(({ state }) => {
+      if (!this.scene) return
+      this.scene.applyTheme(state.theme)
+      this.scene.applyFishGroups(state.fishGroups)
+      this.scene.setMotionEnabled(state.settings.motionEnabled)
+      this.audioManager.setEnabled(state.settings.soundEnabled)
+      this.settings.motion = state.settings.motionEnabled
+      this.settings.sound = state.settings.soundEnabled
+      this.pane?.refresh()
+    })
+
+    if (this.autosaveUnsubscribe) {
+      this.autosaveUnsubscribe()
+    }
+    this.autosaveUnsubscribe = setupAutosaveOnEditEnd(this.store)
+  }
+
   private setupEventListeners(): void {
     this.motionMediaHandler = (event) => {
-      if (event.matches) {
-        this.settings.motion = false
-        if (this.scene) {
-          this.scene.setMotionEnabled(false)
-        }
-        this.pane?.refresh()
-      }
+      handleReducedMotionPreference(this.store, event)
     }
 
     this.motionMediaQuery.addEventListener('change', this.motionMediaHandler)
+
+    this.keyHandler = (event) => {
+      if (event.key === 'Escape') {
+        this.store.setMode('view')
+      }
+    }
+    window.addEventListener('keydown', this.keyHandler)
   }
   
   private startPerformanceMonitoring(): void {
@@ -312,9 +357,29 @@ class AdvancedAquariumApp {
       this.motionMediaHandler = null
     }
 
+    if (this.keyHandler) {
+      window.removeEventListener('keydown', this.keyHandler)
+      this.keyHandler = null
+    }
+
     if (this.pane) {
       this.pane.dispose()
       this.pane = null
+    }
+
+    if (this.storeUnsubscribe) {
+      this.storeUnsubscribe()
+      this.storeUnsubscribe = null
+    }
+
+    if (this.autosaveUnsubscribe) {
+      this.autosaveUnsubscribe()
+      this.autosaveUnsubscribe = null
+    }
+
+    if (this.overlay) {
+      this.overlay.remove()
+      this.overlay = null
     }
 
     if (this.scene) {

@@ -26,6 +26,128 @@ body {
   top: 1rem;
   right: 1rem;
   z-index: 50;
+  display: none;
+}
+
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+  z-index: 200;
+}
+
+.editor-overlay * {
+  pointer-events: auto;
+}
+
+.view-controls {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.view-controls button {
+  background: rgba(10, 46, 61, 0.6);
+  color: #e6f7ff;
+  border: 1px solid rgba(106, 199, 214, 0.4);
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+}
+
+.editor-side-panel {
+  width: min(360px, 85vw);
+  height: 100%;
+  background: rgba(8, 30, 40, 0.65);
+  color: #e6f7ff;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 1rem;
+  backdrop-filter: blur(10px);
+}
+
+.editor-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-panel-header button {
+  background: rgba(106, 199, 214, 0.2);
+  border: 1px solid rgba(106, 199, 214, 0.6);
+  color: #e6f7ff;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+}
+
+.editor-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid rgba(106, 199, 214, 0.2);
+}
+
+.editor-panel-section textarea,
+.editor-panel-section input,
+.editor-panel-section select {
+  background: rgba(10, 46, 61, 0.4);
+  border: 1px solid rgba(106, 199, 214, 0.3);
+  color: #e6f7ff;
+  border-radius: 6px;
+  padding: 0.3rem 0.4rem;
+}
+
+.editor-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fish-group-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.save-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 300;
+}
+
+.toast {
+  background: rgba(10, 46, 61, 0.8);
+  color: #e6f7ff;
+  border: 1px solid rgba(106, 199, 214, 0.4);
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  transition: opacity 0.3s ease;
+}
+
+.toast-error {
+  border-color: rgba(255, 120, 120, 0.6);
+}
+
+.toast-hide {
+  opacity: 0;
 }
 
 #loading-screen {
