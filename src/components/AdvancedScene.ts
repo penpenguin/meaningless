@@ -18,6 +18,16 @@ interface PerformanceStats {
   drawCalls: number
 }
 
+export const applyThemeToScene = (scene: THREE.Scene, theme: Theme): void => {
+  scene.background = new THREE.Color(theme.waterTint)
+  if (scene.fog instanceof THREE.FogExp2) {
+    scene.fog.color = new THREE.Color(theme.waterTint)
+    scene.fog.density = theme.fogDensity
+    return
+  }
+  scene.fog = new THREE.FogExp2(theme.waterTint, theme.fogDensity)
+}
+
 export class AdvancedAquariumScene {
   private scene: THREE.Scene
   private camera!: THREE.PerspectiveCamera
@@ -209,7 +219,7 @@ export class AdvancedAquariumScene {
     this.scene.background = backgroundTexture
     
     // 追加として、フォグを設定して深度感を演出
-    this.scene.fog = new THREE.Fog(0x4682B4, 10, 100)
+    this.scene.fog = new THREE.FogExp2(0x4682B4, 0.4)
   }
 
   private createAdvancedTank(): void {
@@ -637,13 +647,7 @@ export class AdvancedAquariumScene {
   }
 
   public applyTheme(theme: Theme): void {
-    this.scene.background = new THREE.Color(theme.waterTint)
-    if (this.scene.fog) {
-      this.scene.fog.color = new THREE.Color(theme.waterTint)
-      ;(this.scene.fog as THREE.FogExp2).density = theme.fogDensity
-    } else {
-      this.scene.fog = new THREE.FogExp2(theme.waterTint, theme.fogDensity)
-    }
+    applyThemeToScene(this.scene, theme)
   }
 
   public applyFishGroups(groups: FishGroup[]): void {
