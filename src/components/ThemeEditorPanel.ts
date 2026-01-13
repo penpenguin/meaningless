@@ -49,49 +49,73 @@ export const createThemeEditorPanel = ({ store, onThemeChange }: ThemeEditorOpti
   colorLabel.textContent = 'Water Tint'
   const colorInput = document.createElement('input')
   colorInput.type = 'color'
-  colorInput.value = store.getState().theme.waterTint
   colorInput.dataset.testid = 'theme-waterTint'
-  colorInput.addEventListener('input', () => {
-    store.updateTheme({ waterTint: colorInput.value })
+  const updateAndNotify = (partial: Partial<Theme>): void => {
+    store.updateTheme(partial)
     onThemeChange?.(store.getState().theme)
+  }
+  colorInput.addEventListener('input', () => {
+    updateAndNotify({ waterTint: colorInput.value })
   })
   colorWrapper.appendChild(colorLabel)
   colorWrapper.appendChild(colorInput)
   panel.appendChild(colorWrapper)
 
-  const updateAndNotify = (partial: Partial<Theme>): void => {
-    store.updateTheme(partial)
-    onThemeChange?.(store.getState().theme)
+  const fogControl = createRangeControl(
+    'Fog',
+    'theme-fogDensity',
+    store.getState().theme.fogDensity,
+    (value) => updateAndNotify({ fogDensity: value })
+  )
+  const particleControl = createRangeControl(
+    'Particles',
+    'theme-particleDensity',
+    store.getState().theme.particleDensity,
+    (value) => updateAndNotify({ particleDensity: value })
+  )
+  const waveStrengthControl = createRangeControl(
+    'Wave Strength',
+    'theme-waveStrength',
+    store.getState().theme.waveStrength,
+    (value) => updateAndNotify({ waveStrength: value })
+  )
+  const waveSpeedControl = createRangeControl(
+    'Wave Speed',
+    'theme-waveSpeed',
+    store.getState().theme.waveSpeed,
+    (value) => updateAndNotify({ waveSpeed: value })
+  )
+  const frameStrengthControl = createRangeControl(
+    'Frame Strength',
+    'theme-glassFrameStrength',
+    store.getState().theme.glassFrameStrength,
+    (value) => updateAndNotify({ glassFrameStrength: value })
+  )
+
+  panel.appendChild(fogControl)
+  panel.appendChild(particleControl)
+  panel.appendChild(waveStrengthControl)
+  panel.appendChild(waveSpeedControl)
+  panel.appendChild(frameStrengthControl)
+
+  const fogInput = fogControl.querySelector('input') as HTMLInputElement
+  const particleInput = particleControl.querySelector('input') as HTMLInputElement
+  const waveStrengthInput = waveStrengthControl.querySelector('input') as HTMLInputElement
+  const waveSpeedInput = waveSpeedControl.querySelector('input') as HTMLInputElement
+  const frameStrengthInput = frameStrengthControl.querySelector('input') as HTMLInputElement
+
+  const syncControls = (theme: Theme): void => {
+    colorInput.value = theme.waterTint
+    fogInput.value = String(theme.fogDensity)
+    particleInput.value = String(theme.particleDensity)
+    waveStrengthInput.value = String(theme.waveStrength)
+    waveSpeedInput.value = String(theme.waveSpeed)
+    frameStrengthInput.value = String(theme.glassFrameStrength)
   }
 
-  panel.appendChild(
-    createRangeControl('Fog', 'theme-fogDensity', store.getState().theme.fogDensity, (value) =>
-      updateAndNotify({ fogDensity: value })
-    )
-  )
-  panel.appendChild(
-    createRangeControl('Particles', 'theme-particleDensity', store.getState().theme.particleDensity, (value) =>
-      updateAndNotify({ particleDensity: value })
-    )
-  )
-  panel.appendChild(
-    createRangeControl('Wave Strength', 'theme-waveStrength', store.getState().theme.waveStrength, (value) =>
-      updateAndNotify({ waveStrength: value })
-    )
-  )
-  panel.appendChild(
-    createRangeControl('Wave Speed', 'theme-waveSpeed', store.getState().theme.waveSpeed, (value) =>
-      updateAndNotify({ waveSpeed: value })
-    )
-  )
-  panel.appendChild(
-    createRangeControl(
-      'Frame Strength',
-      'theme-glassFrameStrength',
-      store.getState().theme.glassFrameStrength,
-      (value) => updateAndNotify({ glassFrameStrength: value })
-    )
-  )
+  store.subscribe(({ state }) => {
+    syncControls(state.theme)
+  })
 
   return panel
 }
