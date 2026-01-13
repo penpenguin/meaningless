@@ -25,4 +25,27 @@ describe('save slots', () => {
     deleteSaveSlot(slot.id)
     expect(getSaveSlots()).toHaveLength(0)
   })
+
+  it('returns empty when stored saves are not an array', () => {
+    localStorage.setItem('aquarium:saves', JSON.stringify({ legacy: true }))
+
+    expect(getSaveSlots()).toHaveLength(0)
+  })
+
+  it('skips invalid entries in stored saves', () => {
+    const validState = createState()
+    localStorage.setItem(
+      'aquarium:saves',
+      JSON.stringify([
+        null,
+        3,
+        { id: 'ok', name: 'Valid', savedAt: '2024-01-01T00:00:00.000Z', state: validState }
+      ])
+    )
+
+    const slots = getSaveSlots()
+
+    expect(slots).toHaveLength(1)
+    expect(slots[0].id).toBe('ok')
+  })
 })

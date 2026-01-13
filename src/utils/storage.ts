@@ -13,14 +13,27 @@ const safeParse = <T>(value: string | null): T | null => {
   }
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null
+}
+
+const isSaveSlotCandidate = (value: unknown): value is SaveSlot => {
+  if (!isRecord(value)) return false
+  if (typeof value.id !== 'string') return false
+  if (typeof value.name !== 'string') return false
+  if (typeof value.savedAt !== 'string') return false
+  if (!('state' in value)) return false
+  return true
+}
+
 const write = (key: string, value: unknown): void => {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
 const readSaveSlots = (): SaveSlot[] => {
-  const parsed = safeParse<SaveSlot[]>(localStorage.getItem(SAVE_SLOTS_KEY))
-  if (!parsed) return []
-  return parsed.map((slot) => ({
+  const parsed = safeParse<unknown>(localStorage.getItem(SAVE_SLOTS_KEY))
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter(isSaveSlotCandidate).map((slot) => ({
     ...slot,
     state: migrateState(slot.state)
   }))
