@@ -5,6 +5,7 @@ import { AudioManager } from './components/AudioManager'
 import { createEditorOverlay } from './components/EditorOverlay'
 import { createAquariumStore } from './utils/aquariumStore'
 import { setupAutosaveOnEditEnd } from './utils/autosave'
+import { createSceneStateApplier } from './utils/sceneStateApplier'
 import { handleReducedMotionPreference } from './utils/motionPreference'
 import lottie from 'lottie-web'
 
@@ -268,14 +269,15 @@ class AdvancedAquariumApp {
     if (this.storeUnsubscribe) {
       this.storeUnsubscribe()
     }
+    const scene = this.scene
+    if (!scene) return
+    const applySceneState = createSceneStateApplier({
+      scene,
+      audioManager: this.audioManager,
+      settings: this.settings
+    })
     this.storeUnsubscribe = this.store.subscribe(({ state }) => {
-      if (!this.scene) return
-      this.scene.applyTheme(state.theme)
-      this.scene.applyFishGroups(state.fishGroups)
-      this.scene.setMotionEnabled(state.settings.motionEnabled)
-      this.audioManager.setEnabled(state.settings.soundEnabled)
-      this.settings.motion = state.settings.motionEnabled
-      this.settings.sound = state.settings.soundEnabled
+      applySceneState(state)
       this.pane?.refresh()
     })
 
