@@ -2,9 +2,14 @@ export class AudioManager {
   private audioContext: AudioContext | null = null
   private masterGain: GainNode | null = null
   private isEnabled = false
-  private waterAmbientCreated = false
+  private underwaterLoopUrl: string
+  private underwaterLoading: Promise<void> | null = null
+  private underwaterSource: AudioBufferSourceNode | null = null
   
-  constructor() {
+  constructor({ underwaterLoopUrl }: { underwaterLoopUrl?: string } = {}) {
+    const baseUrl = import.meta.env?.BASE_URL ?? '/'
+    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    this.underwaterLoopUrl = underwaterLoopUrl ?? `${normalizedBaseUrl}underwater-loop.wav`
     // AudioContext の生成は初回有効化まで遅延させる
     // Don't create water ambient automatically - wait for setEnabled(true)
   }
@@ -27,84 +32,29 @@ export class AudioManager {
     }
   }
   
-  private createWaterAmbient(): void {
-    // Create procedural water sound using Web Audio API
-    if (!this.audioContext || !this.masterGain) return
-    
-    // Brown noise generator for water base
-    const bufferSize = this.audioContext.sampleRate * 4
-    const buffer = this.audioContext.createBuffer(2, bufferSize, this.audioContext.sampleRate)
-    
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-      const channelData = buffer.getChannelData(channel)
-      let lastOut = 0
-      
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1
-        const brown = (lastOut + (0.02 * white)) / 1.02
-        lastOut = brown
-        channelData[i] = brown * 0.6
-      }
-    }
-    
-    const source = this.audioContext.createBufferSource()
-    source.buffer = buffer
-    source.loop = true
-    
-    // Add filtering for more realistic water sound
-    const lowPassFilter = this.audioContext.createBiquadFilter()
-    lowPassFilter.type = 'lowpass'
-    lowPassFilter.frequency.setValueAtTime(800, this.audioContext.currentTime)
-    lowPassFilter.Q.setValueAtTime(1, this.audioContext.currentTime)
-    
-    const highPassFilter = this.audioContext.createBiquadFilter()
-    highPassFilter.type = 'highpass'
-    highPassFilter.frequency.setValueAtTime(100, this.audioContext.currentTime)
-    
-    // Add subtle reverb effect
-    const convolver = this.audioContext.createConvolver()
-    convolver.buffer = this.createReverbBuffer()
-    
-    const dryGain = this.audioContext.createGain()
-    const wetGain = this.audioContext.createGain()
-    
-    dryGain.gain.setValueAtTime(0.9, this.audioContext.currentTime)
-    wetGain.gain.setValueAtTime(0.3, this.audioContext.currentTime)
-    
-    // Connect the audio graph
-    source.connect(lowPassFilter)
-    lowPassFilter.connect(highPassFilter)
-    
-    // Dry signal
-    highPassFilter.connect(dryGain)
-    dryGain.connect(this.masterGain)
-    
-    // Wet signal (reverb)
-    highPassFilter.connect(convolver)
-    convolver.connect(wetGain)
-    wetGain.connect(this.masterGain)
-    
-    // Start the audio source
-    source.start(0)
-  }
-  
-  private createReverbBuffer(): AudioBuffer {
-    if (!this.audioContext) throw new Error('AudioContext not available')
-    
-    const sampleRate = this.audioContext.sampleRate
-    const length = sampleRate * 2 // 2 seconds of reverb
-    const impulse = this.audioContext.createBuffer(2, length, sampleRate)
-    
-    for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
-      const channelData = impulse.getChannelData(channel)
-      
-      for (let i = 0; i < length; i++) {
-        const decay = Math.pow(1 - i / length, 2)
-        channelData[i] = (Math.random() * 2 - 1) * decay * 0.2
-      }
-    }
-    
-    return impulse
+  private ensureUnderwaterLoop(): void {
+    if (!this.audioContext || !this.masterGain || this.underwaterSource || this.underwaterLoading) return
+    if (typeof window.fetch !== 'function') return
+
+    const context = this.audioContext
+    this.underwaterLoading = window.fetch(this.underwaterLoopUrl)
+      .then((response) => response.arrayBuffer())
+      .then((data) => context.decodeAudioData(data))
+      .then((buffer) => {
+        this.underwaterLoading = null
+        if (!this.audioContext || !this.masterGain || !this.isEnabled || this.underwaterSource) return
+
+        const source = this.audioContext.createBufferSource()
+        source.buffer = buffer
+        source.loop = true
+        source.connect(this.masterGain)
+        source.start(0)
+        this.underwaterSource = source
+      })
+      .catch((error) => {
+        console.warn('Failed to load underwater loop:', error)
+        this.underwaterLoading = null
+      })
   }
   
   public setEnabled(enabled: boolean): void {
@@ -112,12 +62,7 @@ export class AudioManager {
     
     if (enabled) {
       if (!this.setupAudioContext() || !this.audioContext || !this.masterGain) return
-      
-      // Create water ambient on first enable
-      if (!this.waterAmbientCreated) {
-        this.createWaterAmbient()
-        this.waterAmbientCreated = true
-      }
+      this.ensureUnderwaterLoop()
       
       // Resume audio context if needed
       if (this.audioContext.state === 'suspended') {

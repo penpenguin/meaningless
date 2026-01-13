@@ -38,14 +38,17 @@ type FakeConvolver = {
 
 class FakeAudioContext {
   static instances = 0
+  static lastInstance: FakeAudioContext | null = null
 
   sampleRate = 8000
   currentTime = 0
   destination = {}
   state: 'running' | 'suspended' = 'running'
+  lastBufferSource: FakeBufferSource | null = null
 
   constructor() {
     FakeAudioContext.instances++
+    FakeAudioContext.lastInstance = this
   }
 
   createGain(): FakeGainNode {
@@ -60,13 +63,15 @@ class FakeAudioContext {
   }
 
   createBufferSource(): FakeBufferSource {
-    return {
+    const source = {
       buffer: null,
       loop: false,
       connect: vi.fn(),
       start: vi.fn(),
       stop: vi.fn()
     }
+    this.lastBufferSource = source
+    return source
   }
 
   createBiquadFilter(): FakeBiquadFilter {
@@ -85,6 +90,8 @@ class FakeAudioContext {
     }
   }
 
+  decodeAudioData = vi.fn(async () => this.createBuffer(2, 1))
+
   resume = vi.fn(() => {
     this.state = 'running'
   })
@@ -94,7 +101,11 @@ class FakeAudioContext {
 
 describe('AudioManager', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type GlobalWithAudio = typeof globalThis & { window: any; AudioContext: typeof AudioContext; webkitAudioContext: typeof AudioContext }
+  type GlobalWithAudio = typeof globalThis & {
+    window: any
+    AudioContext: typeof AudioContext
+    webkitAudioContext: typeof AudioContext
+  }
 
   beforeEach(() => {
     FakeAudioContext.instances = 0
@@ -130,5 +141,25 @@ describe('AudioManager', () => {
     manager.setEnabled(true)
 
     expect(FakeAudioContext.instances).toBe(1)
+  })
+
+  it('loads and loops the underwater ambient on enable', async () => {
+    const arrayBuffer = new ArrayBuffer(8)
+    const fetchMock = vi.fn(async () => ({
+      arrayBuffer: async () => arrayBuffer
+    }))
+    const globalWithAudio = globalThis as GlobalWithAudio
+    globalWithAudio.window.fetch = fetchMock
+
+    const manager = new AudioManager({ underwaterLoopUrl: '/underwater-loop.wav' })
+    manager.setEnabled(true)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const audioContext = FakeAudioContext.lastInstance
+    expect(fetchMock).toHaveBeenCalledWith('/underwater-loop.wav')
+    expect(audioContext?.decodeAudioData).toHaveBeenCalled()
+    expect(audioContext?.lastBufferSource?.loop).toBe(true)
+    expect(audioContext?.lastBufferSource?.start).toHaveBeenCalled()
   })
 })

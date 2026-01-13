@@ -91,7 +91,7 @@ MIT License
 
 ### 使用アセット
 
-- 環境音: "Underwater Loop" (CC-BY)
+- 環境音: 自作の生成ループ音声 (`public/underwater-loop.wav`, `scripts/underwater-loop.js` で生成)
 
 ## 🔗 リンク
 
