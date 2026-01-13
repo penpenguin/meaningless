@@ -102,6 +102,7 @@ class FakeAudioContext {
 describe('AudioManager', () => {
   let originalAudioContext: typeof AudioContext | undefined
   let originalWebkitAudioContext: typeof AudioContext | undefined
+  let originalFetch: typeof fetch | undefined
 
   beforeEach(() => {
     FakeAudioContext.instances = 0
@@ -112,6 +113,9 @@ describe('AudioManager', () => {
 
     window.AudioContext = audioContext
     windowWithAudio.webkitAudioContext = audioContext
+
+    originalFetch = window.fetch
+    window.fetch = vi.fn(async () => new Response(new ArrayBuffer(1))) as unknown as typeof fetch
   })
 
   afterEach(() => {
@@ -126,6 +130,12 @@ describe('AudioManager', () => {
       windowWithAudio.webkitAudioContext = originalWebkitAudioContext
     } else {
       Reflect.deleteProperty(window, 'webkitAudioContext')
+    }
+
+    if (originalFetch) {
+      window.fetch = originalFetch
+    } else {
+      Reflect.deleteProperty(window, 'fetch')
     }
   })
 
