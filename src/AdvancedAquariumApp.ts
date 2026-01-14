@@ -66,6 +66,7 @@ export class AdvancedAquariumApp {
     this.store = createAquariumStore(autosave?.state)
     this.audioManager = new AudioManager()
     this.motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    handleReducedMotionPreference(this.store, { matches: this.motionMediaQuery.matches })
     const storeSettings = this.store.getState().settings
     const motionEnabled = autosave ? storeSettings.motionEnabled : !this.motionMediaQuery.matches
     const soundEnabled = storeSettings.soundEnabled

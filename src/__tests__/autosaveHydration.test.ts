@@ -167,4 +167,39 @@ describe('autosave hydration on startup', () => {
 
     app.dispose()
   })
+
+  it('respects prefers-reduced-motion even with autosave', async () => {
+    vi.useFakeTimers()
+    const mediaQueryList = {
+      matches: true,
+      media: '',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    } as MediaQueryList
+    window.matchMedia = vi.fn(() => mediaQueryList) as unknown as typeof window.matchMedia
+    const state = createState({
+      settings: {
+        soundEnabled: true,
+        motionEnabled: true
+      }
+    })
+    localStorage.setItem(
+      'aquarium:autosave',
+      JSON.stringify({ updatedAt: new Date().toISOString(), state })
+    )
+
+    const app = new AdvancedAquariumApp()
+
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(lastSetMotionEnabled).not.toBeNull()
+    const motionCalls = lastSetMotionEnabled?.mock.calls ?? []
+    expect(motionCalls.some(([value]) => value === false)).toBe(true)
+
+    app.dispose()
+  })
 })
