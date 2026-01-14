@@ -1,29 +1,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdvancedAquariumApp } from '../AdvancedAquariumApp'
 
-let lastScene: {
-  setMotionEnabled: ReturnType<typeof vi.fn>
-} | null = null
+let lastSetMotionEnabled: ReturnType<typeof vi.fn> | null = null
 
 vi.mock('../components/AdvancedScene', () => {
   return {
     AdvancedAquariumScene: class {
-      setMotionEnabled = vi.fn()
-      setAdvancedEffects = vi.fn()
-      setWaterQuality = vi.fn()
-      applyTheme = vi.fn()
-      applyFishGroups = vi.fn()
-      start = vi.fn()
-      dispose = vi.fn()
-      getPerformanceStats = vi.fn(() => ({
-        fps: 60,
-        frameTime: 16,
-        fishVisible: 0,
-        drawCalls: 0
-      }))
+      setMotionEnabled: ReturnType<typeof vi.fn>
+      setAdvancedEffects: ReturnType<typeof vi.fn>
+      setWaterQuality: ReturnType<typeof vi.fn>
+      applyTheme: ReturnType<typeof vi.fn>
+      applyFishGroups: ReturnType<typeof vi.fn>
+      start: ReturnType<typeof vi.fn>
+      dispose: ReturnType<typeof vi.fn>
+      getPerformanceStats: ReturnType<typeof vi.fn>
 
       constructor() {
-        lastScene = this
+        this.setMotionEnabled = vi.fn()
+        this.setAdvancedEffects = vi.fn()
+        this.setWaterQuality = vi.fn()
+        this.applyTheme = vi.fn()
+        this.applyFishGroups = vi.fn()
+        this.start = vi.fn()
+        this.dispose = vi.fn()
+        this.getPerformanceStats = vi.fn(() => ({
+          fps: 60,
+          frameTime: 16,
+          fishVisible: 0,
+          drawCalls: 0
+        }))
+        lastSetMotionEnabled = this.setMotionEnabled
       }
     }
   }
@@ -82,12 +88,18 @@ describe('AdvancedAquariumApp reduced motion startup', () => {
       <div id="loading-screen"></div>
       <div id="lottie-bubbles"></div>
     `
-    lastScene = null
-    window.matchMedia = vi.fn(() => ({
+    lastSetMotionEnabled = null
+    const mediaQueryList = {
       matches: true,
+      media: '',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
       addEventListener: vi.fn(),
-      removeEventListener: vi.fn()
-    })) as typeof window.matchMedia
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    } as MediaQueryList
+    window.matchMedia = vi.fn(() => mediaQueryList) as unknown as typeof window.matchMedia
   })
 
   afterEach(() => {
@@ -100,8 +112,8 @@ describe('AdvancedAquariumApp reduced motion startup', () => {
 
     await vi.advanceTimersByTimeAsync(1000)
 
-    expect(lastScene).not.toBeNull()
-    const calls = lastScene?.setMotionEnabled.mock.calls ?? []
+    expect(lastSetMotionEnabled).not.toBeNull()
+    const calls = lastSetMotionEnabled?.mock.calls ?? []
     expect(calls.some(([value]) => value === true)).toBe(false)
     expect(calls.some(([value]) => value === false)).toBe(true)
 
