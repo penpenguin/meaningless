@@ -24,7 +24,7 @@ vi.mock('../components/AdvancedScene', () => {
         this.setAdvancedEffects = vi.fn()
         this.setWaterQuality = vi.fn()
         this.applyTheme = vi.fn()
-        this.applyFishGroups = vi.fn()
+        this.applyFishGroups = vi.fn(() => true)
         this.start = vi.fn()
         this.dispose = vi.fn()
         this.getPerformanceStats = vi.fn(() => ({

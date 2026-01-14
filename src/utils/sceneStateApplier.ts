@@ -4,7 +4,7 @@ import { areFishGroupsEqual } from './fishGroups'
 type SceneStateApplierOptions = {
   scene: {
     applyTheme: (theme: AquariumState['theme']) => void
-    applyFishGroups: (groups: AquariumState['fishGroups']) => void
+    applyFishGroups: (groups: AquariumState['fishGroups']) => boolean
     setMotionEnabled: (enabled: boolean) => void
   }
   audioManager: {
@@ -23,8 +23,10 @@ export const createSceneStateApplier = (options: SceneStateApplierOptions) => {
     options.scene.applyTheme(state.theme)
 
     if (!lastFishGroups || !areFishGroupsEqual(lastFishGroups, state.fishGroups)) {
-      options.scene.applyFishGroups(state.fishGroups)
-      lastFishGroups = state.fishGroups
+      const applied = options.scene.applyFishGroups(state.fishGroups)
+      if (applied) {
+        lastFishGroups = state.fishGroups
+      }
     }
 
     options.scene.setMotionEnabled(state.settings.motionEnabled)

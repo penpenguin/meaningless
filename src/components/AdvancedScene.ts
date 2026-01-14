@@ -39,6 +39,7 @@ export class AdvancedAquariumScene {
   
   // Advanced components
   private fishSystem: DetailedFishSystem | null = null
+  private pendingFishGroups: FishGroup[] | null = null
   // private waterSurface: AdvancedWaterSurface | null = null
   private particleSystem: EnhancedParticleSystem | null = null
   private aquascaping: AquascapingSystem | null = null
@@ -492,6 +493,10 @@ export class AdvancedAquariumScene {
       new THREE.Vector3(10.5, 8.0, 8.5)     // 上限を拡張（水面制限なし）
     )
     this.fishSystem = new DetailedFishSystem(this.scene, tankBounds)
+    if (this.pendingFishGroups) {
+      this.fishSystem.setFishGroups(this.pendingFishGroups)
+      this.pendingFishGroups = null
+    }
   }
 
   private createAdvancedWaterEffects(): void {
@@ -650,8 +655,13 @@ export class AdvancedAquariumScene {
     applyThemeToScene(this.scene, theme)
   }
 
-  public applyFishGroups(groups: FishGroup[]): void {
-    this.fishSystem?.setFishGroups(groups)
+  public applyFishGroups(groups: FishGroup[]): boolean {
+    if (!this.fishSystem) {
+      this.pendingFishGroups = groups
+      return false
+    }
+    this.fishSystem.setFishGroups(groups)
+    return true
   }
 
   private setupEventListeners(): void {
