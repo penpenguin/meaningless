@@ -58,6 +58,9 @@ export class AudioManager {
   }
   
   public setEnabled(enabled: boolean): void {
+    const hasContext = Boolean(this.audioContext && this.masterGain)
+    if (enabled === this.isEnabled && (!enabled || hasContext)) return
+
     this.isEnabled = enabled
     
     if (enabled) {

@@ -159,6 +159,26 @@ describe('AudioManager', () => {
     expect(FakeAudioContext.instances).toBe(1)
   })
 
+  it('does not re-fade when enabling without a toggle', () => {
+    const manager = new AudioManager()
+
+    manager.setEnabled(true)
+
+    const masterGain = (manager as unknown as { masterGain: FakeGainNode | null }).masterGain
+    expect(masterGain).not.toBeNull()
+    const gain = masterGain as FakeGainNode
+
+    const cancelCalls = gain.gain.cancelScheduledValues.mock.calls.length
+    const setValueCalls = gain.gain.setValueAtTime.mock.calls.length
+    const rampCalls = gain.gain.linearRampToValueAtTime.mock.calls.length
+
+    manager.setEnabled(true)
+
+    expect(gain.gain.cancelScheduledValues.mock.calls.length).toBe(cancelCalls)
+    expect(gain.gain.setValueAtTime.mock.calls.length).toBe(setValueCalls)
+    expect(gain.gain.linearRampToValueAtTime.mock.calls.length).toBe(rampCalls)
+  })
+
   it('loads and loops the underwater ambient on enable', async () => {
     const arrayBuffer = new ArrayBuffer(8)
     const response = new Response(arrayBuffer)
