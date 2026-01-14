@@ -41,7 +41,7 @@ export class AdvancedAquariumApp {
   private audioManager: AudioManager
   private pane: PaneApi | null = null
   private overlay: HTMLDivElement | null = null
-  private store = createAquariumStore(getAutoSave()?.state)
+  private store: ReturnType<typeof createAquariumStore>
   private storeUnsubscribe: (() => void) | null = null
   private autosaveUnsubscribe: (() => void) | null = null
   private settings: {
@@ -62,11 +62,16 @@ export class AdvancedAquariumApp {
   private keyHandler: ((event: KeyboardEvent) => void) | null = null
 
   constructor() {
+    const autosave = getAutoSave()
+    this.store = createAquariumStore(autosave?.state)
     this.audioManager = new AudioManager()
     this.motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const storeSettings = this.store.getState().settings
+    const motionEnabled = autosave ? storeSettings.motionEnabled : !this.motionMediaQuery.matches
+    const soundEnabled = storeSettings.soundEnabled
     this.settings = {
-      motion: !this.motionMediaQuery.matches,
-      sound: false,
+      motion: motionEnabled,
+      sound: soundEnabled,
       effects: true,
       quality: 'high'
     }
@@ -77,10 +82,12 @@ export class AdvancedAquariumApp {
       drawCalls: 0
     }
 
-    this.store.updateSettings({
-      motionEnabled: this.settings.motion,
-      soundEnabled: this.settings.sound
-    })
+    if (!autosave) {
+      this.store.updateSettings({
+        motionEnabled,
+        soundEnabled
+      })
+    }
 
     this.init()
   }
