@@ -6,6 +6,7 @@ import { createAquariumStore } from './utils/aquariumStore'
 import { setupAutosaveOnEditEnd } from './utils/autosave'
 import { createSceneStateApplier } from './utils/sceneStateApplier'
 import { handleReducedMotionPreference } from './utils/motionPreference'
+import { getAutoSave } from './utils/storage'
 import lottie from 'lottie-web'
 
 type QualityLevel = 'low' | 'medium' | 'high'
@@ -40,7 +41,7 @@ export class AdvancedAquariumApp {
   private audioManager: AudioManager
   private pane: PaneApi | null = null
   private overlay: HTMLDivElement | null = null
-  private store = createAquariumStore()
+  private store = createAquariumStore(getAutoSave()?.state)
   private storeUnsubscribe: (() => void) | null = null
   private autosaveUnsubscribe: (() => void) | null = null
   private settings: {

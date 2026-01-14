@@ -82,7 +82,7 @@ const mergeWithDefaults = (partial: AquariumState): AquariumState => {
       ...defaultTheme,
       ...partial.theme
     },
-    fishGroups: partial.fishGroups.length > 0 ? partial.fishGroups : getDefaultFishGroups(),
+    fishGroups: partial.fishGroups,
     settings: {
       ...defaultSettings,
       ...partial.settings
