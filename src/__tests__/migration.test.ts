@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDefaultState, migrateState } from '../utils/stateSchema'
+import { CURRENT_SCHEMA_VERSION, createDefaultState, migrateState } from '../utils/stateSchema'
 import { importState } from '../utils/serialization'
 import { createState } from './fixtures/aquariumState'
 
@@ -33,5 +33,32 @@ describe('migration fallback', () => {
     const migrated = migrateState(state)
 
     expect(migrated.fishGroups).toEqual([])
+  })
+
+  it('merges defaults for older schema with missing fields', () => {
+    const legacy = {
+      schemaVersion: 0,
+      fishGroups: [{ speciesId: 'neon-tetra', count: 3 }]
+    }
+
+    const migrated = migrateState(legacy)
+    const defaults = createDefaultState()
+
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(migrated.fishGroups).toEqual(legacy.fishGroups)
+    expect(migrated.theme).toEqual(defaults.theme)
+    expect(migrated.settings).toEqual(defaults.settings)
+  })
+
+  it('imports older schema payloads without dropping data', () => {
+    const legacy = {
+      schemaVersion: 0,
+      fishGroups: [{ speciesId: 'neon-tetra', count: 3 }]
+    }
+
+    const imported = importState(JSON.stringify(legacy))
+
+    expect(imported).not.toBeNull()
+    expect(imported?.fishGroups).toEqual(legacy.fishGroups)
   })
 })

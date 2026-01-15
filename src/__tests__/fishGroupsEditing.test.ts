@@ -26,6 +26,18 @@ describe('fish group editing', () => {
     expect(store.getState().fishGroups[0].count).toBe(10)
   })
 
+  it('keeps the count input element while typing', () => {
+    const { panel } = setup()
+    const input = panel.querySelector('[data-testid="fish-count-neon-tetra"]') as HTMLInputElement
+
+    input.value = '12'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const updated = panel.querySelector('[data-testid="fish-count-neon-tetra"]') as HTMLInputElement
+
+    expect(updated).toBe(input)
+  })
+
   it('adds and removes groups', () => {
     const { store, panel } = setup()
     const select = panel.querySelector('[data-testid="fish-select"]') as HTMLSelectElement

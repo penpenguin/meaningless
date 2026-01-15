@@ -51,37 +51,60 @@ export const createFishGroupPanel = (options: { store: AquariumStore }): HTMLDiv
   list.className = 'fish-group-list'
   panel.appendChild(list)
 
+  const rows = new Map<string, { row: HTMLDivElement; input: HTMLInputElement }>()
+
+  const createRow = (speciesId: string, count: number): { row: HTMLDivElement; input: HTMLInputElement } => {
+    const row = document.createElement('div')
+    row.className = 'fish-group-row'
+
+    const label = document.createElement('span')
+    label.textContent = speciesId
+
+    const input = document.createElement('input')
+    input.type = 'number'
+    input.min = '1'
+    input.value = String(count)
+    input.dataset.testid = `fish-count-${speciesId}`
+    input.addEventListener('input', () => {
+      const next = Math.max(1, Number(input.value) || 1)
+      options.store.updateFishGroupCount(speciesId, next)
+    })
+
+    const removeButton = document.createElement('button')
+    removeButton.type = 'button'
+    removeButton.textContent = 'Remove'
+    removeButton.dataset.testid = `fish-remove-${speciesId}`
+    removeButton.addEventListener('click', () => {
+      options.store.removeFishGroup(speciesId)
+    })
+
+    row.appendChild(label)
+    row.appendChild(input)
+    row.appendChild(removeButton)
+
+    return { row, input }
+  }
+
   const render = (): void => {
-    list.innerHTML = ''
+    const seen = new Set<string>()
     options.store.getState().fishGroups.forEach((group) => {
-      const row = document.createElement('div')
-      row.className = 'fish-group-row'
+      seen.add(group.speciesId)
+      const existing = rows.get(group.speciesId) ?? createRow(group.speciesId, group.count)
+      rows.set(group.speciesId, existing)
+      if (document.activeElement !== existing.input) {
+        const nextValue = String(group.count)
+        if (existing.input.value !== nextValue) {
+          existing.input.value = nextValue
+        }
+      }
+      list.appendChild(existing.row)
+    })
 
-      const label = document.createElement('span')
-      label.textContent = group.speciesId
-
-      const input = document.createElement('input')
-      input.type = 'number'
-      input.min = '1'
-      input.value = String(group.count)
-      input.dataset.testid = `fish-count-${group.speciesId}`
-      input.addEventListener('input', () => {
-        const next = Math.max(1, Number(input.value) || 1)
-        options.store.updateFishGroupCount(group.speciesId, next)
-      })
-
-      const removeButton = document.createElement('button')
-      removeButton.type = 'button'
-      removeButton.textContent = 'Remove'
-      removeButton.dataset.testid = `fish-remove-${group.speciesId}`
-      removeButton.addEventListener('click', () => {
-        options.store.removeFishGroup(group.speciesId)
-      })
-
-      row.appendChild(label)
-      row.appendChild(input)
-      row.appendChild(removeButton)
-      list.appendChild(row)
+    rows.forEach((row, speciesId) => {
+      if (!seen.has(speciesId)) {
+        row.row.remove()
+        rows.delete(speciesId)
+      }
     })
   }
 
