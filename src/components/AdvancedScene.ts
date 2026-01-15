@@ -10,6 +10,7 @@ import { SpiralDecorations } from './SpiralDecorations'
 import { GodRaysEffect } from './GodRays'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { defaultTheme } from '../utils/stateSchema'
 
 interface PerformanceStats {
   fps: number
@@ -19,6 +20,15 @@ interface PerformanceStats {
 }
 
 export const applyThemeToScene = (scene: THREE.Scene, theme: Theme): void => {
+  scene.userData.theme = theme
+  const background = scene.background
+  const shouldPreserveGradient =
+    background instanceof THREE.CanvasTexture &&
+    (background.userData as { isGradientBackground?: boolean } | undefined)?.isGradientBackground
+  if (shouldPreserveGradient) {
+    applyGradientBackground(scene, theme)
+    return
+  }
   scene.background = new THREE.Color(theme.waterTint)
   if (scene.fog instanceof THREE.FogExp2) {
     scene.fog.color = new THREE.Color(theme.waterTint)
@@ -26,6 +36,50 @@ export const applyThemeToScene = (scene: THREE.Scene, theme: Theme): void => {
     return
   }
   scene.fog = new THREE.FogExp2(theme.waterTint, theme.fogDensity)
+}
+
+const resolveTheme = (scene: THREE.Scene, theme?: Theme): Theme => {
+  const storedTheme = scene.userData.theme as Theme | undefined
+  return theme ?? storedTheme ?? defaultTheme
+}
+
+export const applyGradientBackground = (scene: THREE.Scene, theme?: Theme): void => {
+  const resolvedTheme = resolveTheme(scene, theme)
+  const canvas = document.createElement('canvas')
+  canvas.width = 512
+  canvas.height = 512
+  const ctx = canvas.getContext('2d')
+
+  if (!ctx) {
+    scene.background = new THREE.Color(resolvedTheme.waterTint)
+    scene.fog = new THREE.FogExp2(resolvedTheme.waterTint, resolvedTheme.fogDensity)
+    return
+  }
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+  const baseColor = new THREE.Color(resolvedTheme.waterTint)
+  const deepColor = baseColor.clone().lerp(new THREE.Color('#000000'), 0.75)
+  const midDeepColor = baseColor.clone().lerp(new THREE.Color('#000000'), 0.45)
+  const surfaceColor = baseColor.clone().lerp(new THREE.Color('#ffffff'), 0.35)
+
+  gradient.addColorStop(0, `#${surfaceColor.getHexString()}`)
+  gradient.addColorStop(0.3, `#${baseColor.getHexString()}`)
+  gradient.addColorStop(0.6, `#${midDeepColor.getHexString()}`)
+  gradient.addColorStop(1, `#${deepColor.getHexString()}`)
+
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  const backgroundTexture = new THREE.CanvasTexture(canvas)
+  backgroundTexture.mapping = THREE.EquirectangularReflectionMapping
+  backgroundTexture.colorSpace = THREE.SRGBColorSpace
+  backgroundTexture.userData = {
+    ...backgroundTexture.userData,
+    isGradientBackground: true
+  }
+
+  scene.background = backgroundTexture
+  scene.fog = new THREE.FogExp2(resolvedTheme.waterTint, resolvedTheme.fogDensity)
 }
 
 export class AdvancedAquariumScene {
@@ -195,32 +249,7 @@ export class AdvancedAquariumScene {
   }
 
   private setupGradientBackground(): void {
-    // Three.jsのシーン背景として直接設定
-    const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 512
-    const ctx = canvas.getContext('2d')!
-    
-    // 水中の色から深海の色へのグラデーション
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    gradient.addColorStop(0, '#87CEEB')    // 上部：水色（スカイブルー）
-    gradient.addColorStop(0.3, '#4682B4')  // 中上部：スチールブルー
-    gradient.addColorStop(0.6, '#2F4F4F')  // 中下部：ダークスレートグレー
-    gradient.addColorStop(1, '#191970')    // 下部：ミッドナイトブルー
-    
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // テクスチャを作成してシーン背景に設定
-    const backgroundTexture = new THREE.CanvasTexture(canvas)
-    backgroundTexture.mapping = THREE.EquirectangularReflectionMapping
-    backgroundTexture.colorSpace = THREE.SRGBColorSpace
-    
-    // シーンの背景として直接設定
-    this.scene.background = backgroundTexture
-    
-    // 追加として、フォグを設定して深度感を演出
-    this.scene.fog = new THREE.FogExp2(0x4682B4, 0.4)
+    applyGradientBackground(this.scene)
   }
 
   private createAdvancedTank(): void {
