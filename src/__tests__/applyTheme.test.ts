@@ -75,4 +75,36 @@ describe('applyThemeToScene', () => {
 
     getContextSpy.mockRestore()
   })
+
+  it('disposes old gradient texture when reapplying theme', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = {
+          addColorStop: vi.fn()
+        }
+
+        return {
+          createLinearGradient: () => gradient,
+          fillRect: vi.fn(),
+          fillStyle: ''
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const scene = new THREE.Scene()
+    const previousTexture = new THREE.CanvasTexture(document.createElement('canvas'))
+    previousTexture.userData = { isGradientBackground: true }
+    const disposeSpy = vi.spyOn(previousTexture, 'dispose')
+    scene.background = previousTexture
+
+    applyThemeToScene(scene, {
+      ...baseTheme,
+      waterTint: '#223344'
+    })
+
+    expect(disposeSpy).toHaveBeenCalledTimes(1)
+    expect(scene.background).not.toBe(previousTexture)
+
+    getContextSpy.mockRestore()
+  })
 })

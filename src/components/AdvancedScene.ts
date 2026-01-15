@@ -45,6 +45,13 @@ const resolveTheme = (scene: THREE.Scene, theme?: Theme): Theme => {
 
 export const applyGradientBackground = (scene: THREE.Scene, theme?: Theme): void => {
   const resolvedTheme = resolveTheme(scene, theme)
+  const currentBackground = scene.background
+  if (
+    currentBackground instanceof THREE.CanvasTexture &&
+    (currentBackground.userData as { isGradientBackground?: boolean } | undefined)?.isGradientBackground
+  ) {
+    currentBackground.dispose()
+  }
   const canvas = document.createElement('canvas')
   canvas.width = 512
   canvas.height = 512
