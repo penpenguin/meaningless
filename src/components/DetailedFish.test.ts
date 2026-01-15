@@ -105,6 +105,25 @@ describe('DetailedFishSystem quality scaling', () => {
     expect(internals.instancedMeshes[0].count).toBe(10)
     expect(internals.instancedMeshes[1].count).toBe(5)
   })
+
+  test('setQuality keeps zero-count meshes at zero', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      instancedMeshes: Array<{ count: number }>
+      baseInstanceCounts: number[]
+    }
+
+    internals.instancedMeshes = [{ count: 0 }, { count: 4 }]
+    internals.baseInstanceCounts = []
+
+    const setQuality = (DetailedFishSystem.prototype as unknown as {
+      setQuality: (quality: 'low' | 'medium' | 'high') => void
+    }).setQuality.bind(instance)
+
+    setQuality('low')
+    expect(internals.instancedMeshes[0].count).toBe(0)
+    expect(internals.instancedMeshes[1].count).toBe(2)
+  })
 })
 
 describe('DetailedFishSystem variant mapping', () => {

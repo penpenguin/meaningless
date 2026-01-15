@@ -567,6 +567,11 @@ export class DetailedFishSystem {
 
     this.instancedMeshes.forEach((mesh, index) => {
       const baseCount = this.baseInstanceCounts[index] ?? mesh.count
+      if (baseCount === 0) {
+        mesh.count = 0
+        return
+      }
+
       mesh.count = Math.max(1, Math.floor(baseCount * qualityScale))
     })
   }
