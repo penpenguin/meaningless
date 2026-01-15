@@ -199,6 +199,7 @@ export class DetailedFishSystem {
         fishMaterial,
         actualCount
       )
+      instancedMesh.userData.variantIndex = variantIndex
       instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
       instancedMesh.castShadow = true
       instancedMesh.receiveShadow = true
@@ -452,7 +453,9 @@ export class DetailedFishSystem {
     let boidIndex = 0
     
     this.instancedMeshes.forEach((mesh, meshIndex) => {
-      const variant = this.variants[meshIndex]
+      const variantIndex =
+        typeof mesh.userData.variantIndex === 'number' ? mesh.userData.variantIndex : meshIndex
+      const variant = this.variants[variantIndex] ?? this.variants[meshIndex]
       const instanceCount = mesh.count
       
       for (let i = 0; i < instanceCount && boidIndex < this.boids.boids.length; i++, boidIndex++) {
