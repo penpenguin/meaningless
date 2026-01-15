@@ -6,6 +6,12 @@ export const createFishGroupPanel = (options: { store: AquariumStore }): HTMLDiv
   panel.className = 'editor-panel-section'
   panel.dataset.testid = 'fish-panel'
 
+  const normalizeCount = (value: string): number => {
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed)) return 1
+    return Math.max(1, Math.round(parsed))
+  }
+
   const title = document.createElement('h3')
   title.textContent = 'Fish Groups'
   panel.appendChild(title)
@@ -25,6 +31,7 @@ export const createFishGroupPanel = (options: { store: AquariumStore }): HTMLDiv
   const countInput = document.createElement('input')
   countInput.type = 'number'
   countInput.min = '1'
+  countInput.step = '1'
   countInput.value = '1'
 
   const addButton = document.createElement('button')
@@ -33,7 +40,7 @@ export const createFishGroupPanel = (options: { store: AquariumStore }): HTMLDiv
   addButton.dataset.testid = 'fish-add'
   addButton.addEventListener('click', () => {
     const speciesId = select.value
-    const count = Math.max(1, Number(countInput.value) || 1)
+    const count = normalizeCount(countInput.value)
     const existing = options.store.getState().fishGroups.find((group) => group.speciesId === speciesId)
     if (existing) {
       options.store.updateFishGroupCount(speciesId, existing.count + count)
@@ -63,10 +70,14 @@ export const createFishGroupPanel = (options: { store: AquariumStore }): HTMLDiv
     const input = document.createElement('input')
     input.type = 'number'
     input.min = '1'
+    input.step = '1'
     input.value = String(count)
     input.dataset.testid = `fish-count-${speciesId}`
     input.addEventListener('input', () => {
-      const next = Math.max(1, Number(input.value) || 1)
+      const next = normalizeCount(input.value)
+      if (input.value !== String(next)) {
+        input.value = String(next)
+      }
       options.store.updateFishGroupCount(speciesId, next)
     })
 

@@ -38,15 +38,29 @@ describe('fish group editing', () => {
     expect(updated).toBe(input)
   })
 
+  it('normalizes decimal counts to integers', () => {
+    const { store, panel } = setup()
+    const input = panel.querySelector('[data-testid="fish-count-neon-tetra"]') as HTMLInputElement
+
+    input.value = '1.5'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+
+    expect(store.getState().fishGroups[0].count).toBe(2)
+  })
+
   it('adds and removes groups', () => {
     const { store, panel } = setup()
     const select = panel.querySelector('[data-testid="fish-select"]') as HTMLSelectElement
     const addButton = panel.querySelector('[data-testid="fish-add"]') as HTMLButtonElement
+    const countInput = panel.querySelector('input[type="number"]') as HTMLInputElement
 
     select.value = 'clownfish'
+    countInput.value = '2.2'
     addButton.click()
 
-    expect(store.getState().fishGroups.some((group) => group.speciesId === 'clownfish')).toBe(true)
+    const added = store.getState().fishGroups.find((group) => group.speciesId === 'clownfish')
+    expect(added).toBeDefined()
+    expect(added?.count).toBe(2)
 
     const removeButton = panel.querySelector('[data-testid="fish-remove-clownfish"]') as HTMLButtonElement
     removeButton.click()
