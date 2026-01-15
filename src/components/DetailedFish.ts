@@ -37,6 +37,7 @@ export class DetailedFishSystem {
   private tempCurrentPos = new THREE.Vector3()
   private tempWanderDirection = new THREE.Vector3()
   private tempWanderTarget = new THREE.Vector3()
+  private currentQuality: 'low' | 'medium' | 'high' = 'high'
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
     this.group = new THREE.Group()
@@ -81,6 +82,7 @@ export class DetailedFishSystem {
     const countsPerVariant = this.mapGroupsToVariantCounts(sanitized)
 
     this.rebuildFishSystem(totalCount, countsPerVariant)
+    this.setQuality(this.currentQuality)
 
     const first = sanitized[0]
     if (first?.tuning) {
@@ -560,6 +562,7 @@ export class DetailedFishSystem {
   }
 
   setQuality(quality: 'low' | 'medium' | 'high'): void {
+    this.currentQuality = quality
     const qualityScale = quality === 'low' ? 0.5 : quality === 'medium' ? 0.75 : 1
     if (this.baseInstanceCounts.length === 0) {
       this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)

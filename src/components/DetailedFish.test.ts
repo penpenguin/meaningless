@@ -244,4 +244,23 @@ describe('DetailedFishSystem fish group application', () => {
     expect(internals.fishCount).toBe(5)
     expect(counts).toEqual([2, 3])
   })
+
+  test('setFishGroups preserves quality scaling', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const system = new DetailedFishSystem(scene, bounds)
+
+    system.setQuality('low')
+    system.setFishGroups([
+      { speciesId: 'neon-tetra', count: 4 },
+      { speciesId: 'clownfish', count: 2 }
+    ])
+
+    const internals = system as unknown as {
+      instancedMeshes: Array<{ count: number }>
+    }
+
+    const counts = internals.instancedMeshes.map((mesh) => mesh.count).sort((a, b) => a - b)
+    expect(counts).toEqual([1, 2])
+  })
 })
