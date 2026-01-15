@@ -1,4 +1,4 @@
-import type { AquariumState, FishGroup, Settings, Theme } from '../types/aquarium'
+import type { AquariumState, FishGroup, Settings, Theme, Tuning } from '../types/aquarium'
 import { getDefaultFishGroups } from './speciesCatalog'
 
 export const CURRENT_SCHEMA_VERSION = 1
@@ -59,10 +59,23 @@ const validateSettings = (value: unknown): value is Settings => {
   return isBoolean(value.soundEnabled) && isBoolean(value.motionEnabled)
 }
 
+const validateTuning = (value: unknown): value is Tuning => {
+  if (!isObject(value)) return false
+  return (
+    isNumber(value.speed) &&
+    isNumber(value.cohesion) &&
+    isNumber(value.separation) &&
+    isNumber(value.alignment) &&
+    isNumber(value.avoidWalls) &&
+    isNumber(value.preferredDepth)
+  )
+}
+
 const validateFishGroup = (value: unknown): value is FishGroup => {
   if (!isObject(value)) return false
   if (!isString(value.speciesId) || !isNumber(value.count)) return false
   if (value.count < 1) return false
+  if (value.tuning !== undefined && !validateTuning(value.tuning)) return false
   return true
 }
 
@@ -94,8 +107,22 @@ const coerceSettings = (value: unknown): Partial<Settings> | undefined => {
 
 const coerceFishGroups = (value: unknown): FishGroup[] | undefined => {
   if (!Array.isArray(value)) return undefined
-  if (!value.every(validateFishGroup)) return undefined
-  return value
+  if (value.length === 0) return []
+  const groups: FishGroup[] = []
+  for (const entry of value) {
+    if (!isObject(entry)) return undefined
+    if (!isString(entry.speciesId) || !isNumber(entry.count)) return undefined
+    if (entry.count < 1) return undefined
+    const group: FishGroup = {
+      speciesId: entry.speciesId,
+      count: entry.count
+    }
+    if (entry.tuning !== undefined && validateTuning(entry.tuning)) {
+      group.tuning = entry.tuning
+    }
+    groups.push(group)
+  }
+  return groups
 }
 
 const hasSchemaVersion = (value: unknown): value is { schemaVersion: number } => {
@@ -145,6 +172,19 @@ export const migrateState = (value: unknown): AquariumState => {
   }
 
   if (!validateState(value)) {
+    const payload = value as Record<string, unknown>
+    const fishGroups = coerceFishGroups(payload.fishGroups)
+    if (
+      fishGroups &&
+      validateTheme(payload.theme) &&
+      validateSettings(payload.settings)
+    ) {
+      return mergeWithDefaults({
+        theme: payload.theme as Theme,
+        fishGroups,
+        settings: payload.settings as Settings
+      })
+    }
     return createDefaultState()
   }
 

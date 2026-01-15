@@ -61,4 +61,32 @@ describe('migration fallback', () => {
     expect(imported).not.toBeNull()
     expect(imported?.fishGroups).toEqual(legacy.fishGroups)
   })
+
+  it('strips invalid tuning values on import', () => {
+    const defaults = createDefaultState()
+    const payload = JSON.stringify({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      theme: defaults.theme,
+      settings: defaults.settings,
+      fishGroups: [
+        {
+          speciesId: 'neon-tetra',
+          count: 3,
+          tuning: {
+            speed: 'fast',
+            cohesion: 0.2,
+            separation: 0.3,
+            alignment: 0.4,
+            avoidWalls: 0.5,
+            preferredDepth: 0.6
+          }
+        }
+      ]
+    })
+
+    const imported = importState(payload)
+
+    expect(imported).not.toBeNull()
+    expect(imported?.fishGroups[0]?.tuning).toBeUndefined()
+  })
 })
