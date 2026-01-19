@@ -732,6 +732,11 @@ export class AdvancedAquariumScene {
       this.godRaysEffect.dispose()
     }
     
+    const rendererElement = this.renderer.domElement
+    if (rendererElement?.parentElement) {
+      rendererElement.parentElement.removeChild(rendererElement)
+    }
+
     this.renderer.dispose()
     this.controls.dispose()
     this.composer.dispose()
