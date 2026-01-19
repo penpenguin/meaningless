@@ -5,6 +5,7 @@ import { WaterSurface } from './Water'
 import { EnhancedParticleSystem } from './EnhancedParticles'
 import { EnvironmentLoader } from './Environment'
 import { AquascapingSystem } from './Aquascaping'
+import { disposeSceneResources } from '../utils/threeDisposal'
 
 export class AquariumScene {
   private scene: THREE.Scene
@@ -263,6 +264,7 @@ export class AquariumScene {
   public dispose(): void {
     this.stop()
     window.removeEventListener('resize', this.handleResize)
+    disposeSceneResources(this.scene)
     this.renderer.dispose()
     this.controls.dispose()
   }

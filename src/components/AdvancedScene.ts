@@ -11,6 +11,7 @@ import { GodRaysEffect } from './GodRays'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { defaultTheme } from '../utils/stateSchema'
+import { disposeSceneResources } from '../utils/threeDisposal'
 
 interface PerformanceStats {
   fps: number
@@ -721,9 +722,7 @@ export class AdvancedAquariumScene {
   public dispose(): void {
     this.stop()
     window.removeEventListener('resize', this.handleResize)
-    
-    // DetailedFishSystem doesn't need explicit disposal
-    
+
     if (this.spiralDecorations) {
       this.spiralDecorations.dispose()
     }
@@ -731,6 +730,8 @@ export class AdvancedAquariumScene {
     if (this.godRaysEffect) {
       this.godRaysEffect.dispose()
     }
+
+    disposeSceneResources(this.scene)
     
     const rendererElement = this.renderer.domElement
     if (rendererElement?.parentElement) {
