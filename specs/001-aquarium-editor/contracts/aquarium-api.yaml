@@ -1,0 +1,278 @@
+openapi: 3.0.3
+info:
+  title: Aquarium Editor API (Logical Contract)
+  version: 1.0.0
+  description: |
+    UI内で扱う水槽状態の保存/復元/入出力を表現する論理API。
+    実装はクライアント内の状態管理でもよい。
+servers:
+  - url: https://local.aquarium
+paths:
+  /species:
+    get:
+      summary: 種別一覧を取得
+      responses:
+        '200':
+          description: Species list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Species'
+  /state:
+    get:
+      summary: 現在の水槽状態を取得
+      responses:
+        '200':
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AquariumState'
+    put:
+      summary: 現在の水槽状態を置換
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AquariumState'
+      responses:
+        '200':
+          description: Updated
+  /autosave:
+    get:
+      summary: オートセーブを取得
+      responses:
+        '200':
+          description: AutoSave
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoSave'
+    post:
+      summary: オートセーブを更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AquariumState'
+      responses:
+        '200':
+          description: Saved
+  /saves:
+    get:
+      summary: 保存スロット一覧
+      responses:
+        '200':
+          description: Save slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SaveSlot'
+    post:
+      summary: 新規保存
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSlotCreate'
+      responses:
+        '201':
+          description: Created
+  /saves/{saveId}:
+    get:
+      summary: 保存スロットを取得
+      parameters:
+        - in: path
+          name: saveId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Save slot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveSlot'
+    put:
+      summary: 保存スロットを上書き
+      parameters:
+        - in: path
+          name: saveId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSlotUpdate'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: 保存スロットを削除
+      parameters:
+        - in: path
+          name: saveId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+  /export:
+    get:
+      summary: JSONエクスポート
+      responses:
+        '200':
+          description: Exported state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AquariumState'
+  /import:
+    post:
+      summary: JSONインポート
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AquariumState'
+      responses:
+        '200':
+          description: Imported
+components:
+  schemas:
+    AquariumState:
+      type: object
+      required: [schemaVersion, theme, fishGroups, settings]
+      properties:
+        schemaVersion:
+          type: integer
+        theme:
+          $ref: '#/components/schemas/Theme'
+        fishGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/FishGroup'
+        settings:
+          $ref: '#/components/schemas/Settings'
+    Theme:
+      type: object
+      required:
+        - glassFrameStrength
+        - waterTint
+        - fogDensity
+        - particleDensity
+        - waveStrength
+        - waveSpeed
+      properties:
+        glassFrameStrength:
+          type: number
+        waterTint:
+          type: string
+        fogDensity:
+          type: number
+        particleDensity:
+          type: number
+        waveStrength:
+          type: number
+        waveSpeed:
+          type: number
+    FishGroup:
+      type: object
+      required: [speciesId, count]
+      properties:
+        speciesId:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+        tuning:
+          $ref: '#/components/schemas/Tuning'
+    Tuning:
+      type: object
+      properties:
+        speed:
+          type: number
+        cohesion:
+          type: number
+        separation:
+          type: number
+        alignment:
+          type: number
+        avoidWalls:
+          type: number
+        preferredDepth:
+          type: number
+    Species:
+      type: object
+      required: [speciesId, displayName, description, visualRef, size]
+      properties:
+        speciesId:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        visualRef:
+          type: string
+        size:
+          type: number
+        colorVariants:
+          type: array
+          items:
+            type: string
+    SaveSlot:
+      type: object
+      required: [id, name, savedAt, state]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        savedAt:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/AquariumState'
+    SaveSlotCreate:
+      type: object
+      required: [name, state]
+      properties:
+        name:
+          type: string
+        state:
+          $ref: '#/components/schemas/AquariumState'
+    SaveSlotUpdate:
+      type: object
+      required: [state]
+      properties:
+        state:
+          $ref: '#/components/schemas/AquariumState'
+    AutoSave:
+      type: object
+      required: [updatedAt, state]
+      properties:
+        updatedAt:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/AquariumState'
+    Settings:
+      type: object
+      properties:
+        soundEnabled:
+          type: boolean
+        motionEnabled:
+          type: boolean

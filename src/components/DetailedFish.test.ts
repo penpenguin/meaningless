@@ -105,4 +105,190 @@ describe('DetailedFishSystem quality scaling', () => {
     expect(internals.instancedMeshes[0].count).toBe(10)
     expect(internals.instancedMeshes[1].count).toBe(5)
   })
+
+  test('setQuality keeps zero-count meshes at zero', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      instancedMeshes: Array<{ count: number }>
+      baseInstanceCounts: number[]
+    }
+
+    internals.instancedMeshes = [{ count: 0 }, { count: 4 }]
+    internals.baseInstanceCounts = []
+
+    const setQuality = (DetailedFishSystem.prototype as unknown as {
+      setQuality: (quality: 'low' | 'medium' | 'high') => void
+    }).setQuality.bind(instance)
+
+    setQuality('low')
+    expect(internals.instancedMeshes[0].count).toBe(0)
+    expect(internals.instancedMeshes[1].count).toBe(2)
+  })
+})
+
+describe('DetailedFishSystem variant mapping', () => {
+  test('uses mesh variant index when variants are skipped', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      variants: Array<{ name: string; primaryColor: THREE.Color; secondaryColor: THREE.Color; scale: number; speed: number }>
+      boids: { boids: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; acceleration: THREE.Vector3 }>; update: () => void }
+      wanderTargets: THREE.Vector3[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      dummy: THREE.Object3D
+      tempWanderForce: THREE.Vector3
+      tempJitter: THREE.Vector3
+      tempNoiseForce: THREE.Vector3
+      tempDirection: THREE.Vector3
+      tempTurnNoise: THREE.Vector3
+      tempSuddenTurn: THREE.Vector3
+      tempCuriosityForce: THREE.Vector3
+      tempForward: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      tempCurrentPos: THREE.Vector3
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+    }
+
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+      1
+    )
+    mesh.userData.variantIndex = 1
+
+    internals.instancedMeshes = [mesh]
+    internals.variants = [
+      {
+        name: 'Small',
+        primaryColor: new THREE.Color('#000000'),
+        secondaryColor: new THREE.Color('#000000'),
+        scale: 0.1,
+        speed: 0.1
+      },
+      {
+        name: 'Large',
+        primaryColor: new THREE.Color('#ffffff'),
+        secondaryColor: new THREE.Color('#ffffff'),
+        scale: 2,
+        speed: 2
+      }
+    ]
+    internals.boids = {
+      boids: [
+        {
+          position: new THREE.Vector3(),
+          velocity: new THREE.Vector3(),
+          acceleration: new THREE.Vector3()
+        }
+      ],
+      update: () => {}
+    }
+    internals.wanderTargets = []
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0])
+    internals.swimPhases = new Float32Array([0])
+    internals.dummy = new THREE.Object3D()
+    internals.tempWanderForce = new THREE.Vector3()
+    internals.tempJitter = new THREE.Vector3()
+    internals.tempNoiseForce = new THREE.Vector3()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempTurnNoise = new THREE.Vector3()
+    internals.tempSuddenTurn = new THREE.Vector3()
+    internals.tempCuriosityForce = new THREE.Vector3()
+    internals.tempForward = new THREE.Vector3(-1, 0, 0)
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.tempCurrentPos = new THREE.Vector3()
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+
+    const stub = instance as unknown as { updateWanderTargets: (elapsedTime: number) => void }
+    stub.updateWanderTargets = () => {}
+
+    const update = (DetailedFishSystem.prototype as unknown as {
+      update: (deltaTime: number, elapsedTime: number) => void
+    }).update.bind(instance)
+
+    update(0, 0)
+
+    const matrix = new THREE.Matrix4()
+    mesh.getMatrixAt(0, matrix)
+    const position = new THREE.Vector3()
+    const quaternion = new THREE.Quaternion()
+    const scale = new THREE.Vector3()
+    matrix.decompose(position, quaternion, scale)
+
+    expect(scale.x).toBeCloseTo(1.96, 2)
+  })
+})
+
+describe('DetailedFishSystem mesh disposal', () => {
+  test('clearMeshes disposes texture maps', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      group: THREE.Group
+    }
+
+    internals.group = new THREE.Group()
+    const geometry = new THREE.BoxGeometry(1, 1, 1)
+    const texture = new THREE.Texture()
+    const disposeSpy = vi.spyOn(texture, 'dispose')
+    const material = new THREE.MeshBasicMaterial({ map: texture })
+    const mesh = new THREE.InstancedMesh(geometry, material, 1)
+
+    internals.group.add(mesh)
+    internals.instancedMeshes = [mesh]
+
+    const clearMeshes = (DetailedFishSystem.prototype as unknown as {
+      clearMeshes: () => void
+    }).clearMeshes.bind(instance)
+
+    clearMeshes()
+
+    expect(disposeSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('DetailedFishSystem fish group application', () => {
+  test('setFishGroups rebuilds meshes based on group counts', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const system = new DetailedFishSystem(scene, bounds)
+
+    system.setFishGroups([
+      { speciesId: 'neon-tetra', count: 3 },
+      { speciesId: 'clownfish', count: 2 }
+    ])
+
+    const internals = system as unknown as {
+      fishCount: number
+      instancedMeshes: Array<{ count: number }>
+    }
+
+    const counts = internals.instancedMeshes.map((mesh) => mesh.count).sort((a, b) => a - b)
+    expect(internals.fishCount).toBe(5)
+    expect(counts).toEqual([2, 3])
+  })
+
+  test('setFishGroups preserves quality scaling', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const system = new DetailedFishSystem(scene, bounds)
+
+    system.setQuality('low')
+    system.setFishGroups([
+      { speciesId: 'neon-tetra', count: 4 },
+      { speciesId: 'clownfish', count: 2 }
+    ])
+
+    const internals = system as unknown as {
+      instancedMeshes: Array<{ count: number }>
+    }
+
+    const counts = internals.instancedMeshes.map((mesh) => mesh.count).sort((a, b) => a - b)
+    expect(counts).toEqual([1, 2])
+  })
 })

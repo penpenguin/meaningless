@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BoidsSystem } from '../utils/Boids'
+import type { FishGroup, Tuning } from '../types/aquarium'
 
 interface FishVariant {
   name: string
@@ -55,6 +56,28 @@ export class AdvancedFishSystem {
     
     this.variants = this.createFishVariants()
     this.initializeFishSystem()
+  }
+
+  applyTuning(tuning: Partial<Tuning>): void {
+    this.boidsSystems.forEach((boids) => {
+      if (tuning.speed !== undefined) {
+        const speed = tuning.speed
+        boids.params.maxSpeed = speed
+        boids.boids.forEach((boid) => {
+          boid.maxSpeed = speed
+        })
+      }
+      if (tuning.cohesion !== undefined) boids.params.cohesion = tuning.cohesion
+      if (tuning.separation !== undefined) boids.params.separation = tuning.separation
+      if (tuning.alignment !== undefined) boids.params.alignment = tuning.alignment
+    })
+  }
+
+  setFishGroups(groups: FishGroup[]): void {
+    const first = groups[0]
+    if (first?.tuning) {
+      this.applyTuning(first.tuning)
+    }
   }
   
   private createFishVariants(): FishVariant[] {

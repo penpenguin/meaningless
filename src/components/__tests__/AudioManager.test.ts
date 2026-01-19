@@ -38,14 +38,17 @@ type FakeConvolver = {
 
 class FakeAudioContext {
   static instances = 0
+  static lastInstance: FakeAudioContext | null = null
 
   sampleRate = 8000
   currentTime = 0
   destination = {}
   state: 'running' | 'suspended' = 'running'
+  lastBufferSource: FakeBufferSource | null = null
 
   constructor() {
     FakeAudioContext.instances++
+    FakeAudioContext.lastInstance = this
   }
 
   createGain(): FakeGainNode {
@@ -60,13 +63,15 @@ class FakeAudioContext {
   }
 
   createBufferSource(): FakeBufferSource {
-    return {
+    const source = {
       buffer: null,
       loop: false,
       connect: vi.fn(),
       start: vi.fn(),
       stop: vi.fn()
     }
+    this.lastBufferSource = source
+    return source
   }
 
   createBiquadFilter(): FakeBiquadFilter {
@@ -85,6 +90,8 @@ class FakeAudioContext {
     }
   }
 
+  decodeAudioData = vi.fn(async () => this.createBuffer(2, 1))
+
   resume = vi.fn(() => {
     this.state = 'running'
   })
@@ -93,23 +100,43 @@ class FakeAudioContext {
 }
 
 describe('AudioManager', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type GlobalWithAudio = typeof globalThis & { window: any; AudioContext: typeof AudioContext; webkitAudioContext: typeof AudioContext }
+  let originalAudioContext: typeof AudioContext | undefined
+  let originalWebkitAudioContext: typeof AudioContext | undefined
+  let originalFetch: typeof fetch | undefined
 
   beforeEach(() => {
     FakeAudioContext.instances = 0
     const audioContext = FakeAudioContext as unknown as typeof AudioContext
-    const globalWithAudio = globalThis as GlobalWithAudio
-    globalWithAudio.window = { AudioContext: audioContext, webkitAudioContext: audioContext }
-    globalWithAudio.AudioContext = audioContext
-    globalWithAudio.webkitAudioContext = audioContext
+    const windowWithAudio = window as typeof window & { webkitAudioContext?: typeof AudioContext }
+    originalAudioContext = window.AudioContext
+    originalWebkitAudioContext = windowWithAudio.webkitAudioContext
+
+    window.AudioContext = audioContext
+    windowWithAudio.webkitAudioContext = audioContext
+
+    originalFetch = window.fetch
+    window.fetch = vi.fn(async () => new Response(new ArrayBuffer(1))) as unknown as typeof fetch
   })
 
   afterEach(() => {
-    const globalWithAudio = globalThis as Partial<GlobalWithAudio>
-    Reflect.deleteProperty(globalWithAudio, 'window')
-    Reflect.deleteProperty(globalWithAudio, 'AudioContext')
-    Reflect.deleteProperty(globalWithAudio, 'webkitAudioContext')
+    const windowWithAudio = window as typeof window & { webkitAudioContext?: typeof AudioContext }
+    if (originalAudioContext) {
+      window.AudioContext = originalAudioContext
+    } else {
+      Reflect.deleteProperty(window, 'AudioContext')
+    }
+
+    if (originalWebkitAudioContext) {
+      windowWithAudio.webkitAudioContext = originalWebkitAudioContext
+    } else {
+      Reflect.deleteProperty(window, 'webkitAudioContext')
+    }
+
+    if (originalFetch) {
+      window.fetch = originalFetch
+    } else {
+      Reflect.deleteProperty(window, 'fetch')
+    }
   })
 
   it('does not create audio context until audio is enabled', () => {
@@ -130,5 +157,43 @@ describe('AudioManager', () => {
     manager.setEnabled(true)
 
     expect(FakeAudioContext.instances).toBe(1)
+  })
+
+  it('does not re-fade when enabling without a toggle', () => {
+    const manager = new AudioManager()
+
+    manager.setEnabled(true)
+
+    const masterGain = (manager as unknown as { masterGain: FakeGainNode | null }).masterGain
+    expect(masterGain).not.toBeNull()
+    const gain = masterGain as FakeGainNode
+
+    const cancelCalls = gain.gain.cancelScheduledValues.mock.calls.length
+    const setValueCalls = gain.gain.setValueAtTime.mock.calls.length
+    const rampCalls = gain.gain.linearRampToValueAtTime.mock.calls.length
+
+    manager.setEnabled(true)
+
+    expect(gain.gain.cancelScheduledValues.mock.calls.length).toBe(cancelCalls)
+    expect(gain.gain.setValueAtTime.mock.calls.length).toBe(setValueCalls)
+    expect(gain.gain.linearRampToValueAtTime.mock.calls.length).toBe(rampCalls)
+  })
+
+  it('loads and loops the underwater ambient on enable', async () => {
+    const arrayBuffer = new ArrayBuffer(8)
+    const response = new Response(arrayBuffer)
+    const fetchMock = vi.fn(async () => response)
+    window.fetch = fetchMock as unknown as typeof fetch
+
+    const manager = new AudioManager({ underwaterLoopUrl: '/underwater-loop.wav' })
+    manager.setEnabled(true)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const audioContext = FakeAudioContext.lastInstance
+    expect(fetchMock).toHaveBeenCalledWith('/underwater-loop.wav')
+    expect(audioContext?.decodeAudioData).toHaveBeenCalled()
+    expect(audioContext?.lastBufferSource?.loop).toBe(true)
+    expect(audioContext?.lastBufferSource?.start).toHaveBeenCalled()
   })
 })

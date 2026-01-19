@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { DetailedFishSystem } from './DetailedFish'
+import type { FishGroup, Theme } from '../types/aquarium'
 // import { AdvancedWaterSurface } from './AdvancedWater'
 import { EnhancedParticleSystem } from './EnhancedParticles'
 import { EnvironmentLoader } from './Environment'
@@ -9,12 +10,84 @@ import { SpiralDecorations } from './SpiralDecorations'
 import { GodRaysEffect } from './GodRays'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { defaultTheme } from '../utils/stateSchema'
+import { disposeSceneResources } from '../utils/threeDisposal'
 
 interface PerformanceStats {
   fps: number
   frameTime: number
   fishVisible: number
   drawCalls: number
+}
+
+export const applyThemeToScene = (scene: THREE.Scene, theme: Theme): void => {
+  scene.userData.theme = theme
+  const background = scene.background
+  const shouldPreserveGradient =
+    background instanceof THREE.CanvasTexture &&
+    (background.userData as { isGradientBackground?: boolean } | undefined)?.isGradientBackground
+  if (shouldPreserveGradient) {
+    applyGradientBackground(scene, theme)
+    return
+  }
+  scene.background = new THREE.Color(theme.waterTint)
+  if (scene.fog instanceof THREE.FogExp2) {
+    scene.fog.color = new THREE.Color(theme.waterTint)
+    scene.fog.density = theme.fogDensity
+    return
+  }
+  scene.fog = new THREE.FogExp2(theme.waterTint, theme.fogDensity)
+}
+
+const resolveTheme = (scene: THREE.Scene, theme?: Theme): Theme => {
+  const storedTheme = scene.userData.theme as Theme | undefined
+  return theme ?? storedTheme ?? defaultTheme
+}
+
+export const applyGradientBackground = (scene: THREE.Scene, theme?: Theme): void => {
+  const resolvedTheme = resolveTheme(scene, theme)
+  const currentBackground = scene.background
+  if (
+    currentBackground instanceof THREE.CanvasTexture &&
+    (currentBackground.userData as { isGradientBackground?: boolean } | undefined)?.isGradientBackground
+  ) {
+    currentBackground.dispose()
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = 512
+  canvas.height = 512
+  const ctx = canvas.getContext('2d')
+
+  if (!ctx) {
+    scene.background = new THREE.Color(resolvedTheme.waterTint)
+    scene.fog = new THREE.FogExp2(resolvedTheme.waterTint, resolvedTheme.fogDensity)
+    return
+  }
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+  const baseColor = new THREE.Color(resolvedTheme.waterTint)
+  const deepColor = baseColor.clone().lerp(new THREE.Color('#000000'), 0.75)
+  const midDeepColor = baseColor.clone().lerp(new THREE.Color('#000000'), 0.45)
+  const surfaceColor = baseColor.clone().lerp(new THREE.Color('#ffffff'), 0.35)
+
+  gradient.addColorStop(0, `#${surfaceColor.getHexString()}`)
+  gradient.addColorStop(0.3, `#${baseColor.getHexString()}`)
+  gradient.addColorStop(0.6, `#${midDeepColor.getHexString()}`)
+  gradient.addColorStop(1, `#${deepColor.getHexString()}`)
+
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  const backgroundTexture = new THREE.CanvasTexture(canvas)
+  backgroundTexture.mapping = THREE.EquirectangularReflectionMapping
+  backgroundTexture.colorSpace = THREE.SRGBColorSpace
+  backgroundTexture.userData = {
+    ...backgroundTexture.userData,
+    isGradientBackground: true
+  }
+
+  scene.background = backgroundTexture
+  scene.fog = new THREE.FogExp2(resolvedTheme.waterTint, resolvedTheme.fogDensity)
 }
 
 export class AdvancedAquariumScene {
@@ -28,6 +101,7 @@ export class AdvancedAquariumScene {
   
   // Advanced components
   private fishSystem: DetailedFishSystem | null = null
+  private pendingFishGroups: FishGroup[] | null = null
   // private waterSurface: AdvancedWaterSurface | null = null
   private particleSystem: EnhancedParticleSystem | null = null
   private aquascaping: AquascapingSystem | null = null
@@ -48,6 +122,10 @@ export class AdvancedAquariumScene {
   }
   private fpsCounter = 0
   private lastStatsUpdate = 0
+  private readonly performanceThresholds = {
+    medium: 50,
+    low: 30
+  }
   
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene()
@@ -179,32 +257,7 @@ export class AdvancedAquariumScene {
   }
 
   private setupGradientBackground(): void {
-    // Three.jsのシーン背景として直接設定
-    const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 512
-    const ctx = canvas.getContext('2d')!
-    
-    // 水中の色から深海の色へのグラデーション
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    gradient.addColorStop(0, '#87CEEB')    // 上部：水色（スカイブルー）
-    gradient.addColorStop(0.3, '#4682B4')  // 中上部：スチールブルー
-    gradient.addColorStop(0.6, '#2F4F4F')  // 中下部：ダークスレートグレー
-    gradient.addColorStop(1, '#191970')    // 下部：ミッドナイトブルー
-    
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // テクスチャを作成してシーン背景に設定
-    const backgroundTexture = new THREE.CanvasTexture(canvas)
-    backgroundTexture.mapping = THREE.EquirectangularReflectionMapping
-    backgroundTexture.colorSpace = THREE.SRGBColorSpace
-    
-    // シーンの背景として直接設定
-    this.scene.background = backgroundTexture
-    
-    // 追加として、フォグを設定して深度感を演出
-    this.scene.fog = new THREE.Fog(0x4682B4, 10, 100)
+    applyGradientBackground(this.scene)
   }
 
   private createAdvancedTank(): void {
@@ -477,6 +530,10 @@ export class AdvancedAquariumScene {
       new THREE.Vector3(10.5, 8.0, 8.5)     // 上限を拡張（水面制限なし）
     )
     this.fishSystem = new DetailedFishSystem(this.scene, tankBounds)
+    if (this.pendingFishGroups) {
+      this.fishSystem.setFishGroups(this.pendingFishGroups)
+      this.pendingFishGroups = null
+    }
   }
 
   private createAdvancedWaterEffects(): void {
@@ -600,6 +657,12 @@ export class AdvancedAquariumScene {
   public getPerformanceStats(): PerformanceStats {
     return { ...this.stats }
   }
+
+  public getPerformanceTier(fps: number): 'high' | 'medium' | 'low' {
+    if (fps <= this.performanceThresholds.low) return 'low'
+    if (fps <= this.performanceThresholds.medium) return 'medium'
+    return 'high'
+  }
   
   public enableAutoRotate(enabled: boolean): void {
     this.controls.autoRotate = enabled
@@ -625,6 +688,19 @@ export class AdvancedAquariumScene {
     }
   }
 
+  public applyTheme(theme: Theme): void {
+    applyThemeToScene(this.scene, theme)
+  }
+
+  public applyFishGroups(groups: FishGroup[]): boolean {
+    if (!this.fishSystem) {
+      this.pendingFishGroups = groups
+      return false
+    }
+    this.fishSystem.setFishGroups(groups)
+    return true
+  }
+
   private setupEventListeners(): void {
     window.addEventListener('resize', this.handleResize)
   }
@@ -646,9 +722,7 @@ export class AdvancedAquariumScene {
   public dispose(): void {
     this.stop()
     window.removeEventListener('resize', this.handleResize)
-    
-    // DetailedFishSystem doesn't need explicit disposal
-    
+
     if (this.spiralDecorations) {
       this.spiralDecorations.dispose()
     }
@@ -656,7 +730,14 @@ export class AdvancedAquariumScene {
     if (this.godRaysEffect) {
       this.godRaysEffect.dispose()
     }
+
+    disposeSceneResources(this.scene)
     
+    const rendererElement = this.renderer.domElement
+    if (rendererElement?.parentElement) {
+      rendererElement.parentElement.removeChild(rendererElement)
+    }
+
     this.renderer.dispose()
     this.controls.dispose()
     this.composer.dispose()
