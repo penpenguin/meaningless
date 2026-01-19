@@ -243,13 +243,74 @@ export class DetailedFishSystem {
     this.createDetailedFishMeshes(countsPerVariant)
   }
 
+  private disposeMaterialTextures(material: THREE.Material): void {
+    const texturedMaterial = material as THREE.Material & {
+      map?: THREE.Texture | null
+      alphaMap?: THREE.Texture | null
+      aoMap?: THREE.Texture | null
+      bumpMap?: THREE.Texture | null
+      displacementMap?: THREE.Texture | null
+      emissiveMap?: THREE.Texture | null
+      lightMap?: THREE.Texture | null
+      metalnessMap?: THREE.Texture | null
+      normalMap?: THREE.Texture | null
+      roughnessMap?: THREE.Texture | null
+      specularMap?: THREE.Texture | null
+      clearcoatMap?: THREE.Texture | null
+      clearcoatNormalMap?: THREE.Texture | null
+      clearcoatRoughnessMap?: THREE.Texture | null
+      sheenColorMap?: THREE.Texture | null
+      sheenRoughnessMap?: THREE.Texture | null
+      transmissionMap?: THREE.Texture | null
+      thicknessMap?: THREE.Texture | null
+      iridescenceMap?: THREE.Texture | null
+      iridescenceThicknessMap?: THREE.Texture | null
+      anisotropyMap?: THREE.Texture | null
+    }
+
+    const textures = [
+      texturedMaterial.map,
+      texturedMaterial.alphaMap,
+      texturedMaterial.aoMap,
+      texturedMaterial.bumpMap,
+      texturedMaterial.displacementMap,
+      texturedMaterial.emissiveMap,
+      texturedMaterial.lightMap,
+      texturedMaterial.metalnessMap,
+      texturedMaterial.normalMap,
+      texturedMaterial.roughnessMap,
+      texturedMaterial.specularMap,
+      texturedMaterial.clearcoatMap,
+      texturedMaterial.clearcoatNormalMap,
+      texturedMaterial.clearcoatRoughnessMap,
+      texturedMaterial.sheenColorMap,
+      texturedMaterial.sheenRoughnessMap,
+      texturedMaterial.transmissionMap,
+      texturedMaterial.thicknessMap,
+      texturedMaterial.iridescenceMap,
+      texturedMaterial.iridescenceThicknessMap,
+      texturedMaterial.anisotropyMap
+    ]
+
+    const disposed = new Set<THREE.Texture>()
+    textures.forEach((texture) => {
+      if (!texture || disposed.has(texture)) return
+      texture.dispose()
+      disposed.add(texture)
+    })
+  }
+
   private clearMeshes(): void {
     this.instancedMeshes.forEach((mesh) => {
       this.group.remove(mesh)
       mesh.geometry.dispose()
       if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((material) => material.dispose())
+        mesh.material.forEach((material) => {
+          this.disposeMaterialTextures(material)
+          material.dispose()
+        })
       } else if (mesh.material instanceof THREE.Material) {
+        this.disposeMaterialTextures(mesh.material)
         mesh.material.dispose()
       }
     })

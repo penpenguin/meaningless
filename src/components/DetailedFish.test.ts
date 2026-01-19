@@ -224,6 +224,34 @@ describe('DetailedFishSystem variant mapping', () => {
   })
 })
 
+describe('DetailedFishSystem mesh disposal', () => {
+  test('clearMeshes disposes texture maps', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      group: THREE.Group
+    }
+
+    internals.group = new THREE.Group()
+    const geometry = new THREE.BoxGeometry(1, 1, 1)
+    const texture = new THREE.Texture()
+    const disposeSpy = vi.spyOn(texture, 'dispose')
+    const material = new THREE.MeshBasicMaterial({ map: texture })
+    const mesh = new THREE.InstancedMesh(geometry, material, 1)
+
+    internals.group.add(mesh)
+    internals.instancedMeshes = [mesh]
+
+    const clearMeshes = (DetailedFishSystem.prototype as unknown as {
+      clearMeshes: () => void
+    }).clearMeshes.bind(instance)
+
+    clearMeshes()
+
+    expect(disposeSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('DetailedFishSystem fish group application', () => {
   test('setFishGroups rebuilds meshes based on group counts', () => {
     const scene = new THREE.Scene()
