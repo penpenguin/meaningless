@@ -12,6 +12,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -22,10 +23,11 @@ body {
 }
 
 #canvas-container {
-  width: min(92vmin, 760px);
-  height: min(92vmin, 760px);
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   position: relative;
-  border-radius: 28px;
+  border-radius: 0;
   overflow: hidden;
   border: 1px solid rgba(201, 241, 255, 0.24);
   box-shadow:
@@ -221,16 +223,6 @@ body {
 }
 
 @media (max-width: 960px) {
-  body {
-    align-items: start;
-    padding-top: 5.5rem;
-  }
-
-  #canvas-container {
-    width: min(94vw, 94vh);
-    height: min(94vw, 94vh);
-  }
-
   .hud-topbar {
     right: 1rem;
     max-width: calc(100vw - 2rem);
