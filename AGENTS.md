@@ -43,8 +43,8 @@
 - `vite.config.ts` で alias や plugin を追加する際は開発・本番の両方で動作確認し、必要なら設定を README に追記。
 
 ## Active Technologies
-- TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, TailwindCSS 3.4, DaisyUI 4.6, Tweakpane 4.0, vite-plugin-glsl 1.5 (001-aquarium-editor)
-- localStorage（保存スロット/オートセーブ）、インメモリ（カレント状態） (001-aquarium-editor)
+- TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, TailwindCSS 3.4, DaisyUI 4.6, vite-plugin-glsl 1.5
+- localStorage（ゲーム保存/旧保存形式マイグレーション）、インメモリ（カレント状態）
 
 ## Recent Changes
-- 001-aquarium-editor: Added TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, TailwindCSS 3.4, DaisyUI 4.6, Tweakpane 4.0, vite-plugin-glsl 1.5
+- Removed legacy editor/store modules, unused rendering classes, stale aquarium-editor specs, and the unused `tweakpane` dependency

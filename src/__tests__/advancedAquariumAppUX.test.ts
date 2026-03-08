@@ -110,13 +110,17 @@ describe('AdvancedAquariumApp UX integration', () => {
     app.dispose()
   })
 
-  it('renders HUD overlay with coins indicator', async () => {
+  it('renders game HUD overlay with coins indicator', async () => {
     vi.useFakeTimers()
     const app = new AdvancedAquariumApp()
     await flushMicrotasks()
 
+    expect(document.querySelector('.hud-overlay')).not.toBeNull()
+    expect(document.querySelector('.editor-overlay')).toBeNull()
+
     const pearlsLabel = document.querySelector('.hud-pearls')
     expect(pearlsLabel?.textContent).toContain('Coins:')
+    expect(document.querySelector('[data-mode="tank"]')?.textContent).toBe('Tank')
 
     app.dispose()
   })

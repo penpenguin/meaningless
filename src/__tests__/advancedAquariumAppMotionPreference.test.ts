@@ -45,9 +45,13 @@ vi.mock('../components/AudioManager', () => {
   }
 })
 
-vi.mock('../components/HudOverlay', () => {
+vi.mock('../components/GameHudOverlay', () => {
   return {
-    createHudOverlay: () => document.createElement('div')
+    createGameHudOverlay: () => {
+      const overlay = document.createElement('div')
+      overlay.className = 'hud-overlay'
+      return overlay
+    }
   }
 })
 
