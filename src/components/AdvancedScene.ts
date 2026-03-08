@@ -91,6 +91,7 @@ export const applyGradientBackground = (scene: THREE.Scene, theme?: Theme): void
 }
 
 export class AdvancedAquariumScene {
+  private container: HTMLElement
   private scene: THREE.Scene
   private camera!: THREE.PerspectiveCamera
   private renderer!: THREE.WebGLRenderer
@@ -127,6 +128,7 @@ export class AdvancedAquariumScene {
   }
   
   constructor(container: HTMLElement) {
+    this.container = container
     this.scene = new THREE.Scene()
     this.clock = new THREE.Clock()
     
@@ -144,22 +146,25 @@ export class AdvancedAquariumScene {
   }
   
   private setupCamera(): void {
+    const { width, height } = this.getViewportSize()
     this.camera = new THREE.PerspectiveCamera(
-      75,  // 水槽内視点用の広角レンズ
-      window.innerWidth / window.innerHeight,
+      48,
+      width / height,
       0.1,
       1000
     )
-    this.camera.position.set(0, -2, 12)  // 高さを下げて水中下部視点
+    this.camera.position.set(0, 0.4, 18)
+    this.camera.lookAt(0, 0, 0)
   }
   
   private setupRenderer(container: HTMLElement): void {
+    const { width, height } = this.getViewportSize()
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: true,
       alpha: true,
       powerPreference: 'high-performance'
     })
-    this.renderer.setSize(window.innerWidth, window.innerHeight)
+    this.renderer.setSize(width, height)
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.2
@@ -181,26 +186,13 @@ export class AdvancedAquariumScene {
   
   private setupControls(): void {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
-    this.controls.enableDamping = true
-    this.controls.dampingFactor = 0.02
-    this.controls.minDistance = 1   // 水槽内で最小距離
-    this.controls.maxDistance = 16  // 水槽の範囲内に制限
-    this.controls.maxPolarAngle = Math.PI * 0.95  // 水槽底面まで見えるように
-    this.controls.minPolarAngle = Math.PI * 0.05  // 水面上まで見えるように
-    this.controls.enablePan = true   // 水槽内での移動を許可
+    this.controls.enableDamping = false
+    this.controls.enableRotate = false
+    this.controls.enableZoom = false
+    this.controls.enablePan = false
     this.controls.autoRotate = false
-    this.controls.autoRotateSpeed = 0.5
-    
-    // 水槽の中心を見るように設定
     this.controls.target.set(0, 0, 0)
-    
-    // パンの範囲を水槽内に制限
-    this.controls.addEventListener('change', () => {
-      const target = this.controls.target
-      target.x = Math.max(-9, Math.min(9, target.x))    // 水槽幅内
-      target.y = Math.max(-5, Math.min(2, target.y))    // 水槽高さ内
-      target.z = Math.max(-7, Math.min(7, target.z))    // 水槽奥行き内
-    })
+    this.controls.update()
   }
   
   private async init(): Promise<void> {
@@ -260,9 +252,9 @@ export class AdvancedAquariumScene {
   }
 
   private createAdvancedTank(): void {
-    const tankWidth = 22
+    const tankWidth = 14
     const tankHeight = 14
-    const tankDepth = 18
+    const tankDepth = 10
     const frameOffset = 0.2
 
     const frameGeometry = new THREE.BoxGeometry(
@@ -576,16 +568,17 @@ export class AdvancedAquariumScene {
   }
   
   public setWaterQuality(quality: 'low' | 'medium' | 'high'): void {
+    const { width, height } = this.getViewportSize()
     const pixelRatioCap = quality === 'low' ? 1 : quality === 'medium' ? 1.5 : 2
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap))
-    this.renderer.setSize(window.innerWidth, window.innerHeight)
+    this.renderer.setSize(width, height)
 
     if (this.composer) {
-      this.composer.setSize(window.innerWidth, window.innerHeight)
+      this.composer.setSize(width, height)
     }
 
     if (this.godRaysEffect) {
-      this.godRaysEffect.resize(window.innerWidth, window.innerHeight)
+      this.godRaysEffect.resize(width, height)
     }
 
     this.renderer.shadowMap.enabled = quality !== 'low'
@@ -612,17 +605,25 @@ export class AdvancedAquariumScene {
     window.addEventListener('resize', this.handleResize)
   }
 
+  private getViewportSize(): { width: number; height: number } {
+    const rect = this.container.getBoundingClientRect()
+    const width = Math.max(1, Math.floor(rect.width || this.container.clientWidth || window.innerWidth))
+    const height = Math.max(1, Math.floor(rect.height || this.container.clientHeight || window.innerHeight))
+    return { width, height }
+  }
+
   private handleResize = (): void => {
-    this.camera.aspect = window.innerWidth / window.innerHeight
+    const { width, height } = this.getViewportSize()
+    this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
-    this.renderer.setSize(window.innerWidth, window.innerHeight)
+    this.renderer.setSize(width, height)
     
     if (this.composer) {
-      this.composer.setSize(window.innerWidth, window.innerHeight)
+      this.composer.setSize(width, height)
     }
     
     if (this.godRaysEffect) {
-      this.godRaysEffect.resize(window.innerWidth, window.innerHeight)
+      this.godRaysEffect.resize(width, height)
     }
   }
 

@@ -1,32 +1,27 @@
-import { createAppStore, type AppStore } from './app/store/createAppStore'
-import { createAudioEffect } from './app/store/effects/audioEffect'
-import { createPersistenceEffect } from './app/store/effects/persistenceEffect'
-import { createToastEffect } from './app/store/effects/toastEffect'
-import { createAppStateFromPersisted } from './app/state/defaultAppState'
+import { createGameStore, type GameStore } from './game/createGameStore'
+import { createHydratedGameAppState } from './game/gameSave'
+import { createRenderStateApplier } from './game/createRenderStateApplier'
+import { loadGameSave, resolveBootGameSave, saveGameSave } from './game/storage'
 import { AdvancedAquariumScene } from './components/AdvancedScene'
 import { AudioManager } from './components/AudioManager'
-import { createHudOverlay } from './components/HudOverlay'
+import { createGameHudOverlay } from './components/GameHudOverlay'
 import { hideLoadingOverlay, showBubbleLoadingAnimation } from './utils/loadingScreen'
-import { loadProfileState, saveProfileState } from './utils/profileStorage'
-import { loadSettingsState, saveSettingsState } from './utils/settingsStorage'
-import { createSceneStateApplier } from './utils/sceneStateApplier'
+import { loadProfileState } from './utils/profileStorage'
+import { loadSettingsState } from './utils/settingsStorage'
 import { getAutoSave } from './utils/storage'
-import { loadTankState, saveTankState } from './utils/tankStorage'
-import { showToast } from './components/Toast'
-import type { SettingsState } from './types/settings'
-import type { TankState } from './types/tank'
+import { loadTankState } from './utils/tankStorage'
 
 export class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
   private audioManager: AudioManager
-  private store: AppStore
+  private store: GameStore
   private overlay: HTMLDivElement | null = null
   private storeUnsubscribe: (() => void) | null = null
   private performanceMonitor: ReturnType<typeof setInterval> | null = null
   private motionMediaQuery: MediaQueryList
   private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
   private keyHandler: ((event: KeyboardEvent) => void) | null = null
-  private lastAppliedQuality: SettingsState['quality'] | null = null
+  private lastAppliedQuality: 'low' | 'medium' | 'high' | null = null
   private advancedEffectsEnabled = true
   private stats = {
     fps: 0,
@@ -36,54 +31,31 @@ export class AdvancedAquariumApp {
   }
 
   constructor() {
-    const persistedTank = loadTankState()
-    const persistedProfile = loadProfileState()
-    const persistedSettings = loadSettingsState()
-    const legacyAutoSave =
-      !persistedTank || !persistedSettings
-        ? getAutoSave()
-        : null
-    const legacyState = legacyAutoSave?.state
-    const fallbackTank: TankState | null = legacyState
-      ? {
-          schemaVersion: 1,
-          theme: legacyState.theme,
-          fishGroups: legacyState.fishGroups
-        }
-      : null
-    const fallbackSettings = legacyState
-      ? {
-          schemaVersion: 1,
-          soundEnabled: legacyState.settings.soundEnabled,
-          motionEnabled: legacyState.settings.motionEnabled,
-          quality: 'high' as const
-        }
-      : null
+    const nowIso = new Date().toISOString()
+    const persistedGameSave = loadGameSave(nowIso)
+    const legacyTank = persistedGameSave ? null : loadTankState()
+    const legacyProfile = persistedGameSave ? null : loadProfileState()
+    const legacySettings = persistedGameSave ? null : loadSettingsState()
+    const legacyAutoSave = persistedGameSave ? null : getAutoSave()
 
     this.audioManager = new AudioManager()
     this.motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    this.store = createAppStore({
-      initialState: createAppStateFromPersisted({
-        tank: persistedTank ?? fallbackTank,
-        profile: persistedProfile,
-        settings: persistedSettings ?? fallbackSettings
+    this.store = createGameStore({
+      initialState: createHydratedGameAppState({
+        save: resolveBootGameSave({
+          nowIso,
+          persistedGameSave,
+          legacyTank,
+          legacyProfile,
+          legacySettings,
+          legacyAutoSave
+        }),
+        nowIso
       }),
-      effects: [
-        createPersistenceEffect({
-          saveTank: saveTankState,
-          saveProfile: saveProfileState,
-          saveSettings: saveSettingsState
-        }),
-        createAudioEffect({
-          playUnlockSound: () => this.audioManager.playBubbleSound()
-        }),
-        createToastEffect({
-          showToast
-        })
-      ]
+      onGameStateChange: saveGameSave
     })
 
-    if (!persistedSettings && !fallbackSettings && this.motionMediaQuery.matches) {
+    if (!persistedGameSave && !legacySettings && this.motionMediaQuery.matches) {
       this.store.dispatch({
         type: 'SETTINGS/SET_MOTION',
         payload: { enabled: false }
@@ -125,11 +97,11 @@ export class AdvancedAquariumApp {
     if (this.overlay) {
       this.overlay.remove()
     }
-    this.overlay = createHudOverlay({ store: this.store })
+    this.overlay = createGameHudOverlay({ store: this.store })
     document.body.appendChild(this.overlay)
   }
 
-  private applyQualitySettings(quality: SettingsState['quality']): void {
+  private applyQualitySettings(quality: 'low' | 'medium' | 'high'): void {
     if (!this.scene) return
     if (this.lastAppliedQuality === quality) return
     this.lastAppliedQuality = quality
@@ -143,14 +115,14 @@ export class AdvancedAquariumApp {
     }
     const scene = this.scene
     if (!scene) return
-    const applySceneState = createSceneStateApplier({
+    const applySceneState = createRenderStateApplier({
       scene,
       audioManager: this.audioManager
     })
 
     this.storeUnsubscribe = this.store.subscribe(({ state }) => {
       applySceneState(state)
-      this.applyQualitySettings(state.settings.quality)
+      this.applyQualitySettings(state.game.profile.preferences.quality)
       scene.setAdvancedEffects(this.advancedEffectsEnabled)
     })
   }
@@ -169,7 +141,7 @@ export class AdvancedAquariumApp {
       if (event.key !== 'Escape') return
       this.store.dispatch({
         type: 'UI/SET_MODE',
-        payload: { mode: 'view' }
+        payload: { mode: 'tank' }
       })
     }
     window.addEventListener('keydown', this.keyHandler)
@@ -198,7 +170,7 @@ export class AdvancedAquariumApp {
       return
     }
 
-    const quality = this.store.getState().settings.quality
+    const quality = this.store.getState().game.profile.preferences.quality
     if (quality === 'high') {
       this.store.dispatch({
         type: 'SETTINGS/SET_QUALITY',
