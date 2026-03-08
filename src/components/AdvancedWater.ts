@@ -32,9 +32,7 @@ export class AdvancedWaterSurface {
     this.waterMesh.position.y = y
     this.waterMesh.receiveShadow = true
     this.waterMesh.castShadow = false // Water doesn't cast shadows
-    
-    console.log(`Water surface created at position y=${y}, size=${width}x${depth}`)
-    
+
     scene.add(this.waterMesh)
   }
   

@@ -222,6 +222,29 @@ describe('DetailedFishSystem variant mapping', () => {
 
     expect(scale.x).toBeCloseTo(1.96, 2)
   })
+
+  test('resolveVariantIndex follows species archetype mapping', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      variants: Array<{ name: string }>
+    }
+
+    internals.variants = [
+      { name: 'Tropical' },
+      { name: 'Angelfish' },
+      { name: 'Neon' },
+      { name: 'Goldfish' }
+    ]
+
+    const resolveVariantIndex = (DetailedFishSystem.prototype as unknown as {
+      resolveVariantIndex: (speciesId: string) => number
+    }).resolveVariantIndex.bind(instance)
+
+    expect(resolveVariantIndex('clownfish')).toBe(0)
+    expect(resolveVariantIndex('angelfish')).toBe(1)
+    expect(resolveVariantIndex('cardinal-tetra')).toBe(2)
+    expect(resolveVariantIndex('goldfish')).toBe(3)
+  })
 })
 
 describe('DetailedFishSystem mesh disposal', () => {

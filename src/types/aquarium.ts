@@ -43,6 +43,20 @@ export type Species = {
   visualRef: string
   size: number
   colorVariants: string[]
+  unlock: SpeciesUnlockRule
+  render: SpeciesRenderConfig
+}
+
+export type SpeciesUnlockRule = {
+  type: 'starter' | 'cost' | 'watchTime' | 'costAndWatchTime'
+  costPearls?: number
+  requiredViewSeconds?: number
+}
+
+export type SpeciesArchetype = 'Tropical' | 'Angelfish' | 'Neon' | 'Goldfish'
+
+export type SpeciesRenderConfig = {
+  archetype: SpeciesArchetype
 }
 
 export type SaveSlot = {

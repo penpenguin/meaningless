@@ -132,25 +132,19 @@ export class AdvancedFishSystem {
   
   private initializeFishSystem(): void {
     let fishAllocated = 0
-    
-    console.log(`Initializing fish system with ${this.totalFishCount} total fish`)
-    
+
     this.variants.forEach(variant => {
       const schoolCount = Math.ceil(this.totalFishCount * 0.2 / this.variants.length)
       const fishPerSchool = variant.schoolSize
       const totalFishForVariant = Math.min(schoolCount * fishPerSchool, this.totalFishCount - fishAllocated)
       
       if (totalFishForVariant <= 0) return
-      
-      console.log(`Creating ${totalFishForVariant} fish of type ${variant.name}`)
-      
+
       // Use instanced rendering for all fish types
       this.createInstancedFishGroup(variant, totalFishForVariant)
       
       fishAllocated += totalFishForVariant
     })
-    
-    console.log(`Fish system initialized with ${fishAllocated} fish total`)
   }
   
   
@@ -391,8 +385,6 @@ export class AdvancedFishSystem {
       boids.update()
     })
     
-    // Spline fish removed - using instanced fish only
-    
     // Update LOD and instance matrices
     this.updateLOD()
     
@@ -438,7 +430,5 @@ export class AdvancedFishSystem {
         }
       })
     })
-    
-    // Spline fish removed
   }
 }

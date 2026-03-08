@@ -1,37 +1,49 @@
-import type { AquariumState } from '../types/aquarium'
+import type { AppState } from '../types/app'
 import { areFishGroupsEqual } from './fishGroups'
 
 type SceneStateApplierOptions = {
   scene: {
-    applyTheme: (theme: AquariumState['theme']) => void
-    applyFishGroups: (groups: AquariumState['fishGroups']) => boolean
+    applyTheme: (theme: AppState['tank']['theme']) => void
+    applyFishGroups: (groups: AppState['tank']['fishGroups']) => boolean
     setMotionEnabled: (enabled: boolean) => void
   }
   audioManager: {
     setEnabled: (enabled: boolean) => void
   }
-  settings: {
-    motion: boolean
-    sound: boolean
-  }
 }
 
 export const createSceneStateApplier = (options: SceneStateApplierOptions) => {
-  let lastFishGroups: AquariumState['fishGroups'] | null = null
+  let lastTheme: AppState['tank']['theme'] | null = null
+  let lastFishGroups: AppState['tank']['fishGroups'] | null = null
 
-  return (state: AquariumState): void => {
-    options.scene.applyTheme(state.theme)
+  const isSameTheme = (
+    left: AppState['tank']['theme'],
+    right: AppState['tank']['theme']
+  ): boolean => {
+    return (
+      left.glassFrameStrength === right.glassFrameStrength &&
+      left.waterTint === right.waterTint &&
+      left.fogDensity === right.fogDensity &&
+      left.particleDensity === right.particleDensity &&
+      left.waveStrength === right.waveStrength &&
+      left.waveSpeed === right.waveSpeed
+    )
+  }
 
-    if (!lastFishGroups || !areFishGroupsEqual(lastFishGroups, state.fishGroups)) {
-      const applied = options.scene.applyFishGroups(state.fishGroups)
+  return (state: AppState): void => {
+    if (!lastTheme || !isSameTheme(lastTheme, state.tank.theme)) {
+      options.scene.applyTheme(state.tank.theme)
+      lastTheme = state.tank.theme
+    }
+
+    if (!lastFishGroups || !areFishGroupsEqual(lastFishGroups, state.tank.fishGroups)) {
+      const applied = options.scene.applyFishGroups(state.tank.fishGroups)
       if (applied) {
-        lastFishGroups = state.fishGroups
+        lastFishGroups = state.tank.fishGroups
       }
     }
 
     options.scene.setMotionEnabled(state.settings.motionEnabled)
     options.audioManager.setEnabled(state.settings.soundEnabled)
-    options.settings.motion = state.settings.motionEnabled
-    options.settings.sound = state.settings.soundEnabled
   }
 }

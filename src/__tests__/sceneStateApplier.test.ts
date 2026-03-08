@@ -1,27 +1,57 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDefaultState } from '../utils/stateSchema'
+import { createDefaultAppState } from '../app/state/defaultAppState'
 import { createSceneStateApplier } from '../utils/sceneStateApplier'
 
 describe('createSceneStateApplier', () => {
-  it('skips applyFishGroups when groups are unchanged', () => {
-    const state = createDefaultState()
+  it('skips applyTheme when only profile changes', () => {
+    const state = createDefaultAppState()
     const scene = {
       applyTheme: vi.fn(),
       applyFishGroups: vi.fn().mockReturnValue(true),
       setMotionEnabled: vi.fn()
     }
     const audioManager = { setEnabled: vi.fn() }
-    const settings = { motion: false, sound: false }
 
-    const applySceneState = createSceneStateApplier({ scene, audioManager, settings })
+    const applySceneState = createSceneStateApplier({ scene, audioManager })
+
+    applySceneState(state)
+
+    applySceneState({
+      ...state,
+      profile: {
+        ...state.profile,
+        stats: {
+          ...state.profile.stats,
+          totalViewSeconds: state.profile.stats.totalViewSeconds + 1
+        }
+      }
+    })
+
+    expect(scene.applyTheme).toHaveBeenCalledTimes(1)
+    expect(scene.applyFishGroups).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips applyFishGroups when groups are unchanged', () => {
+    const state = createDefaultAppState()
+    const scene = {
+      applyTheme: vi.fn(),
+      applyFishGroups: vi.fn().mockReturnValue(true),
+      setMotionEnabled: vi.fn()
+    }
+    const audioManager = { setEnabled: vi.fn() }
+
+    const applySceneState = createSceneStateApplier({ scene, audioManager })
 
     applySceneState(state)
 
     const nextState = {
       ...state,
-      theme: {
-        ...state.theme,
-        fogDensity: state.theme.fogDensity + 0.1
+      tank: {
+        ...state.tank,
+        theme: {
+          ...state.tank.theme,
+          fogDensity: state.tank.theme.fogDensity + 0.1
+        }
       }
     }
 
@@ -32,29 +62,31 @@ describe('createSceneStateApplier', () => {
   })
 
   it('applies fish groups when they change', () => {
-    const state = createDefaultState()
+    const state = createDefaultAppState()
     const scene = {
       applyTheme: vi.fn(),
       applyFishGroups: vi.fn().mockReturnValue(true),
       setMotionEnabled: vi.fn()
     }
     const audioManager = { setEnabled: vi.fn() }
-    const settings = { motion: false, sound: false }
 
-    const applySceneState = createSceneStateApplier({ scene, audioManager, settings })
+    const applySceneState = createSceneStateApplier({ scene, audioManager })
 
     applySceneState(state)
 
     applySceneState({
       ...state,
-      fishGroups: [...state.fishGroups, { speciesId: 'test-fish', count: 1 }]
+      tank: {
+        ...state.tank,
+        fishGroups: [...state.tank.fishGroups, { speciesId: 'clownfish', count: 1 }]
+      }
     })
 
     expect(scene.applyFishGroups).toHaveBeenCalledTimes(2)
   })
 
   it('retries fish groups when the scene is not ready', () => {
-    const state = createDefaultState()
+    const state = createDefaultAppState()
     const scene = {
       applyTheme: vi.fn(),
       applyFishGroups: vi.fn()
@@ -63,17 +95,19 @@ describe('createSceneStateApplier', () => {
       setMotionEnabled: vi.fn()
     }
     const audioManager = { setEnabled: vi.fn() }
-    const settings = { motion: false, sound: false }
 
-    const applySceneState = createSceneStateApplier({ scene, audioManager, settings })
+    const applySceneState = createSceneStateApplier({ scene, audioManager })
 
     applySceneState(state)
 
     applySceneState({
       ...state,
-      theme: {
-        ...state.theme,
-        fogDensity: state.theme.fogDensity + 0.05
+      tank: {
+        ...state.tank,
+        theme: {
+          ...state.tank.theme,
+          fogDensity: state.tank.theme.fogDensity + 0.05
+        }
       }
     })
 

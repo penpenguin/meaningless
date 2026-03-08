@@ -97,3 +97,31 @@ describe('AdvancedAquariumScene disposal', () => {
     expect(scene.children.length).toBe(0)
   })
 })
+
+describe('AdvancedAquariumScene performance stats', () => {
+  it('reads fishVisible from fish system instead of using a fixed value', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      fishSystem: { getVisibleFishCount: () => number } | null
+      stats: { fps: number; frameTime: number; fishVisible: number; drawCalls: number }
+    }
+
+    internals.fishSystem = {
+      getVisibleFishCount: () => 24
+    }
+    internals.stats = {
+      fps: 0,
+      frameTime: 0,
+      fishVisible: 0,
+      drawCalls: 0
+    }
+
+    const syncFishVisibleStat = (AdvancedAquariumScene.prototype as unknown as {
+      syncFishVisibleStat: () => void
+    }).syncFishVisibleStat.bind(instance)
+
+    syncFishVisibleStat()
+
+    expect(internals.stats.fishVisible).toBe(24)
+  })
+})

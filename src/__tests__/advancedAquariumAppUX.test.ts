@@ -1,36 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdvancedAquariumApp } from '../AdvancedAquariumApp'
 
-let lastSetMotionEnabled: ReturnType<typeof vi.fn> | null = null
-
 vi.mock('../components/AdvancedScene', () => {
   return {
     AdvancedAquariumScene: class {
-      setMotionEnabled: ReturnType<typeof vi.fn>
-      setAdvancedEffects: ReturnType<typeof vi.fn>
-      setWaterQuality: ReturnType<typeof vi.fn>
-      applyTheme: ReturnType<typeof vi.fn>
-      applyFishGroups: ReturnType<typeof vi.fn>
-      start: ReturnType<typeof vi.fn>
-      dispose: ReturnType<typeof vi.fn>
-      getPerformanceStats: ReturnType<typeof vi.fn>
-
-      constructor() {
-        this.setMotionEnabled = vi.fn()
-        this.setAdvancedEffects = vi.fn()
-        this.setWaterQuality = vi.fn()
-        this.applyTheme = vi.fn()
-        this.applyFishGroups = vi.fn(() => true)
-        this.start = vi.fn()
-        this.dispose = vi.fn()
-        this.getPerformanceStats = vi.fn(() => ({
-          fps: 60,
-          frameTime: 16,
-          fishVisible: 0,
-          drawCalls: 0
-        }))
-        lastSetMotionEnabled = this.setMotionEnabled
-      }
+      setMotionEnabled = vi.fn()
+      setAdvancedEffects = vi.fn()
+      setWaterQuality = vi.fn()
+      applyTheme = vi.fn()
+      applyFishGroups = vi.fn(() => true)
+      start = vi.fn()
+      dispose = vi.fn()
+      getPerformanceStats = vi.fn(() => ({
+        fps: 60,
+        frameTime: 16,
+        fishVisible: 0,
+        drawCalls: 0
+      }))
     }
   }
 })
@@ -42,12 +28,6 @@ vi.mock('../components/AudioManager', () => {
       playBubbleSound = vi.fn()
       dispose = vi.fn()
     }
-  }
-})
-
-vi.mock('../components/HudOverlay', () => {
-  return {
-    createHudOverlay: () => document.createElement('div')
   }
 })
 
@@ -91,16 +71,15 @@ const flushMicrotasks = async (): Promise<void> => {
   await Promise.resolve()
 }
 
-describe('AdvancedAquariumApp reduced motion startup', () => {
+describe('AdvancedAquariumApp UX integration', () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="canvas-container"></div>
       <div id="loading-screen"></div>
       <div id="lottie-bubbles"></div>
     `
-    lastSetMotionEnabled = null
     const mediaQueryList = {
-      matches: true,
+      matches: false,
       media: '',
       onchange: null,
       addListener: vi.fn(),
@@ -116,16 +95,28 @@ describe('AdvancedAquariumApp reduced motion startup', () => {
     vi.useRealTimers()
   })
 
-  it('keeps motion disabled when prefers-reduced-motion matches on first launch', async () => {
+  it('starts hiding the loading screen immediately after init completes', async () => {
     vi.useFakeTimers()
     const app = new AdvancedAquariumApp()
 
+    const loadingScreen = document.getElementById('loading-screen') as HTMLDivElement
     await flushMicrotasks()
 
-    expect(lastSetMotionEnabled).not.toBeNull()
-    const calls = lastSetMotionEnabled?.mock.calls ?? []
-    expect(calls.some(([value]) => value === true)).toBe(false)
-    expect(calls.some(([value]) => value === false)).toBe(true)
+    expect(loadingScreen.style.opacity).toBe('0')
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(loadingScreen.style.display).toBe('none')
+
+    app.dispose()
+  })
+
+  it('renders HUD overlay with pearls indicator', async () => {
+    vi.useFakeTimers()
+    const app = new AdvancedAquariumApp()
+    await flushMicrotasks()
+
+    const pearlsLabel = document.querySelector('.hud-pearls')
+    expect(pearlsLabel?.textContent).toContain('Pearls:')
 
     app.dispose()
   })

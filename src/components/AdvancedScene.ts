@@ -2,7 +2,6 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { DetailedFishSystem } from './DetailedFish'
 import type { FishGroup, Theme } from '../types/aquarium'
-// import { AdvancedWaterSurface } from './AdvancedWater'
 import { EnhancedParticleSystem } from './EnhancedParticles'
 import { EnvironmentLoader } from './Environment'
 import { AquascapingSystem } from './Aquascaping'
@@ -12,6 +11,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { defaultTheme } from '../utils/stateSchema'
 import { disposeSceneResources } from '../utils/threeDisposal'
+import { createOpenWaterBounds } from './sceneBounds'
 
 interface PerformanceStats {
   fps: number
@@ -102,7 +102,6 @@ export class AdvancedAquariumScene {
   // Advanced components
   private fishSystem: DetailedFishSystem | null = null
   private pendingFishGroups: FishGroup[] | null = null
-  // private waterSurface: AdvancedWaterSurface | null = null
   private particleSystem: EnhancedParticleSystem | null = null
   private aquascaping: AquascapingSystem | null = null
   private spiralDecorations: SpiralDecorations | null = null
@@ -264,28 +263,12 @@ export class AdvancedAquariumScene {
     const tankWidth = 22
     const tankHeight = 14
     const tankDepth = 18
-    const glassThickness = 0.12
-    
-    // const envMap = this.environmentLoader.getEnvironmentMap()
-    
-    // Invisible glass material for water tank walls
-    /* const glassMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      metalness: 0,
-      roughness: 0.01,
-      transmission: 1.0,
-      thickness: 0,
-      transparent: true,
-      opacity: 0.0,  // 完全に透明
-      visible: false, // レンダリングしない
-      side: THREE.DoubleSide
-    }) */
-    
-    // Invisible tank frame
+    const frameOffset = 0.2
+
     const frameGeometry = new THREE.BoxGeometry(
-      tankWidth + 0.2, 
-      tankHeight + 0.2, 
-      tankDepth + 0.2,
+      tankWidth + frameOffset,
+      tankHeight + frameOffset,
+      tankDepth + frameOffset,
       1, 1, 1
     )
     const frameMaterial = new THREE.MeshStandardMaterial({
@@ -293,29 +276,16 @@ export class AdvancedAquariumScene {
       metalness: 0.8,
       roughness: 0.2,
       transparent: true,
-      opacity: 0.0,  // 完全に透明
-      visible: false  // レンダリングしない
+      opacity: 0.0,
+      visible: false
     })
     const frameMesh = new THREE.Mesh(frameGeometry, frameMaterial)
     this.tank.add(frameMesh)
-    
-    // Glass panels completely removed for open water environment
-    // const glassGeometry = new THREE.BoxGeometry(
-    //   tankWidth, 
-    //   tankHeight, 
-    //   tankDepth,
-    //   1, 1, 1
-    // )
-    // const glassMesh = new THREE.Mesh(glassGeometry, glassMaterial)
-    // glassMesh.castShadow = false
-    // glassMesh.receiveShadow = true
-    // this.tank.add(glassMesh)
-    
-    // Substrate layers
-    this.createSubstrate(tankWidth, tankHeight, tankDepth, glassThickness)
+
+    this.createSubstrate(tankWidth, tankHeight, tankDepth)
   }
   
-  private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number, _glassThickness: number): void {
+  private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number): void {
     // 円形床の半径を計算（幅と奥行きの小さい方を基準）
     const radius = Math.min(tankWidth, tankDepth) / 2 + 1.5
     
@@ -400,22 +370,19 @@ export class AdvancedAquariumScene {
     sandGeometry.attributes.position.needsUpdate = true
     sandGeometry.computeVertexNormals()
     
-    // リアルな砂のテクスチャを生成
     const sandTexture = this.createSandTexture()
-    // const sandNormalMap = this.createSandNormalMap()
     
     const sandMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
-      color: 0xF7E8D5,  // #f7e8d5に近い色
-      roughness: 0.8,   // 砂らしいざらつき
+      color: 0xF7E8D5,
+      roughness: 0.8,
       metalness: 0,
       transparent: false,
       side: THREE.DoubleSide
-      // 法線マップは削除 - 実際のジオメトリ凸凹を使用
     })
     
     const sandMesh = new THREE.Mesh(sandGeometry, sandMaterial)
-    sandMesh.position.y = -tankHeight / 2 + 0.42  // ベース層より少し上
+    sandMesh.position.y = -tankHeight / 2 + 0.42
     sandMesh.receiveShadow = true
     sandMesh.castShadow = false
     this.tank.add(sandMesh)
@@ -427,19 +394,16 @@ export class AdvancedAquariumScene {
     canvas.height = 512
     const ctx = canvas.getContext('2d')!
     
-    // ベース色を#f7e8d5に近い色
-    ctx.fillStyle = '#F7E8D5'  // 指定された色
+    ctx.fillStyle = '#F7E8D5'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
-    // #f7e8d5系の砂粒テクスチャ
     for (let i = 0; i < 2000; i++) {
       const x = Math.random() * canvas.width
       const y = Math.random() * canvas.height
       const size = Math.random() * 3 + 1
       
-      // #f7e8d5に近い色調（オレンジ系のベージュ）
-      const hue = 30 + Math.random() * 10    // オレンジ～黄色系
-      const saturation = 15 + Math.random() * 10  // 低い彩度
+      const hue = 30 + Math.random() * 10
+      const saturation = 15 + Math.random() * 10
       const brightness = 0.85 + Math.random() * 0.15
       ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${brightness * 100}%)`
       
@@ -448,7 +412,6 @@ export class AdvancedAquariumScene {
       ctx.fill()
     }
     
-    // 大きめの砂粒
     for (let i = 0; i < 300; i++) {
       const x = Math.random() * canvas.width
       const y = Math.random() * canvas.height
@@ -472,63 +435,17 @@ export class AdvancedAquariumScene {
     return texture
   }
 
-  // Unused - kept for reference
-  /*
-  private createSandNormalMap(): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 512
-    const ctx = canvas.getContext('2d')!
-    
-    // ベース法線色（中性）
-    ctx.fillStyle = '#8080ff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // 砂粒の凸凹
-    for (let i = 0; i < 1500; i++) {
-      const x = Math.random() * canvas.width
-      const y = Math.random() * canvas.height
-      const size = Math.random() * 4 + 1
-      
-      // 凸部分（明るい青）
-      ctx.fillStyle = '#a0a0ff'
-      ctx.beginPath()
-      ctx.arc(x, y, size, 0, Math.PI * 2)
-      ctx.fill()
-      
-      // 影部分（暗い青）
-      ctx.fillStyle = '#6060ff'
-      ctx.beginPath()
-      ctx.arc(x + size * 0.3, y + size * 0.3, size * 0.5, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(4, 4)
-    
-    return texture
-  }
-  */
-  
   private createSpiralDecorations(): void {
     this.spiralDecorations = new SpiralDecorations(this.scene)
   }
   
   private createAquascaping(): void {
-    const tankBounds = new THREE.Box3(
-      new THREE.Vector3(-10.5, -6.0, -8.5),  // 統一された境界
-      new THREE.Vector3(10.5, 8.0, 8.5)     // 上限を拡張（水面制限なし）
-    )
+    const tankBounds = createOpenWaterBounds()
     this.aquascaping = new AquascapingSystem(this.scene, tankBounds)
   }
 
   private createAdvancedFishSystem(): void {
-    const tankBounds = new THREE.Box3(
-      new THREE.Vector3(-10.5, -6.0, -8.5),  // 魚の範囲を拡張
-      new THREE.Vector3(10.5, 8.0, 8.5)     // 上限を拡張（水面制限なし）
-    )
+    const tankBounds = createOpenWaterBounds()
     this.fishSystem = new DetailedFishSystem(this.scene, tankBounds)
     if (this.pendingFishGroups) {
       this.fishSystem.setFishGroups(this.pendingFishGroups)
@@ -537,19 +454,7 @@ export class AdvancedAquariumScene {
   }
 
   private createAdvancedWaterEffects(): void {
-    // Water surface removed for open water environment
-    // this.waterSurface = new AdvancedWaterSurface(this.scene, 22, 18, 3.5)
-    // 
-    // // Set environment map for realistic water reflections
-    // const envMap = this.environmentLoader.getEnvironmentMap()
-    // if (envMap && this.waterSurface) {
-    //   this.waterSurface.setEnvironmentMap(envMap)
-    // }
-    
-    const tankBounds = new THREE.Box3(
-      new THREE.Vector3(-10.5, -6.0, -8.5),  // 開放された水中環境
-      new THREE.Vector3(10.5, 8.0, 8.5)     // 上限を拡張（水面制限なし）
-    )
+    const tankBounds = createOpenWaterBounds()
     this.particleSystem = new EnhancedParticleSystem(this.scene, tankBounds)
   }
   
@@ -580,14 +485,8 @@ export class AdvancedAquariumScene {
     if (this.motionEnabled) {
       if (this.fishSystem) {
         this.fishSystem.update(deltaTime, elapsedTime)
-        // DetailedFishSystem doesn't have getRenderStats, use fixed count
-        this.stats.fishVisible = 60
       }
-      
-      // Water surface removed
-      // if (this.waterSurface) {
-      //   this.waterSurface.update(deltaTime)
-      // }
+      this.syncFishVisibleStat()
       
       if (this.particleSystem) {
         this.particleSystem.update(elapsedTime)
@@ -612,6 +511,14 @@ export class AdvancedAquariumScene {
     
     // Update performance stats
     this.updatePerformanceStats(startTime)
+  }
+
+  private syncFishVisibleStat(): void {
+    if (!this.fishSystem) {
+      this.stats.fishVisible = 0
+      return
+    }
+    this.stats.fishVisible = this.fishSystem.getVisibleFishCount()
   }
   
   private updatePerformanceStats(startTime: number): void {

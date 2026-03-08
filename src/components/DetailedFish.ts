@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BoidsSystem } from '../utils/Boids'
 import type { FishGroup, Tuning } from '../types/aquarium'
+import { getSpeciesOrFallback } from '../utils/speciesCatalog'
 
 interface FishVariant {
   name: string
@@ -327,24 +328,13 @@ export class DetailedFishSystem {
   }
 
   private resolveVariantIndex(speciesId: string): number {
-    const normalized = speciesId.toLowerCase()
-    const directMatch = this.variants.findIndex((variant) =>
-      normalized.includes(variant.name.toLowerCase())
-    )
-    if (directMatch >= 0) return directMatch
-    if (normalized.includes('neon')) {
-      return this.safeVariantIndex('neon')
-    }
-    if (normalized.includes('clown')) {
-      return this.safeVariantIndex('tropical')
-    }
-    if (normalized.includes('angel')) {
-      return this.safeVariantIndex('angelfish')
-    }
-    if (normalized.includes('gold')) {
-      return this.safeVariantIndex('goldfish')
-    }
-    return 0
+    const species = getSpeciesOrFallback(speciesId)
+    const archetype = species.render.archetype
+    if (archetype === 'Neon') return this.safeVariantIndex('neon')
+    if (archetype === 'Tropical') return this.safeVariantIndex('tropical')
+    if (archetype === 'Angelfish') return this.safeVariantIndex('angelfish')
+    if (archetype === 'Goldfish') return this.safeVariantIndex('goldfish')
+    return this.safeVariantIndex('neon')
   }
 
   private safeVariantIndex(name: string): number {
@@ -611,6 +601,10 @@ export class DetailedFishSystem {
       
       mesh.instanceMatrix.needsUpdate = true
     })
+  }
+
+  getVisibleFishCount(): number {
+    return this.instancedMeshes.reduce((count, mesh) => count + mesh.count, 0)
   }
   
   setMotionEnabled(enabled: boolean): void {

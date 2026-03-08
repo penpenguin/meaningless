@@ -1,11 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FishGroup } from '../types/aquarium'
+import type { ProfileState } from '../types/profile'
+import type { SettingsState } from '../types/settings'
+import type { TankState } from '../types/tank'
 import { AdvancedAquariumApp } from '../AdvancedAquariumApp'
-import { createState } from './fixtures/aquariumState'
 
 let lastApplyFishGroups: ReturnType<typeof vi.fn> | null = null
 let lastSetMotionEnabled: ReturnType<typeof vi.fn> | null = null
 let lastSetAudioEnabled: ReturnType<typeof vi.fn> | null = null
+
+let persistedTank: TankState | null = null
+let persistedProfile: ProfileState | null = null
+let persistedSettings: SettingsState | null = null
+let legacyAutoSave: {
+  updatedAt: string
+  state: {
+    schemaVersion: number
+    theme: TankState['theme']
+    fishGroups: FishGroup[]
+    settings: {
+      soundEnabled: boolean
+      motionEnabled: boolean
+    }
+  }
+} | null = null
 
 vi.mock('../components/AdvancedScene', () => {
   return {
@@ -44,6 +62,7 @@ vi.mock('../components/AudioManager', () => {
   return {
     AudioManager: class {
       setEnabled = vi.fn()
+      playBubbleSound = vi.fn()
       dispose = vi.fn()
 
       constructor() {
@@ -53,15 +72,36 @@ vi.mock('../components/AudioManager', () => {
   }
 })
 
-vi.mock('../components/EditorOverlay', () => {
+vi.mock('../components/HudOverlay', () => {
   return {
-    createEditorOverlay: () => document.createElement('div')
+    createHudOverlay: () => document.createElement('div')
   }
 })
 
-vi.mock('../utils/autosave', () => {
+vi.mock('../utils/tankStorage', () => {
   return {
-    setupAutosaveOnEditEnd: () => () => {}
+    loadTankState: () => persistedTank,
+    saveTankState: vi.fn()
+  }
+})
+
+vi.mock('../utils/profileStorage', () => {
+  return {
+    loadProfileState: () => persistedProfile,
+    saveProfileState: vi.fn()
+  }
+})
+
+vi.mock('../utils/settingsStorage', () => {
+  return {
+    loadSettingsState: () => persistedSettings,
+    saveSettingsState: vi.fn()
+  }
+})
+
+vi.mock('../utils/storage', () => {
+  return {
+    getAutoSave: () => legacyAutoSave
   }
 })
 
@@ -73,34 +113,27 @@ vi.mock('lottie-web', () => {
   }
 })
 
-vi.mock('tweakpane', () => {
-  return {
-    Pane: class {
-      addFolder() {
-        return {
-          addBinding: () => ({
-            on: vi.fn()
-          })
-        }
-      }
-      refresh() {}
-      dispose() {}
-    }
-  }
-})
+const flushMicrotasks = async (): Promise<void> => {
+  await Promise.resolve()
+  await Promise.resolve()
+}
 
-describe('autosave hydration on startup', () => {
+describe('storage hydration on startup', () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="canvas-container"></div>
-      <div id="tweakpane-container"></div>
       <div id="loading-screen"></div>
       <div id="lottie-bubbles"></div>
     `
-    localStorage.clear()
     lastApplyFishGroups = null
     lastSetMotionEnabled = null
     lastSetAudioEnabled = null
+
+    persistedTank = null
+    persistedProfile = null
+    persistedSettings = null
+    legacyAutoSave = null
+
     const mediaQueryList = {
       matches: false,
       media: '',
@@ -118,48 +151,39 @@ describe('autosave hydration on startup', () => {
     vi.useRealTimers()
   })
 
-  it('applies autosaved fish groups when available', async () => {
+  it('hydrates from legacy autosave when split slices are missing', async () => {
     vi.useFakeTimers()
-    const fishGroups: FishGroup[] = [{ speciesId: 'test-fish', count: 3 }]
-    const state = createState({ fishGroups })
-    localStorage.setItem(
-      'aquarium:autosave',
-      JSON.stringify({ updatedAt: new Date().toISOString(), state })
-    )
+    legacyAutoSave = {
+      updatedAt: new Date().toISOString(),
+      state: {
+        schemaVersion: 1,
+        theme: {
+          glassFrameStrength: 0.6,
+          waterTint: '#0e3d4e',
+          fogDensity: 0.4,
+          particleDensity: 0.4,
+          waveStrength: 0.7,
+          waveSpeed: 0.8
+        },
+        fishGroups: [{ speciesId: 'clownfish', count: 3 }],
+        settings: {
+          soundEnabled: true,
+          motionEnabled: false
+        }
+      }
+    }
 
     const app = new AdvancedAquariumApp()
-
-    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
 
     expect(lastApplyFishGroups).not.toBeNull()
-    const calls = lastApplyFishGroups?.mock.calls ?? []
-    const hasAutosaveGroups = calls.some(
-      ([groups]) => Array.isArray(groups) && groups.length === 1 && groups[0].speciesId === 'test-fish'
-    )
-    expect(hasAutosaveGroups).toBe(true)
+    const fishCalls = lastApplyFishGroups?.mock.calls ?? []
+    expect(
+      fishCalls.some(
+        ([groups]) => Array.isArray(groups) && groups[0]?.speciesId === 'clownfish'
+      )
+    ).toBe(true)
 
-    app.dispose()
-  })
-
-  it('preserves autosaved settings over defaults', async () => {
-    vi.useFakeTimers()
-    const state = createState({
-      settings: {
-        soundEnabled: true,
-        motionEnabled: false
-      }
-    })
-    localStorage.setItem(
-      'aquarium:autosave',
-      JSON.stringify({ updatedAt: new Date().toISOString(), state })
-    )
-
-    const app = new AdvancedAquariumApp()
-
-    await vi.advanceTimersByTimeAsync(1000)
-
-    expect(lastSetMotionEnabled).not.toBeNull()
-    expect(lastSetAudioEnabled).not.toBeNull()
     const motionCalls = lastSetMotionEnabled?.mock.calls ?? []
     const audioCalls = lastSetAudioEnabled?.mock.calls ?? []
     expect(motionCalls.some(([value]) => value === false)).toBe(true)
@@ -168,37 +192,59 @@ describe('autosave hydration on startup', () => {
     app.dispose()
   })
 
-  it('respects prefers-reduced-motion even with autosave', async () => {
+  it('prefers split storage over legacy autosave when both exist', async () => {
     vi.useFakeTimers()
-    const mediaQueryList = {
-      matches: true,
-      media: '',
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
-    } as MediaQueryList
-    window.matchMedia = vi.fn(() => mediaQueryList) as unknown as typeof window.matchMedia
-    const state = createState({
-      settings: {
-        soundEnabled: true,
-        motionEnabled: true
+
+    persistedTank = {
+      schemaVersion: 1,
+      theme: {
+        glassFrameStrength: 0.6,
+        waterTint: '#0e3d4e',
+        fogDensity: 0.4,
+        particleDensity: 0.4,
+        waveStrength: 0.7,
+        waveSpeed: 0.8
+      },
+      fishGroups: [{ speciesId: 'angelfish', count: 2 }]
+    }
+    persistedSettings = {
+      schemaVersion: 1,
+      soundEnabled: false,
+      motionEnabled: true,
+      quality: 'high'
+    }
+    legacyAutoSave = {
+      updatedAt: new Date().toISOString(),
+      state: {
+        schemaVersion: 1,
+        theme: persistedTank.theme,
+        fishGroups: [{ speciesId: 'clownfish', count: 9 }],
+        settings: {
+          soundEnabled: true,
+          motionEnabled: false
+        }
       }
-    })
-    localStorage.setItem(
-      'aquarium:autosave',
-      JSON.stringify({ updatedAt: new Date().toISOString(), state })
-    )
+    }
 
     const app = new AdvancedAquariumApp()
+    await flushMicrotasks()
 
-    await vi.advanceTimersByTimeAsync(1000)
+    const fishCalls = lastApplyFishGroups?.mock.calls ?? []
+    expect(
+      fishCalls.some(
+        ([groups]) => Array.isArray(groups) && groups[0]?.speciesId === 'angelfish'
+      )
+    ).toBe(true)
+    expect(
+      fishCalls.some(
+        ([groups]) => Array.isArray(groups) && groups[0]?.speciesId === 'clownfish'
+      )
+    ).toBe(false)
 
-    expect(lastSetMotionEnabled).not.toBeNull()
     const motionCalls = lastSetMotionEnabled?.mock.calls ?? []
-    expect(motionCalls.some(([value]) => value === false)).toBe(true)
+    const audioCalls = lastSetAudioEnabled?.mock.calls ?? []
+    expect(motionCalls.some(([value]) => value === true)).toBe(true)
+    expect(audioCalls.some(([value]) => value === false)).toBe(true)
 
     app.dispose()
   })
