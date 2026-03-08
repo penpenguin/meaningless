@@ -6,6 +6,12 @@ type GameHudOverlayOptions = {
   store: GameStore
 }
 
+type GuideContent = {
+  title: string
+  body: string
+  hint: string
+}
+
 const createModeButton = (
   label: string,
   mode: GameUiMode,
@@ -23,6 +29,48 @@ const createModeButton = (
 
 const getActiveTank = (state: GameAppState) => {
   return state.game.tanks.find((tank) => tank.id === state.game.activeTankId) ?? state.game.tanks[0]
+}
+
+const getMaintenanceCost = (state: GameAppState): number => {
+  const tank = getActiveTank(state)
+  const totalFish = tank.fishSchools.reduce((total, school) => total + school.count, 0)
+  return Math.max(4, Math.ceil(totalFish / 4))
+}
+
+const getGuideContent = (state: GameAppState): GuideContent => {
+  switch (state.ui.mode) {
+    case 'shop':
+      return {
+        title: 'Spend coins',
+        body: 'Unlock fish and decor here, then switch to Layout to place them in the tank.',
+        hint: 'New unlocks appear in Layout immediately.'
+      }
+    case 'layout':
+      return {
+        title: 'Place and tune',
+        body: 'Use + and - to size each school, choose a decor tool, then click a grid cell to place it.',
+        hint: 'Select Eraser to clear a grid cell.'
+      }
+    case 'progress':
+      return {
+        title: 'Check growth',
+        body: 'Track total coins, offline gains, and how much the active tank earns per minute.',
+        hint: 'Use this view to see whether layout changes are paying off.'
+      }
+    case 'settings':
+      return {
+        title: 'Adjust comfort',
+        body: 'Toggle sound and motion here, or lower quality if the scene starts feeling heavy.',
+        hint: 'Press Escape anytime to jump back to Tank.'
+      }
+    case 'tank':
+    default:
+      return {
+        title: 'Start here',
+        body: 'Watch water quality, spend coins in Unlock, and use Layout to grow fish schools or place decor.',
+        hint: 'Press Escape anytime to jump back to Tank.'
+      }
+  }
 }
 
 const createTankPanel = (store: GameStore): HTMLDivElement => {
@@ -61,6 +109,7 @@ const createTankPanel = (store: GameStore): HTMLDivElement => {
 
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
+    const maintenanceCost = getMaintenanceCost(state)
     summary.innerHTML = ''
     ;[
       `Tank: ${tank.name}`,
@@ -74,6 +123,8 @@ const createTankPanel = (store: GameStore): HTMLDivElement => {
       row.textContent = entry
       summary.appendChild(row)
     })
+    maintenanceButton.textContent = `Restore Water (${maintenanceCost} coins)`
+    maintenanceButton.disabled = state.game.profile.currency.coins < maintenanceCost
 
     if (state.ui.lastOfflineResult) {
       offlineCard.style.display = 'flex'
@@ -410,20 +461,38 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
 
   const buttons = document.createElement('div')
   buttons.className = 'hud-buttons'
-  buttons.appendChild(createModeButton('Tank', 'tank', store))
-  buttons.appendChild(createModeButton('Unlock', 'shop', store))
-  buttons.appendChild(createModeButton('Layout', 'layout', store))
-  buttons.appendChild(createModeButton('Progress', 'progress', store))
-  buttons.appendChild(createModeButton('Settings', 'settings', store))
+  const modeButtons = [
+    createModeButton('Tank', 'tank', store),
+    createModeButton('Unlock', 'shop', store),
+    createModeButton('Layout', 'layout', store),
+    createModeButton('Progress', 'progress', store),
+    createModeButton('Settings', 'settings', store)
+  ]
+  modeButtons.forEach((button) => {
+    button.setAttribute('aria-pressed', 'false')
+    buttons.appendChild(button)
+  })
   topBar.appendChild(buttons)
 
   const panelContainer = document.createElement('div')
   panelContainer.className = 'hud-panel-container'
+  const guide = document.createElement('div')
+  guide.className = 'hud-guide'
+  const guideTitle = document.createElement('div')
+  guideTitle.className = 'hud-guide-title'
+  const guideBody = document.createElement('div')
+  guideBody.className = 'hud-guide-body'
+  const guideHint = document.createElement('div')
+  guideHint.className = 'hud-guide-hint'
+  guide.appendChild(guideTitle)
+  guide.appendChild(guideBody)
+  guide.appendChild(guideHint)
   const tankPanel = createTankPanel(store)
   const shopPanel = createShopPanel(store)
   const layoutPanel = createLayoutPanel(store)
   const progressPanel = createProgressPanel(store)
   const settingsPanel = createSettingsPanel(store)
+  panelContainer.appendChild(guide)
   panelContainer.appendChild(tankPanel)
   panelContainer.appendChild(shopPanel)
   panelContainer.appendChild(layoutPanel)
@@ -439,19 +508,32 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
     layoutPanel.style.display = mode === 'layout' ? 'flex' : 'none'
     progressPanel.style.display = mode === 'progress' ? 'flex' : 'none'
     settingsPanel.style.display = mode === 'settings' ? 'flex' : 'none'
+    modeButtons.forEach((button) => {
+      const isActive = button.dataset.mode === mode
+      button.classList.toggle('is-active', isActive)
+      button.setAttribute('aria-pressed', String(isActive))
+    })
   }
 
   store.subscribe(({ state }) => {
     const tank = getActiveTank(state)
+    const guideContent = getGuideContent(state)
     currency.textContent = `Coins: ${state.game.profile.currency.coins}`
     secondary.textContent = `Income ${tank.progression.incomePerMinute}/min • Comfort ${tank.progression.comfort} • Water ${tank.progression.waterQuality}`
+    guideTitle.textContent = guideContent.title
+    guideBody.textContent = guideContent.body
+    guideHint.textContent = guideContent.hint
     applyMode(state.ui.mode)
   })
 
   const initial = store.getState()
   const initialTank = getActiveTank(initial)
+  const initialGuide = getGuideContent(initial)
   currency.textContent = `Coins: ${initial.game.profile.currency.coins}`
   secondary.textContent = `Income ${initialTank.progression.incomePerMinute}/min • Comfort ${initialTank.progression.comfort} • Water ${initialTank.progression.waterQuality}`
+  guideTitle.textContent = initialGuide.title
+  guideBody.textContent = initialGuide.body
+  guideHint.textContent = initialGuide.hint
   applyMode(initial.ui.mode)
 
   return root

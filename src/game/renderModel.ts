@@ -20,6 +20,7 @@ export const createAquariumRenderModel = (state: GameAppState): AquariumRenderMo
   const tank = getActiveTank(state)
   const quality = tank.progression.waterQuality
   const comfort = tank.progression.comfort
+  const fogDensity = Number((0.018 + ((100 - quality) / 1800)).toFixed(3))
   const tint = quality >= 75
     ? '#0b6171'
     : quality >= 45
@@ -30,7 +31,7 @@ export const createAquariumRenderModel = (state: GameAppState): AquariumRenderMo
     theme: {
       glassFrameStrength: 0.78,
       waterTint: tint,
-      fogDensity: Number((0.28 + ((100 - quality) / 220)).toFixed(2)),
+      fogDensity,
       particleDensity: Number((0.24 + (comfort / 250)).toFixed(2)),
       waveStrength: Number((0.42 + (comfort / 280)).toFixed(2)),
       waveSpeed: state.game.profile.preferences.motionEnabled ? 0.72 : 0.24

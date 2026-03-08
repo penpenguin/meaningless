@@ -125,3 +125,32 @@ describe('AdvancedAquariumScene performance stats', () => {
     expect(internals.stats.fishVisible).toBe(24)
   })
 })
+
+describe('AdvancedAquariumScene substrate', () => {
+  it('builds a rectangular floor that matches the tank footprint', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSandTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+    }).createSubstrate.bind(instance)
+
+    createSubstrate(14, 14, 10)
+
+    const [baseMesh, sandMesh] = internals.tank.children as THREE.Mesh[]
+
+    expect(baseMesh.geometry).toBeInstanceOf(THREE.BoxGeometry)
+    expect((baseMesh.geometry as THREE.BoxGeometry).parameters.width).toBeCloseTo(14.6)
+    expect((baseMesh.geometry as THREE.BoxGeometry).parameters.depth).toBeCloseTo(10.6)
+
+    expect(sandMesh.geometry).toBeInstanceOf(THREE.PlaneGeometry)
+    expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.width).toBeCloseTo(14)
+    expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.height).toBeCloseTo(10)
+  })
+})

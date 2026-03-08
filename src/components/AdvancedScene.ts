@@ -278,91 +278,50 @@ export class AdvancedAquariumScene {
   }
   
   private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number): void {
-    // 円形床の半径を計算（幅と奥行きの小さい方を基準）
-    const radius = Math.min(tankWidth, tankDepth) / 2 + 1.5
-    
-    // 円形ベース層
-    const baseGeometry = new THREE.CylinderGeometry(
-      radius,     // 上部半径
-      radius,     // 下部半径
-      0.3,        // 高さ
-      32          // 円周分割数
+    const baseHeight = 0.45
+    const baseGeometry = new THREE.BoxGeometry(
+      tankWidth + 0.6,
+      baseHeight,
+      tankDepth + 0.6
     )
     const baseMaterial = new THREE.MeshStandardMaterial({
-      color: 0xF7E8D5,  // #f7e8d5に近い色
+      color: 0xF7E8D5,
       roughness: 0.7,
       metalness: 0.05
     })
     const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial)
-    baseMesh.position.y = -tankHeight / 2 + 0.25
+    baseMesh.position.y = -tankHeight / 2 + (baseHeight / 2)
     baseMesh.receiveShadow = true
     this.tank.add(baseMesh)
-    
-    // 円形砂層（CylinderGeometryの上面で円形を作成）
-    const sandGeometry = new THREE.CylinderGeometry(
-      radius,       // 上部半径
-      radius,       // 下部半径
-      0.1,          // 薄い高さ
-      128,          // 円周分割数（高解像度）
-      1,            // 高さ分割数
-      false,        // 開いた円筒
-      0,            // 開始角度
-      Math.PI * 2   // 終了角度（全円）
-    )
-    
-    // 円形砂層の凸凹を追加（CylinderGeometryなのでY座標が高さ）
+
+    const sandGeometry = new THREE.PlaneGeometry(tankWidth, tankDepth, 48, 32)
+    sandGeometry.rotateX(-Math.PI / 2)
+
     const positions = sandGeometry.attributes.position.array as Float32Array
-    
+    const halfWidth = tankWidth / 2
+    const halfDepth = tankDepth / 2
+
     for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i]      // X座標
-      const y = positions[i + 1]  // Y座標（これが高さ）
-      const z = positions[i + 2]  // Z座標
-      
-      const distanceFromCenter = Math.sqrt(x * x + z * z)  // XZ平面での距離
-      
-      // 上面のみに凸凹を追加（y > 0）
-      if (y > 0) {
-        // 非常に大きな地形変化（滑らかなうねり）
-        const massiveWaves = Math.sin(x * 0.6) * Math.cos(z * 0.6) * 0.25
-        
-        // 大きな砂の波（滑らかな砂丘）
-        const largeWaves = Math.sin(x * 1.5) * Math.cos(z * 1.5) * 0.18
-        
-        // 中規模の凸凹（なだらかな小山）
-        const mediumBumps = Math.sin(x * 3) * Math.cos(z * 3) * 0.1
-        
-        // 小さな砂粒の凸凹（減らして滑らかに）
-        const smallBumps = Math.sin(x * 8) * Math.cos(z * 8) * 0.03
-        
-        // 大きめのランダムノイズ（減らして滑らかに）
-        const bigRandomNoise = (Math.random() - 0.5) * 0.12
-        
-        // 中程度のランダムノイズ（減らして滑らかに）
-        const mediumRandomNoise = (Math.random() - 0.5) * 0.06
-        
-        // 細かいランダムノイズ（大幅に減らす）
-        const smallRandomNoise = (Math.random() - 0.5) * 0.03
-        
-        // 滑らかなパーリンノイズ風（低周波を強調）
-        const complexPerlin = 
-          Math.sin(x * 1.2 + Math.sin(z * 0.8)) * Math.cos(z * 1.2 + Math.sin(x * 0.8)) * 0.12 +
-          Math.sin(x * 2.5 + Math.sin(z * 1.8)) * Math.cos(z * 2.5 + Math.sin(x * 1.8)) * 0.04
-        
-        // 全ての高さ変化を合成
-        const totalHeight = massiveWaves + largeWaves + mediumBumps + smallBumps + 
-                           bigRandomNoise + mediumRandomNoise + smallRandomNoise + complexPerlin
-        
-        // 円の端に向かって少し高くなる効果
-        const edgeEffect = (1 - distanceFromCenter / radius) * 0.05
-        
-        positions[i + 1] = y + totalHeight + edgeEffect  // Y座標（高さ）を設定
-      }
+      const x = positions[i]
+      const z = positions[i + 2]
+      const widthBlend = 1 - Math.min(1, Math.abs(x) / halfWidth)
+      const depthBlend = 1 - Math.min(1, Math.abs(z) / halfDepth)
+      const edgeBlend = Math.pow(Math.max(0, Math.min(widthBlend, depthBlend)), 1.4)
+      const broadRipples = Math.sin(x * 0.55) * Math.cos(z * 0.75) * 0.12
+      const gentleRidges = Math.sin((x + z) * 1.1) * 0.05
+      const fineTexture = Math.sin(x * 2.2) * Math.cos(z * 2.4) * 0.018
+
+      positions[i + 1] = (broadRipples + gentleRidges + fineTexture) * edgeBlend
     }
-    
+
     sandGeometry.attributes.position.needsUpdate = true
     sandGeometry.computeVertexNormals()
-    
+
     const sandTexture = this.createSandTexture()
+    sandTexture.repeat.set(
+      Math.max(1.5, tankWidth / 3.5),
+      Math.max(1.5, tankDepth / 3)
+    )
     
     const sandMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
@@ -374,7 +333,7 @@ export class AdvancedAquariumScene {
     })
     
     const sandMesh = new THREE.Mesh(sandGeometry, sandMaterial)
-    sandMesh.position.y = -tankHeight / 2 + 0.42
+    sandMesh.position.y = -tankHeight / 2 + baseHeight + 0.02
     sandMesh.receiveShadow = true
     sandMesh.castShadow = false
     this.tank.add(sandMesh)

@@ -93,11 +93,51 @@ body {
   font-size: 0.82rem;
 }
 
+.hud-buttons button.is-active {
+  background: rgba(106, 199, 214, 0.34);
+  border-color: rgba(201, 241, 255, 0.7);
+}
+
 .hud-panel-container {
   position: absolute;
   top: 4.2rem;
   left: 1rem;
   width: min(360px, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: calc(100dvh - 5.4rem);
+  overflow-y: auto;
+}
+
+.hud-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: rgba(8, 30, 40, 0.72);
+  border: 1px solid rgba(106, 199, 214, 0.28);
+  border-radius: 12px;
+  padding: 0.75rem 0.8rem;
+  color: #e6f7ff;
+  backdrop-filter: blur(8px);
+}
+
+.hud-guide-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(201, 241, 255, 0.86);
+}
+
+.hud-guide-body {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.hud-guide-hint {
+  font-size: 0.76rem;
+  opacity: 0.78;
 }
 
 .hud-panel {
