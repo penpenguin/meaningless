@@ -11,6 +11,7 @@ describe('gameSave', () => {
     expect(save.tanks).toHaveLength(1)
     expect(save.activeTankId).toBe(save.tanks[0]?.id)
     expect(save.profile.currency.coins).toBe(12)
+    expect(save.profile.preferences.hudVisible).toBe(true)
     expect(save.tanks[0]?.fishSchools[0]).toMatchObject({
       speciesId: 'neon-tetra',
       lane: 'middle'
@@ -57,6 +58,7 @@ describe('gameSave', () => {
     expect(migrated.profile.currency.coins).toBe(23)
     expect(migrated.profile.unlockedFishIds).toContain('clownfish')
     expect(migrated.profile.preferences.quality).toBe('medium')
+    expect(migrated.profile.preferences.hudVisible).toBe(true)
     expect(migrated.tanks[0]?.fishSchools).toEqual([
       expect.objectContaining({ speciesId: 'clownfish', count: 6, lane: 'middle' }),
       expect.objectContaining({ speciesId: 'angelfish', count: 2, lane: 'top' })

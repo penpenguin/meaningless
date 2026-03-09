@@ -39,4 +39,13 @@ describe('viewport layout', () => {
     expect(styles).toMatch(/\.hud-stat-card\s*{/)
     expect(styles).toMatch(/\.hud-board-shell\s*{/)
   })
+
+  it('keeps a fixed reveal tab available when the HUD is hidden', () => {
+    expect(styles).toMatch(/\.hud-reveal-tab\s*{[^}]*position:\s*absolute;[^}]*top:\s*1rem;[^}]*right:\s*1rem;/s)
+    expect(styles).toMatch(/@media \(max-width: 960px\)\s*{[\s\S]*\.hud-reveal-tab\s*{[^}]*bottom:\s*1rem;/s)
+  })
+
+  it('forces hidden HUD elements off-screen even when base display styles are present', () => {
+    expect(styles).toMatch(/\.hud-rail\[hidden\],\s*\.hud-reveal-tab\[hidden\]\s*{[^}]*display:\s*none\s*!important;/s)
+  })
 })

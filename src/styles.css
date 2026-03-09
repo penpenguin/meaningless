@@ -229,6 +229,46 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
+.hud-reveal-tab {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  appearance: none;
+  border: 1px solid rgba(181, 234, 245, 0.34);
+  border-radius: 999px;
+  padding: 0.52rem 0.9rem;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(201, 247, 255, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(12, 55, 70, 0.82), rgba(5, 24, 33, 0.9));
+  color: var(--hud-ink);
+  font-family: var(--hud-display);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.hud-reveal-tab:hover,
+.hud-reveal-tab:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(220, 248, 255, 0.58);
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+
+.hud-rail[hidden],
+.hud-reveal-tab[hidden] {
+  display: none !important;
+}
+
 .hud-panel-container {
   position: relative;
   width: min(380px, 100%);
@@ -672,6 +712,12 @@ body {
     max-width: 100%;
     max-height: min(52dvh, 30rem);
   }
+
+  .hud-reveal-tab {
+    top: auto;
+    bottom: 1rem;
+    right: 1rem;
+  }
 }
 
 @media (max-width: 720px) {
@@ -737,6 +783,13 @@ body {
   .hud-buttons button {
     padding: 0.34rem 0.58rem;
     font-size: 0.75rem;
+  }
+
+  .hud-reveal-tab {
+    bottom: 0.75rem;
+    right: 0.75rem;
+    padding: 0.5rem 0.82rem;
+    font-size: 0.7rem;
   }
 
   .hud-inline-controls {

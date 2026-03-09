@@ -193,4 +193,75 @@ describe('createGameHudOverlay', () => {
       document.body.innerHTML = ''
     }
   })
+
+  it('collapses to a fixed reveal tab and restores the previous HUD state', () => {
+    const store = createGameStore({ tickIntervalMs: 60_000 })
+
+    try {
+      const overlay = createGameHudOverlay({ store })
+      document.body.appendChild(overlay)
+
+      const layoutButton = overlay.querySelector('[data-mode="layout"]') as HTMLButtonElement
+      layoutButton.click()
+
+      const hideButton = overlay.querySelector('[data-action="hide-hud"]') as HTMLButtonElement
+      hideButton.click()
+
+      const rail = overlay.querySelector('.hud-rail') as HTMLDivElement
+      const revealTab = overlay.querySelector('[data-action="show-hud"]') as HTMLButtonElement
+
+      expect(store.getState().game.profile.preferences.hudVisible).toBe(false)
+      expect(rail.hidden).toBe(true)
+      expect(revealTab.hidden).toBe(false)
+
+      revealTab.click()
+
+      expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
+      expect(rail.hidden).toBe(false)
+      expect(revealTab.hidden).toBe(true)
+      expect((overlay.querySelector('[data-mode="layout"]') as HTMLButtonElement).getAttribute('aria-pressed')).toBe('true')
+    } finally {
+      store.destroy()
+      document.body.innerHTML = ''
+    }
+  })
+
+  it('renders only the reveal tab when HUD starts hidden', () => {
+    const save = createDefaultGameSave('2026-03-09T00:00:00.000Z')
+    const store = createGameStore({
+      tickIntervalMs: 60_000,
+      initialState: {
+        game: {
+          ...save,
+          profile: {
+            ...save.profile,
+            preferences: {
+              ...save.profile.preferences,
+              hudVisible: false
+            }
+          }
+        },
+        ui: {
+          mode: 'tank',
+          selectedDecorId: null,
+          lastOfflineResult: null
+        }
+      }
+    })
+
+    try {
+      const overlay = createGameHudOverlay({ store })
+      document.body.appendChild(overlay)
+
+      const rail = overlay.querySelector('.hud-rail') as HTMLDivElement
+      const revealTab = overlay.querySelector('[data-action="show-hud"]') as HTMLButtonElement
+
+      expect(rail.hidden).toBe(true)
+      expect(revealTab.hidden).toBe(false)
+      expect(revealTab.textContent).toContain('Show HUD')
+    } finally {
+      store.destroy()
+      document.body.innerHTML = ''
+    }
+  })
 })

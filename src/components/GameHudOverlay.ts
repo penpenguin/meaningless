@@ -668,6 +668,17 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
 export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivElement => {
   const root = document.createElement('div')
   root.className = 'hud-overlay'
+  root.dataset.visible = 'true'
+
+  const revealTab = document.createElement('button')
+  revealTab.type = 'button'
+  revealTab.className = 'hud-reveal-tab'
+  revealTab.dataset.action = 'show-hud'
+  revealTab.textContent = 'Show HUD'
+  revealTab.hidden = true
+  revealTab.addEventListener('click', () => {
+    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: true } })
+  })
 
   const topBar = document.createElement('div')
   topBar.className = 'hud-topbar'
@@ -712,6 +723,15 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
     button.setAttribute('aria-pressed', 'false')
     buttons.appendChild(button)
   })
+
+  const hideHudButton = document.createElement('button')
+  hideHudButton.type = 'button'
+  hideHudButton.dataset.action = 'hide-hud'
+  hideHudButton.textContent = 'Hide HUD'
+  hideHudButton.addEventListener('click', () => {
+    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: false } })
+  })
+  buttons.appendChild(hideHudButton)
   topBar.appendChild(buttons)
 
   const panelContainer = document.createElement('div')
@@ -752,6 +772,7 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   rail.appendChild(topBar)
   rail.appendChild(panelContainer)
   root.appendChild(rail)
+  root.appendChild(revealTab)
 
   const applyMode = (mode: GameUiMode): void => {
     panels.forEach(({ mode: panelMode, element }) => {
@@ -765,6 +786,12 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
       button.classList.toggle('is-active', isActive)
       button.setAttribute('aria-pressed', String(isActive))
     })
+  }
+
+  const applyVisibility = (visible: boolean): void => {
+    root.dataset.visible = visible ? 'true' : 'false'
+    rail.hidden = !visible
+    revealTab.hidden = visible
   }
 
   const renderOverlay = (state: GameAppState): void => {
@@ -782,6 +809,7 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
     guideBody.textContent = guideContent.body
     guideHint.textContent = guideContent.hint
     applyMode(state.ui.mode)
+    applyVisibility(state.game.profile.preferences.hudVisible)
   }
 
   store.subscribe(({ state }) => renderOverlay(state))

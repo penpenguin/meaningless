@@ -73,4 +73,20 @@ describe('createGameStore', () => {
 
     store.destroy()
   })
+
+  it('persists HUD visibility through settings actions', () => {
+    const store = createGameStore({
+      initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
+    })
+
+    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
+
+    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: false } })
+    expect(store.getState().game.profile.preferences.hudVisible).toBe(false)
+
+    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: true } })
+    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
+
+    store.destroy()
+  })
 })

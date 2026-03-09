@@ -29,7 +29,8 @@ const createDefaultProfile = () => ({
   preferences: {
     soundEnabled: true,
     motionEnabled: true,
-    quality: 'high' as const
+    quality: 'high' as const,
+    hudVisible: true
   }
 })
 
@@ -132,7 +133,8 @@ export const migrateLegacySave = (options: {
           (typeof legacyAutoSaveSettings?.motionEnabled === 'boolean'
             ? legacyAutoSaveSettings.motionEnabled
             : fallbackState.profile.preferences.motionEnabled),
-        quality: migratedSettings?.quality ?? fallbackState.profile.preferences.quality
+        quality: migratedSettings?.quality ?? fallbackState.profile.preferences.quality,
+        hudVisible: fallbackState.profile.preferences.hudVisible
       }
     },
     tanks: [refreshTankProgression({
@@ -251,7 +253,10 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
           : fallback.profile.preferences.motionEnabled,
         quality: preferencesSource.quality === 'low' || preferencesSource.quality === 'medium' || preferencesSource.quality === 'high'
           ? preferencesSource.quality
-          : fallback.profile.preferences.quality
+          : fallback.profile.preferences.quality,
+        hudVisible: typeof preferencesSource.hudVisible === 'boolean'
+          ? preferencesSource.hudVisible
+          : fallback.profile.preferences.hudVisible
       }
     },
     tanks,

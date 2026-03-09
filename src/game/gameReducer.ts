@@ -294,6 +294,20 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
           }
         }
       }
+    case 'SETTINGS/SET_HUD_VISIBILITY':
+      return {
+        ...state,
+        game: {
+          ...state.game,
+          profile: {
+            ...state.game.profile,
+            preferences: {
+              ...state.game.profile.preferences,
+              hudVisible: action.payload.visible
+            }
+          }
+        }
+      }
     default:
       return state
   }

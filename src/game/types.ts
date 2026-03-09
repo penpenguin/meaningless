@@ -62,6 +62,7 @@ export type GameProfile = {
     soundEnabled: boolean
     motionEnabled: boolean
     quality: QualityLevel
+    hudVisible: boolean
   }
 }
 
@@ -114,3 +115,4 @@ export type GameAction =
   | { type: 'SETTINGS/SET_SOUND'; payload: { enabled: boolean } }
   | { type: 'SETTINGS/SET_MOTION'; payload: { enabled: boolean } }
   | { type: 'SETTINGS/SET_QUALITY'; payload: { quality: QualityLevel } }
+  | { type: 'SETTINGS/SET_HUD_VISIBILITY'; payload: { visible: boolean } }
