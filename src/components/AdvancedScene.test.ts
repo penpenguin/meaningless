@@ -206,6 +206,42 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(surface).toBeDefined()
     expect(caustics).toBeDefined()
   })
+
+  it('adds premium highlight layers and richer refractive materials on high quality', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const frontGlass = internals.tank.children.find((child) => child.name === 'tank-glass-front') as THREE.Mesh | undefined
+    const frontHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-front-highlight') as THREE.Mesh | undefined
+    const waterVolume = internals.tank.children.find((child) => child.name === 'tank-water-volume') as THREE.Mesh | undefined
+    const surface = internals.tank.children.find((child) => child.name === 'tank-water-surface') as THREE.Mesh | undefined
+    const surfaceHighlight = internals.tank.children.find((child) => child.name === 'tank-water-surface-highlight') as THREE.Mesh | undefined
+
+    const frontGlassMaterial = frontGlass?.material as THREE.MeshPhysicalMaterial | undefined
+    const waterVolumeMaterial = waterVolume?.material as THREE.MeshPhysicalMaterial | undefined
+    const surfaceMaterial = surface?.material as THREE.MeshPhysicalMaterial | undefined
+
+    expect(frontHighlight).toBeDefined()
+    expect(surfaceHighlight).toBeDefined()
+    expect(frontGlassMaterial?.attenuationDistance).toBeLessThan(2)
+    expect(waterVolumeMaterial?.attenuationDistance).toBeLessThan(3)
+    expect(surfaceMaterial?.thickness).toBeGreaterThan(0.8)
+    expect(surfaceMaterial?.attenuationDistance).toBeLessThan(2)
+  })
 })
 
 describe('AdvancedAquariumScene substrate', () => {
@@ -304,11 +340,15 @@ describe('AdvancedAquariumScene quality scaling', () => {
 
     const waterVolume = internals.tank.children.find((child) => child.name === 'tank-water-volume') as THREE.Mesh | undefined
     const waterSurface = internals.tank.children.find((child) => child.name === 'tank-water-surface') as THREE.Mesh | undefined
+    const waterSurfaceHighlight = internals.tank.children.find((child) => child.name === 'tank-water-surface-highlight') as THREE.Mesh | undefined
     const caustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
+    const frontGlassHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-front-highlight') as THREE.Mesh | undefined
 
     expect(internals.renderer.shadowMap.enabled).toBe(false)
     expect(waterVolume?.visible).toBe(false)
     expect(caustics?.visible).toBe(false)
     expect(waterSurface?.visible).toBe(true)
+    expect(waterSurfaceHighlight?.visible).toBe(false)
+    expect(frontGlassHighlight?.visible).toBe(false)
   })
 })
