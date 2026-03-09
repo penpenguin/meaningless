@@ -127,7 +127,7 @@ describe('AdvancedAquariumScene performance stats', () => {
 })
 
 describe('AdvancedAquariumScene camera', () => {
-  it('frames the aquascape with a closer downward angle', () => {
+  it('frames the aquascape higher with a tighter hero composition', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       camera: THREE.PerspectiveCamera
@@ -145,9 +145,36 @@ describe('AdvancedAquariumScene camera', () => {
     const direction = new THREE.Vector3()
     internals.camera.getWorldDirection(direction)
 
-    expect(internals.camera.position.z).toBeCloseTo(14.5, 1)
-    expect(internals.camera.position.y).toBeCloseTo(1.1, 1)
-    expect(direction.y).toBeLessThan(-0.08)
+    expect(internals.camera.position.z).toBeCloseTo(13.2, 1)
+    expect(internals.camera.position.y).toBeCloseTo(1.7, 1)
+    expect(direction.y).toBeLessThan(-0.1)
+  })
+})
+
+describe('AdvancedAquariumScene tank backdrop', () => {
+  it('adds a rear depth scrim behind the substrate', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const backdrop = internals.tank.children.find((child) => child.name === 'tank-backdrop') as THREE.Mesh | undefined
+
+    expect(internals.createSubstrate).toHaveBeenCalledWith(14, 14, 10)
+    expect(backdrop).toBeDefined()
+    expect(backdrop?.position.z).toBeLessThan(-4.7)
   })
 })
 

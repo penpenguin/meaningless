@@ -17,20 +17,39 @@ export class AquascapingSystem {
   }
   
   private createSeaweed(bounds: THREE.Box3): void {
-    const seaweedCount = 15
+    const seaweedCount = 18
     const size = new THREE.Vector3()
     bounds.getSize(size)
+    const clusters = [
+      { x: -0.34, z: 0.18, layer: 'foreground', baseHeight: 2.6, spreadX: 0.9, spreadZ: 0.65 },
+      { x: -0.08, z: -0.2, layer: 'background', baseHeight: 4.1, spreadX: 0.65, spreadZ: 0.55 },
+      { x: 0.18, z: 0.06, layer: 'midground', baseHeight: 3.4, spreadX: 0.75, spreadZ: 0.55 },
+      { x: 0.36, z: -0.16, layer: 'background', baseHeight: 4.6, spreadX: 0.7, spreadZ: 0.5 },
+      { x: 0.04, z: 0.24, layer: 'foreground', baseHeight: 2.2, spreadX: 0.82, spreadZ: 0.7 }
+    ] as const
     
     for (let i = 0; i < seaweedCount; i++) {
       const seaweedGroup = new THREE.Group()
+      const cluster = clusters[i % clusters.length]
       
-      const x = (Math.random() - 0.5) * size.x * 0.7
-      const z = (Math.random() - 0.5) * size.z * 0.7
+      const x = THREE.MathUtils.clamp(
+        cluster.x * size.x + (Math.random() - 0.5) * cluster.spreadX,
+        bounds.min.x + 0.45,
+        bounds.max.x - 0.45
+      )
+      const z = THREE.MathUtils.clamp(
+        cluster.z * size.z + (Math.random() - 0.5) * cluster.spreadZ,
+        bounds.min.z + 0.35,
+        bounds.max.z - 0.35
+      )
       const y = bounds.min.y + 0.42  // 砂層の高さに合わせる
       
       seaweedGroup.position.set(x, y, z)
+      seaweedGroup.userData = {
+        layer: cluster.layer
+      }
       
-      const height = 2 + Math.random() * 3
+      const height = cluster.baseHeight + Math.random() * (cluster.layer === 'background' ? 1.4 : 1.1)
       const segments = Math.floor(height * 3)
       
       for (let j = 0; j < segments; j++) {
@@ -44,7 +63,8 @@ export class AquascapingSystem {
           6
         )
         
-        const hue = 0.3 + Math.random() * 0.2 // Green variations
+        const hueBase = cluster.layer === 'background' ? 0.42 : cluster.layer === 'midground' ? 0.36 : 0.3
+        const hue = hueBase + Math.random() * 0.08 // Green variations
         
         // リアルな水草テクスチャを生成
         const seaweedTexture = this.createSeaweedTexture(hue)
@@ -55,7 +75,7 @@ export class AquascapingSystem {
           map: seaweedTexture,
           normalMap: normalMap,
           roughnessMap: roughnessMap,
-          color: new THREE.Color().setHSL(hue, 0.8, 0.4),
+          color: new THREE.Color().setHSL(hue, cluster.layer === 'background' ? 0.45 : 0.72, cluster.layer === 'background' ? 0.28 : 0.4),
           metalness: 0,
           roughness: 0.9,
           transmission: 0.4,
@@ -79,6 +99,13 @@ export class AquascapingSystem {
         
         seaweedGroup.add(segment)
       }
+
+      if (cluster.layer === 'background') {
+        seaweedGroup.scale.set(0.82, 1.08, 0.82)
+      } else if (cluster.layer === 'foreground') {
+        seaweedGroup.scale.set(1.08, 0.94, 1.08)
+      }
+      seaweedGroup.rotation.y = (Math.random() - 0.5) * 0.45
       
       this.plants.push(seaweedGroup)
       this.group.add(seaweedGroup)
@@ -145,12 +172,21 @@ export class AquascapingSystem {
     const rockCount = 12
     const size = new THREE.Vector3()
     bounds.getSize(size)
+    const anchors = [
+      { x: 0.18, z: -0.06, role: 'hero-rock', scale: 1.24, geometry: 'dodecahedron' },
+      { x: -0.14, z: 0.18, role: 'support-rock', scale: 0.94, geometry: 'icosahedron' },
+      { x: 0.34, z: 0.12, role: 'support-rock', scale: 0.76, geometry: 'octahedron' }
+    ] as const
     
     for (let i = 0; i < rockCount; i++) {
-      const rockScale = 0.3 + Math.random() * 0.8
+      const anchor = anchors[i % anchors.length]
+      const rockScale = i === 0 ? anchor.scale : 0.32 + Math.random() * 0.62
       
-      // Irregular rock shape
-      const geometry = new THREE.DodecahedronGeometry(rockScale)
+      const geometry = anchor.geometry === 'icosahedron'
+        ? new THREE.IcosahedronGeometry(rockScale, 0)
+        : anchor.geometry === 'octahedron'
+          ? new THREE.OctahedronGeometry(rockScale * 0.92, 0)
+          : new THREE.DodecahedronGeometry(rockScale)
       
       // Deform the geometry for natural look
       const positionAttribute = geometry.getAttribute('position')
@@ -158,7 +194,7 @@ export class AquascapingSystem {
         const vertex = new THREE.Vector3()
         vertex.fromBufferAttribute(positionAttribute, j)
         
-        const noise = (Math.random() - 0.5) * 0.3
+        const noise = (Math.random() - 0.5) * (i === 0 ? 0.18 : 0.3)
         vertex.multiplyScalar(1 + noise)
         
         positionAttribute.setXYZ(j, vertex.x, vertex.y, vertex.z)
@@ -178,9 +214,21 @@ export class AquascapingSystem {
       
       const rock = new THREE.Mesh(geometry, material)
       
-      const x = (Math.random() - 0.5) * size.x * 0.8
-      const z = (Math.random() - 0.5) * size.z * 0.8
-      const y = bounds.min.y + 0.42 + rockScale * 0.1  // 砂層の上に配置
+      const x = i === 0
+        ? anchor.x * size.x
+        : THREE.MathUtils.clamp(
+            anchor.x * size.x + (Math.random() - 0.5) * 1.2,
+            bounds.min.x + 0.45,
+            bounds.max.x - 0.45
+          )
+      const z = i === 0
+        ? anchor.z * size.z
+        : THREE.MathUtils.clamp(
+            anchor.z * size.z + (Math.random() - 0.5) * 0.9,
+            bounds.min.z + 0.4,
+            bounds.max.z - 0.4
+          )
+      const y = bounds.min.y + 0.42 + rockScale * (i === 0 ? 0.22 : 0.1)  // 砂層の上に配置
       
       rock.position.set(x, y, z)
       rock.rotation.set(
@@ -188,8 +236,14 @@ export class AquascapingSystem {
         Math.random() * Math.PI,
         Math.random() * Math.PI
       )
+      if (i === 0) {
+        rock.scale.set(1.2, 0.86, 1.35)
+      }
       
       rock.receiveShadow = true
+      rock.userData = {
+        role: i === 0 ? 'hero-rock' : anchor.role
+      }
       
       this.decorations.push(new THREE.Group().add(rock))
       this.group.add(rock)
@@ -223,6 +277,9 @@ export class AquascapingSystem {
       
       const scale = 0.5 + Math.random() * 2
       ripple.scale.set(scale, 1, scale)
+      ripple.userData = {
+        role: 'sand-ripple'
+      }
       
       this.group.add(ripple)
     }

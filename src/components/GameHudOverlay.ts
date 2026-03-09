@@ -12,6 +12,12 @@ type GuideContent = {
   hint: string
 }
 
+type StatCardOptions = {
+  label: string
+  value: string
+  meta?: string
+}
+
 const createModeButton = (
   label: string,
   mode: GameUiMode,
@@ -48,19 +54,19 @@ const getGuideContent = (state: GameAppState): GuideContent => {
     case 'layout':
       return {
         title: 'Place and tune',
-        body: 'Use + and - to size each school, choose a decor tool, then click a grid cell to place it.',
-        hint: 'Select Eraser to clear a grid cell.'
+        body: 'Grow schools, pick a decor tool, and click a blueprint grid cell to position the tank.',
+        hint: 'Lane chips change fish depth without leaving the panel, and Eraser clears the selected cell.'
       }
     case 'progress':
       return {
         title: 'Check growth',
-        body: 'Track total coins, offline gains, and how much the active tank earns per minute.',
+        body: 'Track current income, total earnings, and how close you are to the next unlock.',
         hint: 'Use this view to see whether layout changes are paying off.'
       }
     case 'settings':
       return {
         title: 'Adjust comfort',
-        body: 'Toggle sound and motion here, or lower quality if the scene starts feeling heavy.',
+        body: 'Use tactile toggles for sound and motion, then balance fidelity with the quality chips.',
         hint: 'Press Escape anytime to jump back to Tank.'
       }
     case 'tank':
@@ -73,22 +79,93 @@ const getGuideContent = (state: GameAppState): GuideContent => {
   }
 }
 
-const createTankPanel = (store: GameStore): HTMLDivElement => {
-  const panel = document.createElement('div')
-  panel.className = 'hud-panel'
-  panel.dataset.panel = 'tank'
+const createStatCard = ({ label, value, meta }: StatCardOptions): HTMLDivElement => {
+  const card = document.createElement('div')
+  card.className = 'hud-stat-card'
+
+  const cardLabel = document.createElement('div')
+  cardLabel.className = 'hud-stat-label'
+  cardLabel.textContent = label
+  card.appendChild(cardLabel)
+
+  const cardValue = document.createElement('div')
+  cardValue.className = 'hud-stat-value'
+  cardValue.textContent = value
+  card.appendChild(cardValue)
+
+  if (meta) {
+    const cardMeta = document.createElement('div')
+    cardMeta.className = 'hud-stat-meta'
+    cardMeta.textContent = meta
+    card.appendChild(cardMeta)
+  }
+
+  return card
+}
+
+const createPanelHeader = (titleText: string, kickerText: string): HTMLDivElement => {
+  const header = document.createElement('div')
+  header.className = 'hud-panel-header'
+
+  const kicker = document.createElement('div')
+  kicker.className = 'hud-panel-kicker'
+  kicker.textContent = kickerText
+  header.appendChild(kicker)
 
   const title = document.createElement('h3')
-  title.textContent = 'Tank'
-  panel.appendChild(title)
+  title.textContent = titleText
+  header.appendChild(title)
+
+  return header
+}
+
+const createSectionLabel = (text: string): HTMLDivElement => {
+  const label = document.createElement('div')
+  label.className = 'hud-section-label'
+  label.textContent = text
+  return label
+}
+
+const getNextUnlockCopy = (state: GameAppState): string => {
+  const coins = state.game.profile.currency.coins
+  const lockedFish = getFishCatalog()
+    .filter((fish) => !state.game.profile.unlockedFishIds.includes(fish.speciesId))
+    .map((fish) => ({ label: fish.displayName, cost: fish.unlockCost }))
+  const lockedDecor = getDecorCatalog()
+    .filter((decor) => !state.game.profile.unlockedDecorIds.includes(decor.decorId))
+    .map((decor) => ({ label: decor.displayName, cost: decor.unlockCost }))
+
+  const nextUnlock = [...lockedFish, ...lockedDecor]
+    .sort((left, right) => left.cost - right.cost)[0]
+
+  if (!nextUnlock) {
+    return 'Next unlock: everything is already in the tank kit.'
+  }
+
+  const coinsNeeded = Math.max(0, nextUnlock.cost - coins)
+  return coinsNeeded === 0
+    ? `Next unlock: ${nextUnlock.label} is ready now.`
+    : `Next unlock: ${nextUnlock.label} in ${coinsNeeded} coins.`
+}
+
+const createTankPanel = (store: GameStore): HTMLDivElement => {
+  const panel = document.createElement('div')
+  panel.className = 'hud-panel hud-panel--tank'
+  panel.dataset.panel = 'tank'
+
+  panel.appendChild(createPanelHeader('Tank', 'Now Playing'))
+
+  const lead = document.createElement('div')
+  lead.className = 'hud-panel-lead'
+  panel.appendChild(lead)
 
   const summary = document.createElement('div')
-  summary.className = 'hud-summary'
+  summary.className = 'hud-summary hud-summary-grid'
   panel.appendChild(summary)
 
   const maintenanceButton = document.createElement('button')
   maintenanceButton.type = 'button'
-  maintenanceButton.textContent = 'Perform Maintenance'
+  maintenanceButton.className = 'hud-action-button'
   maintenanceButton.addEventListener('click', () => {
     store.dispatch({ type: 'GAME/CLEAN_TANK' })
   })
@@ -110,19 +187,18 @@ const createTankPanel = (store: GameStore): HTMLDivElement => {
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
     const maintenanceCost = getMaintenanceCost(state)
+
+    lead.textContent = `${tank.name} · ${tank.decor.length} decor placed`
     summary.innerHTML = ''
     ;[
-      `Tank: ${tank.name}`,
-      `Income: ${tank.progression.incomePerMinute}/min`,
-      `Comfort: ${tank.progression.comfort}`,
-      `Water: ${tank.progression.waterQuality}`,
-      `Decor: ${tank.decor.length}`
-    ].forEach((entry) => {
-      const row = document.createElement('div')
-      row.className = 'hud-summary-row'
-      row.textContent = entry
-      summary.appendChild(row)
+      { label: 'Income', value: `${tank.progression.incomePerMinute}/min`, meta: 'Active tank' },
+      { label: 'Comfort', value: String(tank.progression.comfort), meta: 'Drives unlocks' },
+      { label: 'Water', value: String(tank.progression.waterQuality), meta: 'Keep it clear' },
+      { label: 'Schools', value: String(tank.fishSchools.reduce((total, school) => total + school.count, 0)), meta: 'Visible fish' }
+    ].forEach((card) => {
+      summary.appendChild(createStatCard(card))
     })
+
     maintenanceButton.textContent = `Restore Water (${maintenanceCost} coins)`
     maintenanceButton.disabled = state.game.profile.currency.coins < maintenanceCost
 
@@ -141,16 +217,20 @@ const createTankPanel = (store: GameStore): HTMLDivElement => {
 
 const createShopPanel = (store: GameStore): HTMLDivElement => {
   const panel = document.createElement('div')
-  panel.className = 'hud-panel'
+  panel.className = 'hud-panel hud-panel--shop'
   panel.dataset.panel = 'shop'
 
-  const title = document.createElement('h3')
-  title.textContent = 'Unlock'
-  panel.appendChild(title)
+  panel.appendChild(createPanelHeader('Unlock', 'Expand The Kit'))
+
+  const fishLabel = createSectionLabel('Fish')
+  panel.appendChild(fishLabel)
 
   const fishList = document.createElement('div')
   fishList.className = 'hud-list'
   panel.appendChild(fishList)
+
+  const decorLabel = createSectionLabel('Decor')
+  panel.appendChild(decorLabel)
 
   const decorList = document.createElement('div')
   decorList.className = 'hud-list'
@@ -169,6 +249,8 @@ const createShopPanel = (store: GameStore): HTMLDivElement => {
       row.appendChild(info)
 
       const action = document.createElement('button')
+      action.type = 'button'
+      action.className = 'hud-action-button'
       const unlocked = state.game.profile.unlockedFishIds.includes(fish.speciesId)
       action.textContent = unlocked ? 'Unlocked' : `Unlock ${fish.unlockCost}`
       action.disabled = unlocked || state.game.profile.currency.coins < fish.unlockCost
@@ -188,6 +270,8 @@ const createShopPanel = (store: GameStore): HTMLDivElement => {
       row.appendChild(info)
 
       const action = document.createElement('button')
+      action.type = 'button'
+      action.className = 'hud-action-button'
       const unlocked = state.game.profile.unlockedDecorIds.includes(decor.decorId)
       action.textContent = unlocked ? 'Unlocked' : `Unlock ${decor.unlockCost}`
       action.disabled = unlocked || state.game.profile.currency.coins < decor.unlockCost
@@ -206,27 +290,47 @@ const createShopPanel = (store: GameStore): HTMLDivElement => {
 
 const createLayoutPanel = (store: GameStore): HTMLDivElement => {
   const panel = document.createElement('div')
-  panel.className = 'hud-panel hud-layout-panel'
+  panel.className = 'hud-panel hud-panel--layout hud-layout-panel'
   panel.dataset.panel = 'layout'
 
-  const title = document.createElement('h3')
-  title.textContent = 'Layout'
-  panel.appendChild(title)
+  panel.appendChild(createPanelHeader('Layout', 'Blueprint'))
+
+  const status = document.createElement('div')
+  status.className = 'hud-layout-status'
+  panel.appendChild(status)
+
+  panel.appendChild(createSectionLabel('Fish schools'))
 
   const fishSection = document.createElement('div')
   fishSection.className = 'hud-list'
   panel.appendChild(fishSection)
 
+  panel.appendChild(createSectionLabel('Decor tools'))
+
   const palette = document.createElement('div')
   palette.className = 'hud-decor-palette'
   panel.appendChild(palette)
 
+  const boardShell = document.createElement('div')
+  boardShell.className = 'hud-board-shell'
+  const boardCaption = document.createElement('div')
+  boardCaption.className = 'hud-board-caption'
+  boardShell.appendChild(boardCaption)
+
   const board = document.createElement('div')
   board.className = 'hud-board'
-  panel.appendChild(board)
+  boardShell.appendChild(board)
+  panel.appendChild(boardShell)
 
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
+    const selectedDecor = getDecorCatalog().find((decor) => decor.decorId === state.ui.selectedDecorId)
+
+    status.textContent = selectedDecor
+      ? `Tool: ${selectedDecor.displayName} · click blueprint cells to place it`
+      : 'Tool: Eraser · click blueprint cells to clear the tank'
+
+    boardCaption.textContent = `${tank.layout.columns} × ${tank.layout.rows} blueprint · front-left to back-right`
     fishSection.innerHTML = ''
     palette.innerHTML = ''
     board.innerHTML = ''
@@ -239,7 +343,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
         row.className = 'hud-list-item'
 
         const label = document.createElement('div')
-        label.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">${school?.lane ?? fish.preferredLane} lane</div>`
+        label.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">${school?.count ?? 0} fish · ${(school?.lane ?? fish.preferredLane)} lane</div>`
         row.appendChild(label)
 
         const controls = document.createElement('div')
@@ -247,6 +351,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
 
         const minusButton = document.createElement('button')
         minusButton.type = 'button'
+        minusButton.className = 'hud-inline-button'
         minusButton.textContent = '-'
         minusButton.addEventListener('click', () => {
           store.dispatch({
@@ -260,11 +365,13 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
         controls.appendChild(minusButton)
 
         const count = document.createElement('span')
+        count.className = 'hud-counter'
         count.textContent = String(school?.count ?? 0)
         controls.appendChild(count)
 
         const plusButton = document.createElement('button')
         plusButton.type = 'button'
+        plusButton.className = 'hud-inline-button'
         plusButton.textContent = '+'
         plusButton.addEventListener('click', () => {
           store.dispatch({
@@ -277,24 +384,31 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
         })
         controls.appendChild(plusButton)
 
-        const laneSelect = document.createElement('select')
-        ;['top', 'middle', 'bottom'].forEach((lane) => {
-          const option = document.createElement('option')
-          option.value = lane
-          option.textContent = lane
-          option.selected = (school?.lane ?? fish.preferredLane) === lane
-          laneSelect.appendChild(option)
-        })
-        laneSelect.addEventListener('change', () => {
-          store.dispatch({
-            type: 'GAME/SET_FISH_LANE',
-            payload: {
-              speciesId: fish.speciesId,
-              lane: laneSelect.value as 'top' | 'middle' | 'bottom'
-            }
+        const laneSelector = document.createElement('div')
+        laneSelector.className = 'hud-lane-selector'
+        ;[
+          { label: 'Top', value: 'top' },
+          { label: 'Mid', value: 'middle' },
+          { label: 'Low', value: 'bottom' }
+        ].forEach((lane) => {
+          const laneButton = document.createElement('button')
+          laneButton.type = 'button'
+          laneButton.className = 'hud-lane-chip'
+          laneButton.textContent = lane.label
+          const activeLane = school?.lane ?? fish.preferredLane
+          laneButton.classList.toggle('is-active', activeLane === lane.value)
+          laneButton.addEventListener('click', () => {
+            store.dispatch({
+              type: 'GAME/SET_FISH_LANE',
+              payload: {
+                speciesId: fish.speciesId,
+                lane: lane.value as 'top' | 'middle' | 'bottom'
+              }
+            })
           })
+          laneSelector.appendChild(laneButton)
         })
-        controls.appendChild(laneSelect)
+        controls.appendChild(laneSelector)
 
         row.appendChild(controls)
         fishSection.appendChild(row)
@@ -303,7 +417,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
     const eraser = document.createElement('button')
     eraser.type = 'button'
     eraser.textContent = 'Eraser'
-    eraser.className = state.ui.selectedDecorId === null ? 'is-active' : ''
+    eraser.className = `hud-action-button ${state.ui.selectedDecorId === null ? 'is-active' : ''}`.trim()
     eraser.addEventListener('click', () => {
       store.dispatch({ type: 'UI/SELECT_DECOR', payload: { decorId: null } })
     })
@@ -315,7 +429,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
         const button = document.createElement('button')
         button.type = 'button'
         button.textContent = decor.displayName
-        button.className = state.ui.selectedDecorId === decor.decorId ? 'is-active' : ''
+        button.className = `hud-action-button ${state.ui.selectedDecorId === decor.decorId ? 'is-active' : ''}`.trim()
         button.addEventListener('click', () => {
           store.dispatch({ type: 'UI/SELECT_DECOR', payload: { decorId: decor.decorId } })
         })
@@ -327,7 +441,12 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
         const cell = document.createElement('button')
         cell.type = 'button'
         cell.className = 'hud-grid-cell'
+        cell.setAttribute('aria-label', `Blueprint ${x + 1},${y + 1}`)
+
         const decor = tank.decor.find((item) => item.x === x && item.y === y)
+        if (decor) {
+          cell.classList.add('is-occupied')
+        }
         cell.textContent = decor ? decor.decorId.slice(0, 2).toUpperCase() : '·'
         cell.addEventListener('click', () => {
           if (state.ui.selectedDecorId) {
@@ -355,33 +474,49 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
 
 const createProgressPanel = (store: GameStore): HTMLDivElement => {
   const panel = document.createElement('div')
-  panel.className = 'hud-panel'
+  panel.className = 'hud-panel hud-panel--progress'
   panel.dataset.panel = 'progress'
 
-  const title = document.createElement('h3')
-  title.textContent = 'Progress'
-  panel.appendChild(title)
+  panel.appendChild(createPanelHeader('Progress', 'Pacing'))
 
-  const summary = document.createElement('div')
-  summary.className = 'hud-summary'
-  panel.appendChild(summary)
+  const statGrid = document.createElement('div')
+  statGrid.className = 'hud-summary hud-stat-grid'
+  panel.appendChild(statGrid)
+
+  const callout = document.createElement('div')
+  callout.className = 'hud-progress-callout'
+  panel.appendChild(callout)
 
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
-    summary.innerHTML = ''
+
+    statGrid.innerHTML = ''
     ;[
-      `Total coins earned: ${state.game.profile.stats.totalEarnedCoins}`,
-      `Offline simulated: ${state.game.profile.stats.totalOfflineSeconds}s`,
-      `Maintenance actions: ${state.game.profile.stats.totalMaintenanceActions}`,
-      `Unlocked fish: ${state.game.profile.unlockedFishIds.length}`,
-      `Unlocked decor: ${state.game.profile.unlockedDecorIds.length}`,
-      `Active tank income: ${tank.progression.incomePerMinute}/min`
-    ].forEach((entry) => {
-      const row = document.createElement('div')
-      row.className = 'hud-summary-row'
-      row.textContent = entry
-      summary.appendChild(row)
+      {
+        label: 'Current income',
+        value: `${tank.progression.incomePerMinute}/min`,
+        meta: `${tank.name}`
+      },
+      {
+        label: 'Total coins',
+        value: String(state.game.profile.stats.totalEarnedCoins),
+        meta: `${state.game.profile.currency.coins} on hand`
+      },
+      {
+        label: 'Unlocked',
+        value: `${state.game.profile.unlockedFishIds.length + state.game.profile.unlockedDecorIds.length}`,
+        meta: `${state.game.profile.unlockedFishIds.length} fish · ${state.game.profile.unlockedDecorIds.length} decor`
+      },
+      {
+        label: 'Offline gain',
+        value: `${Math.floor(state.game.profile.stats.totalOfflineSeconds / 60)}m`,
+        meta: `${state.game.profile.stats.totalMaintenanceActions} maintenance actions`
+      }
+    ].forEach((card) => {
+      statGrid.appendChild(createStatCard(card))
     })
+
+    callout.textContent = getNextUnlockCopy(state)
   }
 
   store.subscribe(({ state }) => render(state))
@@ -391,56 +526,108 @@ const createProgressPanel = (store: GameStore): HTMLDivElement => {
 
 const createSettingsPanel = (store: GameStore): HTMLDivElement => {
   const panel = document.createElement('div')
-  panel.className = 'hud-panel'
+  panel.className = 'hud-panel hud-panel--settings'
   panel.dataset.panel = 'settings'
 
-  const title = document.createElement('h3')
-  title.textContent = 'Settings'
-  panel.appendChild(title)
+  panel.appendChild(createPanelHeader('Settings', 'Tuning'))
 
-  const soundRow = document.createElement('label')
-  soundRow.className = 'hud-toggle'
-  const soundInput = document.createElement('input')
-  soundInput.type = 'checkbox'
-  soundInput.addEventListener('change', () => {
-    store.dispatch({ type: 'SETTINGS/SET_SOUND', payload: { enabled: soundInput.checked } })
+  const soundRow = document.createElement('div')
+  soundRow.className = 'hud-setting-row'
+  const soundCopy = document.createElement('div')
+  soundCopy.className = 'hud-setting-copy'
+  soundCopy.innerHTML = '<strong class="hud-setting-label">Sound</strong><div class="hud-setting-meta">Ambient loops and interaction cues</div>'
+  const soundButton = document.createElement('button')
+  soundButton.type = 'button'
+  soundButton.className = 'hud-toggle-button'
+  soundButton.addEventListener('click', () => {
+    const enabled = !store.getState().game.profile.preferences.soundEnabled
+    store.dispatch({ type: 'SETTINGS/SET_SOUND', payload: { enabled } })
   })
-  soundRow.appendChild(soundInput)
-  soundRow.appendChild(document.createTextNode(' Sound'))
+  soundRow.appendChild(soundCopy)
+  soundRow.appendChild(soundButton)
   panel.appendChild(soundRow)
 
-  const motionRow = document.createElement('label')
-  motionRow.className = 'hud-toggle'
-  const motionInput = document.createElement('input')
-  motionInput.type = 'checkbox'
-  motionInput.addEventListener('change', () => {
-    store.dispatch({ type: 'SETTINGS/SET_MOTION', payload: { enabled: motionInput.checked } })
+  const motionRow = document.createElement('div')
+  motionRow.className = 'hud-setting-row'
+  const motionCopy = document.createElement('div')
+  motionCopy.className = 'hud-setting-copy'
+  motionCopy.innerHTML = '<strong class="hud-setting-label">Motion</strong><div class="hud-setting-meta">Fish sway, particles, and water pulse</div>'
+  const motionButton = document.createElement('button')
+  motionButton.type = 'button'
+  motionButton.className = 'hud-toggle-button'
+  motionButton.addEventListener('click', () => {
+    const enabled = !store.getState().game.profile.preferences.motionEnabled
+    store.dispatch({ type: 'SETTINGS/SET_MOTION', payload: { enabled } })
   })
-  motionRow.appendChild(motionInput)
-  motionRow.appendChild(document.createTextNode(' Motion'))
+  motionRow.appendChild(motionCopy)
+  motionRow.appendChild(motionButton)
   panel.appendChild(motionRow)
 
-  const qualitySelect = document.createElement('select')
-  ;['low', 'medium', 'high'].forEach((quality) => {
-    const option = document.createElement('option')
-    option.value = quality
-    option.textContent = quality
-    qualitySelect.appendChild(option)
-  })
-  qualitySelect.addEventListener('change', () => {
-    store.dispatch({
-      type: 'SETTINGS/SET_QUALITY',
-      payload: { quality: qualitySelect.value as 'low' | 'medium' | 'high' }
+  const qualityLabel = createSectionLabel('Visual quality')
+  panel.appendChild(qualityLabel)
+
+  const qualitySegmented = document.createElement('div')
+  qualitySegmented.className = 'hud-segmented'
+  const qualityButtons: HTMLButtonElement[] = []
+  ;[
+    { label: 'Low', value: 'low' },
+    { label: 'Medium', value: 'medium' },
+    { label: 'High', value: 'high' }
+  ].forEach((quality) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = quality.label
+    button.addEventListener('click', () => {
+      store.dispatch({
+        type: 'SETTINGS/SET_QUALITY',
+        payload: { quality: quality.value as 'low' | 'medium' | 'high' }
+      })
     })
+    qualityButtons.push(button)
+    qualitySegmented.appendChild(button)
   })
-  panel.appendChild(qualitySelect)
+  panel.appendChild(qualitySegmented)
+
+  const settingsHint = document.createElement('div')
+  settingsHint.className = 'hud-progress-callout'
+  settingsHint.textContent = 'Switch to Low if you want a cleaner HUD over heavier post-processing.'
+  panel.appendChild(settingsHint)
 
   store.subscribe(({ state }) => {
-    soundInput.checked = state.game.profile.preferences.soundEnabled
-    motionInput.checked = state.game.profile.preferences.motionEnabled
-    qualitySelect.value = state.game.profile.preferences.quality
+    const soundEnabled = state.game.profile.preferences.soundEnabled
+    const motionEnabled = state.game.profile.preferences.motionEnabled
+    const quality = state.game.profile.preferences.quality
+
+    soundButton.textContent = soundEnabled ? 'On' : 'Off'
+    soundButton.classList.toggle('is-on', soundEnabled)
+    soundButton.setAttribute('aria-pressed', String(soundEnabled))
+
+    motionButton.textContent = motionEnabled ? 'On' : 'Off'
+    motionButton.classList.toggle('is-on', motionEnabled)
+    motionButton.setAttribute('aria-pressed', String(motionEnabled))
+
+    qualityButtons.forEach((button, index) => {
+      const value = ['low', 'medium', 'high'][index]
+      const isActive = value === quality
+      button.classList.toggle('is-active', isActive)
+      button.setAttribute('aria-pressed', String(isActive))
+    })
   })
 
+  const initial = store.getState()
+  const initialSound = initial.game.profile.preferences.soundEnabled
+  const initialMotion = initial.game.profile.preferences.motionEnabled
+  soundButton.textContent = initialSound ? 'On' : 'Off'
+  soundButton.classList.toggle('is-on', initialSound)
+  soundButton.setAttribute('aria-pressed', String(initialSound))
+  motionButton.textContent = initialMotion ? 'On' : 'Off'
+  motionButton.classList.toggle('is-on', initialMotion)
+  motionButton.setAttribute('aria-pressed', String(initialMotion))
+  qualityButtons.forEach((button, index) => {
+    const isActive = ['low', 'medium', 'high'][index] === initial.game.profile.preferences.quality
+    button.classList.toggle('is-active', isActive)
+    button.setAttribute('aria-pressed', String(isActive))
+  })
   return panel
 }
 
@@ -451,12 +638,31 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   const topBar = document.createElement('div')
   topBar.className = 'hud-topbar'
 
-  const currency = document.createElement('div')
-  currency.className = 'hud-pearls hud-currency'
-  topBar.appendChild(currency)
+  const currencyCard = document.createElement('div')
+  currencyCard.className = 'hud-currency-card hud-pearls'
+  const currencyLabel = document.createElement('div')
+  currencyLabel.className = 'hud-currency-label'
+  currencyLabel.textContent = 'Coins'
+  const currencyValue = document.createElement('div')
+  currencyValue.className = 'hud-currency-value'
+  const currencyCompat = document.createElement('div')
+  currencyCompat.className = 'hud-compat-label'
+  currencyCard.appendChild(currencyLabel)
+  currencyCard.appendChild(currencyValue)
+  currencyCard.appendChild(currencyCompat)
+  topBar.appendChild(currencyCard)
 
   const secondary = document.createElement('div')
   secondary.className = 'hud-secondary-stats'
+  const incomeChip = document.createElement('div')
+  incomeChip.className = 'hud-secondary-stat'
+  const comfortChip = document.createElement('div')
+  comfortChip.className = 'hud-secondary-stat'
+  const waterChip = document.createElement('div')
+  waterChip.className = 'hud-secondary-stat'
+  secondary.appendChild(incomeChip)
+  secondary.appendChild(comfortChip)
+  secondary.appendChild(waterChip)
   topBar.appendChild(secondary)
 
   const buttons = document.createElement('div')
@@ -476,6 +682,7 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
 
   const panelContainer = document.createElement('div')
   panelContainer.className = 'hud-panel-container'
+
   const guide = document.createElement('div')
   guide.className = 'hud-guide'
   const guideTitle = document.createElement('div')
@@ -487,27 +694,34 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   guide.appendChild(guideTitle)
   guide.appendChild(guideBody)
   guide.appendChild(guideHint)
+
   const tankPanel = createTankPanel(store)
   const shopPanel = createShopPanel(store)
   const layoutPanel = createLayoutPanel(store)
   const progressPanel = createProgressPanel(store)
   const settingsPanel = createSettingsPanel(store)
+
+  const panels: Array<{ mode: GameUiMode; element: HTMLDivElement }> = [
+    { mode: 'tank', element: tankPanel },
+    { mode: 'shop', element: shopPanel },
+    { mode: 'layout', element: layoutPanel },
+    { mode: 'progress', element: progressPanel },
+    { mode: 'settings', element: settingsPanel }
+  ]
+
   panelContainer.appendChild(guide)
-  panelContainer.appendChild(tankPanel)
-  panelContainer.appendChild(shopPanel)
-  panelContainer.appendChild(layoutPanel)
-  panelContainer.appendChild(progressPanel)
-  panelContainer.appendChild(settingsPanel)
+  panels.forEach(({ element }) => panelContainer.appendChild(element))
 
   root.appendChild(topBar)
   root.appendChild(panelContainer)
 
   const applyMode = (mode: GameUiMode): void => {
-    tankPanel.style.display = mode === 'tank' ? 'flex' : 'none'
-    shopPanel.style.display = mode === 'shop' ? 'flex' : 'none'
-    layoutPanel.style.display = mode === 'layout' ? 'flex' : 'none'
-    progressPanel.style.display = mode === 'progress' ? 'flex' : 'none'
-    settingsPanel.style.display = mode === 'settings' ? 'flex' : 'none'
+    panels.forEach(({ mode: panelMode, element }) => {
+      const isActive = panelMode === mode
+      element.hidden = !isActive
+      element.classList.toggle('is-active', isActive)
+    })
+
     modeButtons.forEach((button) => {
       const isActive = button.dataset.mode === mode
       button.classList.toggle('is-active', isActive)
@@ -515,26 +729,25 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
     })
   }
 
-  store.subscribe(({ state }) => {
+  const renderOverlay = (state: GameAppState): void => {
     const tank = getActiveTank(state)
     const guideContent = getGuideContent(state)
-    currency.textContent = `Coins: ${state.game.profile.currency.coins}`
-    secondary.textContent = `Income ${tank.progression.incomePerMinute}/min • Comfort ${tank.progression.comfort} • Water ${tank.progression.waterQuality}`
+
+    currencyValue.textContent = String(state.game.profile.currency.coins)
+    currencyCompat.textContent = `Coins: ${state.game.profile.currency.coins}`
+    incomeChip.textContent = `Income ${tank.progression.incomePerMinute}/min`
+    comfortChip.textContent = `Comfort ${tank.progression.comfort}`
+    waterChip.textContent = `Water ${tank.progression.waterQuality}`
+
+    guide.dataset.mode = state.ui.mode
     guideTitle.textContent = guideContent.title
     guideBody.textContent = guideContent.body
     guideHint.textContent = guideContent.hint
     applyMode(state.ui.mode)
-  })
+  }
 
-  const initial = store.getState()
-  const initialTank = getActiveTank(initial)
-  const initialGuide = getGuideContent(initial)
-  currency.textContent = `Coins: ${initial.game.profile.currency.coins}`
-  secondary.textContent = `Income ${initialTank.progression.incomePerMinute}/min • Comfort ${initialTank.progression.comfort} • Water ${initialTank.progression.waterQuality}`
-  guideTitle.textContent = initialGuide.title
-  guideBody.textContent = initialGuide.body
-  guideHint.textContent = initialGuide.hint
-  applyMode(initial.ui.mode)
+  store.subscribe(({ state }) => renderOverlay(state))
+  renderOverlay(store.getState())
 
   return root
 }

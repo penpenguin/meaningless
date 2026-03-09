@@ -15,6 +15,8 @@ const theme: Theme = {
 describe('applyGradientBackground', () => {
   let stops: string[] = []
   let radialGradientCalls = 0
+  let bezierCurveCalls = 0
+  let strokeCalls = 0
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
 
   afterEach(() => {
@@ -22,9 +24,11 @@ describe('applyGradientBackground', () => {
     getContextSpy = null
     stops = []
     radialGradientCalls = 0
+    bezierCurveCalls = 0
+    strokeCalls = 0
   })
 
-  it('uses stored theme values and soft radial light blooms for gradient and fog', () => {
+  it('uses stored theme values, light shafts, and distant silhouettes for gradient and fog', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => {
@@ -47,8 +51,15 @@ describe('applyGradientBackground', () => {
           fillRect: vi.fn(),
           beginPath: vi.fn(),
           moveTo: vi.fn(),
-          bezierCurveTo: vi.fn(),
-          stroke: vi.fn(),
+          lineTo: vi.fn(),
+          bezierCurveTo: () => {
+            bezierCurveCalls += 1
+          },
+          closePath: vi.fn(),
+          fill: vi.fn(),
+          stroke: () => {
+            strokeCalls += 1
+          },
           fillStyle: '',
           globalAlpha: 1,
           lineWidth: 0,
@@ -66,6 +77,8 @@ describe('applyGradientBackground', () => {
     expect(fog.density).toBeCloseTo(theme.fogDensity)
     expect(fog.color.getHexString()).toBe(theme.waterTint.replace('#', '').toLowerCase())
     expect(radialGradientCalls).toBeGreaterThanOrEqual(2)
+    expect(bezierCurveCalls).toBeGreaterThan(0)
+    expect(strokeCalls).toBeGreaterThan(0)
     expect(stops.map((color) => color.toLowerCase())).toContain(theme.waterTint.toLowerCase())
   })
 })
