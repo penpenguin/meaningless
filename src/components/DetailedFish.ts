@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BoidsSystem } from '../utils/Boids'
 import type { FishGroup, Tuning } from '../types/aquarium'
-import { getSpeciesOrFallback } from '../utils/speciesCatalog'
+import { getFishContent, getFishContentList } from '../content/registry'
 
 interface FishVariant {
   name: string
@@ -328,7 +328,9 @@ export class DetailedFishSystem {
   }
 
   private resolveVariantIndex(speciesId: string): number {
-    const species = getSpeciesOrFallback(speciesId)
+    const species = getFishContent(speciesId) ?? getFishContentList()[0]
+    if (!species) return this.safeVariantIndex('neon')
+
     const archetype = species.render.archetype
     if (archetype === 'Neon') return this.safeVariantIndex('neon')
     if (archetype === 'Tropical') return this.safeVariantIndex('tropical')

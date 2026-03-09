@@ -6,10 +6,9 @@ import {
   GRID_COLUMNS,
   GRID_ROWS,
   STARTER_DECOR_ID,
-  STARTER_FISH_ID,
-  getStarterDecorIds,
-  getStarterFishIds
+  STARTER_FISH_ID
 } from './catalog'
+import { getStarterDecorContentIds, getStarterFishContentIds } from '../content/registry'
 import { refreshTankProgression, simulateGameSave } from './simulation'
 import type { GameAppState, GameSave, Lane } from './types'
 
@@ -20,8 +19,8 @@ const createDefaultProfile = () => ({
     coins: 12,
     pendingCoins: 0
   },
-  unlockedFishIds: getStarterFishIds(),
-  unlockedDecorIds: getStarterDecorIds(),
+  unlockedFishIds: getStarterFishContentIds(),
+  unlockedDecorIds: getStarterDecorContentIds(),
   stats: {
     totalEarnedCoins: 0,
     totalOfflineSeconds: 0,

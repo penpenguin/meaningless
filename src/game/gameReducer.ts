@@ -1,4 +1,5 @@
-import { getDecorAt, getDecorDefinition, getFishDefinition } from './catalog'
+import { getDecorContent, getFishContent } from '../content/registry'
+import { getDecorAt } from './catalog'
 import { simulateGameSave, refreshTankProgression } from './simulation'
 import type { GameAction, GameAppState, GameSave, GameTank } from './types'
 
@@ -74,20 +75,20 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
       }
     }
     case 'GAME/UNLOCK_FISH': {
-      const fish = getFishDefinition(action.payload.speciesId)
+      const fish = getFishContent(action.payload.speciesId)
       if (!fish) return state
       if (state.game.profile.unlockedFishIds.includes(fish.speciesId)) return state
-      if (state.game.profile.currency.coins < fish.unlockCost) return state
+      if (state.game.profile.currency.coins < fish.gameplay.unlockCost) return state
 
       return {
         ...state,
         game: {
-          ...withProfileCoins(state.game, state.game.profile.currency.coins - fish.unlockCost),
+          ...withProfileCoins(state.game, state.game.profile.currency.coins - fish.gameplay.unlockCost),
           profile: {
             ...state.game.profile,
             currency: {
               ...state.game.profile.currency,
-              coins: state.game.profile.currency.coins - fish.unlockCost
+              coins: state.game.profile.currency.coins - fish.gameplay.unlockCost
             },
             unlockedFishIds: [...state.game.profile.unlockedFishIds, fish.speciesId]
           }
@@ -95,20 +96,20 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
       }
     }
     case 'GAME/UNLOCK_DECOR': {
-      const decor = getDecorDefinition(action.payload.decorId)
+      const decor = getDecorContent(action.payload.decorId)
       if (!decor) return state
       if (state.game.profile.unlockedDecorIds.includes(decor.decorId)) return state
-      if (state.game.profile.currency.coins < decor.unlockCost) return state
+      if (state.game.profile.currency.coins < decor.gameplay.unlockCost) return state
 
       return {
         ...state,
         game: {
-          ...withProfileCoins(state.game, state.game.profile.currency.coins - decor.unlockCost),
+          ...withProfileCoins(state.game, state.game.profile.currency.coins - decor.gameplay.unlockCost),
           profile: {
             ...state.game.profile,
             currency: {
               ...state.game.profile.currency,
-              coins: state.game.profile.currency.coins - decor.unlockCost
+              coins: state.game.profile.currency.coins - decor.gameplay.unlockCost
             },
             unlockedDecorIds: [...state.game.profile.unlockedDecorIds, decor.decorId]
           }
@@ -116,7 +117,7 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
       }
     }
     case 'GAME/SET_FISH_COUNT': {
-      const fish = getFishDefinition(action.payload.speciesId)
+      const fish = getFishContent(action.payload.speciesId)
       if (!fish) return state
       if (!state.game.profile.unlockedFishIds.includes(fish.speciesId)) return state
 
@@ -126,7 +127,7 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
       const current = activeTank.fishSchools.find((school) => school.speciesId === fish.speciesId)
       const currentCount = current?.count ?? 0
       const delta = normalizedCount - currentCount
-      const cost = delta > 0 ? delta * fish.purchaseCostPerFish : 0
+      const cost = delta > 0 ? delta * fish.gameplay.purchaseCostPerFish : 0
       if (cost > state.game.profile.currency.coins) return state
 
       const nextGame = withActiveTank(withProfileCoins(state.game, state.game.profile.currency.coins - cost), (tank) => {
@@ -145,7 +146,7 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
               id: current?.id ?? `school-${fish.speciesId}`,
               speciesId: fish.speciesId,
               count: normalizedCount,
-              lane: current?.lane ?? fish.preferredLane
+              lane: current?.lane ?? fish.gameplay.preferredLane
             }
           ]
         })

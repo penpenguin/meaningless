@@ -1,5 +1,5 @@
 import type { ProfileState } from '../types/profile'
-import { getStarterSpeciesIds } from './speciesCatalog'
+import { getStarterFishContentIds } from '../content/registry'
 
 export const CURRENT_PROFILE_SCHEMA_VERSION = 1
 export const VIEW_SECONDS_PER_PEARL = 300
@@ -14,7 +14,7 @@ export const createDefaultProfileState = (): ProfileState => ({
   currency: {
     pearls: 0
   },
-  unlockedSpeciesIds: getStarterSpeciesIds(),
+  unlockedSpeciesIds: getStarterFishContentIds(),
   stats: {
     totalViewSeconds: 0,
     totalEarnedPearls: 0

@@ -1,5 +1,5 @@
 import type { GameStore } from '../game/createGameStore'
-import { getDecorCatalog, getFishCatalog } from '../game/catalog'
+import { getDecorContent, getDecorContentList, getFishContentList } from '../content/registry'
 import type { GameAppState, GameUiMode } from '../game/types'
 
 type GameHudOverlayOptions = {
@@ -128,12 +128,12 @@ const createSectionLabel = (text: string): HTMLDivElement => {
 
 const getNextUnlockCopy = (state: GameAppState): string => {
   const coins = state.game.profile.currency.coins
-  const lockedFish = getFishCatalog()
+  const lockedFish = getFishContentList()
     .filter((fish) => !state.game.profile.unlockedFishIds.includes(fish.speciesId))
-    .map((fish) => ({ label: fish.displayName, cost: fish.unlockCost }))
-  const lockedDecor = getDecorCatalog()
+    .map((fish) => ({ label: fish.displayName, cost: fish.gameplay.unlockCost }))
+  const lockedDecor = getDecorContentList()
     .filter((decor) => !state.game.profile.unlockedDecorIds.includes(decor.decorId))
-    .map((decor) => ({ label: decor.displayName, cost: decor.unlockCost }))
+    .map((decor) => ({ label: decor.displayName, cost: decor.gameplay.unlockCost }))
 
   const nextUnlock = [...lockedFish, ...lockedDecor]
     .sort((left, right) => left.cost - right.cost)[0]
@@ -240,20 +240,20 @@ const createShopPanel = (store: GameStore): HTMLDivElement => {
     fishList.innerHTML = ''
     decorList.innerHTML = ''
 
-    getFishCatalog().forEach((fish) => {
+    getFishContentList().forEach((fish) => {
       const row = document.createElement('div')
       row.className = 'hud-list-item'
 
       const info = document.createElement('div')
-      info.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">Unlock ${fish.unlockCost} / +${fish.baseIncomePerMinute.toFixed(2)} each</div>`
+      info.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">Unlock ${fish.gameplay.unlockCost} / +${fish.gameplay.baseIncomePerMinute.toFixed(2)} each</div>`
       row.appendChild(info)
 
       const action = document.createElement('button')
       action.type = 'button'
       action.className = 'hud-action-button'
       const unlocked = state.game.profile.unlockedFishIds.includes(fish.speciesId)
-      action.textContent = unlocked ? 'Unlocked' : `Unlock ${fish.unlockCost}`
-      action.disabled = unlocked || state.game.profile.currency.coins < fish.unlockCost
+      action.textContent = unlocked ? 'Unlocked' : `Unlock ${fish.gameplay.unlockCost}`
+      action.disabled = unlocked || state.game.profile.currency.coins < fish.gameplay.unlockCost
       action.addEventListener('click', () => {
         store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: fish.speciesId } })
       })
@@ -261,20 +261,20 @@ const createShopPanel = (store: GameStore): HTMLDivElement => {
       fishList.appendChild(row)
     })
 
-    getDecorCatalog().forEach((decor) => {
+    getDecorContentList().forEach((decor) => {
       const row = document.createElement('div')
       row.className = 'hud-list-item'
 
       const info = document.createElement('div')
-      info.innerHTML = `<strong>${decor.displayName}</strong><div class="hud-item-meta">Unlock ${decor.unlockCost} / Comfort +${decor.comfortBonus}</div>`
+      info.innerHTML = `<strong>${decor.displayName}</strong><div class="hud-item-meta">Unlock ${decor.gameplay.unlockCost} / Comfort +${decor.gameplay.comfortBonus}</div>`
       row.appendChild(info)
 
       const action = document.createElement('button')
       action.type = 'button'
       action.className = 'hud-action-button'
       const unlocked = state.game.profile.unlockedDecorIds.includes(decor.decorId)
-      action.textContent = unlocked ? 'Unlocked' : `Unlock ${decor.unlockCost}`
-      action.disabled = unlocked || state.game.profile.currency.coins < decor.unlockCost
+      action.textContent = unlocked ? 'Unlocked' : `Unlock ${decor.gameplay.unlockCost}`
+      action.disabled = unlocked || state.game.profile.currency.coins < decor.gameplay.unlockCost
       action.addEventListener('click', () => {
         store.dispatch({ type: 'GAME/UNLOCK_DECOR', payload: { decorId: decor.decorId } })
       })
@@ -324,7 +324,9 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
 
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
-    const selectedDecor = getDecorCatalog().find((decor) => decor.decorId === state.ui.selectedDecorId)
+    const selectedDecor = state.ui.selectedDecorId
+      ? getDecorContent(state.ui.selectedDecorId)
+      : null
 
     status.textContent = selectedDecor
       ? `Tool: ${selectedDecor.displayName} · click blueprint cells to place it`
@@ -335,7 +337,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
     palette.innerHTML = ''
     board.innerHTML = ''
 
-    getFishCatalog()
+    getFishContentList()
       .filter((fish) => state.game.profile.unlockedFishIds.includes(fish.speciesId))
       .forEach((fish) => {
         const school = tank.fishSchools.find((entry) => entry.speciesId === fish.speciesId)
@@ -343,7 +345,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
         row.className = 'hud-list-item'
 
         const label = document.createElement('div')
-        label.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">${school?.count ?? 0} fish · ${(school?.lane ?? fish.preferredLane)} lane</div>`
+        label.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">${school?.count ?? 0} fish · ${(school?.lane ?? fish.gameplay.preferredLane)} lane</div>`
         row.appendChild(label)
 
         const controls = document.createElement('div')
@@ -395,7 +397,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
           laneButton.type = 'button'
           laneButton.className = 'hud-lane-chip'
           laneButton.textContent = lane.label
-          const activeLane = school?.lane ?? fish.preferredLane
+          const activeLane = school?.lane ?? fish.gameplay.preferredLane
           laneButton.classList.toggle('is-active', activeLane === lane.value)
           laneButton.addEventListener('click', () => {
             store.dispatch({
@@ -423,7 +425,7 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
     })
     palette.appendChild(eraser)
 
-    getDecorCatalog()
+    getDecorContentList()
       .filter((decor) => state.game.profile.unlockedDecorIds.includes(decor.decorId))
       .forEach((decor) => {
         const button = document.createElement('button')

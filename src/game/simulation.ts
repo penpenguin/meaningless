@@ -1,8 +1,5 @@
-import {
-  getDecorDefinition,
-  getFishDefinition,
-  laneForGridRow
-} from './catalog'
+import { getDecorContent, getFishContent } from '../content/registry'
+import { laneForGridRow } from './catalog'
 import type {
   DecorPlacement,
   GameSave,
@@ -39,19 +36,19 @@ const getDecorStats = (tank: GameTank): {
   let waterQualityBonus = 0
 
   tank.decor.forEach((placement) => {
-    const decor = getDecorDefinition(placement.decorId)
+    const decor = getDecorContent(placement.decorId)
     if (!decor) return
 
-    comfortBonus += decor.comfortBonus
-    waterQualityBonus += decor.waterQualityBonus
+    comfortBonus += decor.gameplay.comfortBonus
+    waterQualityBonus += decor.gameplay.waterQualityBonus
 
     const supportedLane = laneForGridRow(placement.y, tank.layout.rows)
     const hasMatchingSchool = tank.fishSchools.some((school) => {
-      if (decor.laneAffinity === 'any') return true
-      return school.lane === decor.laneAffinity || school.lane === supportedLane
+      if (decor.gameplay.laneAffinity === 'any') return true
+      return school.lane === decor.gameplay.laneAffinity || school.lane === supportedLane
     })
     if (hasMatchingSchool) {
-      comfortBonus += decor.adjacencyBonus
+      comfortBonus += decor.gameplay.adjacencyBonus
     }
   })
 
@@ -68,15 +65,15 @@ const getFishStats = (tank: GameTank): {
   const uniqueSpecies = new Set(tank.fishSchools.map((school) => school.speciesId)).size
 
   return tank.fishSchools.reduce((stats, school) => {
-    const fish = getFishDefinition(school.speciesId)
+    const fish = getFishContent(school.speciesId)
     if (!fish) return stats
 
-    const isPreferredLane = fish.preferredLane === school.lane
+    const isPreferredLane = fish.gameplay.preferredLane === school.lane
     return {
       totalFish: stats.totalFish + school.count,
-      baseIncomePerMinute: stats.baseIncomePerMinute + (fish.baseIncomePerMinute * school.count),
+      baseIncomePerMinute: stats.baseIncomePerMinute + (fish.gameplay.baseIncomePerMinute * school.count),
       laneHarmonyBonus: stats.laneHarmonyBonus + (isPreferredLane ? 6 : 1),
-      pollutionPerMinute: stats.pollutionPerMinute + (fish.pollutionPerFish * school.count),
+      pollutionPerMinute: stats.pollutionPerMinute + (fish.gameplay.pollutionPerFish * school.count),
       uniqueSpecies
     }
   }, {
