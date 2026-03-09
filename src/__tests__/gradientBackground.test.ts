@@ -14,15 +14,17 @@ const theme: Theme = {
 
 describe('applyGradientBackground', () => {
   let stops: string[] = []
+  let radialGradientCalls = 0
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
 
   afterEach(() => {
     getContextSpy?.mockRestore()
     getContextSpy = null
     stops = []
+    radialGradientCalls = 0
   })
 
-  it('uses stored theme values for gradient and fog', () => {
+  it('uses stored theme values and soft radial light blooms for gradient and fog', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => {
@@ -32,10 +34,25 @@ describe('applyGradientBackground', () => {
           }
         }
 
+        const radialGradient = {
+          addColorStop: vi.fn()
+        }
+
         return {
           createLinearGradient: () => gradient,
+          createRadialGradient: () => {
+            radialGradientCalls += 1
+            return radialGradient
+          },
           fillRect: vi.fn(),
-          fillStyle: ''
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          bezierCurveTo: vi.fn(),
+          stroke: vi.fn(),
+          fillStyle: '',
+          globalAlpha: 1,
+          lineWidth: 0,
+          strokeStyle: ''
         } as unknown as CanvasRenderingContext2D
       })
 
@@ -48,6 +65,7 @@ describe('applyGradientBackground', () => {
     const fog = scene.fog as THREE.FogExp2
     expect(fog.density).toBeCloseTo(theme.fogDensity)
     expect(fog.color.getHexString()).toBe(theme.waterTint.replace('#', '').toLowerCase())
+    expect(radialGradientCalls).toBeGreaterThanOrEqual(2)
     expect(stops.map((color) => color.toLowerCase())).toContain(theme.waterTint.toLowerCase())
   })
 })

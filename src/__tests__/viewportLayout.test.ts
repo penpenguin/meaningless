@@ -14,4 +14,9 @@ describe('viewport layout', () => {
     expect(styles).not.toContain('width: min(94vw, 94vh);')
     expect(styles).not.toContain('height: min(94vw, 94vh);')
   })
+
+  it('adds glass reflection layers so the tank reads like an aquarium shell', () => {
+    expect(styles).toMatch(/#canvas-container::before\s*{/)
+    expect(styles).toMatch(/#canvas-container::after\s*{/)
+  })
 })

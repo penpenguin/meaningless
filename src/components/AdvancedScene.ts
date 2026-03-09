@@ -78,6 +78,36 @@ export const applyGradientBackground = (scene: THREE.Scene, theme?: Theme): void
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+  if (typeof ctx.createRadialGradient === 'function') {
+    const surfaceBloom = ctx.createRadialGradient(
+      canvas.width * 0.5,
+      canvas.height * 0.08,
+      canvas.width * 0.04,
+      canvas.width * 0.5,
+      canvas.height * 0.08,
+      canvas.width * 0.55
+    )
+    surfaceBloom.addColorStop(0, 'rgba(236, 250, 255, 0.34)')
+    surfaceBloom.addColorStop(0.45, 'rgba(159, 225, 235, 0.12)')
+    surfaceBloom.addColorStop(1, 'rgba(12, 37, 46, 0)')
+    ctx.fillStyle = surfaceBloom
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const lowerVignette = ctx.createRadialGradient(
+      canvas.width * 0.5,
+      canvas.height * 0.92,
+      canvas.width * 0.1,
+      canvas.width * 0.5,
+      canvas.height * 0.92,
+      canvas.width * 0.75
+    )
+    lowerVignette.addColorStop(0, 'rgba(9, 28, 37, 0)')
+    lowerVignette.addColorStop(0.55, 'rgba(7, 19, 27, 0.12)')
+    lowerVignette.addColorStop(1, 'rgba(3, 8, 12, 0.34)')
+    ctx.fillStyle = lowerVignette
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
+
   const backgroundTexture = new THREE.CanvasTexture(canvas)
   backgroundTexture.mapping = THREE.EquirectangularReflectionMapping
   backgroundTexture.colorSpace = THREE.SRGBColorSpace
@@ -153,8 +183,8 @@ export class AdvancedAquariumScene {
       0.1,
       1000
     )
-    this.camera.position.set(0, 0.4, 18)
-    this.camera.lookAt(0, 0, 0)
+    this.camera.position.set(0, 1.1, 14.5)
+    this.camera.lookAt(0, -1.4, 0)
   }
   
   private setupRenderer(container: HTMLElement): void {
@@ -285,7 +315,7 @@ export class AdvancedAquariumScene {
       tankDepth + 0.6
     )
     const baseMaterial = new THREE.MeshStandardMaterial({
-      color: 0xF7E8D5,
+      color: 0xB59E84,
       roughness: 0.7,
       metalness: 0.05
     })
@@ -325,7 +355,7 @@ export class AdvancedAquariumScene {
     
     const sandMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
-      color: 0xF7E8D5,
+      color: 0xD2BB9B,
       roughness: 0.8,
       metalness: 0,
       transparent: false,
@@ -344,8 +374,12 @@ export class AdvancedAquariumScene {
     canvas.width = 512
     canvas.height = 512
     const ctx = canvas.getContext('2d')!
-    
-    ctx.fillStyle = '#F7E8D5'
+
+    const baseGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+    baseGradient.addColorStop(0, '#d8c4a4')
+    baseGradient.addColorStop(0.55, '#cbb392')
+    baseGradient.addColorStop(1, '#b79d7d')
+    ctx.fillStyle = baseGradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
     for (let i = 0; i < 2000; i++) {
@@ -353,9 +387,9 @@ export class AdvancedAquariumScene {
       const y = Math.random() * canvas.height
       const size = Math.random() * 3 + 1
       
-      const hue = 30 + Math.random() * 10
-      const saturation = 15 + Math.random() * 10
-      const brightness = 0.85 + Math.random() * 0.15
+      const hue = 28 + Math.random() * 12
+      const saturation = 18 + Math.random() * 12
+      const brightness = 0.62 + Math.random() * 0.16
       ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${brightness * 100}%)`
       
       ctx.beginPath()
@@ -368,15 +402,28 @@ export class AdvancedAquariumScene {
       const y = Math.random() * canvas.height
       const size = Math.random() * 6 + 2
       
-      const hue = 25 + Math.random() * 15
-      const saturation = 10 + Math.random() * 15
-      const brightness = 0.8 + Math.random() * 0.2
+      const hue = 24 + Math.random() * 16
+      const saturation = 8 + Math.random() * 14
+      const brightness = 0.42 + Math.random() * 0.2
       ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${brightness * 100}%)`
       
       ctx.beginPath()
       ctx.arc(x, y, size, 0, Math.PI * 2)
       ctx.fill()
     }
+
+    const edgeShade = ctx.createRadialGradient(
+      canvas.width * 0.5,
+      canvas.height * 0.5,
+      canvas.width * 0.18,
+      canvas.width * 0.5,
+      canvas.height * 0.5,
+      canvas.width * 0.62
+    )
+    edgeShade.addColorStop(0, 'rgba(0, 0, 0, 0)')
+    edgeShade.addColorStop(1, 'rgba(45, 31, 20, 0.18)')
+    ctx.fillStyle = edgeShade
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
     
     const texture = new THREE.CanvasTexture(canvas)
     texture.wrapS = THREE.RepeatWrapping

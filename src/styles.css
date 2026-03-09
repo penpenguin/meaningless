@@ -27,19 +27,47 @@ body {
   height: 100vh;
   height: 100dvh;
   position: relative;
+  isolation: isolate;
   border-radius: 0;
   overflow: hidden;
   border: 1px solid rgba(201, 241, 255, 0.24);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.35),
     inset 0 0 0 1px rgba(201, 241, 255, 0.1);
-  background: linear-gradient(180deg, rgba(16, 71, 87, 0.7), rgba(5, 23, 31, 0.7));
+  background:
+    radial-gradient(circle at 50% 0%, rgba(214, 246, 255, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(11, 78, 96, 0.76), rgba(4, 22, 30, 0.84));
+}
+
+#canvas-container::before,
+#canvas-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#canvas-container::before {
+  background:
+    linear-gradient(105deg, transparent 0 20%, rgba(244, 251, 255, 0.16) 31%, rgba(255, 255, 255, 0.05) 37%, transparent 48%),
+    linear-gradient(180deg, rgba(244, 251, 255, 0.1), transparent 18%);
+  mix-blend-mode: screen;
+  opacity: 0.8;
+}
+
+#canvas-container::after {
+  background:
+    radial-gradient(circle at 84% 14%, rgba(255, 255, 255, 0.12), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 22%, rgba(0, 0, 0, 0.12) 100%);
+  opacity: 0.7;
 }
 
 #canvas-container canvas {
   width: 100% !important;
   height: 100% !important;
   display: block;
+  position: relative;
+  z-index: 0;
 }
 
 .hud-overlay {
@@ -61,12 +89,13 @@ body {
   flex-wrap: wrap;
   gap: 0.6rem;
   align-items: center;
-  background: rgba(8, 30, 40, 0.65);
+  background: linear-gradient(180deg, rgba(7, 35, 45, 0.7), rgba(4, 19, 27, 0.44));
   border: 1px solid rgba(106, 199, 214, 0.35);
   border-radius: 999px;
   padding: 0.4rem 0.8rem;
   color: #e6f7ff;
-  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(2, 9, 13, 0.24);
+  backdrop-filter: blur(14px) saturate(1.15);
 }
 
 .hud-pearls {
@@ -114,12 +143,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  background: rgba(8, 30, 40, 0.72);
+  background: linear-gradient(180deg, rgba(7, 35, 45, 0.72), rgba(4, 19, 27, 0.42));
   border: 1px solid rgba(106, 199, 214, 0.28);
   border-radius: 12px;
   padding: 0.75rem 0.8rem;
   color: #e6f7ff;
-  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 28px rgba(2, 9, 13, 0.22);
+  backdrop-filter: blur(16px) saturate(1.08);
 }
 
 .hud-guide-title {
@@ -144,12 +174,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  background: rgba(8, 30, 40, 0.65);
+  background: linear-gradient(180deg, rgba(7, 35, 45, 0.68), rgba(4, 19, 27, 0.38));
   border: 1px solid rgba(106, 199, 214, 0.35);
   border-radius: 12px;
   padding: 0.8rem;
   color: #e6f7ff;
-  backdrop-filter: blur(8px);
+  box-shadow: 0 14px 32px rgba(2, 9, 13, 0.2);
+  backdrop-filter: blur(16px) saturate(1.08);
 }
 
 .hud-summary {

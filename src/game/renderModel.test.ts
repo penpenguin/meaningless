@@ -32,6 +32,7 @@ describe('createAquariumRenderModel', () => {
   it('keeps healthy tanks clear enough to read the playfield', () => {
     const renderModel = createAquariumRenderModel(createStateWithWaterQuality(100))
 
+    expect(renderModel.theme.waterTint).toBe('#0b5666')
     expect(renderModel.theme.fogDensity).toBeCloseTo(0.018, 3)
   })
 
@@ -39,6 +40,7 @@ describe('createAquariumRenderModel', () => {
     const healthy = createAquariumRenderModel(createStateWithWaterQuality(100))
     const dirty = createAquariumRenderModel(createStateWithWaterQuality(35))
 
+    expect(dirty.theme.waterTint).toBe('#21424d')
     expect(dirty.theme.fogDensity).toBeGreaterThan(healthy.theme.fogDensity)
     expect(dirty.theme.fogDensity).toBeCloseTo(0.054, 3)
   })

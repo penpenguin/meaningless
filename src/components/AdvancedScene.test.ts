@@ -126,6 +126,31 @@ describe('AdvancedAquariumScene performance stats', () => {
   })
 })
 
+describe('AdvancedAquariumScene camera', () => {
+  it('frames the aquascape with a closer downward angle', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      camera: THREE.PerspectiveCamera
+      getViewportSize: () => { width: number; height: number }
+    }
+
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+
+    const setupCamera = (AdvancedAquariumScene.prototype as unknown as {
+      setupCamera: () => void
+    }).setupCamera.bind(instance)
+
+    setupCamera()
+
+    const direction = new THREE.Vector3()
+    internals.camera.getWorldDirection(direction)
+
+    expect(internals.camera.position.z).toBeCloseTo(14.5, 1)
+    expect(internals.camera.position.y).toBeCloseTo(1.1, 1)
+    expect(direction.y).toBeLessThan(-0.08)
+  })
+})
+
 describe('AdvancedAquariumScene substrate', () => {
   it('builds a rectangular floor that matches the tank footprint', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
@@ -152,5 +177,29 @@ describe('AdvancedAquariumScene substrate', () => {
     expect(sandMesh.geometry).toBeInstanceOf(THREE.PlaneGeometry)
     expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.width).toBeCloseTo(14)
     expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.height).toBeCloseTo(10)
+  })
+
+  it('uses muted sand tones instead of a bright white substrate', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSandTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+    }).createSubstrate.bind(instance)
+
+    createSubstrate(14, 14, 10)
+
+    const [baseMesh, sandMesh] = internals.tank.children as THREE.Mesh[]
+    const baseMaterial = baseMesh.material as THREE.MeshStandardMaterial
+    const sandMaterial = sandMesh.material as THREE.MeshStandardMaterial
+
+    expect(baseMaterial.color.getHexString()).toBe('b59e84')
+    expect(sandMaterial.color.getHexString()).toBe('d2bb9b')
   })
 })

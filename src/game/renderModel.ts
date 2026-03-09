@@ -22,10 +22,10 @@ export const createAquariumRenderModel = (state: GameAppState): AquariumRenderMo
   const comfort = tank.progression.comfort
   const fogDensity = Number((0.018 + ((100 - quality) / 1800)).toFixed(3))
   const tint = quality >= 75
-    ? '#0b6171'
+    ? '#0b5666'
     : quality >= 45
-      ? '#0c5061'
-      : '#264955'
+      ? '#0a4b5a'
+      : '#21424d'
 
   return {
     theme: {
