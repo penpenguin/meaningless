@@ -685,6 +685,9 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   const panelContainer = document.createElement('div')
   panelContainer.className = 'hud-panel-container'
 
+  const rail = document.createElement('div')
+  rail.className = 'hud-rail'
+
   const guide = document.createElement('div')
   guide.className = 'hud-guide'
   const guideTitle = document.createElement('div')
@@ -714,8 +717,9 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   panelContainer.appendChild(guide)
   panels.forEach(({ element }) => panelContainer.appendChild(element))
 
-  root.appendChild(topBar)
-  root.appendChild(panelContainer)
+  rail.appendChild(topBar)
+  rail.appendChild(panelContainer)
+  root.appendChild(rail)
 
   const applyMode = (mode: GameUiMode): void => {
     panels.forEach(({ mode: panelMode, element }) => {

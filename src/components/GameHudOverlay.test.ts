@@ -126,4 +126,24 @@ describe('createGameHudOverlay', () => {
       document.body.innerHTML = ''
     }
   })
+
+  it('stacks the topbar and panels inside a shared rail to avoid overlap', () => {
+    const store = createGameStore({ tickIntervalMs: 60_000 })
+
+    try {
+      const overlay = createGameHudOverlay({ store })
+      document.body.appendChild(overlay)
+
+      const rail = overlay.querySelector('.hud-rail')
+      const topbar = overlay.querySelector('.hud-topbar')
+      const panelContainer = overlay.querySelector('.hud-panel-container')
+
+      expect(rail).toBeInstanceOf(HTMLDivElement)
+      expect(rail?.firstElementChild).toBe(topbar)
+      expect(rail?.lastElementChild).toBe(panelContainer)
+    } finally {
+      store.destroy()
+      document.body.innerHTML = ''
+    }
+  })
 })

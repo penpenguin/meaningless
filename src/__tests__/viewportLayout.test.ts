@@ -25,6 +25,12 @@ describe('viewport layout', () => {
     expect(styles).toMatch(/@media \(max-width: 720px\)\s*{[\s\S]*\.hud-guide-hint\s*{[^}]*display:\s*none;/s)
   })
 
+  it('stacks desktop HUD sections in a vertical rail so wrapped controls do not collide', () => {
+    expect(styles).toMatch(/\.hud-rail\s*{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*gap:\s*0\.75rem;/s)
+    expect(styles).toMatch(/\.hud-panel-container\s*{[^}]*position:\s*relative;/s)
+    expect(styles).not.toContain('top: 5.5rem;')
+  })
+
   it('adds animated panel transitions and custom UI chrome for controls', () => {
     expect(styles).toContain('@keyframes hudPanelEnter')
     expect(styles).toMatch(/\.hud-buttons button\s*{[^}]*transition:/s)
