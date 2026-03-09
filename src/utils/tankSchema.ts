@@ -10,7 +10,11 @@ export const defaultTankTheme: Theme = {
   fogDensity: 0.4,
   particleDensity: 0.4,
   waveStrength: 0.7,
-  waveSpeed: 0.8
+  waveSpeed: 0.8,
+  glassTint: '#c3dde3',
+  glassReflectionStrength: 0.32,
+  surfaceGlowStrength: 0.45,
+  causticsStrength: 0.3
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> => {

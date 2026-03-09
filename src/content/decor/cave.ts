@@ -8,6 +8,7 @@ export const cave = createDecorContent({
     comfortBonus: 10,
     waterQualityBonus: 0.2,
     laneAffinity: 'bottom',
-    adjacencyBonus: 4
+    adjacencyBonus: 4,
+    hideoutScore: 4
   }
 })

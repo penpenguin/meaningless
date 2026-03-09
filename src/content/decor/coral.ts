@@ -8,6 +8,7 @@ export const coral = createDecorContent({
     comfortBonus: 8,
     waterQualityBonus: 0.5,
     laneAffinity: 'middle',
-    adjacencyBonus: 3
+    adjacencyBonus: 3,
+    hideoutScore: 2
   }
 })

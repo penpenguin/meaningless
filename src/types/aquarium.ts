@@ -7,7 +7,13 @@ export type Theme = {
   particleDensity: number
   waveStrength: number
   waveSpeed: number
+  glassTint?: string
+  glassReflectionStrength?: number
+  surfaceGlowStrength?: number
+  causticsStrength?: number
 }
+
+export type SchoolMood = 'calm' | 'alert' | 'feeding'
 
 export type Tuning = {
   speed: number
@@ -16,6 +22,9 @@ export type Tuning = {
   alignment: number
   avoidWalls: number
   preferredDepth: number
+  schoolMood?: SchoolMood
+  depthVariance?: number
+  turnBias?: number
 }
 
 export type FishGroup = {

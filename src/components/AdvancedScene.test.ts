@@ -176,6 +176,36 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(backdrop).toBeDefined()
     expect(backdrop?.position.z).toBeLessThan(-4.7)
   })
+
+  it('builds visible glass and water layers around the tank volume', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const frontGlass = internals.tank.children.find((child) => child.name === 'tank-glass-front') as THREE.Mesh | undefined
+    const waterVolume = internals.tank.children.find((child) => child.name === 'tank-water-volume') as THREE.Mesh | undefined
+    const surface = internals.tank.children.find((child) => child.name === 'tank-water-surface') as THREE.Mesh | undefined
+    const caustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
+
+    expect(frontGlass).toBeDefined()
+    expect(frontGlass?.material).toBeInstanceOf(THREE.MeshPhysicalMaterial)
+    expect(waterVolume).toBeDefined()
+    expect(surface).toBeDefined()
+    expect(caustics).toBeDefined()
+  })
 })
 
 describe('AdvancedAquariumScene substrate', () => {
@@ -228,5 +258,57 @@ describe('AdvancedAquariumScene substrate', () => {
 
     expect(baseMaterial.color.getHexString()).toBe('b59e84')
     expect(sandMaterial.color.getHexString()).toBe('d2bb9b')
+  })
+})
+
+describe('AdvancedAquariumScene quality scaling', () => {
+  it('keeps the water surface but hides premium water layers on low quality', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+      renderer: {
+        setPixelRatio: (value: number) => void
+        setSize: (width: number, height: number) => void
+        shadowMap: { enabled: boolean }
+      }
+      composer: { setSize: (width: number, height: number) => void }
+      godRaysEffect: { resize: (width: number, height: number) => void } | null
+      fishSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
+      getViewportSize: () => { width: number; height: number }
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.renderer = {
+      setPixelRatio: vi.fn(),
+      setSize: vi.fn(),
+      shadowMap: { enabled: true }
+    }
+    internals.composer = { setSize: vi.fn() }
+    internals.godRaysEffect = { resize: vi.fn() }
+    internals.fishSystem = { setQuality: vi.fn() }
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+    const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
+      setWaterQuality: (quality: 'low' | 'medium' | 'high') => void
+    }).setWaterQuality.bind(instance)
+
+    createAdvancedTank()
+    setWaterQuality('low')
+
+    const waterVolume = internals.tank.children.find((child) => child.name === 'tank-water-volume') as THREE.Mesh | undefined
+    const waterSurface = internals.tank.children.find((child) => child.name === 'tank-water-surface') as THREE.Mesh | undefined
+    const caustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
+
+    expect(internals.renderer.shadowMap.enabled).toBe(false)
+    expect(waterVolume?.visible).toBe(false)
+    expect(caustics?.visible).toBe(false)
+    expect(waterSurface?.visible).toBe(true)
   })
 })

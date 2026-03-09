@@ -20,6 +20,7 @@ export type DecorGameplayDefinition = {
   waterQualityBonus: number
   laneAffinity: Lane | 'any'
   adjacencyBonus: number
+  hideoutScore?: number
 }
 
 export type DecorContentDefinition = {

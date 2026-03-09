@@ -9,7 +9,10 @@ const areTuningEqual = (left?: Tuning, right?: Tuning): boolean => {
     left.separation === right.separation &&
     left.alignment === right.alignment &&
     left.avoidWalls === right.avoidWalls &&
-    left.preferredDepth === right.preferredDepth
+    left.preferredDepth === right.preferredDepth &&
+    left.schoolMood === right.schoolMood &&
+    left.depthVariance === right.depthVariance &&
+    left.turnBias === right.turnBias
   )
 }
 

@@ -20,6 +20,24 @@ interface PerformanceStats {
   drawCalls: number
 }
 
+type PremiumThemeValues = {
+  glassTint: string
+  glassReflectionStrength: number
+  surfaceGlowStrength: number
+  causticsStrength: number
+}
+
+const resolvePremiumThemeValues = (theme?: Theme): PremiumThemeValues => {
+  const fallback = defaultTheme
+
+  return {
+    glassTint: theme?.glassTint ?? fallback.glassTint ?? '#c3dde3',
+    glassReflectionStrength: theme?.glassReflectionStrength ?? fallback.glassReflectionStrength ?? 0.32,
+    surfaceGlowStrength: theme?.surfaceGlowStrength ?? fallback.surfaceGlowStrength ?? 0.45,
+    causticsStrength: theme?.causticsStrength ?? fallback.causticsStrength ?? 0.3
+  }
+}
+
 export const applyThemeToScene = (scene: THREE.Scene, theme: Theme): void => {
   scene.userData.theme = theme
   const background = scene.background
@@ -225,6 +243,11 @@ export class AdvancedAquariumScene {
   private spiralDecorations: SpiralDecorations | null = null
   private godRaysEffect: GodRaysEffect | null = null
   private environmentLoader: EnvironmentLoader
+  private glassPanes: THREE.Mesh[] = []
+  private waterVolumeMesh: THREE.Mesh | null = null
+  private waterSurfaceMesh: THREE.Mesh | null = null
+  private causticsMeshes: THREE.Mesh[] = []
+  private currentVisualQuality: 'low' | 'medium' | 'high' = 'high'
   
   private animationId: number | null = null
   public motionEnabled = true
@@ -326,13 +349,14 @@ export class AdvancedAquariumScene {
   }
 
   private setupAdvancedLighting(): void {
-    // Underwater ambient lighting
-    const ambientLight = new THREE.AmbientLight(0x4a90b8, 0.3)
+    const ambientLight = new THREE.AmbientLight(0x9bc4cf, 0.24)
     this.scene.add(ambientLight)
-    
-    // Main directional light (sunlight through water)
-    const sunLight = new THREE.DirectionalLight(0xfff8dc, 1.2)
-    sunLight.position.set(8, 15, 5)
+
+    const hemiLight = new THREE.HemisphereLight(0xdff5fb, 0x0c1d26, 0.7)
+    this.scene.add(hemiLight)
+
+    const sunLight = new THREE.DirectionalLight(0xfff3d6, 1.35)
+    sunLight.position.set(4.8, 12, 6.5)
     sunLight.castShadow = true
     sunLight.shadow.camera.near = 0.1
     sunLight.shadow.camera.far = 100
@@ -344,23 +368,17 @@ export class AdvancedAquariumScene {
     sunLight.shadow.mapSize.height = 4096
     sunLight.shadow.bias = -0.0001
     this.scene.add(sunLight)
-    
-    // Underwater color grading lights
-    const underwaterLight1 = new THREE.PointLight(0x4a90e2, 0.6, 25)
-    underwaterLight1.position.set(-8, 4, -8)
-    this.scene.add(underwaterLight1)
-    
-    const underwaterLight2 = new THREE.PointLight(0x2ecc71, 0.4, 20)
-    underwaterLight2.position.set(8, 4, 8)
-    this.scene.add(underwaterLight2)
-    
-    const underwaterLight3 = new THREE.PointLight(0x3498db, 0.5, 15)
-    underwaterLight3.position.set(0, -2, 0)
-    this.scene.add(underwaterLight3)
-    
-    // Rim lighting for depth
-    const rimLight = new THREE.DirectionalLight(0x87ceeb, 0.3)
-    rimLight.position.set(-5, 8, -10)
+
+    const fillLight = new THREE.DirectionalLight(0x95d0e1, 0.28)
+    fillLight.position.set(-7, 5.5, 8)
+    this.scene.add(fillLight)
+
+    const bounceLight = new THREE.PointLight(0x4b7f8d, 0.16, 22)
+    bounceLight.position.set(0, -3.2, 1.4)
+    this.scene.add(bounceLight)
+
+    const rimLight = new THREE.DirectionalLight(0xe7fbff, 0.18)
+    rimLight.position.set(0, 3.6, -12)
     this.scene.add(rimLight)
   }
 
@@ -372,24 +390,9 @@ export class AdvancedAquariumScene {
     const tankWidth = 14
     const tankHeight = 14
     const tankDepth = 10
-    const frameOffset = 0.2
 
-    const frameGeometry = new THREE.BoxGeometry(
-      tankWidth + frameOffset,
-      tankHeight + frameOffset,
-      tankDepth + frameOffset,
-      1, 1, 1
-    )
-    const frameMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2c3e50,
-      metalness: 0.8,
-      roughness: 0.2,
-      transparent: true,
-      opacity: 0.0,
-      visible: false
-    })
-    const frameMesh = new THREE.Mesh(frameGeometry, frameMaterial)
-    this.tank.add(frameMesh)
+    this.ensureTankVisualLayers()
+    this.createGlassShell(tankWidth, tankHeight, tankDepth)
 
     const backdropGeometry = new THREE.PlaneGeometry(tankWidth * 0.92, tankHeight * 0.74)
     const backdropMaterial = new THREE.MeshBasicMaterial({
@@ -404,6 +407,12 @@ export class AdvancedAquariumScene {
     this.tank.add(backdropMesh)
 
     this.createSubstrate(tankWidth, tankHeight, tankDepth)
+    this.createWaterVolume(tankWidth, tankHeight, tankDepth)
+    this.createWaterSurface(tankWidth, tankHeight, tankDepth)
+    this.createCausticsLayers(tankWidth, tankHeight, tankDepth)
+    const initialTheme = this.scene instanceof THREE.Scene ? resolveTheme(this.scene) : defaultTheme
+    this.applyTankTheme(initialTheme)
+    this.applyVisualQuality(this.currentVisualQuality ?? 'high')
   }
 
   private createBackdropTexture(): THREE.CanvasTexture {
@@ -544,6 +553,311 @@ export class AdvancedAquariumScene {
     this.tank.add(sandMesh)
   }
 
+  private ensureTankVisualLayers(): void {
+    if (!Array.isArray(this.glassPanes)) {
+      this.glassPanes = []
+    }
+    if (!Array.isArray(this.causticsMeshes)) {
+      this.causticsMeshes = []
+    }
+  }
+
+  private createGlassShell(tankWidth: number, tankHeight: number, tankDepth: number): void {
+    const thickness = 0.06
+    const halfDepth = tankDepth / 2
+    const halfWidth = tankWidth / 2
+    const halfHeight = tankHeight / 2
+    const glassMaterial = this.createGlassMaterial()
+
+    const frontGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankWidth, tankHeight), glassMaterial.clone())
+    frontGlass.name = 'tank-glass-front'
+    frontGlass.position.set(0, 0, halfDepth + thickness)
+    this.tank.add(frontGlass)
+
+    const leftGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankDepth, tankHeight), glassMaterial.clone())
+    leftGlass.name = 'tank-glass-left'
+    leftGlass.rotation.y = Math.PI / 2
+    leftGlass.position.set(-halfWidth - thickness, 0, 0)
+    this.tank.add(leftGlass)
+
+    const rightGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankDepth, tankHeight), glassMaterial.clone())
+    rightGlass.name = 'tank-glass-right'
+    rightGlass.rotation.y = -Math.PI / 2
+    rightGlass.position.set(halfWidth + thickness, 0, 0)
+    this.tank.add(rightGlass)
+
+    const backGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankWidth, tankHeight), glassMaterial.clone())
+    backGlass.name = 'tank-glass-back'
+    backGlass.rotation.y = Math.PI
+    backGlass.position.set(0, 0, -halfDepth - thickness)
+    this.tank.add(backGlass)
+
+    const edgeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xbfd7dd,
+      roughness: 0.35,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.22
+    })
+
+    const topEdge = new THREE.Mesh(new THREE.BoxGeometry(tankWidth + 0.12, 0.08, 0.08), edgeMaterial)
+    topEdge.name = 'tank-glass-edge-top'
+    topEdge.position.set(0, halfHeight + 0.02, halfDepth + 0.02)
+    this.tank.add(topEdge)
+
+    this.glassPanes = [frontGlass, leftGlass, rightGlass, backGlass]
+  }
+
+  private createGlassMaterial(): THREE.MeshPhysicalMaterial {
+    return new THREE.MeshPhysicalMaterial({
+      color: 0xc3dde3,
+      transmission: 0.94,
+      transparent: true,
+      opacity: 0.16,
+      roughness: 0.08,
+      metalness: 0,
+      thickness: 0.28,
+      ior: 1.14,
+      clearcoat: 1,
+      clearcoatRoughness: 0.12,
+      envMapIntensity: 1.1,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    })
+  }
+
+  private createWaterVolume(tankWidth: number, tankHeight: number, tankDepth: number): void {
+    const waterVolume = new THREE.Mesh(
+      new THREE.BoxGeometry(tankWidth - 0.24, tankHeight - 0.72, tankDepth - 0.24),
+      new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color('#0b5666'),
+        transmission: 0.52,
+        transparent: true,
+        opacity: 0.12,
+        roughness: 0.14,
+        metalness: 0,
+        thickness: 2.8,
+        envMapIntensity: 0.35,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      })
+    )
+    waterVolume.name = 'tank-water-volume'
+    waterVolume.position.set(0, -0.18, 0)
+    this.waterVolumeMesh = waterVolume
+    this.tank.add(waterVolume)
+  }
+
+  private createWaterSurface(tankWidth: number, tankHeight: number, tankDepth: number): void {
+    const surfaceTexture = this.createWaterSurfaceTexture()
+    const surfaceGeometry = new THREE.PlaneGeometry(tankWidth - 0.32, tankDepth - 0.32, 48, 36)
+    surfaceGeometry.rotateX(-Math.PI / 2)
+
+    const positions = surfaceGeometry.attributes.position.array as Float32Array
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i]
+      const z = positions[i + 2]
+      positions[i + 1] = (Math.sin(x * 0.8) * Math.cos(z * 0.65) * 0.06) + (Math.sin((x + z) * 1.15) * 0.025)
+    }
+    surfaceGeometry.attributes.position.needsUpdate = true
+    surfaceGeometry.computeVertexNormals()
+
+    const surfaceMaterial = new THREE.MeshPhysicalMaterial({
+      map: surfaceTexture,
+      color: new THREE.Color('#d9f4fb'),
+      transparent: true,
+      opacity: 0.26,
+      roughness: 0.1,
+      metalness: 0,
+      transmission: 0.72,
+      clearcoat: 1,
+      clearcoatRoughness: 0.04,
+      envMapIntensity: 1.25,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+    surfaceMaterial.emissive = new THREE.Color('#c9edf4')
+    surfaceMaterial.emissiveIntensity = 0.1
+
+    const surfaceMesh = new THREE.Mesh(surfaceGeometry, surfaceMaterial)
+    surfaceMesh.name = 'tank-water-surface'
+    surfaceMesh.position.y = tankHeight / 2 - 0.42
+    surfaceMesh.renderOrder = 3
+    this.waterSurfaceMesh = surfaceMesh
+    this.tank.add(surfaceMesh)
+  }
+
+  private createWaterSurfaceTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1.6, 1.4)
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.beginPath !== 'function' ||
+      typeof ctx.moveTo !== 'function' ||
+      typeof ctx.lineTo !== 'function' ||
+      typeof ctx.stroke !== 'function'
+    ) {
+      return texture
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+    gradient.addColorStop(0, 'rgba(240, 252, 255, 0.34)')
+    gradient.addColorStop(0.5, 'rgba(164, 220, 234, 0.08)')
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0.22)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
+    ctx.lineWidth = 2
+    for (let y = 24; y < canvas.height; y += 32) {
+      ctx.beginPath()
+      for (let x = 0; x <= canvas.width; x += 16) {
+        const waveY = y + Math.sin((x / canvas.width) * Math.PI * 5.5) * 8
+        if (x === 0) {
+          ctx.moveTo(x, waveY)
+        } else {
+          ctx.lineTo(x, waveY)
+        }
+      }
+      ctx.stroke()
+    }
+
+    texture.colorSpace = THREE.SRGBColorSpace
+    return texture
+  }
+
+  private createCausticsLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
+    const causticsTexture = this.createCausticsTexture()
+    const floorMaterial = new THREE.MeshBasicMaterial({
+      map: causticsTexture,
+      transparent: true,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+
+    const floorCaustics = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth - 0.5, tankDepth - 0.5),
+      floorMaterial
+    )
+    floorCaustics.name = 'tank-caustics-floor'
+    floorCaustics.rotation.x = -Math.PI / 2
+    floorCaustics.position.y = -tankHeight / 2 + 0.56
+    floorCaustics.renderOrder = 2
+    this.tank.add(floorCaustics)
+
+    const backCaustics = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.9, tankHeight * 0.65),
+      floorMaterial.clone()
+    )
+    backCaustics.name = 'tank-caustics-back'
+    backCaustics.position.set(0, -1.05, -tankDepth / 2 + 0.12)
+    backCaustics.renderOrder = 2
+    this.tank.add(backCaustics)
+
+    this.causticsMeshes = [floorCaustics, backCaustics]
+  }
+
+  private createCausticsTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(2.2, 1.8)
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.beginPath !== 'function' ||
+      typeof ctx.moveTo !== 'function' ||
+      typeof ctx.bezierCurveTo !== 'function' ||
+      typeof ctx.stroke !== 'function'
+    ) {
+      return texture
+    }
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    for (let i = 0; i < 18; i++) {
+      const x = (i / 18) * canvas.width
+      const gradient = ctx.createLinearGradient(x, 0, x + 60, canvas.height)
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0)')
+      gradient.addColorStop(0.45, 'rgba(237, 249, 255, 0.4)')
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.strokeStyle = gradient
+      ctx.lineWidth = 16 + (i % 3) * 4
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      ctx.bezierCurveTo(
+        x + 24,
+        canvas.height * 0.24,
+        x - 30,
+        canvas.height * 0.72,
+        x + 16,
+        canvas.height
+      )
+      ctx.stroke()
+    }
+
+    texture.colorSpace = THREE.SRGBColorSpace
+    return texture
+  }
+
+  private applyTankTheme(theme: Theme): void {
+    this.ensureTankVisualLayers()
+    const premiumTheme = resolvePremiumThemeValues(theme)
+
+    this.glassPanes.forEach((pane, index) => {
+      const material = pane.material as THREE.MeshPhysicalMaterial
+      material.color = new THREE.Color(premiumTheme.glassTint)
+      material.opacity = index === 0 ? 0.18 : 0.11
+      material.envMapIntensity = 0.8 + (premiumTheme.glassReflectionStrength * 1.5)
+      material.needsUpdate = true
+    })
+
+    if (this.waterVolumeMesh) {
+      const material = this.waterVolumeMesh.material as THREE.MeshPhysicalMaterial
+      material.color = new THREE.Color(theme.waterTint)
+      material.opacity = 0.08 + (premiumTheme.glassReflectionStrength * 0.08)
+      material.envMapIntensity = 0.2 + (premiumTheme.glassReflectionStrength * 0.5)
+      material.needsUpdate = true
+    }
+
+    if (this.waterSurfaceMesh) {
+      const material = this.waterSurfaceMesh.material as THREE.MeshPhysicalMaterial
+      material.color = new THREE.Color(premiumTheme.glassTint)
+      material.opacity = 0.18 + (premiumTheme.surfaceGlowStrength * 0.16)
+      material.emissive = new THREE.Color(premiumTheme.glassTint).lerp(new THREE.Color('#ffffff'), 0.2)
+      material.emissiveIntensity = premiumTheme.surfaceGlowStrength * 0.22
+      material.envMapIntensity = 0.75 + (premiumTheme.glassReflectionStrength * 1.1)
+      material.needsUpdate = true
+    }
+
+    this.causticsMeshes.forEach((mesh, index) => {
+      const material = mesh.material as THREE.MeshBasicMaterial
+      material.opacity = premiumTheme.causticsStrength * (index === 0 ? 0.38 : 0.26)
+      material.needsUpdate = true
+    })
+  }
+
   private createSandTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas')
     canvas.width = 512
@@ -664,6 +978,8 @@ export class AdvancedAquariumScene {
       if (this.particleSystem) {
         this.particleSystem.update(elapsedTime)
       }
+
+      this.updateTankWaterMotion(elapsedTime)
       
       if (this.aquascaping) {
         this.aquascaping.update(elapsedTime)
@@ -684,6 +1000,25 @@ export class AdvancedAquariumScene {
     
     // Update performance stats
     this.updatePerformanceStats(startTime)
+  }
+
+  private updateTankWaterMotion(elapsedTime: number): void {
+    if (this.waterSurfaceMesh) {
+      const material = this.waterSurfaceMesh.material as THREE.MeshPhysicalMaterial
+      if (material.map) {
+        material.map.offset.x = elapsedTime * 0.01
+        material.map.offset.y = elapsedTime * 0.014
+      }
+      this.waterSurfaceMesh.rotation.z = Math.sin(elapsedTime * 0.18) * 0.012
+    }
+
+    this.causticsMeshes.forEach((mesh, index) => {
+      const material = mesh.material as THREE.MeshBasicMaterial
+      if (material.map) {
+        material.map.offset.x = elapsedTime * (0.006 + (index * 0.002))
+        material.map.offset.y = elapsedTime * (0.012 + (index * 0.002))
+      }
+    })
   }
 
   private syncFishVisibleStat(): void {
@@ -749,6 +1084,7 @@ export class AdvancedAquariumScene {
   }
   
   public setWaterQuality(quality: 'low' | 'medium' | 'high'): void {
+    this.currentVisualQuality = quality
     const { width, height } = this.getViewportSize()
     const pixelRatioCap = quality === 'low' ? 1 : quality === 'medium' ? 1.5 : 2
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap))
@@ -767,10 +1103,13 @@ export class AdvancedAquariumScene {
     if (this.fishSystem) {
       this.fishSystem.setQuality(quality)
     }
+
+    this.applyVisualQuality(quality)
   }
 
   public applyTheme(theme: Theme): void {
     applyThemeToScene(this.scene, theme)
+    this.applyTankTheme(theme)
   }
 
   public applyFishGroups(groups: FishGroup[]): boolean {
@@ -806,6 +1145,31 @@ export class AdvancedAquariumScene {
     if (this.godRaysEffect) {
       this.godRaysEffect.resize(width, height)
     }
+  }
+
+  private applyVisualQuality(quality: 'low' | 'medium' | 'high'): void {
+    const resolvedQuality = quality ?? 'high'
+    this.ensureTankVisualLayers()
+
+    this.glassPanes.forEach((pane, index) => {
+      pane.visible = resolvedQuality !== 'low' || index === 0
+    })
+
+    if (this.waterVolumeMesh) {
+      this.waterVolumeMesh.visible = resolvedQuality !== 'low'
+    }
+
+    if (this.waterSurfaceMesh) {
+      this.waterSurfaceMesh.visible = true
+    }
+
+    this.causticsMeshes.forEach((mesh, index) => {
+      if (resolvedQuality === 'low') {
+        mesh.visible = false
+        return
+      }
+      mesh.visible = resolvedQuality === 'high' || index === 0
+    })
   }
 
   public dispose(): void {

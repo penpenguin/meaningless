@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BoidsSystem } from '../utils/Boids'
-import type { FishGroup, Tuning } from '../types/aquarium'
+import type { FishGroup, SchoolMood, Tuning } from '../types/aquarium'
 import { getFishContent, getFishContentList } from '../content/registry'
 
 interface FishVariant {
@@ -10,6 +10,30 @@ interface FishVariant {
   secondaryColor: THREE.Color
   scale: number
   speed: number
+}
+
+type BehaviorProfile = {
+  speed: number
+  cohesion: number
+  separation: number
+  alignment: number
+  avoidWalls: number
+  preferredDepth: number
+  schoolMood: SchoolMood
+  depthVariance: number
+  turnBias: number
+}
+
+const DEFAULT_BEHAVIOR_PROFILE: BehaviorProfile = {
+  speed: 0.55,
+  cohesion: 0.55,
+  separation: 0.62,
+  alignment: 0.58,
+  avoidWalls: 0.8,
+  preferredDepth: 0.5,
+  schoolMood: 'calm',
+  depthVariance: 0.18,
+  turnBias: 0.14
 }
 
 export class DetailedFishSystem {
@@ -38,6 +62,9 @@ export class DetailedFishSystem {
   private tempCurrentPos = new THREE.Vector3()
   private tempWanderDirection = new THREE.Vector3()
   private tempWanderTarget = new THREE.Vector3()
+  private tempDepthForce = new THREE.Vector3()
+  private tempBoundsSize = new THREE.Vector3()
+  private behaviorProfile: BehaviorProfile = { ...DEFAULT_BEHAVIOR_PROFILE }
   private currentQuality: 'low' | 'medium' | 'high' = 'high'
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3) {
@@ -59,22 +86,28 @@ export class DetailedFishSystem {
   }
 
   applyTuning(tuning: Partial<Tuning>): void {
-    if (tuning.speed !== undefined) {
-      const speed = tuning.speed
-      this.boids.params.maxSpeed = speed
-      this.boids.boids.forEach((boid) => {
-        boid.maxSpeed = speed
-      })
+    this.behaviorProfile = {
+      ...this.behaviorProfile,
+      ...('speed' in tuning && tuning.speed !== undefined ? { speed: tuning.speed } : {}),
+      ...('cohesion' in tuning && tuning.cohesion !== undefined ? { cohesion: tuning.cohesion } : {}),
+      ...('separation' in tuning && tuning.separation !== undefined ? { separation: tuning.separation } : {}),
+      ...('alignment' in tuning && tuning.alignment !== undefined ? { alignment: tuning.alignment } : {}),
+      ...('avoidWalls' in tuning && tuning.avoidWalls !== undefined ? { avoidWalls: tuning.avoidWalls } : {}),
+      ...('preferredDepth' in tuning && tuning.preferredDepth !== undefined ? { preferredDepth: tuning.preferredDepth } : {}),
+      ...('schoolMood' in tuning && tuning.schoolMood !== undefined ? { schoolMood: tuning.schoolMood } : {}),
+      ...('depthVariance' in tuning && tuning.depthVariance !== undefined ? { depthVariance: tuning.depthVariance } : {}),
+      ...('turnBias' in tuning && tuning.turnBias !== undefined ? { turnBias: tuning.turnBias } : {})
     }
-    if (tuning.cohesion !== undefined) {
-      this.boids.params.cohesion = tuning.cohesion
-    }
-    if (tuning.separation !== undefined) {
-      this.boids.params.separation = tuning.separation
-    }
-    if (tuning.alignment !== undefined) {
-      this.boids.params.alignment = tuning.alignment
-    }
+
+    this.boids.params.maxSpeed = this.behaviorProfile.speed
+    this.boids.params.cohesion = this.behaviorProfile.cohesion
+    this.boids.params.separation = this.behaviorProfile.separation
+    this.boids.params.alignment = this.behaviorProfile.alignment
+    this.boids.params.maxForce = 0.004 + (this.behaviorProfile.turnBias * 0.01)
+    this.boids.boids.forEach((boid) => {
+      boid.maxSpeed = this.behaviorProfile.speed
+      boid.maxForce = this.boids.params.maxForce
+    })
   }
 
   setFishGroups(groups: FishGroup[]): void {
@@ -85,10 +118,7 @@ export class DetailedFishSystem {
     this.rebuildFishSystem(totalCount, countsPerVariant)
     this.setQuality(this.currentQuality)
 
-    const first = sanitized[0]
-    if (first?.tuning) {
-      this.applyTuning(first.tuning)
-    }
+    this.applyBehaviorProfile(this.resolveBehaviorProfile(sanitized))
   }
   
   private createFishVariants(): FishVariant[] {
@@ -233,6 +263,63 @@ export class DetailedFishSystem {
     })
 
     this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)
+  }
+
+  private resolveBehaviorProfile(groups: FishGroup[]): BehaviorProfile {
+    const totalCount = groups.reduce((sum, group) => sum + group.count, 0)
+    if (totalCount <= 0) return { ...DEFAULT_BEHAVIOR_PROFILE }
+
+    const moodWeights: Record<SchoolMood, number> = {
+      calm: 0,
+      alert: 0,
+      feeding: 0
+    }
+
+    const weighted = groups.reduce((profile, group) => {
+      const tuning = {
+        ...DEFAULT_BEHAVIOR_PROFILE,
+        ...group.tuning
+      }
+      moodWeights[tuning.schoolMood] += group.count
+      return {
+        speed: profile.speed + (tuning.speed * group.count),
+        cohesion: profile.cohesion + (tuning.cohesion * group.count),
+        separation: profile.separation + (tuning.separation * group.count),
+        alignment: profile.alignment + (tuning.alignment * group.count),
+        avoidWalls: profile.avoidWalls + (tuning.avoidWalls * group.count),
+        preferredDepth: profile.preferredDepth + (tuning.preferredDepth * group.count),
+        depthVariance: profile.depthVariance + (tuning.depthVariance * group.count),
+        turnBias: profile.turnBias + (tuning.turnBias * group.count)
+      }
+    }, {
+      speed: 0,
+      cohesion: 0,
+      separation: 0,
+      alignment: 0,
+      avoidWalls: 0,
+      preferredDepth: 0,
+      depthVariance: 0,
+      turnBias: 0
+    })
+
+    const dominantMood = (Object.entries(moodWeights).sort((left, right) => right[1] - left[1])[0]?.[0] ?? 'calm') as SchoolMood
+
+    return {
+      speed: weighted.speed / totalCount,
+      cohesion: weighted.cohesion / totalCount,
+      separation: weighted.separation / totalCount,
+      alignment: weighted.alignment / totalCount,
+      avoidWalls: weighted.avoidWalls / totalCount,
+      preferredDepth: weighted.preferredDepth / totalCount,
+      schoolMood: dominantMood,
+      depthVariance: weighted.depthVariance / totalCount,
+      turnBias: weighted.turnBias / totalCount
+    }
+  }
+
+  private applyBehaviorProfile(profile: BehaviorProfile): void {
+    this.behaviorProfile = profile
+    this.applyTuning(profile)
   }
 
   private rebuildFishSystem(totalCount: number, countsPerVariant: number[]): void {
@@ -467,39 +554,67 @@ export class DetailedFishSystem {
   update(_deltaTime: number, elapsedTime: number): void {
     // Update wander targets periodically
     this.updateWanderTargets(elapsedTime)
+    const bounds = this.bounds ?? new THREE.Box3(new THREE.Vector3(-10, -10, -10), new THREE.Vector3(10, 10, 10))
+    const behavior = this.behaviorProfile ?? DEFAULT_BEHAVIOR_PROFILE
+    const boundsSize = this.tempBoundsSize ?? new THREE.Vector3()
+    const depthForce = this.tempDepthForce ?? new THREE.Vector3()
+    bounds.getSize(boundsSize)
+    this.tempBoundsSize = boundsSize
+    this.tempDepthForce = depthForce
+    const depthRange = boundsSize.y * behavior.depthVariance * 0.35
+    const moodWanderStrength = behavior.schoolMood === 'alert'
+      ? 0.004
+      : behavior.schoolMood === 'feeding'
+        ? 0.0034
+        : 0.0028
+    const jitterScale = 0.0004 + (behavior.turnBias * 0.0012)
+    const curiosityChance = 0.0005 + (behavior.turnBias * 0.01)
+    const turnNoiseScale = 0.6 + behavior.turnBias
+    const depthForceScale = 0.0015 + (behavior.depthVariance * 0.006)
     
     // Add strong individual wander behavior to break up schooling
     this.boids.boids.forEach((boid, index) => {
       if (index < this.wanderTargets.length) {
         // 非常に弱い放浪力で非常にゆったりした動き
         this.tempWanderForce.copy(this.wanderTargets[index]).sub(boid.position)
-        this.tempWanderForce.normalize().multiplyScalar(0.003 * this.speedMultipliers[index])
+        if (this.tempWanderForce.lengthSq() > 0) {
+          this.tempWanderForce.normalize().multiplyScalar(moodWanderStrength * this.speedMultipliers[index])
+        }
         
         // 非常に小さなジッターで非常にゆったりした動き
         this.tempJitter.set(
-          (Math.random() - 0.5) * 0.001,
-          (Math.random() - 0.5) * 0.001,
-          (Math.random() - 0.5) * 0.001
+          (Math.random() - 0.5) * jitterScale,
+          (Math.random() - 0.5) * jitterScale,
+          (Math.random() - 0.5) * jitterScale
         )
         
         // 非常に小さなノイズ力で非常にゆったりした動き
         this.tempNoiseForce.set(
-          Math.sin(elapsedTime * 0.06 + this.randomOffsets[index]) * 0.001,
-          Math.sin(elapsedTime * 0.05 + this.randomOffsets[index] * 2) * 0.0008,
-          Math.sin(elapsedTime * 0.04 + this.randomOffsets[index] * 3) * 0.001
+          Math.sin(elapsedTime * 0.06 + this.randomOffsets[index]) * jitterScale,
+          Math.sin(elapsedTime * 0.05 + this.randomOffsets[index] * 2) * jitterScale * 0.8,
+          Math.sin(elapsedTime * 0.04 + this.randomOffsets[index] * 3) * jitterScale
         )
+
+        const desiredY = bounds.max.y -
+          (behavior.preferredDepth * boundsSize.y) +
+          (Math.sin(elapsedTime * (0.45 + behavior.turnBias) + this.randomOffsets[index]) * depthRange)
+        depthForce.set(0, desiredY - boid.position.y, 0).multiplyScalar(depthForceScale)
         
         // 稀な方向転換を更に減らして直線性を向上
-        if (Math.random() < 0.001) {  // 0.1% chance per frame - 非常に稀
+        if (Math.random() < curiosityChance) {
           this.tempCuriosityForce.set(
-            (Math.random() - 0.5) * 0.02,
-            (Math.random() - 0.5) * 0.015,
-            (Math.random() - 0.5) * 0.02
+            (Math.random() - 0.5) * (0.01 + behavior.turnBias * 0.04),
+            (Math.random() - 0.5) * (0.008 + behavior.depthVariance * 0.03),
+            (Math.random() - 0.5) * (0.01 + behavior.turnBias * 0.04)
           )
           boid.acceleration.add(this.tempCuriosityForce)
         }
         
-        boid.acceleration.add(this.tempWanderForce).add(this.tempJitter).add(this.tempNoiseForce)
+        boid.acceleration
+          .add(this.tempWanderForce)
+          .add(this.tempJitter)
+          .add(this.tempNoiseForce)
+          .add(depthForce)
       }
     })
     
@@ -529,24 +644,24 @@ export class DetailedFishSystem {
           // 方向転換にノイズを追加（より自然な魚の動き）
           this.tempTurnNoise.set(
             // 水平方向のノイズ（左右の方向転換）
-            Math.sin(elapsedTime * 0.8 + randomOffset) * 0.15 + 
-            Math.sin(elapsedTime * 1.3 + randomOffset * 2) * 0.08,
+            (Math.sin(elapsedTime * 0.8 + randomOffset) * 0.15 +
+            Math.sin(elapsedTime * 1.3 + randomOffset * 2) * 0.08) * turnNoiseScale,
             
             // 垂直方向のノイズ（上下の方向転換）
-            Math.sin(elapsedTime * 0.6 + randomOffset + 1) * 0.12 + 
-            Math.sin(elapsedTime * 1.1 + randomOffset * 3) * 0.06,
+            (Math.sin(elapsedTime * 0.6 + randomOffset + 1) * 0.12 +
+            Math.sin(elapsedTime * 1.1 + randomOffset * 3) * 0.06) * turnNoiseScale,
             
             // 奥行き方向のノイズ（前後の方向転換）
-            Math.sin(elapsedTime * 0.7 + randomOffset + 2) * 0.1 + 
-            Math.sin(elapsedTime * 1.2 + randomOffset * 4) * 0.05
+            (Math.sin(elapsedTime * 0.7 + randomOffset + 2) * 0.1 +
+            Math.sin(elapsedTime * 1.2 + randomOffset * 4) * 0.05) * turnNoiseScale
           )
           
           // ランダムな瞬間的方向変化（魚の気まぐれ）
-          if (Math.random() < 0.008) {  // 0.8%の確率で突然の方向転換
+          if (Math.random() < 0.002 + (behavior.turnBias * 0.02)) {
             this.tempSuddenTurn.set(
-              (Math.random() - 0.5) * 0.4,
-              (Math.random() - 0.5) * 0.3,
-              (Math.random() - 0.5) * 0.35
+              (Math.random() - 0.5) * (0.2 + behavior.turnBias * 0.6),
+              (Math.random() - 0.5) * (0.15 + behavior.depthVariance * 0.4),
+              (Math.random() - 0.5) * (0.2 + behavior.turnBias * 0.5)
             )
             this.tempTurnNoise.add(this.tempSuddenTurn)
           }
@@ -577,7 +692,7 @@ export class DetailedFishSystem {
         this.dummy.rotation.x += speed * pitchIntensity * 0.8
         
         // 魚らしい浮遊感（ゆっくりとした上下動）
-        const floatWave = Math.sin(elapsedTime * 0.8 + randomOffset) * 0.015 * speedMult
+        const floatWave = Math.sin(elapsedTime * 0.8 + randomOffset) * (0.01 + behavior.depthVariance * 0.03) * speedMult
         this.dummy.position.y += floatWave
         
         // 微細な横揺れ
@@ -591,9 +706,9 @@ export class DetailedFishSystem {
         this.dummy.scale.set(scale, scale, scale)
         
         // 突然の停止・方向転換を減らして直線性を維持
-        if (Math.random() < 0.0002) {  // 非常に稀に
+        if (Math.random() < 0.0002 + (behavior.turnBias * 0.0025)) {
           // 温和な方向調整のみ
-          const gentleTurn = (Math.random() - 0.5) * 0.1
+          const gentleTurn = (Math.random() - 0.5) * (0.08 + behavior.turnBias * 0.16)
           this.dummy.rotation.y += gentleTurn
         }
         

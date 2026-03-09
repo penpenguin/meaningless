@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGameStore } from '../game/createGameStore'
+import { createDefaultGameSave } from '../game/gameSave'
 import { createGameHudOverlay } from './GameHudOverlay'
 
 describe('createGameHudOverlay', () => {
@@ -17,15 +18,61 @@ describe('createGameHudOverlay', () => {
       expect(tankButton.getAttribute('aria-pressed')).toBe('true')
       expect(layoutButton.getAttribute('aria-pressed')).toBe('false')
       expect(overlay.textContent).toContain('Restore Water (4 coins)')
-      expect(guide.textContent).toContain('Unlock')
-      expect(guide.textContent).toContain('Layout')
+      expect(guide.textContent).toContain('spread schools across depths')
+      expect(guide.textContent).toContain('calm schools')
+      expect(overlay.textContent).toContain('Behavior')
+      expect(overlay.textContent).toContain('Settled')
 
       layoutButton.click()
 
       expect(tankButton.getAttribute('aria-pressed')).toBe('false')
       expect(layoutButton.getAttribute('aria-pressed')).toBe('true')
-      expect(guide.textContent).toContain('grid cell')
+      expect(guide.textContent).toContain('hideouts')
       expect(guide.textContent).toContain('Eraser')
+    } finally {
+      store.destroy()
+      document.body.innerHTML = ''
+    }
+  })
+
+  it('describes crowded tanks as alert in the tank summary', () => {
+    const save = createDefaultGameSave('2026-03-09T00:00:00.000Z')
+    const tank = save.tanks[0]
+    if (!tank) throw new Error('tank missing')
+
+    const store = createGameStore({
+      tickIntervalMs: 60_000,
+      initialState: {
+        game: {
+          ...save,
+          tanks: [
+            {
+              ...tank,
+              fishSchools: [
+                {
+                  ...tank.fishSchools[0],
+                  count: 24,
+                  lane: 'middle'
+                }
+              ]
+            }
+          ]
+        },
+        ui: {
+          mode: 'tank',
+          selectedDecorId: null,
+          lastOfflineResult: null
+        }
+      }
+    })
+
+    try {
+      const overlay = createGameHudOverlay({ store })
+      document.body.appendChild(overlay)
+
+      expect(overlay.textContent).toContain('Behavior')
+      expect(overlay.textContent).toContain('Alert')
+      expect(overlay.textContent).toContain('Fish are clustering low')
     } finally {
       store.destroy()
       document.body.innerHTML = ''

@@ -30,10 +30,12 @@ const getAdjacentPairs = (placements: DecorPlacement[]): number => {
 const getDecorStats = (tank: GameTank): {
   comfortBonus: number
   waterQualityBonus: number
+  hideoutScore: number
 } => {
   const adjacentPairs = getAdjacentPairs(tank.decor)
   let comfortBonus = adjacentPairs * 2
   let waterQualityBonus = 0
+  let hideoutScore = 0
 
   tank.decor.forEach((placement) => {
     const decor = getDecorContent(placement.decorId)
@@ -41,6 +43,7 @@ const getDecorStats = (tank: GameTank): {
 
     comfortBonus += decor.gameplay.comfortBonus
     waterQualityBonus += decor.gameplay.waterQualityBonus
+    hideoutScore += decor.gameplay.hideoutScore ?? 0
 
     const supportedLane = laneForGridRow(placement.y, tank.layout.rows)
     const hasMatchingSchool = tank.fishSchools.some((school) => {
@@ -52,7 +55,7 @@ const getDecorStats = (tank: GameTank): {
     }
   })
 
-  return { comfortBonus, waterQualityBonus }
+  return { comfortBonus, waterQualityBonus, hideoutScore }
 }
 
 const getFishStats = (tank: GameTank): {
@@ -85,6 +88,23 @@ const getFishStats = (tank: GameTank): {
   })
 }
 
+const getLaneImbalancePenalty = (tank: GameTank, totalFish: number): number => {
+  if (totalFish < 15) return 0
+
+  const laneCounts = tank.fishSchools.reduce<Record<'top' | 'middle' | 'bottom', number>>((counts, school) => {
+    counts[school.lane] += school.count
+    return counts
+  }, {
+    top: 0,
+    middle: 0,
+    bottom: 0
+  })
+  const idealPerLane = totalFish / 3
+
+  return Object.values(laneCounts)
+    .reduce((penalty, count) => penalty + Math.max(0, count - idealPerLane), 0) * 1.4
+}
+
 export const calculateTankEconomy = (tank: GameTank): {
   comfort: number
   incomePerMinute: number
@@ -93,12 +113,21 @@ export const calculateTankEconomy = (tank: GameTank): {
   const fishStats = getFishStats(tank)
   const decorStats = getDecorStats(tank)
   const crowdingPenalty = Math.max(0, fishStats.totalFish - 18) * 2
+  const laneImbalancePenalty = getLaneImbalancePenalty(tank, fishStats.totalFish)
+  const hideoutRelief = Math.min(
+    crowdingPenalty,
+    decorStats.hideoutScore * (1 + Math.max(0, fishStats.totalFish - 10) / 10)
+  )
   const comfort = clamp(
-    38 +
-      (fishStats.uniqueSpecies * 6) +
-      fishStats.laneHarmonyBonus +
-      decorStats.comfortBonus -
-      crowdingPenalty,
+    Math.round(
+      38 +
+        (fishStats.uniqueSpecies * 6) +
+        fishStats.laneHarmonyBonus +
+        decorStats.comfortBonus -
+        crowdingPenalty -
+        laneImbalancePenalty +
+        hideoutRelief
+    ),
     0,
     100
   )

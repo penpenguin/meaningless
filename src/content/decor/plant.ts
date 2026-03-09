@@ -8,6 +8,7 @@ export const plant = createDecorContent({
     comfortBonus: 6,
     waterQualityBonus: 0.9,
     laneAffinity: 'top',
-    adjacencyBonus: 2
+    adjacencyBonus: 2,
+    hideoutScore: 1
   }
 })

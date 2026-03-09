@@ -1,6 +1,7 @@
 import type { GameStore } from '../game/createGameStore'
 import { getDecorContent, getDecorContentList, getFishContentList } from '../content/registry'
 import type { GameAppState, GameUiMode } from '../game/types'
+import { createAquariumRenderModel } from '../game/renderModel'
 
 type GameHudOverlayOptions = {
   store: GameStore
@@ -16,6 +17,11 @@ type StatCardOptions = {
   label: string
   value: string
   meta?: string
+}
+
+type BehaviorCopy = {
+  value: string
+  meta: string
 }
 
 const createModeButton = (
@@ -47,35 +53,59 @@ const getGuideContent = (state: GameAppState): GuideContent => {
   switch (state.ui.mode) {
     case 'shop':
       return {
-        title: 'Spend coins',
-        body: 'Unlock fish and decor here, then switch to Layout to place them in the tank.',
-        hint: 'New unlocks appear in Layout immediately.'
+        title: 'Build the habitat',
+        body: 'Unlock species and decor that support the depth balance you want before switching to Layout.',
+        hint: 'Hideouts matter more once schools start crowding the same lane.'
       }
     case 'layout':
       return {
-        title: 'Place and tune',
-        body: 'Grow schools, pick a decor tool, and click a blueprint grid cell to position the tank.',
-        hint: 'Lane chips change fish depth without leaving the panel, and Eraser clears the selected cell.'
+        title: 'Shape the water column',
+        body: 'Spread schools across depths, then place hideouts where fish cluster to keep the tank readable.',
+        hint: 'Lane chips shift fish depth instantly, and Eraser clears the selected cell.'
       }
     case 'progress':
       return {
-        title: 'Check growth',
-        body: 'Track current income, total earnings, and how close you are to the next unlock.',
-        hint: 'Use this view to see whether layout changes are paying off.'
+        title: 'Read the tank',
+        body: 'Track which changes are calming the fish and which ones are only raising maintenance pressure.',
+        hint: 'A steadier tank should improve both mood and passive income.'
       }
     case 'settings':
       return {
-        title: 'Adjust comfort',
+        title: 'Tune the view',
         body: 'Use tactile toggles for sound and motion, then balance fidelity with the quality chips.',
         hint: 'Press Escape anytime to jump back to Tank.'
       }
     case 'tank':
     default:
       return {
-        title: 'Start here',
-        body: 'Watch water quality, spend coins in Unlock, and use Layout to grow fish schools or place decor.',
-        hint: 'Press Escape anytime to jump back to Tank.'
+        title: 'Observe first',
+        body: 'Watch how fish settle, then use Unlock and Layout to spread schools across depths before adding more stock.',
+        hint: 'Crowded lanes create alert behavior, while calm schools are easier to read.'
       }
+  }
+}
+
+const getBehaviorCopy = (state: GameAppState): BehaviorCopy => {
+  const renderModel = createAquariumRenderModel(state)
+  const moods = renderModel.fishGroups.map((group) => group.tuning?.schoolMood)
+
+  if (moods.includes('alert')) {
+    return {
+      value: 'Alert',
+      meta: 'Fish are clustering low'
+    }
+  }
+
+  if (moods.includes('feeding')) {
+    return {
+      value: 'Surface active',
+      meta: 'Healthy schools are skimming high'
+    }
+  }
+
+  return {
+    value: 'Settled',
+    meta: 'Fish are holding formation'
   }
 }
 
@@ -187,6 +217,7 @@ const createTankPanel = (store: GameStore): HTMLDivElement => {
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
     const maintenanceCost = getMaintenanceCost(state)
+    const behavior = getBehaviorCopy(state)
 
     lead.textContent = `${tank.name} · ${tank.decor.length} decor placed`
     summary.innerHTML = ''
@@ -194,6 +225,7 @@ const createTankPanel = (store: GameStore): HTMLDivElement => {
       { label: 'Income', value: `${tank.progression.incomePerMinute}/min`, meta: 'Active tank' },
       { label: 'Comfort', value: String(tank.progression.comfort), meta: 'Drives unlocks' },
       { label: 'Water', value: String(tank.progression.waterQuality), meta: 'Keep it clear' },
+      { label: 'Behavior', value: behavior.value, meta: behavior.meta },
       { label: 'Schools', value: String(tank.fishSchools.reduce((total, school) => total + school.count, 0)), meta: 'Visible fish' }
     ].forEach((card) => {
       summary.appendChild(createStatCard(card))
