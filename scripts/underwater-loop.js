@@ -1,7 +1,23 @@
+// @ts-check
+
+/**
+ * @typedef {object} UnderwaterLoop
+ * @property {Float32Array} left
+ * @property {Float32Array} right
+ */
+
 const MAX_INT16 = 0x7fff
 
+/**
+ * @param {number} value
+ * @returns {number}
+ */
 const clampSample = (value) => Math.max(-1, Math.min(1, value))
 
+/**
+ * @param {number} seed
+ * @returns {() => number}
+ */
 const createRng = (seed) => {
   let state = seed >>> 0
   return () => {
@@ -10,6 +26,10 @@ const createRng = (seed) => {
   }
 }
 
+/**
+ * @param {{ sampleRate: number, durationSeconds: number, seed?: number }} options
+ * @returns {UnderwaterLoop}
+ */
 export const generateUnderwaterLoop = ({ sampleRate, durationSeconds, seed = 1 }) => {
   const totalSamples = Math.max(1, Math.floor(sampleRate * durationSeconds))
   const left = new Float32Array(totalSamples)
@@ -42,6 +62,10 @@ export const generateUnderwaterLoop = ({ sampleRate, durationSeconds, seed = 1 }
   return { left, right }
 }
 
+/**
+ * @param {{ left: Float32Array, right: Float32Array, sampleRate: number }} options
+ * @returns {Buffer}
+ */
 export const encodeWav = ({ left, right, sampleRate }) => {
   if (left.length !== right.length) {
     throw new Error('Left/right channel lengths must match')
