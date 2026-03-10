@@ -250,10 +250,14 @@ describe('AdvancedAquariumScene substrate', () => {
     const internals = instance as unknown as {
       tank: THREE.Group
       createSandTexture: () => THREE.CanvasTexture
+      createSandNormalTexture: () => THREE.CanvasTexture
+      createSandRoughnessTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -261,7 +265,8 @@ describe('AdvancedAquariumScene substrate', () => {
 
     createSubstrate(14, 14, 10)
 
-    const [baseMesh, sandMesh] = internals.tank.children as THREE.Mesh[]
+    const baseMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-base') as THREE.Mesh
+    const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
 
     expect(baseMesh.geometry).toBeInstanceOf(THREE.BoxGeometry)
     expect((baseMesh.geometry as THREE.BoxGeometry).parameters.width).toBeCloseTo(14.6)
@@ -277,10 +282,14 @@ describe('AdvancedAquariumScene substrate', () => {
     const internals = instance as unknown as {
       tank: THREE.Group
       createSandTexture: () => THREE.CanvasTexture
+      createSandNormalTexture: () => THREE.CanvasTexture
+      createSandRoughnessTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -288,12 +297,68 @@ describe('AdvancedAquariumScene substrate', () => {
 
     createSubstrate(14, 14, 10)
 
-    const [baseMesh, sandMesh] = internals.tank.children as THREE.Mesh[]
+    const baseMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-base') as THREE.Mesh
+    const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
     const baseMaterial = baseMesh.material as THREE.MeshStandardMaterial
     const sandMaterial = sandMesh.material as THREE.MeshStandardMaterial
 
     expect(baseMaterial.color.getHexString()).toBe('b59e84')
     expect(sandMaterial.color.getHexString()).toBe('d2bb9b')
+  })
+
+  it('adds a textured front face so the substrate reads deeper from the viewing angle', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSandTexture: () => THREE.CanvasTexture
+      createSandNormalTexture: () => THREE.CanvasTexture
+      createSandRoughnessTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+    }).createSubstrate.bind(instance)
+
+    createSubstrate(14, 14, 10)
+
+    const sandTop = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
+    const sandFront = internals.tank.children.find((child) => child.name === 'tank-substrate-front') as THREE.Mesh
+
+    expect(sandFront).toBeDefined()
+    expect(sandFront.geometry).toBeInstanceOf(THREE.PlaneGeometry)
+    expect(sandFront.position.z).toBeGreaterThan(sandTop.position.z)
+  })
+
+  it('uses normal and roughness detail on the sand material', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSandTexture: () => THREE.CanvasTexture
+      createSandNormalTexture: () => THREE.CanvasTexture
+      createSandRoughnessTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+    }).createSubstrate.bind(instance)
+
+    createSubstrate(14, 14, 10)
+
+    const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
+    const sandMaterial = sandMesh.material as THREE.MeshStandardMaterial
+
+    expect(sandMaterial.normalMap).toBeInstanceOf(THREE.Texture)
+    expect(sandMaterial.roughnessMap).toBeInstanceOf(THREE.Texture)
   })
 })
 

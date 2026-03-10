@@ -494,7 +494,8 @@ export class AdvancedAquariumScene {
   }
   
   private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number): void {
-    const baseHeight = 0.45
+    const baseHeight = 0.68
+    const baseBottomY = -tankHeight / 2
     const baseGeometry = new THREE.BoxGeometry(
       tankWidth + 0.6,
       baseHeight,
@@ -506,7 +507,8 @@ export class AdvancedAquariumScene {
       metalness: 0.05
     })
     const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial)
-    baseMesh.position.y = -tankHeight / 2 + (baseHeight / 2)
+    baseMesh.name = 'tank-substrate-base'
+    baseMesh.position.y = baseBottomY + (baseHeight / 2)
     baseMesh.receiveShadow = true
     this.tank.add(baseMesh)
 
@@ -523,36 +525,82 @@ export class AdvancedAquariumScene {
       const widthBlend = 1 - Math.min(1, Math.abs(x) / halfWidth)
       const depthBlend = 1 - Math.min(1, Math.abs(z) / halfDepth)
       const edgeBlend = Math.pow(Math.max(0, Math.min(widthBlend, depthBlend)), 1.4)
-      const broadRipples = Math.sin(x * 0.55) * Math.cos(z * 0.75) * 0.12
-      const gentleRidges = Math.sin((x + z) * 1.1) * 0.05
-      const fineTexture = Math.sin(x * 2.2) * Math.cos(z * 2.4) * 0.018
+      const depthProgress = THREE.MathUtils.clamp((halfDepth - z) / tankDepth, 0, 1)
+      const moundRise = Math.pow(depthProgress, 1.25) * 0.34
+      const centerShelf = Math.cos((x / halfWidth) * Math.PI * 0.5) * 0.045 * depthProgress
+      const broadRipples = Math.sin(x * 0.55) * Math.cos(z * 0.75) * 0.085
+      const gentleRidges = Math.sin((x + z) * 1.1) * 0.038
+      const fineTexture = Math.sin(x * 2.2) * Math.cos(z * 2.4) * 0.016
+      const frontSettle = (1 - depthProgress) * 0.032
+      const profileBlend = 0.35 + edgeBlend * 0.65
 
-      positions[i + 1] = (broadRipples + gentleRidges + fineTexture) * edgeBlend
+      positions[i + 1] = ((moundRise + centerShelf - frontSettle) * profileBlend) + ((broadRipples + gentleRidges + fineTexture) * edgeBlend)
     }
 
     sandGeometry.attributes.position.needsUpdate = true
     sandGeometry.computeVertexNormals()
 
     const sandTexture = this.createSandTexture()
+    const sandNormalTexture = this.createSandNormalTexture()
+    const sandRoughnessTexture = this.createSandRoughnessTexture()
     sandTexture.repeat.set(
-      Math.max(1.5, tankWidth / 3.5),
-      Math.max(1.5, tankDepth / 3)
+      Math.max(2.4, tankWidth / 2.6),
+      Math.max(2, tankDepth / 2.3)
     )
+    sandNormalTexture.repeat.copy(sandTexture.repeat)
+    sandRoughnessTexture.repeat.copy(sandTexture.repeat)
     
     const sandMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
+      normalMap: sandNormalTexture,
+      normalScale: new THREE.Vector2(0.42, 0.42),
+      roughnessMap: sandRoughnessTexture,
       color: 0xD2BB9B,
-      roughness: 0.8,
+      roughness: 0.92,
       metalness: 0,
       transparent: false,
       side: THREE.DoubleSide
     })
     
     const sandMesh = new THREE.Mesh(sandGeometry, sandMaterial)
-    sandMesh.position.y = -tankHeight / 2 + baseHeight + 0.02
+    sandMesh.name = 'tank-substrate-top'
+    sandMesh.position.y = baseBottomY + baseHeight + 0.02
     sandMesh.receiveShadow = true
     sandMesh.castShadow = false
     this.tank.add(sandMesh)
+
+    const frontHeight = baseHeight + 0.22
+    const frontWidth = tankWidth - 0.35
+    const frontGeometry = new THREE.PlaneGeometry(frontWidth, frontHeight, 40, 14)
+    const frontPositions = frontGeometry.attributes.position.array as Float32Array
+    const frontHalfWidth = frontWidth / 2
+
+    for (let i = 0; i < frontPositions.length; i += 3) {
+      const x = frontPositions[i]
+      const y = frontPositions[i + 1]
+      const widthBlend = 1 - Math.min(1, Math.abs(x) / frontHalfWidth)
+      const verticalProgress = (y + (frontHeight / 2)) / frontHeight
+      const compactedCurve = verticalProgress * verticalProgress * 0.08
+      const sedimentBend = Math.sin(x * 0.72) * 0.018 * verticalProgress
+      const crestLift = widthBlend * verticalProgress * 0.04
+
+      frontPositions[i + 1] = y + crestLift + sedimentBend
+      frontPositions[i + 2] = -compactedCurve
+    }
+
+    frontGeometry.attributes.position.needsUpdate = true
+    frontGeometry.computeVertexNormals()
+
+    const sandFrontMaterial = sandMaterial.clone()
+    sandFrontMaterial.color = new THREE.Color(0xC8B08E)
+    sandFrontMaterial.normalScale = new THREE.Vector2(0.32, 0.5)
+    sandFrontMaterial.roughness = 0.95
+
+    const sandFrontMesh = new THREE.Mesh(frontGeometry, sandFrontMaterial)
+    sandFrontMesh.name = 'tank-substrate-front'
+    sandFrontMesh.position.set(0, baseBottomY + (frontHeight / 2) + 0.06, tankDepth / 2 - 0.16)
+    sandFrontMesh.receiveShadow = true
+    this.tank.add(sandFrontMesh)
   }
 
   private ensureTankVisualLayers(): void {
@@ -1056,20 +1104,39 @@ export class AdvancedAquariumScene {
     const ctx = canvas.getContext('2d')!
 
     const baseGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-    baseGradient.addColorStop(0, '#d8c4a4')
-    baseGradient.addColorStop(0.55, '#cbb392')
-    baseGradient.addColorStop(1, '#b79d7d')
+    baseGradient.addColorStop(0, '#e1cfb1')
+    baseGradient.addColorStop(0.42, '#d0b694')
+    baseGradient.addColorStop(1, '#b39472')
     ctx.fillStyle = baseGradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalAlpha = 0.22
+    for (let i = 0; i < 18; i++) {
+      const startY = canvas.height * (0.08 + (i * 0.05))
+      ctx.strokeStyle = i % 2 === 0 ? 'rgba(244, 226, 193, 0.34)' : 'rgba(110, 83, 52, 0.16)'
+      ctx.lineWidth = 8 + (i % 3)
+      ctx.beginPath()
+      ctx.moveTo(-24, startY)
+      ctx.bezierCurveTo(
+        canvas.width * 0.22,
+        startY + 10 + Math.sin(i) * 14,
+        canvas.width * 0.72,
+        startY - 8 + Math.cos(i * 1.7) * 16,
+        canvas.width + 24,
+        startY + 14
+      )
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
     
-    for (let i = 0; i < 2000; i++) {
+    for (let i = 0; i < 2800; i++) {
       const x = Math.random() * canvas.width
       const y = Math.random() * canvas.height
-      const size = Math.random() * 3 + 1
+      const size = Math.random() * 2.4 + 0.6
       
-      const hue = 28 + Math.random() * 12
-      const saturation = 18 + Math.random() * 12
-      const brightness = 0.62 + Math.random() * 0.16
+      const hue = 26 + Math.random() * 14
+      const saturation = 16 + Math.random() * 14
+      const brightness = 0.6 + Math.random() * 0.18
       ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${brightness * 100}%)`
       
       ctx.beginPath()
@@ -1077,20 +1144,33 @@ export class AdvancedAquariumScene {
       ctx.fill()
     }
     
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 360; i++) {
       const x = Math.random() * canvas.width
       const y = Math.random() * canvas.height
-      const size = Math.random() * 6 + 2
+      const size = Math.random() * 5 + 1.8
       
-      const hue = 24 + Math.random() * 16
-      const saturation = 8 + Math.random() * 14
-      const brightness = 0.42 + Math.random() * 0.2
+      const hue = 22 + Math.random() * 18
+      const saturation = 8 + Math.random() * 16
+      const brightness = 0.38 + Math.random() * 0.22
       ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${brightness * 100}%)`
       
       ctx.beginPath()
       ctx.arc(x, y, size, 0, Math.PI * 2)
       ctx.fill()
     }
+
+    ctx.globalAlpha = 0.18
+    for (let i = 0; i < 28; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const width = 18 + Math.random() * 42
+      const height = 8 + Math.random() * 16
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(88, 68, 46, 0.34)' : 'rgba(255, 241, 214, 0.24)'
+      ctx.beginPath()
+      ctx.ellipse(x, y, width, height, Math.random() * Math.PI, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
 
     const edgeShade = ctx.createRadialGradient(
       canvas.width * 0.5,
@@ -1101,15 +1181,113 @@ export class AdvancedAquariumScene {
       canvas.width * 0.62
     )
     edgeShade.addColorStop(0, 'rgba(0, 0, 0, 0)')
-    edgeShade.addColorStop(1, 'rgba(45, 31, 20, 0.18)')
+    edgeShade.addColorStop(1, 'rgba(45, 31, 20, 0.24)')
     ctx.fillStyle = edgeShade
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
     const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace
     texture.wrapS = THREE.RepeatWrapping
     texture.wrapT = THREE.RepeatWrapping
     texture.repeat.set(4, 4)
     
+    return texture
+  }
+
+  private createSandNormalTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+
+    ctx.fillStyle = '#8080ff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalAlpha = 0.42
+    for (let i = 0; i < 22; i++) {
+      const startY = canvas.height * (0.06 + (i * 0.045))
+      ctx.strokeStyle = i % 2 === 0 ? '#8f8fff' : '#7070ff'
+      ctx.lineWidth = 7
+      ctx.beginPath()
+      ctx.moveTo(-24, startY)
+      ctx.bezierCurveTo(
+        canvas.width * 0.24,
+        startY + 16,
+        canvas.width * 0.7,
+        startY - 10,
+        canvas.width + 24,
+        startY + 12
+      )
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+
+    for (let i = 0; i < 1800; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const size = Math.random() * 1.6 + 0.4
+      ctx.fillStyle = Math.random() > 0.5 ? '#8a8aff' : '#7676ff'
+      ctx.beginPath()
+      ctx.arc(x, y, size, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(4, 4)
+
+    return texture
+  }
+
+  private createSandRoughnessTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+
+    const roughnessGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+    roughnessGradient.addColorStop(0, '#7c7c7c')
+    roughnessGradient.addColorStop(0.45, '#969696')
+    roughnessGradient.addColorStop(1, '#bdbdbd')
+    ctx.fillStyle = roughnessGradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalAlpha = 0.34
+    for (let i = 0; i < 20; i++) {
+      const startY = canvas.height * (0.08 + (i * 0.048))
+      ctx.strokeStyle = i % 2 === 0 ? '#5d5d5d' : '#c8c8c8'
+      ctx.lineWidth = 10
+      ctx.beginPath()
+      ctx.moveTo(-24, startY)
+      ctx.bezierCurveTo(
+        canvas.width * 0.18,
+        startY + 12,
+        canvas.width * 0.76,
+        startY - 14,
+        canvas.width + 24,
+        startY + 8
+      )
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+
+    for (let i = 0; i < 1700; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const size = Math.random() * 1.8 + 0.4
+      const shade = 84 + Math.floor(Math.random() * 120)
+      ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`
+      ctx.beginPath()
+      ctx.arc(x, y, size, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(4, 4)
+
     return texture
   }
 
