@@ -1,6 +1,7 @@
 import { getDecorContent, getFishContent } from '../content/registry'
 import { getDecorAt } from './catalog'
 import { simulateGameSave, refreshTankProgression } from './simulation'
+import { isFishUnlockRequirementMet } from './unlocks'
 import type { GameAction, GameAppState, GameSave, GameTank } from './types'
 
 const withActiveTank = (game: GameSave, updater: (tank: GameTank) => GameTank): GameSave => {
@@ -34,6 +35,13 @@ const refreshGame = (game: GameSave): GameSave => {
   }
 }
 
+const getElapsedSeconds = (previousIso: string, nextIso: string): number => {
+  const previousTime = Date.parse(previousIso)
+  const nextTime = Date.parse(nextIso)
+  if (!Number.isFinite(previousTime) || !Number.isFinite(nextTime)) return 0
+  return Math.max(0, Math.floor((nextTime - previousTime) / 1000))
+}
+
 export const gameReducer = (state: GameAppState, action: GameAction): GameAppState => {
   switch (action.type) {
     case 'UI/SET_MODE':
@@ -61,16 +69,27 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
         }
       }
     case 'GAME/TICK': {
+      const viewedSeconds = getElapsedSeconds(state.game.lastSimulatedAt, action.payload.nowIso)
       const simulated = simulateGameSave({
         save: state.game,
         nowIso: action.payload.nowIso
       })
       return {
         ...state,
-        game: simulated.save,
+        game: {
+          ...simulated.save,
+          profile: {
+            ...simulated.save.profile,
+            stats: {
+              ...simulated.save.profile.stats,
+              totalOfflineSeconds: state.game.profile.stats.totalOfflineSeconds,
+              totalViewedSeconds: state.game.profile.stats.totalViewedSeconds + viewedSeconds
+            }
+          }
+        },
         ui: {
           ...state.ui,
-          lastOfflineResult: state.ui.lastOfflineResult ?? simulated.offlineResult
+          lastOfflineResult: state.ui.lastOfflineResult
         }
       }
     }
@@ -78,6 +97,7 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
       const fish = getFishContent(action.payload.speciesId)
       if (!fish) return state
       if (state.game.profile.unlockedFishIds.includes(fish.speciesId)) return state
+      if (!isFishUnlockRequirementMet(state.game, fish)) return state
       if (state.game.profile.currency.coins < fish.gameplay.unlockCost) return state
 
       return {

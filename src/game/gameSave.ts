@@ -24,7 +24,8 @@ const createDefaultProfile = () => ({
   stats: {
     totalEarnedCoins: 0,
     totalOfflineSeconds: 0,
-    totalMaintenanceActions: 0
+    totalMaintenanceActions: 0,
+    totalViewedSeconds: 0
   },
   preferences: {
     soundEnabled: true,
@@ -135,6 +136,10 @@ export const migrateLegacySave = (options: {
             : fallbackState.profile.preferences.motionEnabled),
         quality: migratedSettings?.quality ?? fallbackState.profile.preferences.quality,
         hudVisible: fallbackState.profile.preferences.hudVisible
+      },
+      stats: {
+        ...fallbackState.profile.stats,
+        totalViewedSeconds: migratedProfile?.stats?.totalViewSeconds ?? fallbackState.profile.stats.totalViewedSeconds
       }
     },
     tanks: [refreshTankProgression({
@@ -242,7 +247,10 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
           : fallback.profile.stats.totalOfflineSeconds,
         totalMaintenanceActions: isRecord(profileSource.stats) && typeof profileSource.stats.totalMaintenanceActions === 'number'
           ? Math.max(0, Math.floor(profileSource.stats.totalMaintenanceActions))
-          : fallback.profile.stats.totalMaintenanceActions
+          : fallback.profile.stats.totalMaintenanceActions,
+        totalViewedSeconds: isRecord(profileSource.stats) && typeof profileSource.stats.totalViewedSeconds === 'number'
+          ? Math.max(0, Math.floor(profileSource.stats.totalViewedSeconds))
+          : fallback.profile.stats.totalViewedSeconds
       },
       preferences: {
         soundEnabled: typeof preferencesSource.soundEnabled === 'boolean'

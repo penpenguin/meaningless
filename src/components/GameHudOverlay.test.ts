@@ -126,6 +126,82 @@ describe('createGameHudOverlay', () => {
     }
   })
 
+  it('shows observation progress and fish descriptions in the unlock panel', () => {
+    const save = createDefaultGameSave('2026-03-09T00:00:00.000Z')
+    const store = createGameStore({
+      tickIntervalMs: 60_000,
+      initialState: {
+        game: {
+          ...save,
+          profile: {
+            ...save.profile,
+            currency: {
+              ...save.profile.currency,
+              coins: 80
+            },
+            stats: {
+              ...save.profile.stats,
+              totalViewedSeconds: 10 * 60
+            }
+          }
+        },
+        ui: {
+          mode: 'shop',
+          selectedDecorId: null,
+          lastOfflineResult: null
+        }
+      }
+    })
+
+    try {
+      const overlay = createGameHudOverlay({ store })
+      document.body.appendChild(overlay)
+
+      expect(overlay.textContent).toContain('縦長の優雅なシルエット')
+      expect(overlay.textContent).toContain('Observe 10m / 15m')
+      expect(overlay.textContent).toContain('Observe 5m')
+    } finally {
+      store.destroy()
+      document.body.innerHTML = ''
+    }
+  })
+
+  it('surfaces the next observation milestone in progress', () => {
+    const save = createDefaultGameSave('2026-03-09T00:00:00.000Z')
+    const store = createGameStore({
+      tickIntervalMs: 60_000,
+      initialState: {
+        game: {
+          ...save,
+          profile: {
+            ...save.profile,
+            stats: {
+              ...save.profile.stats,
+              totalViewedSeconds: 10 * 60
+            }
+          }
+        },
+        ui: {
+          mode: 'progress',
+          selectedDecorId: null,
+          lastOfflineResult: null
+        }
+      }
+    })
+
+    try {
+      const overlay = createGameHudOverlay({ store })
+      document.body.appendChild(overlay)
+
+      expect(overlay.textContent).toContain('Observation')
+      expect(overlay.textContent).toContain('10m')
+      expect(overlay.textContent).toContain('5m to エンゼルフィッシュ')
+    } finally {
+      store.destroy()
+      document.body.innerHTML = ''
+    }
+  })
+
   it('uses custom toggle buttons and quality chips in settings', () => {
     const store = createGameStore({ tickIntervalMs: 60_000 })
 

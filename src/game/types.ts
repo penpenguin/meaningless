@@ -57,6 +57,7 @@ export type GameProfile = {
     totalEarnedCoins: number
     totalOfflineSeconds: number
     totalMaintenanceActions: number
+    totalViewedSeconds: number
   }
   preferences: {
     soundEnabled: boolean

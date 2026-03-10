@@ -1,7 +1,13 @@
 import type { GameStore } from '../game/createGameStore'
+import type { FishContentDefinition } from '../content/types'
 import { getDecorContent, getDecorContentList, getFishContentList } from '../content/registry'
 import type { GameAppState, GameUiMode } from '../game/types'
 import { createAquariumRenderModel } from '../game/renderModel'
+import {
+  getObservedSeconds,
+  getRemainingObservationSeconds,
+  getRequiredObservationSeconds
+} from '../game/unlocks'
 
 type GameHudOverlayOptions = {
   store: GameStore
@@ -22,6 +28,11 @@ type StatCardOptions = {
 type BehaviorCopy = {
   value: string
   meta: string
+}
+
+type ObservationMilestone = {
+  label: string
+  remainingSeconds: number
 }
 
 const createModeButton = (
@@ -109,6 +120,42 @@ const getBehaviorCopy = (state: GameAppState): BehaviorCopy => {
   }
 }
 
+const formatDurationShort = (seconds: number): string => {
+  const normalized = Math.max(0, Math.floor(seconds))
+  if (normalized >= 3600) {
+    const hours = Math.floor(normalized / 3600)
+    const minutes = Math.floor((normalized % 3600) / 60)
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+  }
+
+  if (normalized >= 60) {
+    return `${Math.floor(normalized / 60)}m`
+  }
+
+  return `${normalized}s`
+}
+
+const getObservationProgressCopy = (state: GameAppState, fish: FishContentDefinition): string | null => {
+  const requiredSeconds = getRequiredObservationSeconds(fish)
+  if (requiredSeconds <= 0) return null
+
+  const observedSeconds = Math.min(getObservedSeconds(state.game), requiredSeconds)
+  return `Observe ${formatDurationShort(observedSeconds)} / ${formatDurationShort(requiredSeconds)}`
+}
+
+const getNextObservationMilestone = (state: GameAppState): ObservationMilestone | null => {
+  const lockedFish = getFishContentList()
+    .filter((fish) => !state.game.profile.unlockedFishIds.includes(fish.speciesId))
+    .map((fish) => ({
+      label: fish.displayName,
+      remainingSeconds: getRemainingObservationSeconds(state.game, fish)
+    }))
+    .filter((fish) => fish.remainingSeconds > 0)
+    .sort((left, right) => left.remainingSeconds - right.remainingSeconds)
+
+  return lockedFish[0] ?? null
+}
+
 const createStatCard = ({ label, value, meta }: StatCardOptions): HTMLDivElement => {
   const card = document.createElement('div')
   card.className = 'hud-stat-card'
@@ -160,19 +207,38 @@ const getNextUnlockCopy = (state: GameAppState): string => {
   const coins = state.game.profile.currency.coins
   const lockedFish = getFishContentList()
     .filter((fish) => !state.game.profile.unlockedFishIds.includes(fish.speciesId))
-    .map((fish) => ({ label: fish.displayName, cost: fish.gameplay.unlockCost }))
+    .map((fish) => ({
+      label: fish.displayName,
+      cost: fish.gameplay.unlockCost,
+      remainingObservationSeconds: getRemainingObservationSeconds(state.game, fish)
+    }))
   const lockedDecor = getDecorContentList()
     .filter((decor) => !state.game.profile.unlockedDecorIds.includes(decor.decorId))
-    .map((decor) => ({ label: decor.displayName, cost: decor.gameplay.unlockCost }))
+    .map((decor) => ({
+      label: decor.displayName,
+      cost: decor.gameplay.unlockCost,
+      remainingObservationSeconds: 0
+    }))
 
   const nextUnlock = [...lockedFish, ...lockedDecor]
-    .sort((left, right) => left.cost - right.cost)[0]
+    .sort((left, right) => {
+      const observationRank = Number(left.remainingObservationSeconds > 0) - Number(right.remainingObservationSeconds > 0)
+      if (observationRank !== 0) return observationRank
+      if (left.cost !== right.cost) return left.cost - right.cost
+      return left.remainingObservationSeconds - right.remainingObservationSeconds
+    })[0]
 
   if (!nextUnlock) {
     return 'Next unlock: everything is already in the tank kit.'
   }
 
   const coinsNeeded = Math.max(0, nextUnlock.cost - coins)
+  if (nextUnlock.remainingObservationSeconds > 0) {
+    return coinsNeeded === 0
+      ? `Next unlock: ${nextUnlock.label} after ${formatDurationShort(nextUnlock.remainingObservationSeconds)} of observing.`
+      : `Next unlock: ${nextUnlock.label} after ${formatDurationShort(nextUnlock.remainingObservationSeconds)} and ${coinsNeeded} coins.`
+  }
+
   return coinsNeeded === 0
     ? `Next unlock: ${nextUnlock.label} is ready now.`
     : `Next unlock: ${nextUnlock.label} in ${coinsNeeded} coins.`
@@ -277,15 +343,28 @@ const createShopPanel = (store: GameStore): HTMLDivElement => {
       row.className = 'hud-list-item'
 
       const info = document.createElement('div')
-      info.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">Unlock ${fish.gameplay.unlockCost} / +${fish.gameplay.baseIncomePerMinute.toFixed(2)} each</div>`
+      const observationProgress = getObservationProgressCopy(state, fish)
+      const statLine = observationProgress
+        ? `${observationProgress} · Unlock ${fish.gameplay.unlockCost} / +${fish.gameplay.baseIncomePerMinute.toFixed(2)} each`
+        : `Unlock ${fish.gameplay.unlockCost} / +${fish.gameplay.baseIncomePerMinute.toFixed(2)} each`
+      info.innerHTML = `<strong>${fish.displayName}</strong><div class="hud-item-meta">${fish.description}</div><div class="hud-item-meta">${statLine}</div>`
       row.appendChild(info)
 
       const action = document.createElement('button')
       action.type = 'button'
       action.className = 'hud-action-button'
       const unlocked = state.game.profile.unlockedFishIds.includes(fish.speciesId)
-      action.textContent = unlocked ? 'Unlocked' : `Unlock ${fish.gameplay.unlockCost}`
-      action.disabled = unlocked || state.game.profile.currency.coins < fish.gameplay.unlockCost
+      const remainingObservationSeconds = getRemainingObservationSeconds(state.game, fish)
+      if (unlocked) {
+        action.textContent = 'Unlocked'
+        action.disabled = true
+      } else if (remainingObservationSeconds > 0) {
+        action.textContent = `Observe ${formatDurationShort(remainingObservationSeconds)}`
+        action.disabled = true
+      } else {
+        action.textContent = `Unlock ${fish.gameplay.unlockCost}`
+        action.disabled = state.game.profile.currency.coins < fish.gameplay.unlockCost
+      }
       action.addEventListener('click', () => {
         store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: fish.speciesId } })
       })
@@ -523,6 +602,7 @@ const createProgressPanel = (store: GameStore): HTMLDivElement => {
 
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
+    const nextObservationMilestone = getNextObservationMilestone(state)
 
     statGrid.innerHTML = ''
     ;[
@@ -540,6 +620,13 @@ const createProgressPanel = (store: GameStore): HTMLDivElement => {
         label: 'Unlocked',
         value: `${state.game.profile.unlockedFishIds.length + state.game.profile.unlockedDecorIds.length}`,
         meta: `${state.game.profile.unlockedFishIds.length} fish · ${state.game.profile.unlockedDecorIds.length} decor`
+      },
+      {
+        label: 'Observation',
+        value: formatDurationShort(state.game.profile.stats.totalViewedSeconds),
+        meta: nextObservationMilestone
+          ? `${formatDurationShort(nextObservationMilestone.remainingSeconds)} to ${nextObservationMilestone.label}`
+          : 'All sight-gated fish ready'
       },
       {
         label: 'Offline gain',

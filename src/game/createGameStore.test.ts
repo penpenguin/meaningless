@@ -53,6 +53,60 @@ describe('createGameStore', () => {
     store.destroy()
   })
 
+  it('requires observation time before unlocking watch-based species', () => {
+    const seeded = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
+    const store = createGameStore({
+      tickIntervalMs: 60_000,
+      initialState: {
+        ...seeded,
+        game: {
+          ...seeded.game,
+          profile: {
+            ...seeded.game.profile,
+            currency: {
+              ...seeded.game.profile.currency,
+              coins: 80
+            }
+          }
+        }
+      }
+    })
+
+    store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: 'angelfish' } })
+    expect(store.getState().game.profile.unlockedFishIds).not.toContain('angelfish')
+
+    store.dispatch({
+      type: 'GAME/TICK',
+      payload: {
+        nowIso: '2026-03-08T00:15:00.000Z'
+      }
+    })
+    store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: 'angelfish' } })
+
+    expect(store.getState().game.profile.unlockedFishIds).toContain('angelfish')
+    store.destroy()
+  })
+
+  it('tracks visible observation time without inflating offline totals', () => {
+    const seeded = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
+    const store = createGameStore({
+      tickIntervalMs: 60_000,
+      initialState: seeded
+    })
+
+    store.dispatch({
+      type: 'GAME/TICK',
+      payload: {
+        nowIso: '2026-03-08T00:01:00.000Z'
+      }
+    })
+
+    expect(store.getState().game.profile.stats.totalViewedSeconds).toBe(60)
+    expect(store.getState().game.profile.stats.totalOfflineSeconds).toBe(0)
+    expect(store.getState().ui.lastOfflineResult).toBeNull()
+    store.destroy()
+  })
+
   it('cleans the active tank and resets water quality', () => {
     const store = createGameStore({
       initialState: createHydratedGameAppState({
