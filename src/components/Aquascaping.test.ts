@@ -3,6 +3,28 @@ import * as THREE from 'three'
 import { AquascapingSystem } from './Aquascaping'
 import { createOpenWaterBounds } from './sceneBounds'
 
+const createMockCanvasContext = (): CanvasRenderingContext2D => {
+  const gradient = {
+    addColorStop: vi.fn()
+  }
+
+  return {
+    createLinearGradient: () => gradient,
+    fillRect: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 0,
+    globalCompositeOperation: 'source-over'
+  } as unknown as CanvasRenderingContext2D
+}
+
 describe('AquascapingSystem composition', () => {
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
 
@@ -14,24 +36,7 @@ describe('AquascapingSystem composition', () => {
   it('creates a hero rock and layered plant clusters instead of repeating the same silhouette', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
-      .mockImplementation(() => {
-        const gradient = {
-          addColorStop: vi.fn()
-        }
-
-        return {
-          createLinearGradient: () => gradient,
-          fillRect: vi.fn(),
-          beginPath: vi.fn(),
-          moveTo: vi.fn(),
-          lineTo: vi.fn(),
-          stroke: vi.fn(),
-          fillStyle: '',
-          strokeStyle: '',
-          lineWidth: 0,
-          globalCompositeOperation: 'source-over'
-        } as unknown as CanvasRenderingContext2D
-      })
+      .mockImplementation(() => createMockCanvasContext())
 
     const scene = new THREE.Scene()
     const bounds = createOpenWaterBounds()
@@ -46,5 +51,24 @@ describe('AquascapingSystem composition', () => {
     expect(heroRock).toBeDefined()
     expect(backgroundPlants.length).toBeGreaterThan(0)
     expect(foregroundPlants.length).toBeGreaterThan(0)
+  })
+
+  it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const foregroundPlant = aquascapingGroup.children.find((child) => child.userData.layer === 'foreground') as THREE.Group
+    const fronds = foregroundPlant.children.filter((child) => child instanceof THREE.Mesh) as THREE.Mesh[]
+
+    expect(fronds.length).toBeGreaterThan(0)
+    expect(fronds.some((frond) => frond.geometry.type === 'PlaneGeometry')).toBe(true)
+    expect(fronds.some((frond) => frond.geometry.type === 'CylinderGeometry')).toBe(false)
   })
 })

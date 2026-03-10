@@ -50,54 +50,35 @@ export class AquascapingSystem {
       }
       
       const height = cluster.baseHeight + Math.random() * (cluster.layer === 'background' ? 1.4 : 1.1)
-      const segments = Math.floor(height * 3)
+      const frondCount = cluster.layer === 'background' ? 4 : cluster.layer === 'midground' ? 5 : 6
+      const hueBase = cluster.layer === 'background' ? 0.42 : cluster.layer === 'midground' ? 0.36 : 0.3
+      const hue = hueBase + Math.random() * 0.06
+      const material = this.createSeaweedMaterial(hue, cluster.layer)
       
-      for (let j = 0; j < segments; j++) {
-        const segmentHeight = height / segments
-        const width = 0.1 + (segments - j) * 0.02
+      for (let j = 0; j < frondCount; j++) {
+        const frondHeight = height * (0.72 + Math.random() * 0.28)
+        const frondWidth = 0.16 + frondHeight * 0.08 + Math.random() * 0.06
+        const bend = (Math.random() - 0.5) * 0.2 + (j - (frondCount - 1) / 2) * 0.04
+        const geometry = this.createSeaweedFrondGeometry(frondWidth, frondHeight, bend)
+        const frond = new THREE.Mesh(geometry, material)
+        const spread = j - (frondCount - 1) / 2
         
-        const geometry = new THREE.CylinderGeometry(
-          width * 0.3, 
-          width, 
-          segmentHeight, 
-          6
+        frond.position.set(
+          spread * 0.08 + (Math.random() - 0.5) * 0.05,
+          frondHeight / 2,
+          (Math.random() - 0.5) * 0.08
         )
-        
-        const hueBase = cluster.layer === 'background' ? 0.42 : cluster.layer === 'midground' ? 0.36 : 0.3
-        const hue = hueBase + Math.random() * 0.08 // Green variations
-        
-        // リアルな水草テクスチャを生成
-        const seaweedTexture = this.createSeaweedTexture(hue)
-        const normalMap = this.createSeaweedNormalMap()
-        const roughnessMap = this.createSeaweedRoughnessMap()
-        
-        const material = new THREE.MeshPhysicalMaterial({
-          map: seaweedTexture,
-          normalMap: normalMap,
-          roughnessMap: roughnessMap,
-          color: new THREE.Color().setHSL(hue, cluster.layer === 'background' ? 0.45 : 0.72, cluster.layer === 'background' ? 0.28 : 0.4),
-          metalness: 0,
-          roughness: 0.9,
-          transmission: 0.4,
-          thickness: 0.15,
-          transparent: true,
-          opacity: 0.85,
-          side: THREE.DoubleSide,
-          envMapIntensity: 0.3,
-          clearcoat: 0.1,
-          clearcoatRoughness: 0.8
-        })
-        
-        const segment = new THREE.Mesh(geometry, material)
-        segment.position.y = j * segmentHeight + segmentHeight / 2
-        segment.rotation.z = Math.sin(j * 0.5) * 0.2
-        segment.userData = { 
-          originalRotation: segment.rotation.z,
+        frond.rotation.y = spread * 0.22 + (Math.random() - 0.5) * 0.35
+        frond.rotation.z = -0.12 + spread * 0.05 + (Math.random() - 0.5) * 0.12
+        frond.rotation.x = (Math.random() - 0.5) * 0.08
+        frond.userData = {
+          role: 'frond',
+          originalRotation: frond.rotation.z,
           swayOffset: Math.random() * Math.PI * 2,
-          swayAmplitude: 0.1 + Math.random() * 0.1
+          swayAmplitude: 0.05 + Math.random() * 0.05
         }
         
-        seaweedGroup.add(segment)
+        seaweedGroup.add(frond)
       }
 
       if (cluster.layer === 'background') {
@@ -110,6 +91,57 @@ export class AquascapingSystem {
       this.plants.push(seaweedGroup)
       this.group.add(seaweedGroup)
     }
+  }
+
+  private createSeaweedFrondGeometry(width: number, height: number, bend: number): THREE.PlaneGeometry {
+    const geometry = new THREE.PlaneGeometry(width, height, 5, 12)
+    const positionAttribute = geometry.getAttribute('position')
+    
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = positionAttribute.getX(i)
+      const y = positionAttribute.getY(i)
+      const progress = (y + height / 2) / height
+      const taper = THREE.MathUtils.lerp(1, 0.18, progress)
+      const curvedX = Math.sin(progress * Math.PI * 0.9) * bend * height
+      const depth = Math.sin(progress * Math.PI) * width * 0.08
+      const droop = progress * progress * height * 0.08
+      
+      positionAttribute.setX(i, x * taper + curvedX)
+      positionAttribute.setY(i, y - droop)
+      positionAttribute.setZ(i, depth)
+    }
+    
+    geometry.computeVertexNormals()
+    
+    return geometry
+  }
+
+  private createSeaweedMaterial(
+    hue: number,
+    layer: 'foreground' | 'background' | 'midground'
+  ): THREE.MeshPhysicalMaterial {
+    const seaweedTexture = this.createSeaweedTexture(hue)
+    const normalMap = this.createSeaweedNormalMap()
+    const roughnessMap = this.createSeaweedRoughnessMap()
+    
+    return new THREE.MeshPhysicalMaterial({
+      map: seaweedTexture,
+      alphaMap: seaweedTexture,
+      normalMap,
+      roughnessMap,
+      color: new THREE.Color('#ffffff'),
+      metalness: 0,
+      roughness: layer === 'background' ? 0.84 : 0.72,
+      transmission: layer === 'background' ? 0.04 : 0.08,
+      thickness: 0.02,
+      transparent: true,
+      opacity: layer === 'background' ? 0.8 : 0.92,
+      alphaTest: 0.28,
+      side: THREE.DoubleSide,
+      envMapIntensity: 0.18,
+      clearcoat: 0.04,
+      clearcoatRoughness: 0.9
+    })
   }
   
   private createCorals(bounds: THREE.Box3): void {
@@ -311,55 +343,58 @@ export class AquascapingSystem {
     canvas.height = 512
     const ctx = canvas.getContext('2d')!
     
-    // ベース色の設定
-    const baseColor = new THREE.Color().setHSL(hue, 0.7, 0.3)
-    const darkColor = new THREE.Color().setHSL(hue, 0.8, 0.15)
-    const lightColor = new THREE.Color().setHSL(hue, 0.6, 0.5)
-    
-    // グラデーション背景
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    gradient.addColorStop(0, lightColor.getStyle())
-    gradient.addColorStop(0.3, baseColor.getStyle())
-    gradient.addColorStop(0.7, baseColor.getStyle())
-    gradient.addColorStop(1, darkColor.getStyle())
-    
+    const baseColor = new THREE.Color().setHSL(hue, 0.52, 0.34)
+    const shadowColor = baseColor.clone().lerp(new THREE.Color('#061d14'), 0.45)
+    const highlightColor = baseColor.clone().lerp(new THREE.Color('#d7ffd9'), 0.24)
+    const midX = canvas.width * 0.5
+    const baseY = canvas.height * 0.98
+    const tipY = canvas.height * 0.04
+    const leftBase = canvas.width * 0.18
+    const rightBase = canvas.width * 0.82
+
+    const gradient = ctx.createLinearGradient(0, tipY, 0, baseY)
+    gradient.addColorStop(0, highlightColor.getStyle())
+    gradient.addColorStop(0.38, baseColor.getStyle())
+    gradient.addColorStop(1, shadowColor.getStyle())
+
+    ctx.beginPath()
+    ctx.moveTo(midX, baseY)
+    ctx.quadraticCurveTo(leftBase, canvas.height * 0.7, canvas.width * 0.38, canvas.height * 0.24)
+    ctx.quadraticCurveTo(canvas.width * 0.46, canvas.height * 0.09, midX, tipY)
+    ctx.quadraticCurveTo(canvas.width * 0.56, canvas.height * 0.12, canvas.width * 0.66, canvas.height * 0.24)
+    ctx.quadraticCurveTo(rightBase, canvas.height * 0.72, midX, baseY)
+    ctx.closePath()
     ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // 水草の縦縞模様（葉脈）
+    ctx.fill()
+
+    ctx.strokeStyle = shadowColor.clone().multiplyScalar(0.9).getStyle()
+    ctx.lineWidth = 5
+    ctx.stroke()
+
     ctx.globalCompositeOperation = 'overlay'
-    for (let i = 0; i < 8; i++) {
-      const x = (i / 7) * canvas.width + Math.sin(i) * 20
-      ctx.strokeStyle = `rgba(0, 100, 0, ${0.3 + Math.random() * 0.2})`
-      ctx.lineWidth = 2 + Math.random() * 3
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      // 曲線的な葉脈
-      for (let y = 0; y <= canvas.height; y += 10) {
-        const wave = Math.sin(y * 0.02 + i) * 15
-        ctx.lineTo(x + wave, y)
-      }
-      ctx.stroke()
-    }
-    
-    // 細かい質感
+    ctx.strokeStyle = 'rgba(223, 255, 214, 0.4)'
+    ctx.lineWidth = 7
+    ctx.beginPath()
+    ctx.moveTo(midX, baseY)
+    ctx.quadraticCurveTo(canvas.width * 0.48, canvas.height * 0.48, midX, tipY)
+    ctx.stroke()
+
     ctx.globalCompositeOperation = 'multiply'
-    for (let i = 0; i < 200; i++) {
-      const x = Math.random() * canvas.width
-      const y = Math.random() * canvas.height
-      const size = Math.random() * 3
-      const alpha = 0.1 + Math.random() * 0.2
-      
-      ctx.fillStyle = `rgba(0, 80, 0, ${alpha})`
-      ctx.fillRect(x, y, size, size)
+    for (let i = 0; i < 5; i++) {
+      const startY = canvas.height * (0.18 + i * 0.14)
+      const offset = (i - 2) * 12
+      ctx.strokeStyle = `rgba(7, 43, 24, ${0.18 + i * 0.02})`
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(midX + offset * 0.2, startY)
+      ctx.quadraticCurveTo(midX + offset, startY + 34, midX + offset * 1.5, startY + 82)
+      ctx.stroke()
     }
     
     ctx.globalCompositeOperation = 'source-over'
     
     const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(1, 2)
+    texture.colorSpace = THREE.SRGBColorSpace
     
     return texture
   }
@@ -370,38 +405,39 @@ export class AquascapingSystem {
     canvas.height = 512
     const ctx = canvas.getContext('2d')!
     
-    // ベースカラー（法線マップ用）
+    const midX = canvas.width * 0.5
+    const baseY = canvas.height * 0.98
+    const tipY = canvas.height * 0.04
+
+    ctx.beginPath()
+    ctx.moveTo(midX, baseY)
+    ctx.quadraticCurveTo(canvas.width * 0.18, canvas.height * 0.7, canvas.width * 0.38, canvas.height * 0.24)
+    ctx.quadraticCurveTo(canvas.width * 0.46, canvas.height * 0.09, midX, tipY)
+    ctx.quadraticCurveTo(canvas.width * 0.56, canvas.height * 0.12, canvas.width * 0.66, canvas.height * 0.24)
+    ctx.quadraticCurveTo(canvas.width * 0.82, canvas.height * 0.72, midX, baseY)
+    ctx.closePath()
     ctx.fillStyle = '#8080ff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // 縦方向の凹凸（葉脈）
-    for (let i = 0; i < 8; i++) {
-      const x = (i / 7) * canvas.width
-      ctx.strokeStyle = '#6060ff'
-      ctx.lineWidth = 3
+    ctx.fill()
+
+    ctx.strokeStyle = '#6f6fff'
+    ctx.lineWidth = 6
+    ctx.beginPath()
+    ctx.moveTo(midX, baseY)
+    ctx.quadraticCurveTo(canvas.width * 0.48, canvas.height * 0.48, midX, tipY)
+    ctx.stroke()
+
+    ctx.strokeStyle = '#9494ff'
+    ctx.lineWidth = 3
+    for (let i = 0; i < 4; i++) {
+      const startY = canvas.height * (0.22 + i * 0.16)
+      const offset = (i - 1.5) * 16
       ctx.beginPath()
-      ctx.moveTo(x, 0)
-      for (let y = 0; y <= canvas.height; y += 5) {
-        const wave = Math.sin(y * 0.02 + i) * 10
-        ctx.lineTo(x + wave, y)
-      }
+      ctx.moveTo(midX + offset * 0.2, startY)
+      ctx.quadraticCurveTo(midX + offset, startY + 28, midX + offset * 1.4, startY + 72)
       ctx.stroke()
     }
     
-    // 細かい凹凸
-    for (let i = 0; i < 150; i++) {
-      const x = Math.random() * canvas.width
-      const y = Math.random() * canvas.height
-      const size = 1 + Math.random() * 2
-      
-      ctx.fillStyle = Math.random() > 0.5 ? '#9090ff' : '#7070ff'
-      ctx.fillRect(x, y, size, size)
-    }
-    
     const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(1, 2)
     
     return texture
   }
@@ -412,39 +448,33 @@ export class AquascapingSystem {
     canvas.height = 512
     const ctx = canvas.getContext('2d')!
     
-    // ベースの粗さ
-    ctx.fillStyle = '#808080'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // ランダムな粗さの変化
-    for (let i = 0; i < 300; i++) {
-      const x = Math.random() * canvas.width
-      const y = Math.random() * canvas.height
-      const size = Math.random() * 4
-      const roughness = Math.random() * 255
-      
-      ctx.fillStyle = `rgb(${roughness}, ${roughness}, ${roughness})`
-      ctx.fillRect(x, y, size, size)
-    }
-    
-    // 葉脈部分は滑らか
-    for (let i = 0; i < 8; i++) {
-      const x = (i / 7) * canvas.width
-      ctx.strokeStyle = '#404040'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      for (let y = 0; y <= canvas.height; y += 5) {
-        const wave = Math.sin(y * 0.02 + i) * 10
-        ctx.lineTo(x + wave, y)
-      }
-      ctx.stroke()
-    }
+    const midX = canvas.width * 0.5
+    const baseY = canvas.height * 0.98
+    const tipY = canvas.height * 0.04
+    const roughnessGradient = ctx.createLinearGradient(0, tipY, 0, baseY)
+
+    roughnessGradient.addColorStop(0, '#666666')
+    roughnessGradient.addColorStop(0.55, '#8d8d8d')
+    roughnessGradient.addColorStop(1, '#b8b8b8')
+
+    ctx.beginPath()
+    ctx.moveTo(midX, baseY)
+    ctx.quadraticCurveTo(canvas.width * 0.18, canvas.height * 0.7, canvas.width * 0.38, canvas.height * 0.24)
+    ctx.quadraticCurveTo(canvas.width * 0.46, canvas.height * 0.09, midX, tipY)
+    ctx.quadraticCurveTo(canvas.width * 0.56, canvas.height * 0.12, canvas.width * 0.66, canvas.height * 0.24)
+    ctx.quadraticCurveTo(canvas.width * 0.82, canvas.height * 0.72, midX, baseY)
+    ctx.closePath()
+    ctx.fillStyle = roughnessGradient
+    ctx.fill()
+
+    ctx.strokeStyle = '#565656'
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.moveTo(midX, baseY)
+    ctx.quadraticCurveTo(canvas.width * 0.48, canvas.height * 0.48, midX, tipY)
+    ctx.stroke()
     
     const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(1, 2)
     
     return texture
   }
