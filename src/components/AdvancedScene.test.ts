@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 import { AdvancedAquariumScene } from './AdvancedScene'
 
@@ -350,5 +350,116 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(waterSurface?.visible).toBe(true)
     expect(waterSurfaceHighlight?.visible).toBe(false)
     expect(frontGlassHighlight?.visible).toBe(false)
+  })
+})
+
+describe('AdvancedAquariumScene water textures', () => {
+  let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
+
+  afterEach(() => {
+    getContextSpy?.mockRestore()
+    getContextSpy = null
+  })
+
+  it('creates a diffuse water surface texture instead of stroked contour bands', () => {
+    const stats = {
+      radialGradientCalls: 0,
+      strokeCalls: 0,
+      fillCalls: 0
+    }
+
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = { addColorStop: vi.fn() }
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => {
+            stats.radialGradientCalls += 1
+            return { addColorStop: vi.fn() }
+          },
+          fillRect: () => {
+            stats.fillCalls += 1
+          },
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          lineTo: vi.fn(),
+          closePath: vi.fn(),
+          fill: () => {
+            stats.fillCalls += 1
+          },
+          stroke: () => {
+            stats.strokeCalls += 1
+          },
+          fillStyle: '',
+          strokeStyle: '',
+          globalCompositeOperation: 'source-over',
+          globalAlpha: 1,
+          lineWidth: 0
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const createWaterSurfaceTexture = (AdvancedAquariumScene.prototype as unknown as {
+      createWaterSurfaceTexture: () => THREE.CanvasTexture
+    }).createWaterSurfaceTexture.bind(instance)
+
+    createWaterSurfaceTexture()
+
+    expect(stats.radialGradientCalls).toBeGreaterThan(0)
+    expect(stats.fillCalls).toBeGreaterThan(1)
+    expect(stats.strokeCalls).toBe(0)
+  })
+
+  it('creates highlight blooms instead of repeated spine-like wave strokes', () => {
+    const stats = {
+      radialGradientCalls: 0,
+      strokeCalls: 0,
+      fillCalls: 0
+    }
+
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = { addColorStop: vi.fn() }
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => {
+            stats.radialGradientCalls += 1
+            return { addColorStop: vi.fn() }
+          },
+          fillRect: () => {
+            stats.fillCalls += 1
+          },
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          lineTo: vi.fn(),
+          closePath: vi.fn(),
+          fill: () => {
+            stats.fillCalls += 1
+          },
+          stroke: () => {
+            stats.strokeCalls += 1
+          },
+          fillStyle: '',
+          strokeStyle: '',
+          globalCompositeOperation: 'source-over',
+          globalAlpha: 1,
+          lineWidth: 0
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const createWaterSurfaceHighlightTexture = (AdvancedAquariumScene.prototype as unknown as {
+      createWaterSurfaceHighlightTexture: () => THREE.CanvasTexture
+    }).createWaterSurfaceHighlightTexture.bind(instance)
+
+    createWaterSurfaceHighlightTexture()
+
+    expect(stats.radialGradientCalls).toBeGreaterThan(2)
+    expect(stats.fillCalls).toBeGreaterThan(2)
+    expect(stats.strokeCalls).toBe(0)
   })
 })

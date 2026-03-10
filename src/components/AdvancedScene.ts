@@ -762,10 +762,7 @@ export class AdvancedAquariumScene {
     if (
       !ctx ||
       typeof ctx.createLinearGradient !== 'function' ||
-      typeof ctx.beginPath !== 'function' ||
-      typeof ctx.moveTo !== 'function' ||
-      typeof ctx.lineTo !== 'function' ||
-      typeof ctx.stroke !== 'function'
+      typeof ctx.createRadialGradient !== 'function'
     ) {
       return texture
     }
@@ -780,20 +777,31 @@ export class AdvancedAquariumScene {
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
-    ctx.lineWidth = 2
-    for (let y = 24; y < canvas.height; y += 32) {
-      ctx.beginPath()
-      for (let x = 0; x <= canvas.width; x += 16) {
-        const waveY = y + Math.sin((x / canvas.width) * Math.PI * 5.5) * 8
-        if (x === 0) {
-          ctx.moveTo(x, waveY)
-        } else {
-          ctx.lineTo(x, waveY)
-        }
-      }
-      ctx.stroke()
+    ctx.globalCompositeOperation = 'screen'
+    for (let i = 0; i < 18; i++) {
+      const x = ((i * 83) % 460) + 26
+      const y = ((i * 59) % 360) + 48
+      const radius = 44 + ((i % 4) * 18)
+      const bloom = ctx.createRadialGradient(x, y, radius * 0.12, x, y, radius)
+      bloom.addColorStop(0, 'rgba(245, 252, 255, 0.24)')
+      bloom.addColorStop(0.45, 'rgba(196, 236, 244, 0.1)')
+      bloom.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = bloom
+      ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
     }
+
+    for (let i = 0; i < 8; i++) {
+      const x = ((i * 111) % 420) + 40
+      const y = ((i * 73) % 300) + 90
+      const radius = 96 + (i * 6)
+      const haze = ctx.createRadialGradient(x, y, radius * 0.18, x, y, radius)
+      haze.addColorStop(0, 'rgba(255, 255, 255, 0.08)')
+      haze.addColorStop(0.5, 'rgba(178, 229, 238, 0.05)')
+      haze.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = haze
+      ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
+    }
+    ctx.globalCompositeOperation = 'source-over'
 
     texture.colorSpace = THREE.SRGBColorSpace
     return texture
@@ -854,10 +862,7 @@ export class AdvancedAquariumScene {
     if (
       !ctx ||
       typeof ctx.createLinearGradient !== 'function' ||
-      typeof ctx.beginPath !== 'function' ||
-      typeof ctx.moveTo !== 'function' ||
-      typeof ctx.lineTo !== 'function' ||
-      typeof ctx.stroke !== 'function'
+      typeof ctx.createRadialGradient !== 'function'
     ) {
       return texture
     }
@@ -873,20 +878,31 @@ export class AdvancedAquariumScene {
     ctx.fillStyle = glow
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
-    ctx.lineWidth = 3
-    for (let y = 36; y < canvas.height; y += 54) {
-      ctx.beginPath()
-      for (let x = 0; x <= canvas.width; x += 18) {
-        const waveY = y + Math.sin((x / canvas.width) * Math.PI * 7 + (y * 0.024)) * 10
-        if (x === 0) {
-          ctx.moveTo(x, waveY)
-        } else {
-          ctx.lineTo(x, waveY)
-        }
-      }
-      ctx.stroke()
+    ctx.globalCompositeOperation = 'screen'
+    for (let i = 0; i < 14; i++) {
+      const x = ((i * 97) % 452) + 30
+      const y = ((i * 67) % 280) + 84
+      const radius = 28 + ((i % 3) * 14)
+      const highlight = ctx.createRadialGradient(x, y, radius * 0.08, x, y, radius)
+      highlight.addColorStop(0, 'rgba(255, 255, 255, 0.34)')
+      highlight.addColorStop(0.36, 'rgba(228, 249, 255, 0.18)')
+      highlight.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = highlight
+      ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
     }
+
+    for (let i = 0; i < 6; i++) {
+      const x = ((i * 121) % 420) + 46
+      const y = ((i * 89) % 240) + 120
+      const radius = 70 + (i * 8)
+      const shimmer = ctx.createRadialGradient(x, y, radius * 0.16, x, y, radius)
+      shimmer.addColorStop(0, 'rgba(225, 248, 255, 0.14)')
+      shimmer.addColorStop(0.52, 'rgba(189, 235, 244, 0.08)')
+      shimmer.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = shimmer
+      ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
+    }
+    ctx.globalCompositeOperation = 'source-over'
 
     texture.colorSpace = THREE.SRGBColorSpace
     return texture
