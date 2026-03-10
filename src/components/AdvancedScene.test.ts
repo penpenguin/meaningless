@@ -268,7 +268,8 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(midground).toBeDefined()
     expect(foreground).toBeDefined()
     expect(midground?.position.z).toBeLessThan(0)
-    expect(foreground?.position.z).toBeGreaterThan(4.6)
+    expect(foreground?.position.z).toBeGreaterThan(1.5)
+    expect(foreground?.position.z).toBeLessThan(4.2)
   })
 })
 
@@ -295,6 +296,10 @@ describe('AdvancedAquariumScene lighting', () => {
 
     expect(strongestLight.intensity).toBeGreaterThan(1.5)
     expect(rearRimLight?.intensity).toBeGreaterThan(0.22)
+    expect(strongestLight.position.y).toBeGreaterThan(12)
+    expect(strongestLight.shadow.camera.left).toBeGreaterThan(-14)
+    expect(strongestLight.shadow.camera.right).toBeLessThan(14)
+    expect(strongestLight.shadow.normalBias).toBeGreaterThan(0)
   })
 })
 
@@ -734,5 +739,51 @@ describe('AdvancedAquariumScene backdrop textures', () => {
     expect(stats.radialGradientCalls).toBeGreaterThanOrEqual(2)
     expect(stats.fillCalls).toBeGreaterThan(2)
     expect(stats.strokeCalls).toBeGreaterThan(0)
+  })
+
+  it('creates diffuse caustics clusters instead of repeated stripe strokes', () => {
+    const stats = {
+      radialGradientCalls: 0,
+      fillCalls: 0,
+      strokeCalls: 0
+    }
+
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = { addColorStop: vi.fn() }
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => {
+            stats.radialGradientCalls += 1
+            return { addColorStop: vi.fn() }
+          },
+          fillRect: () => {
+            stats.fillCalls += 1
+          },
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          bezierCurveTo: vi.fn(),
+          stroke: () => {
+            stats.strokeCalls += 1
+          },
+          fillStyle: '',
+          strokeStyle: '',
+          globalCompositeOperation: 'source-over',
+          lineWidth: 0
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const createCausticsTexture = (AdvancedAquariumScene.prototype as unknown as {
+      createCausticsTexture: () => THREE.CanvasTexture
+    }).createCausticsTexture.bind(instance)
+
+    createCausticsTexture()
+
+    expect(stats.radialGradientCalls).toBeGreaterThan(6)
+    expect(stats.fillCalls).toBeGreaterThan(6)
+    expect(stats.strokeCalls).toBe(0)
   })
 })

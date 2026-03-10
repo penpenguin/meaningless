@@ -95,4 +95,31 @@ describe('AquascapingSystem composition', () => {
     expect(uniquePlantTypes.size).toBeGreaterThanOrEqual(3)
     expect(fanPlant.children.some((leaf) => leaf instanceof THREE.Mesh && leaf.geometry.type === 'ShapeGeometry')).toBe(true)
   })
+
+  it('lets plants and coral branches cast shadows onto the substrate', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const plantMeshes = aquascapingGroup.children
+      .filter((child) => child instanceof THREE.Group && typeof child.userData.plantType === 'string')
+      .flatMap((child) => (child as THREE.Group).children)
+      .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
+    const coralBranches = aquascapingGroup.children
+      .filter((child) => child instanceof THREE.Group && child.userData.plantType === undefined)
+      .flatMap((child) => (child as THREE.Group).children)
+      .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.geometry.type === 'ConeGeometry')
+
+    expect(plantMeshes.length).toBeGreaterThan(0)
+    expect(plantMeshes.every((mesh) => mesh.castShadow)).toBe(true)
+    expect(plantMeshes.every((mesh) => mesh.receiveShadow)).toBe(true)
+    expect(coralBranches.length).toBeGreaterThan(0)
+    expect(coralBranches.every((mesh) => mesh.castShadow)).toBe(true)
+  })
 })

@@ -138,6 +138,8 @@ export class AquascapingSystem {
       frond.rotation.y = spread * 0.22 + (Math.random() - 0.5) * 0.35
       frond.rotation.z = -0.12 + spread * 0.05 + (Math.random() - 0.5) * 0.12
       frond.rotation.x = (Math.random() - 0.5) * 0.08
+      frond.castShadow = true
+      frond.receiveShadow = true
       frond.userData = {
         role: 'frond',
         originalRotation: frond.rotation.z,
@@ -174,6 +176,8 @@ export class AquascapingSystem {
       leaf.rotation.y = spread * 0.28 + (Math.random() - 0.5) * 0.24
       leaf.rotation.z = -0.06 + spread * 0.035 + (Math.random() - 0.5) * 0.08
       leaf.rotation.x = (Math.random() - 0.5) * 0.05
+      leaf.castShadow = true
+      leaf.receiveShadow = true
       leaf.userData = {
         role: 'leaf',
         originalRotation: leaf.rotation.z,
@@ -210,6 +214,8 @@ export class AquascapingSystem {
       leaf.rotation.y = spread * 0.34 + (Math.random() - 0.5) * 0.28
       leaf.rotation.z = -0.18 + (Math.random() - 0.5) * 0.12
       leaf.rotation.x = spread * 0.05 + (Math.random() - 0.5) * 0.04
+      leaf.castShadow = true
+      leaf.receiveShadow = true
       leaf.userData = {
         role: 'leaf',
         originalRotation: leaf.rotation.z,
@@ -309,7 +315,7 @@ export class AquascapingSystem {
     const normalMap = this.createSeaweedNormalMap()
     const roughnessMap = this.createSeaweedRoughnessMap()
     
-    return new THREE.MeshPhysicalMaterial({
+    const material = new THREE.MeshPhysicalMaterial({
       map: seaweedTexture,
       alphaMap: seaweedTexture,
       normalMap,
@@ -327,6 +333,8 @@ export class AquascapingSystem {
       clearcoat: 0.04,
       clearcoatRoughness: 0.9
     })
+    material.shadowSide = THREE.DoubleSide
+    return material
   }
 
   private createLeafMaterial(
@@ -340,7 +348,7 @@ export class AquascapingSystem {
       layer === 'background' ? 0.28 : plantType === 'fan-leaf' ? 0.4 : 0.35
     )
 
-    return new THREE.MeshPhysicalMaterial({
+    const material = new THREE.MeshPhysicalMaterial({
       color,
       metalness: 0,
       roughness: plantType === 'fan-leaf' ? 0.54 : 0.68,
@@ -348,11 +356,14 @@ export class AquascapingSystem {
       thickness: plantType === 'fan-leaf' ? 0.05 : 0.03,
       transparent: true,
       opacity: layer === 'background' ? 0.82 : 0.9,
+      alphaTest: plantType === 'fan-leaf' ? 0.08 : 0.04,
       side: THREE.DoubleSide,
       envMapIntensity: 0.16,
       clearcoat: plantType === 'fan-leaf' ? 0.12 : 0.06,
       clearcoatRoughness: 0.76
     })
+    material.shadowSide = THREE.DoubleSide
+    return material
   }
   
   private createCorals(bounds: THREE.Box3): void {
@@ -402,6 +413,8 @@ export class AquascapingSystem {
         branch.rotation.x = (Math.random() - 0.5) * 0.5
         branch.rotation.z = (Math.random() - 0.5) * 0.5
         branch.rotation.y = (j / branchCount) * Math.PI * 2 + Math.random() * 0.5
+        branch.castShadow = true
+        branch.receiveShadow = true
         
         coralGroup.add(branch)
       }
@@ -483,6 +496,7 @@ export class AquascapingSystem {
         rock.scale.set(1.2, 0.86, 1.35)
       }
       
+      rock.castShadow = true
       rock.receiveShadow = true
       rock.userData = {
         role: i === 0 ? 'hero-rock' : anchor.role
