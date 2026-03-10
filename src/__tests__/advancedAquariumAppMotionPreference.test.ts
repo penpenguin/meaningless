@@ -82,14 +82,6 @@ vi.mock('../utils/storage', () => {
   }
 })
 
-vi.mock('lottie-web', () => {
-  return {
-    default: {
-      loadAnimation: vi.fn()
-    }
-  }
-})
-
 const flushMicrotasks = async (): Promise<void> => {
   await Promise.resolve()
   await Promise.resolve()

@@ -1,86 +1,50 @@
-import lottie from 'lottie-web'
+const bubbleSpecs = [
+  { left: '18%', size: '1.1rem', duration: '3.6s', delay: '-0.3s' },
+  { left: '32%', size: '0.82rem', duration: '3.1s', delay: '-1.4s' },
+  { left: '44%', size: '1.36rem', duration: '4.2s', delay: '-0.9s' },
+  { left: '58%', size: '0.9rem', duration: '3.4s', delay: '-2.1s' },
+  { left: '67%', size: '1.22rem', duration: '4.6s', delay: '-1.1s' },
+  { left: '76%', size: '0.76rem', duration: '3.2s', delay: '-2.6s' },
+  { left: '86%', size: '1rem', duration: '3.8s', delay: '-1.8s' }
+] as const
 
-const bubbleAnimationData = {
-  v: '5.5.7',
-  fr: 30,
-  ip: 0,
-  op: 60,
-  w: 200,
-  h: 200,
-  nm: 'Bubbles',
-  ddd: 0,
-  assets: [],
-  layers: [{
-    ddd: 0,
-    ind: 1,
-    ty: 4,
-    nm: 'Bubble 1',
-    sr: 1,
-    ks: {
-      o: { a: 0, k: 100 },
-      r: { a: 0, k: 0 },
-      p: {
-        a: 1,
-        k: [{
-          i: { x: 0.5, y: 1 },
-          o: { x: 0.5, y: 0 },
-          t: 0,
-          s: [100, 180, 0],
-          to: [0, -30, 0],
-          ti: [0, 30, 0]
-        }, {
-          t: 60,
-          s: [100, 20, 0]
-        }]
-      },
-      a: { a: 0, k: [0, 0, 0] },
-      s: { a: 0, k: [100, 100, 100] }
-    },
-    ao: 0,
-    shapes: [{
-      ty: 'gr',
-      it: [{
-        ind: 0,
-        ty: 'el',
-        s: { a: 0, k: [20, 20] },
-        p: { a: 0, k: [0, 0] }
-      }, {
-        ty: 'st',
-        c: { a: 0, k: [0.42, 0.78, 0.84, 1] },
-        o: { a: 0, k: 100 },
-        w: { a: 0, k: 2 }
-      }, {
-        ty: 'fl',
-        c: { a: 0, k: [0.42, 0.78, 0.84, 0.3] },
-        o: { a: 0, k: 30 }
-      }, {
-        ty: 'tr',
-        p: { a: 0, k: [0, 0] },
-        a: { a: 0, k: [0, 0] },
-        s: { a: 0, k: [100, 100] },
-        r: { a: 0, k: 0 },
-        o: { a: 0, k: 100 }
-      }]
-    }],
-    ip: 0,
-    op: 60,
-    st: 0
-  }]
+const createBubbleElement = (
+  spec: typeof bubbleSpecs[number],
+  index: number
+): HTMLSpanElement => {
+  const bubble = document.createElement('span')
+  bubble.className = 'loading-bubble'
+  bubble.setAttribute('aria-hidden', 'true')
+  bubble.style.setProperty('--bubble-left', spec.left)
+  bubble.style.setProperty('--bubble-size', spec.size)
+  bubble.style.setProperty('--bubble-duration', spec.duration)
+  bubble.style.setProperty('--bubble-delay', spec.delay)
+  bubble.style.setProperty('--bubble-drift', `${(index % 2 === 0 ? 1 : -1) * (8 + (index * 2))}px`)
+  return bubble
 }
 
-const cloneAnimationData = () => JSON.parse(JSON.stringify(bubbleAnimationData)) as typeof bubbleAnimationData
-
 export const showBubbleLoadingAnimation = (containerId = 'lottie-bubbles'): void => {
-  const lottieContainer = document.getElementById(containerId)
-  if (!lottieContainer) return
+  const container = document.getElementById(containerId)
+  if (!container) return
+  if (container.dataset.loadingAnimation === 'bubbles') return
 
-  lottie.loadAnimation({
-    container: lottieContainer,
-    renderer: 'svg',
-    loop: true,
-    autoplay: true,
-    animationData: cloneAnimationData()
+  container.innerHTML = ''
+  container.dataset.loadingAnimation = 'bubbles'
+  container.classList.add('loading-bubbles')
+
+  const cluster = document.createElement('div')
+  cluster.className = 'loading-bubble-cluster'
+
+  const core = document.createElement('span')
+  core.className = 'loading-bubble-core'
+  core.setAttribute('aria-hidden', 'true')
+  cluster.appendChild(core)
+
+  bubbleSpecs.forEach((spec, index) => {
+    cluster.appendChild(createBubbleElement(spec, index))
   })
+
+  container.appendChild(cluster)
 }
 
 export const hideLoadingOverlay = (screenId = 'loading-screen'): void => {

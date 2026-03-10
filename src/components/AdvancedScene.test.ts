@@ -244,6 +244,36 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(surfaceMaterial?.attenuationDistance).toBeLessThan(2)
   })
 
+  it('adds a waterline rim and edge glints so the tank reads as layered glass and water', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const leftEdgeHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-edge-highlight-left') as THREE.Mesh | undefined
+    const rightEdgeHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-edge-highlight-right') as THREE.Mesh | undefined
+    const waterlineFront = internals.tank.children.find((child) => child.name === 'tank-waterline-front') as THREE.Mesh | undefined
+
+    expect(leftEdgeHighlight).toBeDefined()
+    expect(rightEdgeHighlight).toBeDefined()
+    expect(waterlineFront).toBeDefined()
+    expect(leftEdgeHighlight?.position.z).toBeGreaterThan(4.9)
+    expect(rightEdgeHighlight?.position.x).toBeGreaterThan(6.5)
+    expect((waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
+  })
+
   it('stages midground and foreground depth layers for a richer hero shot', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
@@ -467,6 +497,8 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const waterSurfaceHighlight = internals.tank.children.find((child) => child.name === 'tank-water-surface-highlight') as THREE.Mesh | undefined
     const caustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
     const frontGlassHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-front-highlight') as THREE.Mesh | undefined
+    const leftEdgeHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-edge-highlight-left') as THREE.Mesh | undefined
+    const waterlineFront = internals.tank.children.find((child) => child.name === 'tank-waterline-front') as THREE.Mesh | undefined
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
 
@@ -476,6 +508,8 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(waterSurface?.visible).toBe(true)
     expect(waterSurfaceHighlight?.visible).toBe(false)
     expect(frontGlassHighlight?.visible).toBe(false)
+    expect(leftEdgeHighlight?.visible).toBe(false)
+    expect(waterlineFront?.visible).toBe(false)
     expect(midground?.visible).toBe(false)
     expect(foreground?.visible).toBe(false)
   })

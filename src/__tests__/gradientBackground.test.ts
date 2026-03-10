@@ -73,6 +73,7 @@ describe('applyGradientBackground', () => {
     applyGradientBackground(scene)
 
     expect(scene.background).toBeInstanceOf(THREE.CanvasTexture)
+    expect(((scene.background as THREE.CanvasTexture).userData as { isEnvironmentBackdrop?: boolean }).isEnvironmentBackdrop).toBe(true)
     const fog = scene.fog as THREE.FogExp2
     expect(fog.density).toBeCloseTo(theme.fogDensity)
     expect(fog.color.getHexString()).toBe(theme.waterTint.replace('#', '').toLowerCase())

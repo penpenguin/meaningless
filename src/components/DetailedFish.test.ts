@@ -40,6 +40,51 @@ describe('DetailedFishSystem geometry merging', () => {
   })
 })
 
+describe('DetailedFishSystem silhouette archetypes', () => {
+  test('builds clearly different proportions for tall and slender fish variants', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants, createDetailedFishGeometry } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }>
+      createDetailedFishGeometry: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.BufferGeometry
+    }
+
+    const variants = createFishVariants.bind(instance)()
+    const tropical = variants.find((variant) => variant.name === 'Tropical')
+    const angelfish = variants.find((variant) => variant.name === 'Angelfish')
+    const neon = variants.find((variant) => variant.name === 'Neon')
+
+    expect(tropical).toBeDefined()
+    expect(angelfish).toBeDefined()
+    expect(neon).toBeDefined()
+
+    const measureAspect = (geometry: THREE.BufferGeometry): number => {
+      geometry.computeBoundingBox()
+      const size = new THREE.Vector3()
+      geometry.boundingBox?.getSize(size)
+      return size.y / size.x
+    }
+
+    const tropicalAspect = measureAspect(createDetailedFishGeometry.bind(instance)(tropical!))
+    const angelfishAspect = measureAspect(createDetailedFishGeometry.bind(instance)(angelfish!))
+    const neonAspect = measureAspect(createDetailedFishGeometry.bind(instance)(neon!))
+
+    expect(angelfishAspect).toBeGreaterThan(tropicalAspect * 1.25)
+    expect(neonAspect).toBeLessThan(tropicalAspect * 0.85)
+  })
+})
+
 describe('DetailedFishSystem wander target timing', () => {
   test('updates wander targets after 5 seconds when elapsed time is in seconds', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem

@@ -810,9 +810,91 @@ body {
   z-index: 1000;
 }
 
-.lottie-container {
+.lottie-container,
+.loading-bubbles {
   width: 200px;
   height: 200px;
+}
+
+.loading-bubbles {
+  position: relative;
+}
+
+.loading-bubble-cluster {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(220, 247, 255, 0.34), transparent 36%),
+    radial-gradient(circle at 50% 72%, rgba(7, 24, 32, 0.18), transparent 62%);
+  overflow: hidden;
+}
+
+.loading-bubble-core {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: 4rem;
+  height: 4rem;
+  margin-left: -2rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.82), rgba(214, 243, 250, 0.36) 38%, rgba(98, 171, 184, 0.08) 72%, rgba(255, 255, 255, 0) 100%);
+  box-shadow:
+    0 0 22px rgba(189, 236, 245, 0.3),
+    inset 0 0 24px rgba(255, 255, 255, 0.12);
+  animation: loading-core-pulse 3.8s ease-in-out infinite;
+}
+
+.loading-bubble {
+  position: absolute;
+  left: var(--bubble-left);
+  bottom: -14%;
+  width: var(--bubble-size);
+  height: var(--bubble-size);
+  margin-left: calc(var(--bubble-size) / -2);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.9), rgba(212, 245, 251, 0.4) 42%, rgba(115, 186, 198, 0.08) 74%, rgba(255, 255, 255, 0) 100%);
+  box-shadow:
+    0 0 14px rgba(196, 240, 248, 0.16),
+    inset 0 0 10px rgba(255, 255, 255, 0.14);
+  opacity: 0.84;
+  animation: loading-bubble-rise var(--bubble-duration) ease-in-out infinite;
+  animation-delay: var(--bubble-delay);
+}
+
+@keyframes loading-bubble-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.68);
+  }
+
+  12% {
+    opacity: 0.84;
+  }
+
+  55% {
+    opacity: 0.9;
+    transform: translate3d(var(--bubble-drift), -88px, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--bubble-drift) * 0.45), -170px, 0) scale(1.14);
+  }
+}
+
+@keyframes loading-core-pulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(0.96);
+  }
+
+  50% {
+    transform: translateY(-8px) scale(1.03);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "lottie-web": "^5.12.2",
     "three": "^0.161.0"
   },
   "devDependencies": {

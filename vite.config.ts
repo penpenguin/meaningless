@@ -9,9 +9,14 @@ export default defineConfig({
     assetsDir: 'assets',
     rollupOptions: {
       output: {
-        manualChunks: {
-          three: ['three'],
-          lottie: ['lottie-web']
+        manualChunks(id) {
+          if (id.includes('/node_modules/three/examples/jsm/')) {
+            return 'three-addons'
+          }
+          if (id.includes('/node_modules/three/')) {
+            return 'three-core'
+          }
+          return undefined
         }
       }
     }

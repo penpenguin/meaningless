@@ -34,9 +34,11 @@ const mockGetContext = (function getContext(
   return null
 }) as unknown as HTMLCanvasElement['getContext']
 
-HTMLCanvasElement.prototype.getContext = mockGetContext
+if (typeof HTMLCanvasElement !== 'undefined') {
+  HTMLCanvasElement.prototype.getContext = mockGetContext
+}
 
-if (!window.matchMedia) {
+if (typeof window !== 'undefined' && !window.matchMedia) {
   window.matchMedia = (query: string): MediaQueryList => {
     return {
       media: query,
@@ -51,13 +53,13 @@ if (!window.matchMedia) {
   }
 }
 
-if (!window.requestAnimationFrame) {
+if (typeof window !== 'undefined' && !window.requestAnimationFrame) {
   window.requestAnimationFrame = (cb: FrameRequestCallback): number => {
     return window.setTimeout(() => cb(Date.now()), 16)
   }
 }
 
-if (!window.cancelAnimationFrame) {
+if (typeof window !== 'undefined' && !window.cancelAnimationFrame) {
   window.cancelAnimationFrame = (id: number): void => {
     window.clearTimeout(id)
   }

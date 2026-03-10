@@ -10,6 +10,19 @@ interface FishVariant {
   secondaryColor: THREE.Color
   scale: number
   speed: number
+  silhouette?: {
+    bodyLength?: number
+    bodyHeight?: number
+    bodyThickness?: number
+    noseLength?: number
+    tailLength?: number
+    tailHeight?: number
+    dorsalHeight?: number
+    ventralHeight?: number
+    pectoralLength?: number
+    topFullness?: number
+    bellyFullness?: number
+  }
 }
 
 type BehaviorProfile = {
@@ -128,28 +141,80 @@ export class DetailedFishSystem {
         primaryColor: new THREE.Color(0xff6b35),
         secondaryColor: new THREE.Color(0xffd700),
         scale: 0.5,
-        speed: 1.0
+        speed: 1.0,
+        silhouette: {
+          bodyLength: 1.45,
+          bodyHeight: 0.38,
+          bodyThickness: 0.28,
+          noseLength: 0.24,
+          tailLength: 0.44,
+          tailHeight: 0.42,
+          dorsalHeight: 0.28,
+          ventralHeight: 0.16,
+          pectoralLength: 0.22,
+          topFullness: 0.72,
+          bellyFullness: 0.8
+        }
       },
       {
         name: 'Angelfish',
         primaryColor: new THREE.Color(0x87ceeb),
         secondaryColor: new THREE.Color(0x4169e1),
         scale: 0.65,
-        speed: 0.8
+        speed: 0.8,
+        silhouette: {
+          bodyLength: 1.06,
+          bodyHeight: 0.62,
+          bodyThickness: 0.18,
+          noseLength: 0.18,
+          tailLength: 0.34,
+          tailHeight: 0.52,
+          dorsalHeight: 0.9,
+          ventralHeight: 0.96,
+          pectoralLength: 0.24,
+          topFullness: 0.9,
+          bellyFullness: 0.88
+        }
       },
       {
         name: 'Neon',
         primaryColor: new THREE.Color(0x00ffff),
         secondaryColor: new THREE.Color(0xff1493),
         scale: 0.35,
-        speed: 1.5
+        speed: 1.5,
+        silhouette: {
+          bodyLength: 1.82,
+          bodyHeight: 0.18,
+          bodyThickness: 0.15,
+          noseLength: 0.3,
+          tailLength: 0.36,
+          tailHeight: 0.28,
+          dorsalHeight: 0.12,
+          ventralHeight: 0.06,
+          pectoralLength: 0.14,
+          topFullness: 0.56,
+          bellyFullness: 0.64
+        }
       },
       {
         name: 'Goldfish',
         primaryColor: new THREE.Color(0xffd700),
         secondaryColor: new THREE.Color(0xff8c00),
         scale: 0.55,
-        speed: 0.9
+        speed: 0.9,
+        silhouette: {
+          bodyLength: 1.26,
+          bodyHeight: 0.48,
+          bodyThickness: 0.32,
+          noseLength: 0.22,
+          tailLength: 0.52,
+          tailHeight: 0.6,
+          dorsalHeight: 0.36,
+          ventralHeight: 0.22,
+          pectoralLength: 0.26,
+          topFullness: 0.84,
+          bellyFullness: 0.94
+        }
       }
     ]
   }
@@ -432,17 +497,54 @@ export class DetailedFishSystem {
   }
   
   private createDetailedFishGeometry(variant: FishVariant): THREE.BufferGeometry {
-    
+    const silhouette = {
+      bodyLength: variant.silhouette?.bodyLength ?? 1.5,
+      bodyHeight: variant.silhouette?.bodyHeight ?? 0.32,
+      bodyThickness: variant.silhouette?.bodyThickness ?? 0.3,
+      noseLength: variant.silhouette?.noseLength ?? 0.24,
+      tailLength: variant.silhouette?.tailLength ?? 0.42,
+      tailHeight: variant.silhouette?.tailHeight ?? 0.4,
+      dorsalHeight: variant.silhouette?.dorsalHeight ?? 0.28,
+      ventralHeight: variant.silhouette?.ventralHeight ?? 0.16,
+      pectoralLength: variant.silhouette?.pectoralLength ?? 0.22,
+      topFullness: variant.silhouette?.topFullness ?? 0.72,
+      bellyFullness: variant.silhouette?.bellyFullness ?? 0.8
+    }
+
+    const tailRootX = -silhouette.bodyLength * 0.48
+    const bodyShoulderX = silhouette.bodyLength * 0.06
+    const noseX = silhouette.bodyLength * 0.5 + silhouette.noseLength
+    const upperCurveHeight = silhouette.bodyHeight * silhouette.topFullness
+    const lowerCurveHeight = silhouette.bodyHeight * silhouette.bellyFullness
+
     // メインボディ
     const bodyShape = new THREE.Shape()
-    bodyShape.moveTo(0, 0)
-    bodyShape.quadraticCurveTo(0.4, 0.25, 0.8, 0.15)
-    bodyShape.quadraticCurveTo(1.2, 0.08, 1.5, 0)
-    bodyShape.quadraticCurveTo(1.2, -0.08, 0.8, -0.15)
-    bodyShape.quadraticCurveTo(0.4, -0.25, 0, 0)
+    bodyShape.moveTo(tailRootX, 0)
+    bodyShape.bezierCurveTo(
+      tailRootX + (silhouette.bodyLength * 0.18),
+      upperCurveHeight,
+      bodyShoulderX,
+      silhouette.bodyHeight,
+      noseX - (silhouette.noseLength * 0.22),
+      silhouette.bodyHeight * 0.18
+    )
+    bodyShape.quadraticCurveTo(
+      noseX,
+      0,
+      noseX - (silhouette.noseLength * 0.26),
+      -silhouette.bodyHeight * 0.16
+    )
+    bodyShape.bezierCurveTo(
+      bodyShoulderX,
+      -lowerCurveHeight,
+      tailRootX + (silhouette.bodyLength * 0.12),
+      -silhouette.bodyHeight,
+      tailRootX,
+      0
+    )
     
     const extrudeSettings = {
-      depth: 0.3,
+      depth: silhouette.bodyThickness,
       bevelEnabled: true,
       bevelSegments: 3,
       steps: 2,
@@ -451,31 +553,67 @@ export class DetailedFishSystem {
     }
     
     const bodyGeometry = new THREE.ExtrudeGeometry(bodyShape, extrudeSettings)
-    bodyGeometry.center()
     
     // 尾ひれ
-    const tailGeometry = new THREE.ConeGeometry(0.2, 0.6, 6)
-    tailGeometry.rotateZ(Math.PI / 2)
-    tailGeometry.translate(-0.8, 0, 0)
+    const tailShape = new THREE.Shape()
+    tailShape.moveTo(tailRootX + 0.06, silhouette.tailHeight * 0.16)
+    tailShape.lineTo(tailRootX - silhouette.tailLength, silhouette.tailHeight * 0.54)
+    tailShape.lineTo(tailRootX - (silhouette.tailLength * 0.58), 0)
+    tailShape.lineTo(tailRootX - silhouette.tailLength, -silhouette.tailHeight * 0.54)
+    tailShape.lineTo(tailRootX + 0.06, -silhouette.tailHeight * 0.16)
+    tailShape.closePath()
+    const tailGeometry = new THREE.ExtrudeGeometry(tailShape, {
+      depth: Math.max(0.08, silhouette.bodyThickness * 0.3),
+      bevelEnabled: false,
+      steps: 1
+    })
     
     // 胸ひれ
-    const pectoralFinGeometry = new THREE.ConeGeometry(0.08, 0.25, 4)
+    const pectoralFinGeometry = new THREE.ConeGeometry(
+      Math.max(0.05, silhouette.bodyHeight * 0.22),
+      silhouette.pectoralLength,
+      4
+    )
     pectoralFinGeometry.rotateZ(-Math.PI / 3)
     pectoralFinGeometry.rotateY(Math.PI / 6)
-    pectoralFinGeometry.translate(0.3, 0.15, 0.12)
+    pectoralFinGeometry.translate(
+      silhouette.bodyLength * 0.08,
+      silhouette.bodyHeight * 0.38,
+      silhouette.bodyThickness * 0.4
+    )
     
     const pectoralFinGeometry2 = pectoralFinGeometry.clone()
-    pectoralFinGeometry2.translate(0, -0.3, -0.24)
+    pectoralFinGeometry2.translate(
+      0,
+      -silhouette.bodyHeight * 0.76,
+      -silhouette.bodyThickness * 0.8
+    )
     
     // 背びれ
-    const dorsalFinGeometry = new THREE.ConeGeometry(0.12, 0.4, 5)
+    const dorsalFinGeometry = new THREE.ConeGeometry(
+      Math.max(0.06, silhouette.bodyHeight * 0.18),
+      silhouette.dorsalHeight,
+      5
+    )
     dorsalFinGeometry.rotateX(Math.PI / 2)
-    dorsalFinGeometry.translate(0.2, 0.2, 0)
+    dorsalFinGeometry.translate(
+      silhouette.bodyLength * 0.04,
+      silhouette.bodyHeight * 0.42 + (silhouette.dorsalHeight * 0.28),
+      0
+    )
     
     // 腹びれ
-    const ventralFinGeometry = new THREE.ConeGeometry(0.06, 0.15, 4)
+    const ventralFinGeometry = new THREE.ConeGeometry(
+      Math.max(0.04, silhouette.bodyHeight * 0.12),
+      silhouette.ventralHeight,
+      4
+    )
     ventralFinGeometry.rotateX(-Math.PI / 2)
-    ventralFinGeometry.translate(0.1, -0.18, 0)
+    ventralFinGeometry.translate(
+      silhouette.bodyLength * 0.02,
+      -(silhouette.bodyHeight * 0.34) - (silhouette.ventralHeight * 0.36),
+      0
+    )
     
     // ジオメトリを結合
     const geometries = [
@@ -498,6 +636,7 @@ export class DetailedFishSystem {
     }
 
     // スケールを適用
+    mergedGeometry.center()
     mergedGeometry.scale(variant.scale, variant.scale, variant.scale)
     mergedGeometry.computeVertexNormals()
 
