@@ -64,11 +64,35 @@ describe('AquascapingSystem composition', () => {
     new AquascapingSystem(scene, bounds)
 
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
-    const foregroundPlant = aquascapingGroup.children.find((child) => child.userData.layer === 'foreground') as THREE.Group
-    const fronds = foregroundPlant.children.filter((child) => child instanceof THREE.Mesh) as THREE.Mesh[]
+    const ribbonPlant = aquascapingGroup.children.find((child) => child.userData.plantType === 'ribbon-seaweed') as THREE.Group
+    const fronds = ribbonPlant.children.filter((child) => child instanceof THREE.Mesh) as THREE.Mesh[]
 
     expect(fronds.length).toBeGreaterThan(0)
     expect(fronds.some((frond) => frond.geometry.type === 'PlaneGeometry')).toBe(true)
     expect(fronds.some((frond) => frond.geometry.type === 'CylinderGeometry')).toBe(false)
+  })
+
+  it('mixes multiple plant archetypes into the aquascape', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const plantTypes = aquascapingGroup.children
+      .filter((child) => typeof child.userData.layer === 'string')
+      .map((child) => child.userData.plantType)
+    const fanPlant = aquascapingGroup.children.find((child) => child.userData.plantType === 'fan-leaf') as THREE.Group
+    const uniquePlantTypes = new Set(plantTypes)
+
+    expect(uniquePlantTypes.has('ribbon-seaweed')).toBe(true)
+    expect(uniquePlantTypes.has('sword-leaf')).toBe(true)
+    expect(uniquePlantTypes.has('fan-leaf')).toBe(true)
+    expect(uniquePlantTypes.size).toBeGreaterThanOrEqual(3)
+    expect(fanPlant.children.some((leaf) => leaf instanceof THREE.Mesh && leaf.geometry.type === 'ShapeGeometry')).toBe(true)
   })
 })

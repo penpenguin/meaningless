@@ -1,5 +1,19 @@
 import * as THREE from 'three'
 
+type PlantLayer = 'foreground' | 'background' | 'midground'
+type PlantType = 'ribbon-seaweed' | 'sword-leaf' | 'fan-leaf'
+
+type PlantClusterDefinition = {
+  x: number
+  z: number
+  layer: PlantLayer
+  plantType: PlantType
+  baseHeight: number
+  spreadX: number
+  spreadZ: number
+  hueBase: number
+}
+
 export class AquascapingSystem {
   private group: THREE.Group
   private plants: THREE.Group[] = []
@@ -20,13 +34,14 @@ export class AquascapingSystem {
     const seaweedCount = 18
     const size = new THREE.Vector3()
     bounds.getSize(size)
-    const clusters = [
-      { x: -0.34, z: 0.18, layer: 'foreground', baseHeight: 2.6, spreadX: 0.9, spreadZ: 0.65 },
-      { x: -0.08, z: -0.2, layer: 'background', baseHeight: 4.1, spreadX: 0.65, spreadZ: 0.55 },
-      { x: 0.18, z: 0.06, layer: 'midground', baseHeight: 3.4, spreadX: 0.75, spreadZ: 0.55 },
-      { x: 0.36, z: -0.16, layer: 'background', baseHeight: 4.6, spreadX: 0.7, spreadZ: 0.5 },
-      { x: 0.04, z: 0.24, layer: 'foreground', baseHeight: 2.2, spreadX: 0.82, spreadZ: 0.7 }
-    ] as const
+    const clusters: PlantClusterDefinition[] = [
+      { x: -0.34, z: 0.18, layer: 'foreground', plantType: 'ribbon-seaweed', baseHeight: 2.6, spreadX: 0.9, spreadZ: 0.65, hueBase: 0.3 },
+      { x: -0.08, z: -0.2, layer: 'background', plantType: 'sword-leaf', baseHeight: 4, spreadX: 0.65, spreadZ: 0.55, hueBase: 0.36 },
+      { x: 0.18, z: 0.06, layer: 'midground', plantType: 'fan-leaf', baseHeight: 2.8, spreadX: 0.75, spreadZ: 0.55, hueBase: 0.29 },
+      { x: 0.36, z: -0.16, layer: 'background', plantType: 'ribbon-seaweed', baseHeight: 4.6, spreadX: 0.7, spreadZ: 0.5, hueBase: 0.42 },
+      { x: 0.04, z: 0.24, layer: 'foreground', plantType: 'sword-leaf', baseHeight: 2.5, spreadX: 0.82, spreadZ: 0.7, hueBase: 0.34 },
+      { x: -0.24, z: 0.02, layer: 'midground', plantType: 'fan-leaf', baseHeight: 3.1, spreadX: 0.72, spreadZ: 0.58, hueBase: 0.27 }
+    ]
     
     for (let i = 0; i < seaweedCount; i++) {
       const seaweedGroup = new THREE.Group()
@@ -46,50 +61,163 @@ export class AquascapingSystem {
       
       seaweedGroup.position.set(x, y, z)
       seaweedGroup.userData = {
-        layer: cluster.layer
+        layer: cluster.layer,
+        plantType: cluster.plantType
       }
       
       const height = cluster.baseHeight + Math.random() * (cluster.layer === 'background' ? 1.4 : 1.1)
-      const frondCount = cluster.layer === 'background' ? 4 : cluster.layer === 'midground' ? 5 : 6
-      const hueBase = cluster.layer === 'background' ? 0.42 : cluster.layer === 'midground' ? 0.36 : 0.3
-      const hue = hueBase + Math.random() * 0.06
-      const material = this.createSeaweedMaterial(hue, cluster.layer)
-      
-      for (let j = 0; j < frondCount; j++) {
-        const frondHeight = height * (0.72 + Math.random() * 0.28)
-        const frondWidth = 0.16 + frondHeight * 0.08 + Math.random() * 0.06
-        const bend = (Math.random() - 0.5) * 0.2 + (j - (frondCount - 1) / 2) * 0.04
-        const geometry = this.createSeaweedFrondGeometry(frondWidth, frondHeight, bend)
-        const frond = new THREE.Mesh(geometry, material)
-        const spread = j - (frondCount - 1) / 2
-        
-        frond.position.set(
-          spread * 0.08 + (Math.random() - 0.5) * 0.05,
-          frondHeight / 2,
-          (Math.random() - 0.5) * 0.08
-        )
-        frond.rotation.y = spread * 0.22 + (Math.random() - 0.5) * 0.35
-        frond.rotation.z = -0.12 + spread * 0.05 + (Math.random() - 0.5) * 0.12
-        frond.rotation.x = (Math.random() - 0.5) * 0.08
-        frond.userData = {
-          role: 'frond',
-          originalRotation: frond.rotation.z,
-          swayOffset: Math.random() * Math.PI * 2,
-          swayAmplitude: 0.05 + Math.random() * 0.05
-        }
-        
-        seaweedGroup.add(frond)
-      }
+      const hue = cluster.hueBase + Math.random() * 0.06
 
-      if (cluster.layer === 'background') {
+      this.populatePlantCluster(seaweedGroup, cluster, height, hue)
+
+      if (cluster.plantType === 'ribbon-seaweed' && cluster.layer === 'background') {
         seaweedGroup.scale.set(0.82, 1.08, 0.82)
-      } else if (cluster.layer === 'foreground') {
+      } else if (cluster.plantType === 'ribbon-seaweed' && cluster.layer === 'foreground') {
         seaweedGroup.scale.set(1.08, 0.94, 1.08)
+      } else if (cluster.plantType === 'sword-leaf') {
+        seaweedGroup.scale.set(
+          cluster.layer === 'foreground' ? 1.04 : 0.9,
+          cluster.layer === 'background' ? 1.1 : 0.96,
+          cluster.layer === 'foreground' ? 1.04 : 0.92
+        )
+      } else {
+        seaweedGroup.scale.set(
+          cluster.layer === 'foreground' ? 1.12 : 0.94,
+          cluster.layer === 'background' ? 1.04 : 0.92,
+          cluster.layer === 'foreground' ? 1.12 : 0.94
+        )
       }
       seaweedGroup.rotation.y = (Math.random() - 0.5) * 0.45
       
       this.plants.push(seaweedGroup)
       this.group.add(seaweedGroup)
+    }
+  }
+
+  private populatePlantCluster(
+    seaweedGroup: THREE.Group,
+    cluster: PlantClusterDefinition,
+    height: number,
+    hue: number
+  ): void {
+    switch (cluster.plantType) {
+      case 'ribbon-seaweed':
+        this.createRibbonSeaweed(seaweedGroup, cluster.layer, height, hue)
+        return
+      case 'sword-leaf':
+        this.createSwordLeafPlant(seaweedGroup, cluster.layer, height, hue)
+        return
+      case 'fan-leaf':
+        this.createFanLeafPlant(seaweedGroup, cluster.layer, height, hue)
+        return
+    }
+  }
+
+  private createRibbonSeaweed(
+    seaweedGroup: THREE.Group,
+    layer: PlantLayer,
+    height: number,
+    hue: number
+  ): void {
+    const frondCount = layer === 'background' ? 4 : layer === 'midground' ? 5 : 6
+    const material = this.createSeaweedMaterial(hue, layer)
+
+    for (let j = 0; j < frondCount; j++) {
+      const frondHeight = height * (0.72 + Math.random() * 0.28)
+      const frondWidth = 0.16 + frondHeight * 0.08 + Math.random() * 0.06
+      const bend = (Math.random() - 0.5) * 0.2 + (j - (frondCount - 1) / 2) * 0.04
+      const geometry = this.createSeaweedFrondGeometry(frondWidth, frondHeight, bend)
+      const frond = new THREE.Mesh(geometry, material)
+      const spread = j - (frondCount - 1) / 2
+      
+      frond.position.set(
+        spread * 0.08 + (Math.random() - 0.5) * 0.05,
+        frondHeight / 2,
+        (Math.random() - 0.5) * 0.08
+      )
+      frond.rotation.y = spread * 0.22 + (Math.random() - 0.5) * 0.35
+      frond.rotation.z = -0.12 + spread * 0.05 + (Math.random() - 0.5) * 0.12
+      frond.rotation.x = (Math.random() - 0.5) * 0.08
+      frond.userData = {
+        role: 'frond',
+        originalRotation: frond.rotation.z,
+        swayOffset: Math.random() * Math.PI * 2,
+        swayAmplitude: 0.05 + Math.random() * 0.05
+      }
+      
+      seaweedGroup.add(frond)
+    }
+  }
+
+  private createSwordLeafPlant(
+    seaweedGroup: THREE.Group,
+    layer: PlantLayer,
+    height: number,
+    hue: number
+  ): void {
+    const leafCount = layer === 'background' ? 5 : 6
+    const material = this.createLeafMaterial(hue, layer, 'sword-leaf')
+
+    for (let j = 0; j < leafCount; j++) {
+      const leafHeight = height * (0.78 + Math.random() * 0.22)
+      const leafWidth = 0.24 + Math.random() * 0.08
+      const bend = (Math.random() - 0.5) * 0.14 + (j - (leafCount - 1) / 2) * 0.035
+      const geometry = this.createSwordLeafGeometry(leafWidth, leafHeight, bend)
+      const leaf = new THREE.Mesh(geometry, material)
+      const spread = j - (leafCount - 1) / 2
+
+      leaf.position.set(
+        spread * 0.07 + (Math.random() - 0.5) * 0.04,
+        0,
+        (Math.random() - 0.5) * 0.07
+      )
+      leaf.rotation.y = spread * 0.28 + (Math.random() - 0.5) * 0.24
+      leaf.rotation.z = -0.06 + spread * 0.035 + (Math.random() - 0.5) * 0.08
+      leaf.rotation.x = (Math.random() - 0.5) * 0.05
+      leaf.userData = {
+        role: 'leaf',
+        originalRotation: leaf.rotation.z,
+        swayOffset: Math.random() * Math.PI * 2,
+        swayAmplitude: 0.04 + Math.random() * 0.03
+      }
+
+      seaweedGroup.add(leaf)
+    }
+  }
+
+  private createFanLeafPlant(
+    seaweedGroup: THREE.Group,
+    layer: PlantLayer,
+    height: number,
+    hue: number
+  ): void {
+    const leafCount = layer === 'background' ? 4 : 5
+    const material = this.createLeafMaterial(hue, layer, 'fan-leaf')
+
+    for (let j = 0; j < leafCount; j++) {
+      const leafHeight = height * (0.48 + Math.random() * 0.16)
+      const leafWidth = 0.52 + Math.random() * 0.18
+      const bend = (Math.random() - 0.5) * 0.18 + (j - (leafCount - 1) / 2) * 0.06
+      const geometry = this.createFanLeafGeometry(leafWidth, leafHeight, bend)
+      const leaf = new THREE.Mesh(geometry, material)
+      const spread = j - (leafCount - 1) / 2
+
+      leaf.position.set(
+        spread * 0.05 + (Math.random() - 0.5) * 0.03,
+        0,
+        spread * 0.03 + (Math.random() - 0.5) * 0.05
+      )
+      leaf.rotation.y = spread * 0.34 + (Math.random() - 0.5) * 0.28
+      leaf.rotation.z = -0.18 + (Math.random() - 0.5) * 0.12
+      leaf.rotation.x = spread * 0.05 + (Math.random() - 0.5) * 0.04
+      leaf.userData = {
+        role: 'leaf',
+        originalRotation: leaf.rotation.z,
+        swayOffset: Math.random() * Math.PI * 2,
+        swayAmplitude: 0.025 + Math.random() * 0.025
+      }
+
+      seaweedGroup.add(leaf)
     }
   }
 
@@ -116,9 +244,66 @@ export class AquascapingSystem {
     return geometry
   }
 
+  private createSwordLeafGeometry(width: number, height: number, bend: number): THREE.ShapeGeometry {
+    const shape = new THREE.Shape()
+    shape.moveTo(0, 0)
+    shape.bezierCurveTo(-width * 0.16, height * 0.16, -width * 0.3, height * 0.5, 0, height)
+    shape.bezierCurveTo(width * 0.3, height * 0.5, width * 0.16, height * 0.16, 0, 0)
+
+    const geometry = new THREE.ShapeGeometry(shape, 10)
+    const positionAttribute = geometry.getAttribute('position')
+
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = positionAttribute.getX(i)
+      const y = positionAttribute.getY(i)
+      const progress = y / height
+      const side = x === 0 ? 0 : Math.sign(x)
+      const curl = Math.sin(progress * Math.PI * 0.85) * bend * height
+      const depth = Math.sin(progress * Math.PI) * width * 0.14
+      const droop = progress * progress * height * 0.04
+
+      positionAttribute.setX(i, x + curl)
+      positionAttribute.setY(i, y - droop)
+      positionAttribute.setZ(i, depth * side)
+    }
+
+    geometry.computeVertexNormals()
+
+    return geometry
+  }
+
+  private createFanLeafGeometry(width: number, height: number, bend: number): THREE.ShapeGeometry {
+    const shape = new THREE.Shape()
+    shape.moveTo(0, 0)
+    shape.bezierCurveTo(-width * 0.18, height * 0.14, -width * 0.58, height * 0.4, -width * 0.2, height * 0.96)
+    shape.quadraticCurveTo(0, height * 1.08, width * 0.2, height * 0.96)
+    shape.bezierCurveTo(width * 0.58, height * 0.4, width * 0.18, height * 0.14, 0, 0)
+
+    const geometry = new THREE.ShapeGeometry(shape, 12)
+    const positionAttribute = geometry.getAttribute('position')
+
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = positionAttribute.getX(i)
+      const y = positionAttribute.getY(i)
+      const progress = y / height
+      const side = x === 0 ? 0 : Math.sign(x)
+      const curl = Math.sin(progress * Math.PI * 0.9) * bend * height
+      const depth = Math.sin(progress * Math.PI * 1.1) * width * 0.1
+      const droop = progress * progress * height * 0.06
+
+      positionAttribute.setX(i, x + curl)
+      positionAttribute.setY(i, y - droop)
+      positionAttribute.setZ(i, depth * side)
+    }
+
+    geometry.computeVertexNormals()
+
+    return geometry
+  }
+
   private createSeaweedMaterial(
     hue: number,
-    layer: 'foreground' | 'background' | 'midground'
+    layer: PlantLayer
   ): THREE.MeshPhysicalMaterial {
     const seaweedTexture = this.createSeaweedTexture(hue)
     const normalMap = this.createSeaweedNormalMap()
@@ -141,6 +326,32 @@ export class AquascapingSystem {
       envMapIntensity: 0.18,
       clearcoat: 0.04,
       clearcoatRoughness: 0.9
+    })
+  }
+
+  private createLeafMaterial(
+    hue: number,
+    layer: PlantLayer,
+    plantType: Exclude<PlantType, 'ribbon-seaweed'>
+  ): THREE.MeshPhysicalMaterial {
+    const color = new THREE.Color().setHSL(
+      hue,
+      plantType === 'fan-leaf' ? 0.44 : 0.38,
+      layer === 'background' ? 0.28 : plantType === 'fan-leaf' ? 0.4 : 0.35
+    )
+
+    return new THREE.MeshPhysicalMaterial({
+      color,
+      metalness: 0,
+      roughness: plantType === 'fan-leaf' ? 0.54 : 0.68,
+      transmission: layer === 'background' ? 0.03 : 0.06,
+      thickness: plantType === 'fan-leaf' ? 0.05 : 0.03,
+      transparent: true,
+      opacity: layer === 'background' ? 0.82 : 0.9,
+      side: THREE.DoubleSide,
+      envMapIntensity: 0.16,
+      clearcoat: plantType === 'fan-leaf' ? 0.12 : 0.06,
+      clearcoatRoughness: 0.76
     })
   }
   
@@ -320,7 +531,7 @@ export class AquascapingSystem {
   update(elapsedTime: number): void {
     this.time = elapsedTime
     
-    // Animate seaweed swaying
+    // Animate plant swaying
     this.plants.forEach((plant) => {
       plant.children.forEach((segment, segmentIndex) => {
         if (segment.userData.originalRotation !== undefined) {
