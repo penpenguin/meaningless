@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 import { AdvancedAquariumScene } from './AdvancedScene'
+import type { Theme } from '../types/aquarium'
 
 describe('AdvancedAquariumScene disposal', () => {
   it('removes renderer canvas from the DOM', () => {
@@ -145,9 +146,9 @@ describe('AdvancedAquariumScene camera', () => {
     const direction = new THREE.Vector3()
     internals.camera.getWorldDirection(direction)
 
-    expect(internals.camera.position.z).toBeCloseTo(13.2, 1)
-    expect(internals.camera.position.y).toBeCloseTo(1.7, 1)
-    expect(direction.y).toBeLessThan(-0.1)
+    expect(internals.camera.position.z).toBeCloseTo(11.8, 1)
+    expect(internals.camera.position.y).toBeCloseTo(1.2, 1)
+    expect(direction.y).toBeLessThan(-0.14)
   })
 })
 
@@ -241,6 +242,59 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(waterVolumeMaterial?.attenuationDistance).toBeLessThan(3)
     expect(surfaceMaterial?.thickness).toBeGreaterThan(0.8)
     expect(surfaceMaterial?.attenuationDistance).toBeLessThan(2)
+  })
+
+  it('stages midground and foreground depth layers for a richer hero shot', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
+    const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
+
+    expect(midground).toBeDefined()
+    expect(foreground).toBeDefined()
+    expect(midground?.position.z).toBeLessThan(0)
+    expect(foreground?.position.z).toBeGreaterThan(4.6)
+  })
+})
+
+describe('AdvancedAquariumScene lighting', () => {
+  it('uses a stronger hero key light and rear rim light for premium depth', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as { scene: THREE.Scene }
+
+    internals.scene = new THREE.Scene()
+
+    const setupAdvancedLighting = (AdvancedAquariumScene.prototype as unknown as {
+      setupAdvancedLighting: () => void
+    }).setupAdvancedLighting.bind(instance)
+
+    setupAdvancedLighting()
+
+    const directionalLights = internals.scene.children.filter(
+      (child): child is THREE.DirectionalLight => child instanceof THREE.DirectionalLight
+    )
+    const strongestLight = directionalLights.reduce((current, light) => (
+      light.intensity > current.intensity ? light : current
+    ))
+    const rearRimLight = directionalLights.find((light) => light.position.z < -13)
+
+    expect(strongestLight.intensity).toBeGreaterThan(1.5)
+    expect(rearRimLight?.intensity).toBeGreaterThan(0.22)
   })
 })
 
@@ -408,6 +462,8 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const waterSurfaceHighlight = internals.tank.children.find((child) => child.name === 'tank-water-surface-highlight') as THREE.Mesh | undefined
     const caustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
     const frontGlassHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-front-highlight') as THREE.Mesh | undefined
+    const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
+    const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
 
     expect(internals.renderer.shadowMap.enabled).toBe(false)
     expect(waterVolume?.visible).toBe(false)
@@ -415,6 +471,103 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(waterSurface?.visible).toBe(true)
     expect(waterSurfaceHighlight?.visible).toBe(false)
     expect(frontGlassHighlight?.visible).toBe(false)
+    expect(midground?.visible).toBe(false)
+    expect(foreground?.visible).toBe(false)
+  })
+
+  it('keeps the midground depth layer on medium quality but reserves the foreground shadow for high quality', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+      renderer: {
+        setPixelRatio: (value: number) => void
+        setSize: (width: number, height: number) => void
+        shadowMap: { enabled: boolean }
+      }
+      composer: { setSize: (width: number, height: number) => void }
+      godRaysEffect: { resize: (width: number, height: number) => void } | null
+      fishSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
+      getViewportSize: () => { width: number; height: number }
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.renderer = {
+      setPixelRatio: vi.fn(),
+      setSize: vi.fn(),
+      shadowMap: { enabled: true }
+    }
+    internals.composer = { setSize: vi.fn() }
+    internals.godRaysEffect = { resize: vi.fn() }
+    internals.fishSystem = { setQuality: vi.fn() }
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+    const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
+      setWaterQuality: (quality: 'low' | 'medium' | 'high') => void
+    }).setWaterQuality.bind(instance)
+
+    createAdvancedTank()
+    setWaterQuality('medium')
+
+    const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
+    const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
+
+    expect(midground?.visible).toBe(true)
+    expect(foreground?.visible).toBe(false)
+  })
+})
+
+describe('AdvancedAquariumScene theme application', () => {
+  it('tints depth layers to match the active water theme', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+      scene: THREE.Scene
+    }
+
+    const nextTheme: Theme = {
+      waterTint: '#225577',
+      fogDensity: 0.24,
+      particleDensity: 0.2,
+      waveStrength: 0.4,
+      waveSpeed: 0.3,
+      glassFrameStrength: 0.5,
+      glassTint: '#a8dcea',
+      glassReflectionStrength: 0.45,
+      surfaceGlowStrength: 0.5,
+      causticsStrength: 0.36
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.scene = new THREE.Scene()
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+    const applyTankTheme = (AdvancedAquariumScene.prototype as unknown as {
+      applyTankTheme: (theme: Theme) => void
+    }).applyTankTheme.bind(instance)
+
+    createAdvancedTank()
+    applyTankTheme(nextTheme)
+
+    const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
+    const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
+    const midgroundMaterial = midground?.material as THREE.MeshBasicMaterial | undefined
+    const foregroundMaterial = foreground?.material as THREE.MeshBasicMaterial | undefined
+
+    expect(midgroundMaterial?.color.getHexString()).not.toBe('3f7880')
+    expect(foregroundMaterial?.color.getHexString()).not.toBe('07212a')
   })
 })
 
@@ -526,5 +679,60 @@ describe('AdvancedAquariumScene water textures', () => {
     expect(stats.radialGradientCalls).toBeGreaterThan(2)
     expect(stats.fillCalls).toBeGreaterThan(2)
     expect(stats.strokeCalls).toBe(0)
+  })
+})
+
+describe('AdvancedAquariumScene backdrop textures', () => {
+  let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
+
+  afterEach(() => {
+    getContextSpy?.mockRestore()
+    getContextSpy = null
+  })
+
+  it('layers multiple depth glows into the backdrop texture', () => {
+    const stats = {
+      radialGradientCalls: 0,
+      fillCalls: 0,
+      strokeCalls: 0
+    }
+
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = { addColorStop: vi.fn() }
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => {
+            stats.radialGradientCalls += 1
+            return { addColorStop: vi.fn() }
+          },
+          fillRect: () => {
+            stats.fillCalls += 1
+          },
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          bezierCurveTo: vi.fn(),
+          stroke: () => {
+            stats.strokeCalls += 1
+          },
+          fillStyle: '',
+          strokeStyle: '',
+          globalCompositeOperation: 'source-over',
+          lineWidth: 0
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const createBackdropTexture = (AdvancedAquariumScene.prototype as unknown as {
+      createBackdropTexture: () => THREE.CanvasTexture
+    }).createBackdropTexture.bind(instance)
+
+    createBackdropTexture()
+
+    expect(stats.radialGradientCalls).toBeGreaterThanOrEqual(2)
+    expect(stats.fillCalls).toBeGreaterThan(2)
+    expect(stats.strokeCalls).toBeGreaterThan(0)
   })
 })

@@ -208,6 +208,20 @@ export const applyGradientBackground = (scene: THREE.Scene, theme?: Theme): void
     lowerVignette.addColorStop(1, 'rgba(3, 8, 12, 0.34)')
     ctx.fillStyle = lowerVignette
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const midwaterBloom = ctx.createRadialGradient(
+      canvas.width * 0.68,
+      canvas.height * 0.42,
+      canvas.width * 0.04,
+      canvas.width * 0.68,
+      canvas.height * 0.42,
+      canvas.width * 0.42
+    )
+    midwaterBloom.addColorStop(0, 'rgba(210, 244, 251, 0.14)')
+    midwaterBloom.addColorStop(0.42, 'rgba(92, 167, 180, 0.08)')
+    midwaterBloom.addColorStop(1, 'rgba(12, 37, 46, 0)')
+    ctx.fillStyle = midwaterBloom
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
   }
 
   drawLightShafts(ctx, canvas)
@@ -248,6 +262,8 @@ export class AdvancedAquariumScene {
   private waterSurfaceMesh: THREE.Mesh | null = null
   private frontGlassHighlightMesh: THREE.Mesh | null = null
   private waterSurfaceHighlightMesh: THREE.Mesh | null = null
+  private depthMidgroundMesh: THREE.Mesh | null = null
+  private foregroundShadowMesh: THREE.Mesh | null = null
   private causticsMeshes: THREE.Mesh[] = []
   private currentVisualQuality: 'low' | 'medium' | 'high' = 'high'
   
@@ -295,8 +311,8 @@ export class AdvancedAquariumScene {
       0.1,
       1000
     )
-    this.camera.position.set(0, 1.7, 13.2)
-    this.camera.lookAt(0, -0.25, 0)
+    this.camera.position.set(0, 1.2, 11.8)
+    this.camera.lookAt(0, -0.9, 0.6)
   }
   
   private setupRenderer(container: HTMLElement): void {
@@ -333,7 +349,7 @@ export class AdvancedAquariumScene {
     this.controls.enableZoom = false
     this.controls.enablePan = false
     this.controls.autoRotate = false
-    this.controls.target.set(0, 0, 0)
+    this.controls.target.set(0, -0.9, 0.6)
     this.controls.update()
   }
   
@@ -357,8 +373,8 @@ export class AdvancedAquariumScene {
     const hemiLight = new THREE.HemisphereLight(0xdff5fb, 0x0c1d26, 0.7)
     this.scene.add(hemiLight)
 
-    const sunLight = new THREE.DirectionalLight(0xfff3d6, 1.35)
-    sunLight.position.set(4.8, 12, 6.5)
+    const sunLight = new THREE.DirectionalLight(0xfff1d2, 1.68)
+    sunLight.position.set(4.2, 11.4, 8.2)
     sunLight.castShadow = true
     sunLight.shadow.camera.near = 0.1
     sunLight.shadow.camera.far = 100
@@ -371,16 +387,16 @@ export class AdvancedAquariumScene {
     sunLight.shadow.bias = -0.0001
     this.scene.add(sunLight)
 
-    const fillLight = new THREE.DirectionalLight(0x95d0e1, 0.28)
-    fillLight.position.set(-7, 5.5, 8)
+    const fillLight = new THREE.DirectionalLight(0xa7dceb, 0.32)
+    fillLight.position.set(-8.4, 4.8, 10.5)
     this.scene.add(fillLight)
 
-    const bounceLight = new THREE.PointLight(0x4b7f8d, 0.16, 22)
-    bounceLight.position.set(0, -3.2, 1.4)
+    const bounceLight = new THREE.PointLight(0x548b97, 0.2, 22)
+    bounceLight.position.set(0, -3.1, 1.8)
     this.scene.add(bounceLight)
 
-    const rimLight = new THREE.DirectionalLight(0xe7fbff, 0.18)
-    rimLight.position.set(0, 3.6, -12)
+    const rimLight = new THREE.DirectionalLight(0xf0fcff, 0.28)
+    rimLight.position.set(-1.2, 4.2, -14.2)
     this.scene.add(rimLight)
   }
 
@@ -408,6 +424,7 @@ export class AdvancedAquariumScene {
     backdropMesh.position.set(0, -1.1, -tankDepth / 2 + 0.08)
     this.tank.add(backdropMesh)
 
+    this.createDepthLayers(tankWidth, tankHeight, tankDepth)
     this.createSubstrate(tankWidth, tankHeight, tankDepth)
     this.createWaterVolume(tankWidth, tankHeight, tankDepth)
     this.createWaterSurface(tankWidth, tankHeight, tankDepth)
@@ -489,6 +506,174 @@ export class AdvancedAquariumScene {
     ctx.globalCompositeOperation = 'source-over'
 
     const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace
+    return texture
+  }
+
+  private createDepthLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
+    const midground = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.78, tankHeight * 0.54),
+      new THREE.MeshBasicMaterial({
+        map: this.createDepthMidgroundTexture(),
+        color: new THREE.Color('#3f7880'),
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    midground.name = 'tank-depth-midground'
+    midground.position.set(0, -1.2, -tankDepth * 0.22)
+    midground.renderOrder = 1
+    midground.userData.baseOpacity = 0.28
+    this.depthMidgroundMesh = midground
+    this.tank.add(midground)
+
+    const foregroundShadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.98, tankHeight * 0.9),
+      new THREE.MeshBasicMaterial({
+        map: this.createForegroundShadowTexture(),
+        color: new THREE.Color('#07212a'),
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    foregroundShadow.name = 'tank-depth-foreground-shadow'
+    foregroundShadow.position.set(0, -0.2, tankDepth / 2 - 0.12)
+    foregroundShadow.renderOrder = 5
+    foregroundShadow.userData.baseOpacity = 0.22
+    this.foregroundShadowMesh = foregroundShadow
+    this.tank.add(foregroundShadow)
+  }
+
+  private createDepthMidgroundTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    const texture = new THREE.CanvasTexture(canvas)
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.createRadialGradient !== 'function' ||
+      typeof ctx.beginPath !== 'function' ||
+      typeof ctx.moveTo !== 'function' ||
+      typeof ctx.bezierCurveTo !== 'function' ||
+      typeof ctx.fill !== 'function'
+    ) {
+      return texture
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    gradient.addColorStop(0, 'rgba(199, 241, 247, 0)')
+    gradient.addColorStop(0.3, 'rgba(122, 185, 194, 0.16)')
+    gradient.addColorStop(1, 'rgba(12, 39, 45, 0.56)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    for (const plant of [
+      { x: 0.16, width: 0.11, height: 0.38, sway: -0.04 },
+      { x: 0.39, width: 0.12, height: 0.48, sway: 0.03 },
+      { x: 0.63, width: 0.14, height: 0.42, sway: -0.02 },
+      { x: 0.82, width: 0.1, height: 0.34, sway: 0.04 }
+    ]) {
+      const baseX = canvas.width * plant.x
+      const baseY = canvas.height
+      const spread = canvas.width * plant.width
+      const tipY = canvas.height * (1 - plant.height)
+      ctx.beginPath()
+      ctx.moveTo(baseX - spread, baseY)
+      ctx.bezierCurveTo(
+        baseX - spread * 0.7,
+        canvas.height * 0.84,
+        baseX + (canvas.width * plant.sway),
+        canvas.height * 0.56,
+        baseX,
+        tipY
+      )
+      ctx.bezierCurveTo(
+        baseX - (canvas.width * plant.sway),
+        canvas.height * 0.6,
+        baseX + spread * 0.72,
+        canvas.height * 0.82,
+        baseX + spread,
+        baseY
+      )
+      ctx.fill()
+    }
+
+    const haze = ctx.createRadialGradient(
+      canvas.width * 0.58,
+      canvas.height * 0.28,
+      canvas.width * 0.05,
+      canvas.width * 0.58,
+      canvas.height * 0.28,
+      canvas.width * 0.4
+    )
+    haze.addColorStop(0, 'rgba(220, 248, 255, 0.16)')
+    haze.addColorStop(0.55, 'rgba(134, 196, 205, 0.08)')
+    haze.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = haze
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    texture.colorSpace = THREE.SRGBColorSpace
+    return texture
+  }
+
+  private createForegroundShadowTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    const texture = new THREE.CanvasTexture(canvas)
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.createRadialGradient !== 'function'
+    ) {
+      return texture
+    }
+
+    const vignette = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    vignette.addColorStop(0, 'rgba(4, 17, 24, 0.34)')
+    vignette.addColorStop(0.16, 'rgba(6, 26, 34, 0.08)')
+    vignette.addColorStop(0.84, 'rgba(6, 26, 34, 0.08)')
+    vignette.addColorStop(1, 'rgba(4, 17, 24, 0.3)')
+    ctx.fillStyle = vignette
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const canopy = ctx.createRadialGradient(
+      canvas.width * 0.22,
+      canvas.height * 0.38,
+      canvas.width * 0.04,
+      canvas.width * 0.22,
+      canvas.height * 0.38,
+      canvas.width * 0.28
+    )
+    canopy.addColorStop(0, 'rgba(6, 26, 34, 0.3)')
+    canopy.addColorStop(0.72, 'rgba(6, 26, 34, 0.1)')
+    canopy.addColorStop(1, 'rgba(6, 26, 34, 0)')
+    ctx.fillStyle = canopy
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const rightShadow = ctx.createRadialGradient(
+      canvas.width * 0.8,
+      canvas.height * 0.48,
+      canvas.width * 0.06,
+      canvas.width * 0.8,
+      canvas.height * 0.48,
+      canvas.width * 0.32
+    )
+    rightShadow.addColorStop(0, 'rgba(8, 29, 37, 0.24)')
+    rightShadow.addColorStop(0.7, 'rgba(8, 29, 37, 0.08)')
+    rightShadow.addColorStop(1, 'rgba(8, 29, 37, 0)')
+    ctx.fillStyle = rightShadow
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
     texture.colorSpace = THREE.SRGBColorSpace
     return texture
   }
@@ -612,6 +797,12 @@ export class AdvancedAquariumScene {
     }
     if (!(this.waterSurfaceHighlightMesh instanceof THREE.Mesh)) {
       this.waterSurfaceHighlightMesh = null
+    }
+    if (!(this.depthMidgroundMesh instanceof THREE.Mesh)) {
+      this.depthMidgroundMesh = null
+    }
+    if (!(this.foregroundShadowMesh instanceof THREE.Mesh)) {
+      this.foregroundShadowMesh = null
     }
     if (!Array.isArray(this.causticsMeshes)) {
       this.causticsMeshes = []
@@ -1086,6 +1277,26 @@ export class AdvancedAquariumScene {
       const baseOpacity = 0.08 + (premiumTheme.surfaceGlowStrength * 0.26)
       this.waterSurfaceHighlightMesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#ffffff'), 0.52)
+      material.opacity = baseOpacity
+      material.needsUpdate = true
+    }
+
+    if (this.depthMidgroundMesh) {
+      const material = this.depthMidgroundMesh.material as THREE.MeshBasicMaterial
+      const depthTint = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#d9f5fb'), 0.22)
+      const baseOpacity = 0.18 + (premiumTheme.surfaceGlowStrength * 0.2)
+      this.depthMidgroundMesh.userData.baseOpacity = baseOpacity
+      material.color = depthTint
+      material.opacity = baseOpacity
+      material.needsUpdate = true
+    }
+
+    if (this.foregroundShadowMesh) {
+      const material = this.foregroundShadowMesh.material as THREE.MeshBasicMaterial
+      const shadowTint = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#02090d'), 0.82)
+      const baseOpacity = 0.14 + (premiumTheme.glassReflectionStrength * 0.18)
+      this.foregroundShadowMesh.userData.baseOpacity = baseOpacity
+      material.color = shadowTint
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
@@ -1582,6 +1793,22 @@ export class AdvancedAquariumScene {
       const material = this.waterSurfaceHighlightMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.waterSurfaceHighlightMesh.userData.baseOpacity as number | undefined) ?? 0.2
       this.waterSurfaceHighlightMesh.visible = resolvedQuality === 'high'
+      material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
+      material.needsUpdate = true
+    }
+
+    if (this.depthMidgroundMesh) {
+      const material = this.depthMidgroundMesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = (this.depthMidgroundMesh.userData.baseOpacity as number | undefined) ?? 0.28
+      this.depthMidgroundMesh.visible = resolvedQuality !== 'low'
+      material.opacity = resolvedQuality === 'high' ? baseOpacity : baseOpacity * 0.72
+      material.needsUpdate = true
+    }
+
+    if (this.foregroundShadowMesh) {
+      const material = this.foregroundShadowMesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = (this.foregroundShadowMesh.userData.baseOpacity as number | undefined) ?? 0.22
+      this.foregroundShadowMesh.visible = resolvedQuality === 'high'
       material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
       material.needsUpdate = true
     }

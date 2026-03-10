@@ -76,7 +76,7 @@ describe('applyGradientBackground', () => {
     const fog = scene.fog as THREE.FogExp2
     expect(fog.density).toBeCloseTo(theme.fogDensity)
     expect(fog.color.getHexString()).toBe(theme.waterTint.replace('#', '').toLowerCase())
-    expect(radialGradientCalls).toBeGreaterThanOrEqual(2)
+    expect(radialGradientCalls).toBeGreaterThanOrEqual(3)
     expect(bezierCurveCalls).toBeGreaterThan(0)
     expect(strokeCalls).toBeGreaterThan(0)
     expect(stops.map((color) => color.toLowerCase())).toContain(theme.waterTint.toLowerCase())
