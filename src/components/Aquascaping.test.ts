@@ -53,6 +53,37 @@ describe('AquascapingSystem composition', () => {
     expect(foregroundPlants.length).toBeGreaterThan(0)
   })
 
+  it('adds a driftwood arch with epiphyte clusters so the scape has a clear hero silhouette', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find((child) => child.userData.role === 'hero-driftwood') as THREE.Group | undefined
+    const branches = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-branch'
+    ) ?? []
+    const epiphytes = driftwood?.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'epiphyte-cluster'
+    ) ?? []
+    const epiphyteLeaves = epiphytes.flatMap((cluster) =>
+      cluster.children.filter(
+        (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'epiphyte-leaf'
+      )
+    )
+
+    expect(driftwood).toBeDefined()
+    expect(branches.some((branch) => branch.geometry.type === 'TubeGeometry')).toBe(true)
+    expect(branches.every((branch) => branch.castShadow)).toBe(true)
+    expect(epiphytes.length).toBeGreaterThanOrEqual(2)
+    expect(epiphyteLeaves.length).toBeGreaterThan(0)
+  })
+
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')

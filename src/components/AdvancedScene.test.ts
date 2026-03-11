@@ -560,6 +560,45 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(false)
   })
+
+  it('forwards quality changes to the particle system so dense water haze can scale down cleanly', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      renderer: {
+        setPixelRatio: (value: number) => void
+        setSize: (width: number, height: number) => void
+        shadowMap: { enabled: boolean }
+      }
+      composer: { setSize: (width: number, height: number) => void }
+      godRaysEffect: { resize: (width: number, height: number) => void } | null
+      fishSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
+      particleSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
+      getViewportSize: () => { width: number; height: number }
+      applyVisualQuality: (quality: 'low' | 'medium' | 'high') => void
+      currentVisualQuality: 'low' | 'medium' | 'high'
+    }
+
+    internals.renderer = {
+      setPixelRatio: vi.fn(),
+      setSize: vi.fn(),
+      shadowMap: { enabled: true }
+    }
+    internals.composer = { setSize: vi.fn() }
+    internals.godRaysEffect = { resize: vi.fn() }
+    internals.fishSystem = { setQuality: vi.fn() }
+    internals.particleSystem = { setQuality: vi.fn() }
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+    internals.applyVisualQuality = vi.fn()
+    internals.currentVisualQuality = 'high'
+
+    const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
+      setWaterQuality: (quality: 'low' | 'medium' | 'high') => void
+    }).setWaterQuality.bind(instance)
+
+    setWaterQuality('low')
+
+    expect(internals.particleSystem.setQuality).toHaveBeenCalledWith('low')
+  })
 })
 
 describe('AdvancedAquariumScene theme application', () => {
@@ -570,6 +609,7 @@ describe('AdvancedAquariumScene theme application', () => {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
       createBackdropTexture: () => THREE.CanvasTexture
       scene: THREE.Scene
+      godRaysEffect: { applyTheme: (theme: Theme) => void } | null
     }
 
     const nextTheme: Theme = {
@@ -589,6 +629,7 @@ describe('AdvancedAquariumScene theme application', () => {
     internals.createSubstrate = vi.fn()
     internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.scene = new THREE.Scene()
+    internals.godRaysEffect = { applyTheme: vi.fn() }
 
     const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
       createAdvancedTank: () => void
@@ -607,6 +648,44 @@ describe('AdvancedAquariumScene theme application', () => {
 
     expect(midgroundMaterial?.color.getHexString()).not.toBe('3f7880')
     expect(foregroundMaterial?.color.getHexString()).not.toBe('07212a')
+  })
+
+  it('forwards the active theme to god rays when applying a theme to the scene', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      scene: THREE.Scene
+      godRaysEffect: { applyTheme: (theme: Theme) => void } | null
+      applyTankTheme: (theme: Theme) => void
+      applyVisualQuality: (quality: 'low' | 'medium' | 'high') => void
+      currentVisualQuality: 'low' | 'medium' | 'high'
+    }
+
+    const nextTheme: Theme = {
+      waterTint: '#225577',
+      fogDensity: 0.24,
+      particleDensity: 0.2,
+      waveStrength: 0.4,
+      waveSpeed: 0.3,
+      glassFrameStrength: 0.5,
+      glassTint: '#a8dcea',
+      glassReflectionStrength: 0.45,
+      surfaceGlowStrength: 0.5,
+      causticsStrength: 0.36
+    }
+
+    internals.scene = new THREE.Scene()
+    internals.godRaysEffect = { applyTheme: vi.fn() }
+    internals.applyTankTheme = vi.fn()
+    internals.applyVisualQuality = vi.fn()
+    internals.currentVisualQuality = 'high'
+
+    const applyTheme = (AdvancedAquariumScene.prototype as unknown as {
+      applyTheme: (theme: Theme) => void
+    }).applyTheme.bind(instance)
+
+    applyTheme(nextTheme)
+
+    expect(internals.godRaysEffect.applyTheme).toHaveBeenCalledWith(nextTheme)
   })
 })
 

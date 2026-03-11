@@ -27,6 +27,7 @@ export class AquascapingSystem {
     this.createSeaweed(bounds)
     this.createCorals(bounds)
     this.createRocks(bounds)
+    this.createHeroDriftwood(bounds)
     this.createSandDetails(bounds)
   }
   
@@ -364,6 +365,132 @@ export class AquascapingSystem {
     })
     material.shadowSide = THREE.DoubleSide
     return material
+  }
+
+  private createHeroDriftwood(bounds: THREE.Box3): void {
+    const size = new THREE.Vector3()
+    bounds.getSize(size)
+    const center = new THREE.Vector3()
+    bounds.getCenter(center)
+
+    const driftwoodGroup = new THREE.Group()
+    driftwoodGroup.position.set(
+      center.x + size.x * 0.08,
+      bounds.min.y + 0.86,
+      center.z - size.z * 0.08
+    )
+    driftwoodGroup.rotation.y = -0.38
+    driftwoodGroup.userData = {
+      role: 'hero-driftwood'
+    }
+
+    const branchMaterial = this.createDriftwoodMaterial()
+    const branchDefinitions = [
+      {
+        radius: 0.18,
+        points: [
+          new THREE.Vector3(-1.8, 0.15, 0.5),
+          new THREE.Vector3(-0.65, 1.55, 0.2),
+          new THREE.Vector3(0.85, 2.55, -0.25),
+          new THREE.Vector3(2.05, 2.1, -0.7)
+        ]
+      },
+      {
+        radius: 0.1,
+        points: [
+          new THREE.Vector3(-0.2, 1.45, 0.2),
+          new THREE.Vector3(0.55, 2.35, 0.65),
+          new THREE.Vector3(1.55, 2.85, 0.8)
+        ]
+      },
+      {
+        radius: 0.08,
+        points: [
+          new THREE.Vector3(0.35, 1.35, -0.05),
+          new THREE.Vector3(1.15, 2.05, -0.8),
+          new THREE.Vector3(1.65, 2.5, -1.2)
+        ]
+      }
+    ]
+
+    branchDefinitions.forEach((definition) => {
+      const curve = new THREE.CatmullRomCurve3(definition.points)
+      const branch = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 28, definition.radius, 8, false),
+        branchMaterial
+      )
+      branch.castShadow = true
+      branch.receiveShadow = true
+      branch.userData = {
+        role: 'driftwood-branch'
+      }
+      driftwoodGroup.add(branch)
+    })
+
+    ;[
+      { offset: new THREE.Vector3(-0.25, 1.15, 0.32), hue: 0.29 },
+      { offset: new THREE.Vector3(0.72, 1.95, 0.58), hue: 0.33 },
+      { offset: new THREE.Vector3(1.02, 1.55, -0.42), hue: 0.26 }
+    ].forEach((attachment) => {
+      const cluster = this.createEpiphyteCluster(attachment.hue)
+      cluster.position.copy(attachment.offset)
+      cluster.rotation.y = Math.random() * Math.PI * 2
+      driftwoodGroup.add(cluster)
+      this.plants.push(cluster)
+    })
+
+    this.decorations.push(driftwoodGroup)
+    this.group.add(driftwoodGroup)
+  }
+
+  private createEpiphyteCluster(hue: number): THREE.Group {
+    const cluster = new THREE.Group()
+    cluster.userData = {
+      role: 'epiphyte-cluster'
+    }
+
+    const leafMaterial = this.createLeafMaterial(hue, 'midground', 'fan-leaf')
+    const leafCount = 5
+
+    for (let i = 0; i < leafCount; i++) {
+      const leafWidth = 0.18 + Math.random() * 0.08
+      const leafHeight = 0.32 + Math.random() * 0.16
+      const bend = (Math.random() - 0.5) * 0.08 + (i - (leafCount - 1) / 2) * 0.03
+      const leaf = new THREE.Mesh(
+        this.createFanLeafGeometry(leafWidth, leafHeight, bend),
+        leafMaterial
+      )
+      const spread = i - (leafCount - 1) / 2
+
+      leaf.position.set(
+        spread * 0.08 + (Math.random() - 0.5) * 0.03,
+        Math.random() * 0.05,
+        (Math.random() - 0.5) * 0.05
+      )
+      leaf.rotation.y = spread * 0.45 + (Math.random() - 0.5) * 0.25
+      leaf.rotation.z = -0.24 + (Math.random() - 0.5) * 0.08
+      leaf.rotation.x = (Math.random() - 0.5) * 0.08
+      leaf.castShadow = true
+      leaf.receiveShadow = true
+      leaf.userData = {
+        role: 'epiphyte-leaf',
+        originalRotation: leaf.rotation.z,
+        swayOffset: Math.random() * Math.PI * 2,
+        swayAmplitude: 0.015 + Math.random() * 0.02
+      }
+
+      cluster.add(leaf)
+    }
+
+    return cluster
+  }
+
+  private createDriftwoodMaterial(): THREE.MeshStandardMaterial {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#6f5641'),
+      roughness: 0.96,
+      metalness: 0.03
+    })
   }
   
   private createCorals(bounds: THREE.Box3): void {

@@ -1587,6 +1587,7 @@ export class AdvancedAquariumScene {
   private createAdvancedWaterEffects(): void {
     const tankBounds = createOpenWaterBounds()
     this.particleSystem = new EnhancedParticleSystem(this.scene, tankBounds)
+    this.particleSystem.setQuality(this.currentVisualQuality)
   }
   
   private setupAdvancedPostProcessing(): void {
@@ -1598,6 +1599,7 @@ export class AdvancedAquariumScene {
       this.scene,
       this.camera
     )
+    this.godRaysEffect.applyTheme(resolveTheme(this.scene))
   }
 
   public animate = (): void => {
@@ -1783,12 +1785,19 @@ export class AdvancedAquariumScene {
       this.fishSystem.setQuality(quality)
     }
 
+    if (this.particleSystem) {
+      this.particleSystem.setQuality(quality)
+    }
+
     this.applyVisualQuality(quality)
   }
 
   public applyTheme(theme: Theme): void {
     applyThemeToScene(this.scene, theme)
     this.applyTankTheme(theme)
+    if (this.godRaysEffect) {
+      this.godRaysEffect.applyTheme(theme)
+    }
     this.applyVisualQuality(this.currentVisualQuality)
   }
 
