@@ -301,6 +301,34 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(foreground?.position.z).toBeGreaterThan(1.5)
     expect(foreground?.position.z).toBeLessThan(4.2)
   })
+
+  it('adds a suspended light canopy and focused substrate glow around the hero hardscape', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
+
+    expect(lightCanopy).toBeDefined()
+    expect(heroGroundGlow).toBeDefined()
+    expect(lightCanopy?.position.y).toBeGreaterThan(4.5)
+    expect(heroGroundGlow?.position.y).toBeLessThan(-6)
+    expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
+  })
 })
 
 describe('AdvancedAquariumScene lighting', () => {
@@ -501,6 +529,8 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const waterlineFront = internals.tank.children.find((child) => child.name === 'tank-waterline-front') as THREE.Mesh | undefined
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
+    const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
 
     expect(internals.renderer.shadowMap.enabled).toBe(false)
     expect(waterVolume?.visible).toBe(false)
@@ -512,9 +542,11 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(waterlineFront?.visible).toBe(false)
     expect(midground?.visible).toBe(false)
     expect(foreground?.visible).toBe(false)
+    expect(lightCanopy?.visible).toBe(false)
+    expect(heroGroundGlow?.visible).toBe(false)
   })
 
-  it('keeps the midground depth layer on medium quality but reserves the foreground shadow for high quality', () => {
+  it('keeps the midground depth layer and light canopy on medium quality but reserves the hero glow for high quality', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
@@ -556,9 +588,13 @@ describe('AdvancedAquariumScene quality scaling', () => {
 
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
+    const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
 
     expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(false)
+    expect(lightCanopy?.visible).toBe(true)
+    expect(heroGroundGlow?.visible).toBe(false)
   })
 
   it('forwards quality changes to the particle system so dense water haze can scale down cleanly', () => {

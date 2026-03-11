@@ -215,6 +215,8 @@ export class AdvancedAquariumScene {
   private waterlineFrontMesh: THREE.Mesh | null = null
   private depthMidgroundMesh: THREE.Mesh | null = null
   private foregroundShadowMesh: THREE.Mesh | null = null
+  private lightCanopyMesh: THREE.Mesh | null = null
+  private heroGroundGlowMesh: THREE.Mesh | null = null
   private causticsMeshes: THREE.Mesh[] = []
   private currentVisualQuality: 'low' | 'medium' | 'high' = 'high'
   
@@ -380,6 +382,7 @@ export class AdvancedAquariumScene {
 
     this.createDepthLayers(tankWidth, tankHeight, tankDepth)
     this.createSubstrate(tankWidth, tankHeight, tankDepth)
+    this.createHeroLightingLayers(tankWidth, tankHeight, tankDepth)
     this.createWaterVolume(tankWidth, tankHeight, tankDepth)
     this.createWaterSurface(tankWidth, tankHeight, tankDepth)
     this.createCausticsLayers(tankWidth, tankHeight, tankDepth)
@@ -500,6 +503,48 @@ export class AdvancedAquariumScene {
     foregroundShadow.userData.baseOpacity = 0.11
     this.foregroundShadowMesh = foregroundShadow
     this.tank.add(foregroundShadow)
+  }
+
+  private createHeroLightingLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
+    const lightCanopy = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.6, tankHeight * 0.34),
+      new THREE.MeshBasicMaterial({
+        map: this.createHeroLightCanopyTexture(),
+        color: new THREE.Color('#dff7ff'),
+        transparent: true,
+        opacity: 0.22,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    lightCanopy.name = 'tank-light-canopy'
+    lightCanopy.position.set(0.4, tankHeight / 2 - 1.55, -tankDepth * 0.18)
+    lightCanopy.renderOrder = 2
+    lightCanopy.userData.baseOpacity = 0.22
+    lightCanopy.userData.baseY = tankHeight / 2 - 1.55
+    this.lightCanopyMesh = lightCanopy
+    this.tank.add(lightCanopy)
+
+    const heroGroundGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.44, tankDepth * 0.34),
+      new THREE.MeshBasicMaterial({
+        map: this.createHeroGroundGlowTexture(),
+        color: new THREE.Color('#fff2c9'),
+        transparent: true,
+        opacity: 0.18,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    heroGroundGlow.name = 'tank-hero-ground-glow'
+    heroGroundGlow.rotation.x = -Math.PI / 2
+    heroGroundGlow.position.set(1.2, -tankHeight / 2 + 0.72, -tankDepth * 0.05)
+    heroGroundGlow.renderOrder = 2
+    heroGroundGlow.userData.baseOpacity = 0.18
+    this.heroGroundGlowMesh = heroGroundGlow
+    this.tank.add(heroGroundGlow)
   }
 
   private createDepthMidgroundTexture(): THREE.CanvasTexture {
@@ -763,6 +808,12 @@ export class AdvancedAquariumScene {
     }
     if (!(this.foregroundShadowMesh instanceof THREE.Mesh)) {
       this.foregroundShadowMesh = null
+    }
+    if (!(this.lightCanopyMesh instanceof THREE.Mesh)) {
+      this.lightCanopyMesh = null
+    }
+    if (!(this.heroGroundGlowMesh instanceof THREE.Mesh)) {
+      this.heroGroundGlowMesh = null
     }
     if (!Array.isArray(this.causticsMeshes)) {
       this.causticsMeshes = []
@@ -1049,6 +1100,132 @@ export class AdvancedAquariumScene {
       ctx.fillStyle = haze
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
     }
+    ctx.globalCompositeOperation = 'source-over'
+
+    texture.colorSpace = THREE.SRGBColorSpace
+    return texture
+  }
+
+  private createHeroLightCanopyTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1.2, 1.05)
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.createRadialGradient !== 'function'
+    ) {
+      return texture
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const canopyGlow = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    canopyGlow.addColorStop(0, 'rgba(246, 251, 255, 0.42)')
+    canopyGlow.addColorStop(0.28, 'rgba(186, 232, 243, 0.22)')
+    canopyGlow.addColorStop(0.7, 'rgba(118, 185, 205, 0.05)')
+    canopyGlow.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = canopyGlow
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalCompositeOperation = 'screen'
+    ;[
+      { x: 0.28, y: 0.18, radius: 118, alpha: 0.26 },
+      { x: 0.54, y: 0.22, radius: 152, alpha: 0.32 },
+      { x: 0.76, y: 0.2, radius: 112, alpha: 0.2 }
+    ].forEach((bloom) => {
+      const gradient = ctx.createRadialGradient(
+        canvas.width * bloom.x,
+        canvas.height * bloom.y,
+        bloom.radius * 0.16,
+        canvas.width * bloom.x,
+        canvas.height * bloom.y,
+        bloom.radius
+      )
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${bloom.alpha})`)
+      gradient.addColorStop(0.48, `rgba(210, 243, 250, ${bloom.alpha * 0.45})`)
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = gradient
+      ctx.fillRect(
+        (canvas.width * bloom.x) - bloom.radius,
+        (canvas.height * bloom.y) - bloom.radius,
+        bloom.radius * 2,
+        bloom.radius * 2
+      )
+    })
+    ctx.globalCompositeOperation = 'source-over'
+
+    texture.colorSpace = THREE.SRGBColorSpace
+    return texture
+  }
+
+  private createHeroGroundGlowTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1.1, 0.96)
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.createRadialGradient !== 'function'
+    ) {
+      return texture
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const warmCore = ctx.createRadialGradient(
+      canvas.width * 0.54,
+      canvas.height * 0.5,
+      canvas.width * 0.03,
+      canvas.width * 0.54,
+      canvas.height * 0.5,
+      canvas.width * 0.28
+    )
+    warmCore.addColorStop(0, 'rgba(255, 247, 217, 0.34)')
+    warmCore.addColorStop(0.38, 'rgba(210, 243, 250, 0.18)')
+    warmCore.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = warmCore
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalCompositeOperation = 'screen'
+    ;[
+      { x: 0.34, y: 0.58, radius: 82, alpha: 0.16 },
+      { x: 0.62, y: 0.42, radius: 94, alpha: 0.22 },
+      { x: 0.72, y: 0.62, radius: 74, alpha: 0.14 }
+    ].forEach((cluster) => {
+      const glow = ctx.createRadialGradient(
+        canvas.width * cluster.x,
+        canvas.height * cluster.y,
+        cluster.radius * 0.12,
+        canvas.width * cluster.x,
+        canvas.height * cluster.y,
+        cluster.radius
+      )
+      glow.addColorStop(0, `rgba(255, 253, 244, ${cluster.alpha})`)
+      glow.addColorStop(0.5, `rgba(198, 237, 244, ${cluster.alpha * 0.45})`)
+      glow.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = glow
+      ctx.fillRect(
+        (canvas.width * cluster.x) - cluster.radius,
+        (canvas.height * cluster.y) - cluster.radius,
+        cluster.radius * 2,
+        cluster.radius * 2
+      )
+    })
     ctx.globalCompositeOperation = 'source-over'
 
     texture.colorSpace = THREE.SRGBColorSpace
@@ -1361,6 +1538,24 @@ export class AdvancedAquariumScene {
       const baseOpacity = 0.05 + (premiumTheme.glassReflectionStrength * 0.09)
       this.foregroundShadowMesh.userData.baseOpacity = baseOpacity
       material.color = shadowTint
+      material.opacity = baseOpacity
+      material.needsUpdate = true
+    }
+
+    if (this.lightCanopyMesh) {
+      const material = this.lightCanopyMesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = 0.1 + (premiumTheme.surfaceGlowStrength * 0.2) + (premiumTheme.glassReflectionStrength * 0.06)
+      this.lightCanopyMesh.userData.baseOpacity = baseOpacity
+      material.color = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#fff3d6'), 0.42)
+      material.opacity = baseOpacity
+      material.needsUpdate = true
+    }
+
+    if (this.heroGroundGlowMesh) {
+      const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = 0.08 + (premiumTheme.causticsStrength * 0.28)
+      this.heroGroundGlowMesh.userData.baseOpacity = baseOpacity
+      material.color = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#fff0c9'), 0.58)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
@@ -1693,6 +1888,28 @@ export class AdvancedAquariumScene {
       this.waterlineFrontMesh.position.y = baseY + Math.sin(elapsedTime * 0.7) * 0.016
     }
 
+    if (this.lightCanopyMesh) {
+      const material = this.lightCanopyMesh.material as THREE.MeshBasicMaterial
+      if (material.map) {
+        material.map.offset.x = elapsedTime * 0.006
+        material.map.offset.y = elapsedTime * 0.004
+      }
+      const baseY = (this.lightCanopyMesh.userData.baseY as number | undefined) ?? 5.45
+      const baseOpacity = (this.lightCanopyMesh.userData.baseOpacity as number | undefined) ?? material.opacity
+      this.lightCanopyMesh.position.y = baseY + Math.sin(elapsedTime * 0.22) * 0.06
+      material.opacity = baseOpacity * (0.94 + Math.sin(elapsedTime * 0.34) * 0.06)
+    }
+
+    if (this.heroGroundGlowMesh) {
+      const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
+      if (material.map) {
+        material.map.offset.x = elapsedTime * 0.01
+        material.map.offset.y = elapsedTime * 0.008
+      }
+      const baseOpacity = (this.heroGroundGlowMesh.userData.baseOpacity as number | undefined) ?? material.opacity
+      material.opacity = baseOpacity * (0.92 + Math.sin((elapsedTime * 0.4) + 0.6) * 0.08)
+    }
+
     this.causticsMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       if (material.map) {
@@ -1916,6 +2133,22 @@ export class AdvancedAquariumScene {
       const material = this.foregroundShadowMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.foregroundShadowMesh.userData.baseOpacity as number | undefined) ?? 0.22
       this.foregroundShadowMesh.visible = resolvedQuality === 'high'
+      material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
+      material.needsUpdate = true
+    }
+
+    if (this.lightCanopyMesh) {
+      const material = this.lightCanopyMesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = (this.lightCanopyMesh.userData.baseOpacity as number | undefined) ?? 0.18
+      this.lightCanopyMesh.visible = resolvedQuality !== 'low'
+      material.opacity = resolvedQuality === 'high' ? baseOpacity : resolvedQuality === 'medium' ? baseOpacity * 0.74 : 0
+      material.needsUpdate = true
+    }
+
+    if (this.heroGroundGlowMesh) {
+      const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = (this.heroGroundGlowMesh.userData.baseOpacity as number | undefined) ?? 0.16
+      this.heroGroundGlowMesh.visible = resolvedQuality === 'high'
       material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
       material.needsUpdate = true
     }

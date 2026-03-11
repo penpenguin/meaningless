@@ -28,6 +28,8 @@ export class AquascapingSystem {
     this.createCorals(bounds)
     this.createRocks(bounds)
     this.createHeroDriftwood(bounds)
+    this.createHeroRockRidge(bounds)
+    this.createHeroCanopy(bounds)
     this.createSandDetails(bounds)
   }
   
@@ -441,6 +443,123 @@ export class AquascapingSystem {
 
     this.decorations.push(driftwoodGroup)
     this.group.add(driftwoodGroup)
+  }
+
+  private createHeroRockRidge(bounds: THREE.Box3): void {
+    const size = new THREE.Vector3()
+    bounds.getSize(size)
+    const center = new THREE.Vector3()
+    bounds.getCenter(center)
+
+    const ridgeGroup = new THREE.Group()
+    ridgeGroup.position.set(
+      center.x + size.x * 0.12,
+      bounds.min.y + 0.72,
+      center.z - size.z * 0.04
+    )
+    ridgeGroup.rotation.y = -0.42
+    ridgeGroup.userData = {
+      role: 'hero-rock-ridge'
+    }
+
+    ;[
+      {
+        geometry: new THREE.DodecahedronGeometry(0.92, 0),
+        position: new THREE.Vector3(-1.05, 0.04, 0.46),
+        rotation: new THREE.Euler(0.18, -0.22, 0.34),
+        scale: new THREE.Vector3(1.7, 0.56, 1.08),
+        color: '#70685b'
+      },
+      {
+        geometry: new THREE.IcosahedronGeometry(0.68, 0),
+        position: new THREE.Vector3(0.18, 0.18, 0.08),
+        rotation: new THREE.Euler(-0.14, 0.32, -0.18),
+        scale: new THREE.Vector3(1.38, 0.74, 1.04),
+        color: '#867c6a'
+      },
+      {
+        geometry: new THREE.OctahedronGeometry(0.6, 0),
+        position: new THREE.Vector3(1.18, 0.12, -0.34),
+        rotation: new THREE.Euler(0.28, -0.34, 0.12),
+        scale: new THREE.Vector3(1.24, 0.68, 1.28),
+        color: '#625b4f'
+      }
+    ].forEach((definition) => {
+      const rock = new THREE.Mesh(
+        definition.geometry,
+        new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(definition.color),
+          roughness: 0.92,
+          metalness: 0.04,
+          clearcoat: 0.08
+        })
+      )
+      rock.position.copy(definition.position)
+      rock.rotation.copy(definition.rotation)
+      rock.scale.copy(definition.scale)
+      rock.castShadow = true
+      rock.receiveShadow = true
+      rock.userData = {
+        role: 'ridge-rock'
+      }
+      ridgeGroup.add(rock)
+    })
+
+    this.decorations.push(ridgeGroup)
+    this.group.add(ridgeGroup)
+  }
+
+  private createHeroCanopy(bounds: THREE.Box3): void {
+    const size = new THREE.Vector3()
+    bounds.getSize(size)
+    const center = new THREE.Vector3()
+    bounds.getCenter(center)
+
+    ;[
+      {
+        position: new THREE.Vector3(center.x - size.x * 0.04, bounds.min.y + 0.42, center.z - size.z * 0.18),
+        rotationY: -0.18,
+        scale: new THREE.Vector3(0.92, 1.18, 0.92),
+        plantType: 'sword-leaf' as const,
+        height: 6.2,
+        hue: 0.35
+      },
+      {
+        position: new THREE.Vector3(center.x + size.x * 0.2, bounds.min.y + 0.42, center.z - size.z * 0.12),
+        rotationY: 0.24,
+        scale: new THREE.Vector3(0.82, 1.28, 0.82),
+        plantType: 'ribbon-seaweed' as const,
+        height: 6.8,
+        hue: 0.42
+      },
+      {
+        position: new THREE.Vector3(center.x + size.x * 0.06, bounds.min.y + 0.42, center.z - size.z * 0.24),
+        rotationY: -0.36,
+        scale: new THREE.Vector3(0.86, 1.1, 0.86),
+        plantType: 'sword-leaf' as const,
+        height: 5.7,
+        hue: 0.31
+      }
+    ].forEach((definition) => {
+      const canopyGroup = new THREE.Group()
+      canopyGroup.position.copy(definition.position)
+      canopyGroup.rotation.y = definition.rotationY
+      canopyGroup.scale.copy(definition.scale)
+      canopyGroup.userData = {
+        role: 'hero-canopy',
+        layer: 'background',
+        plantType: definition.plantType
+      }
+
+      if (definition.plantType === 'sword-leaf') {
+        this.createSwordLeafPlant(canopyGroup, 'background', definition.height, definition.hue)
+      } else {
+        this.createRibbonSeaweed(canopyGroup, 'background', definition.height, definition.hue)
+      }
+
+      this.plants.push(canopyGroup)
+      this.group.add(canopyGroup)
+    })
   }
 
   private createEpiphyteCluster(hue: number): THREE.Group {

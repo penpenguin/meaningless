@@ -84,6 +84,33 @@ describe('AquascapingSystem composition', () => {
     expect(epiphyteLeaves.length).toBeGreaterThan(0)
   })
 
+  it('builds a raised rock ridge and tall canopy plants around the hero silhouette', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const ridge = aquascapingGroup.children.find((child) => child.userData.role === 'hero-rock-ridge') as THREE.Group | undefined
+    const ridgeRocks = ridge?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'ridge-rock'
+    ) ?? []
+    const canopyPlants = aquascapingGroup.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-canopy'
+    )
+    const canopyTypes = new Set(canopyPlants.map((plant) => plant.userData.plantType))
+
+    expect(ridge).toBeDefined()
+    expect(ridgeRocks.length).toBeGreaterThanOrEqual(3)
+    expect(canopyPlants.length).toBeGreaterThanOrEqual(2)
+    expect(canopyTypes.has('sword-leaf')).toBe(true)
+    expect(canopyTypes.has('ribbon-seaweed')).toBe(true)
+  })
+
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
