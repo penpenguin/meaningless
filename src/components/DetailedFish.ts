@@ -4,6 +4,7 @@ import { BoidsSystem } from '../utils/Boids'
 import type { FishGroup, SchoolMood, Tuning } from '../types/aquarium'
 import { getFishContent, getFishContentList } from '../content/registry'
 import type { VisualAssetBundle } from '../assets/visualAssets'
+import type { QualityLevel } from '../types/settings'
 
 interface FishVariant {
   name: string
@@ -81,7 +82,7 @@ export class DetailedFishSystem {
   private tempDepthForce = new THREE.Vector3()
   private tempBoundsSize = new THREE.Vector3()
   private behaviorProfile: BehaviorProfile = { ...DEFAULT_BEHAVIOR_PROFILE }
-  private currentQuality: 'low' | 'medium' | 'high' = 'high'
+  private currentQuality: QualityLevel = 'standard'
   private visualAssets: VisualAssetBundle | null
   private heroAssignments = new Map<number, {
     mesh: THREE.Mesh
@@ -400,7 +401,7 @@ export class DetailedFishSystem {
         const heroMesh = new THREE.Mesh(geometry, material)
         heroMesh.castShadow = true
         heroMesh.receiveShadow = true
-        heroMesh.visible = this.currentQuality === 'high'
+        heroMesh.visible = this.currentQuality === 'standard'
         heroMesh.userData = {
           role: 'hero-fish',
           variantIndex: candidate.variantIndex
@@ -759,13 +760,18 @@ export class DetailedFishSystem {
   private createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
     const assetTexture = this.getVisualTexture(variant.patternTextureId)
     if (assetTexture) {
+      const scaleNormalTexture = this.getVisualTexture('fish-scale-normal')
+      const scaleRoughnessTexture = this.getVisualTexture('fish-scale-roughness')
       return new THREE.MeshPhysicalMaterial({
         map: assetTexture,
+        normalMap: scaleNormalTexture,
+        normalScale: new THREE.Vector2(0.3, 0.18),
+        roughnessMap: scaleRoughnessTexture,
         color: 0xffffff,
         metalness: 0.04,
-        roughness: 0.28,
+        roughness: 0.34,
         clearcoat: 0.82,
-        clearcoatRoughness: 0.18,
+        clearcoatRoughness: 0.2,
         reflectivity: 0.9,
         envMapIntensity: 0.7,
         transparent: false,
@@ -1020,10 +1026,10 @@ export class DetailedFishSystem {
     }
   }
 
-  setQuality(quality: 'low' | 'medium' | 'high'): void {
+  setQuality(quality: QualityLevel): void {
     this.currentQuality = quality
     const heroFishMeshes = this.heroFishMeshes ?? []
-    const qualityScale = quality === 'low' ? 0.5 : quality === 'medium' ? 0.75 : 1
+    const qualityScale = quality === 'simple' ? 0.5 : 1
     if (this.baseInstanceCounts.length === 0) {
       this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)
     }
@@ -1039,7 +1045,7 @@ export class DetailedFishSystem {
     })
 
     heroFishMeshes.forEach((mesh) => {
-      mesh.visible = quality === 'high'
+      mesh.visible = quality === 'standard'
     })
   }
 }

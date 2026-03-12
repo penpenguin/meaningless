@@ -1,4 +1,4 @@
-export type QualityLevel = 'low' | 'medium' | 'high'
+export type QualityLevel = 'simple' | 'standard'
 
 export type SettingsState = {
   schemaVersion: number

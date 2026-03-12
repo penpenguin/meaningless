@@ -11,6 +11,7 @@ import { loadSettingsState } from './utils/settingsStorage'
 import { getAutoSave } from './utils/storage'
 import { loadTankState } from './utils/tankStorage'
 import { loadVisualAssets, type VisualAssetBundle } from './assets/visualAssets'
+import type { QualityLevel } from './types/settings'
 
 export class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
@@ -21,7 +22,7 @@ export class AdvancedAquariumApp {
   private motionMediaQuery: MediaQueryList
   private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
   private keyHandler: ((event: KeyboardEvent) => void) | null = null
-  private lastAppliedQuality: 'low' | 'medium' | 'high' | null = null
+  private lastAppliedQuality: QualityLevel | null = null
   private visualAssets: VisualAssetBundle | null = null
 
   constructor() {
@@ -66,7 +67,11 @@ export class AdvancedAquariumApp {
     const container = document.getElementById('canvas-container')
     if (!container) return
 
-    this.scene = new AdvancedAquariumScene(container, this.visualAssets ?? undefined)
+    this.scene = new AdvancedAquariumScene(
+      container,
+      this.visualAssets ?? undefined,
+      this.store.getState().game.profile.preferences.quality
+    )
     this.setupHudOverlay()
     this.setupStoreBinding()
     this.setupEventListeners()
@@ -94,7 +99,7 @@ export class AdvancedAquariumApp {
     document.body.appendChild(this.overlay)
   }
 
-  private applyQualitySettings(quality: 'low' | 'medium' | 'high'): void {
+  private applyQualitySettings(quality: QualityLevel): void {
     if (!this.scene) return
     if (this.lastAppliedQuality === quality) return
     this.lastAppliedQuality = quality

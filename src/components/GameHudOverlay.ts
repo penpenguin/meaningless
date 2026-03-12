@@ -3,6 +3,7 @@ import type { FishContentDefinition } from '../content/types'
 import { getDecorContent, getDecorContentList, getFishContentList } from '../content/registry'
 import type { GameAppState, GameUiMode } from '../game/types'
 import { createAquariumRenderModel } from '../game/renderModel'
+import type { QualityLevel } from '../types/settings'
 import {
   getObservedSeconds,
   getRemainingObservationSeconds,
@@ -706,18 +707,18 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
   const qualitySegmented = document.createElement('div')
   qualitySegmented.className = 'hud-segmented'
   const qualityButtons: HTMLButtonElement[] = []
-  ;[
-    { label: 'Low', value: 'low' },
-    { label: 'Medium', value: 'medium' },
-    { label: 'High', value: 'high' }
-  ].forEach((quality) => {
+  const qualityOptions: Array<{ label: string; value: QualityLevel }> = [
+    { label: '簡易', value: 'simple' },
+    { label: '標準', value: 'standard' }
+  ]
+  qualityOptions.forEach((quality) => {
     const button = document.createElement('button')
     button.type = 'button'
     button.textContent = quality.label
     button.addEventListener('click', () => {
       store.dispatch({
         type: 'SETTINGS/SET_QUALITY',
-        payload: { quality: quality.value as 'low' | 'medium' | 'high' }
+        payload: { quality: quality.value }
       })
     })
     qualityButtons.push(button)
@@ -727,7 +728,7 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
 
   const settingsHint = document.createElement('div')
   settingsHint.className = 'hud-progress-callout'
-  settingsHint.textContent = 'Switch to Low if you want a cleaner HUD over heavier post-processing.'
+  settingsHint.textContent = '簡易でも shadow と texture は維持しつつ、描画負荷の高い演出だけを抑えます。'
   panel.appendChild(settingsHint)
 
   store.subscribe(({ state }) => {
@@ -749,7 +750,7 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
     photoModeButton.setAttribute('aria-pressed', String(photoModeEnabled))
 
     qualityButtons.forEach((button, index) => {
-      const value = ['low', 'medium', 'high'][index]
+      const value = qualityOptions[index]?.value
       const isActive = value === quality
       button.classList.toggle('is-active', isActive)
       button.setAttribute('aria-pressed', String(isActive))
@@ -770,7 +771,7 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
   photoModeButton.classList.toggle('is-on', initialPhotoMode)
   photoModeButton.setAttribute('aria-pressed', String(initialPhotoMode))
   qualityButtons.forEach((button, index) => {
-    const isActive = ['low', 'medium', 'high'][index] === initial.game.profile.preferences.quality
+    const isActive = qualityOptions[index]?.value === initial.game.profile.preferences.quality
     button.classList.toggle('is-active', isActive)
     button.setAttribute('aria-pressed', String(isActive))
   })

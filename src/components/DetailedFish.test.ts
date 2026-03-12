@@ -89,13 +89,17 @@ describe('DetailedFishSystem premium materials', () => {
   test('uses external fish pattern textures when visual assets are available', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const tropicalTexture = new THREE.Texture()
+    const fishScaleNormal = new THREE.Texture()
+    const fishScaleRoughness = new THREE.Texture()
     ;(instance as unknown as {
       visualAssets: {
         textures: Record<string, THREE.Texture | null>
       } | null
     }).visualAssets = {
       textures: {
-        'fish-tropical': tropicalTexture
+        'fish-tropical': tropicalTexture,
+        'fish-scale-normal': fishScaleNormal,
+        'fish-scale-roughness': fishScaleRoughness
       }
     }
 
@@ -122,6 +126,8 @@ describe('DetailedFishSystem premium materials', () => {
     const material = createFishMaterial.bind(instance)(tropical)
 
     expect(material.map).toBe(tropicalTexture)
+    expect(material.normalMap).toBe(fishScaleNormal)
+    expect(material.roughnessMap).toBe(fishScaleRoughness)
   })
 })
 
@@ -168,7 +174,7 @@ describe('DetailedFishSystem wander target timing', () => {
 })
 
 describe('DetailedFishSystem quality scaling', () => {
-  test('setQuality scales instance counts and restores on high', () => {
+  test('setQuality scales instance counts and restores on standard', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const internals = instance as unknown as {
       instancedMeshes: Array<{ count: number }>
@@ -179,14 +185,14 @@ describe('DetailedFishSystem quality scaling', () => {
     internals.baseInstanceCounts = []
 
     const setQuality = (DetailedFishSystem.prototype as unknown as {
-      setQuality: (quality: 'low' | 'medium' | 'high') => void
+      setQuality: (quality: 'simple' | 'standard') => void
     }).setQuality.bind(instance)
 
-    setQuality('low')
+    setQuality('simple')
     expect(internals.instancedMeshes[0].count).toBe(5)
     expect(internals.instancedMeshes[1].count).toBe(2)
 
-    setQuality('high')
+    setQuality('standard')
     expect(internals.instancedMeshes[0].count).toBe(10)
     expect(internals.instancedMeshes[1].count).toBe(5)
   })
@@ -202,15 +208,15 @@ describe('DetailedFishSystem quality scaling', () => {
     internals.baseInstanceCounts = []
 
     const setQuality = (DetailedFishSystem.prototype as unknown as {
-      setQuality: (quality: 'low' | 'medium' | 'high') => void
+      setQuality: (quality: 'simple' | 'standard') => void
     }).setQuality.bind(instance)
 
-    setQuality('low')
+    setQuality('simple')
     expect(internals.instancedMeshes[0].count).toBe(0)
     expect(internals.instancedMeshes[1].count).toBe(2)
   })
 
-  test('shows dedicated hero fish only on high quality', () => {
+  test('shows dedicated hero fish only on standard quality', () => {
     const scene = new THREE.Scene()
     const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
     const system = new DetailedFishSystem(scene, bounds)
@@ -227,10 +233,10 @@ describe('DetailedFishSystem quality scaling', () => {
     expect(internals.heroFishMeshes.every((mesh) => mesh.userData.role === 'hero-fish')).toBe(true)
     expect(internals.heroFishMeshes.every((mesh) => mesh.visible)).toBe(true)
 
-    system.setQuality('medium')
+    system.setQuality('simple')
     expect(internals.heroFishMeshes.every((mesh) => mesh.visible === false)).toBe(true)
 
-    system.setQuality('high')
+    system.setQuality('standard')
     expect(internals.heroFishMeshes.every((mesh) => mesh.visible)).toBe(true)
   })
 })
@@ -433,7 +439,7 @@ describe('DetailedFishSystem fish group application', () => {
     const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
     const system = new DetailedFishSystem(scene, bounds)
 
-    system.setQuality('low')
+    system.setQuality('simple')
     system.setFishGroups([
       { speciesId: 'neon-tetra', count: 4 },
       { speciesId: 'clownfish', count: 2 }

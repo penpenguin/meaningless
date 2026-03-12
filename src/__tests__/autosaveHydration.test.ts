@@ -220,7 +220,7 @@ describe('storage hydration on startup', () => {
       schemaVersion: 1,
       soundEnabled: false,
       motionEnabled: true,
-      quality: 'high'
+      quality: 'standard'
     }
     legacyAutoSave = {
       updatedAt: new Date().toISOString(),

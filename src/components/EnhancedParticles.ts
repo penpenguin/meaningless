@@ -1,6 +1,7 @@
 import * as THREE from 'three'
+import type { QualityLevel } from '../types/settings'
 
-type VisualQuality = 'low' | 'medium' | 'high'
+type VisualQuality = QualityLevel
 
 interface ParticleSystem {
   points: THREE.Points
@@ -121,7 +122,7 @@ export class EnhancedParticleSystem {
     this.group.add(this.moteSystem.points)
     this.group.add(this.bubbleSystem.points)
 
-    this.setQuality('high')
+    this.setQuality('standard')
   }
 
   private createBubbleSystem(bounds: THREE.Box3): ParticleSystem {
@@ -265,10 +266,10 @@ export class EnhancedParticleSystem {
 
   setQuality(quality: VisualQuality): void {
     this.bubbleSystem.material.uniforms.opacityBoost.value =
-      quality === 'high' ? 1 : quality === 'medium' ? 0.86 : 0.68
+      quality === 'standard' ? 1 : 0.72
 
-    this.moteSystem.points.visible = quality !== 'low'
+    this.moteSystem.points.visible = quality === 'standard'
     this.moteSystem.material.uniforms.opacityScale.value =
-      quality === 'high' ? 0.22 : quality === 'medium' ? 0.14 : 0
+      quality === 'standard' ? 0.22 : 0
   }
 }

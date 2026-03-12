@@ -11,8 +11,16 @@ import {
 import { getStarterDecorContentIds, getStarterFishContentIds } from '../content/registry'
 import { refreshTankProgression, simulateGameSave } from './simulation'
 import type { GameAppState, GameSave, Lane } from './types'
+import type { QualityLevel } from '../types/settings'
 
 export const CURRENT_GAME_SCHEMA_VERSION = 1
+
+const migrateQuality = (value: unknown, fallback: QualityLevel): QualityLevel => {
+  if (value === 'simple' || value === 'standard') return value
+  if (value === 'low') return 'simple'
+  if (value === 'medium' || value === 'high') return 'standard'
+  return fallback
+}
 
 const createDefaultProfile = () => ({
   currency: {
@@ -30,7 +38,7 @@ const createDefaultProfile = () => ({
   preferences: {
     soundEnabled: true,
     motionEnabled: true,
-    quality: 'high' as const,
+    quality: 'simple' as const,
     hudVisible: true,
     photoModeEnabled: false
   }
@@ -135,7 +143,7 @@ export const migrateLegacySave = (options: {
           (typeof legacyAutoSaveSettings?.motionEnabled === 'boolean'
             ? legacyAutoSaveSettings.motionEnabled
             : fallbackState.profile.preferences.motionEnabled),
-        quality: migratedSettings?.quality ?? fallbackState.profile.preferences.quality,
+        quality: migrateQuality(migratedSettings?.quality, fallbackState.profile.preferences.quality),
         hudVisible: fallbackState.profile.preferences.hudVisible,
         photoModeEnabled: fallbackState.profile.preferences.photoModeEnabled
       },
@@ -261,9 +269,7 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
         motionEnabled: typeof preferencesSource.motionEnabled === 'boolean'
           ? preferencesSource.motionEnabled
           : fallback.profile.preferences.motionEnabled,
-        quality: preferencesSource.quality === 'low' || preferencesSource.quality === 'medium' || preferencesSource.quality === 'high'
-          ? preferencesSource.quality
-          : fallback.profile.preferences.quality,
+        quality: migrateQuality(preferencesSource.quality, fallback.profile.preferences.quality),
         hudVisible: typeof preferencesSource.hudVisible === 'boolean'
           ? preferencesSource.hudVisible
           : fallback.profile.preferences.hudVisible,

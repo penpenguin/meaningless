@@ -13,6 +13,7 @@ import { defaultTheme } from '../utils/stateSchema'
 import { disposeSceneResources } from '../utils/threeDisposal'
 import { createOpenWaterBounds } from './sceneBounds'
 import type { VisualAssetBundle } from '../assets/visualAssets'
+import type { QualityLevel } from '../types/settings'
 
 interface PerformanceStats {
   fps: number
@@ -223,7 +224,9 @@ export class AdvancedAquariumScene {
   private substrateDetailMesh: THREE.Mesh | null = null
   private substrateFrontDetailMesh: THREE.Mesh | null = null
   private causticsMeshes: THREE.Mesh[] = []
-  private currentVisualQuality: 'low' | 'medium' | 'high' = 'high'
+  private currentVisualQuality: QualityLevel
+  private primaryShadowLight: THREE.DirectionalLight | null = null
+  private currentRendererAntialias = false
   
   private animationId: number | null = null
   public motionEnabled = true
@@ -251,9 +254,10 @@ export class AdvancedAquariumScene {
     low: 30
   }
   
-  constructor(container: HTMLElement, visualAssets?: VisualAssetBundle) {
+  constructor(container: HTMLElement, visualAssets?: VisualAssetBundle, initialQuality: QualityLevel = 'standard') {
     this.container = container
     this.visualAssets = visualAssets
+    this.currentVisualQuality = initialQuality
     this.scene = new THREE.Scene()
     this.clock = new THREE.Clock()
     
@@ -284,18 +288,22 @@ export class AdvancedAquariumScene {
   
   private setupRenderer(container: HTMLElement): void {
     const { width, height } = this.getViewportSize()
+    const antialias = this.currentVisualQuality === 'standard'
     this.renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
+      antialias,
       alpha: true,
       powerPreference: 'high-performance'
     })
     this.renderer.setSize(width, height)
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.currentVisualQuality === 'simple' ? 1 : 2))
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.2
     this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.type = this.currentVisualQuality === 'simple'
+      ? THREE.PCFShadowMap
+      : THREE.PCFSoftShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.currentRendererAntialias = antialias
     
     // Performance optimizations
     this.renderer.info.autoReset = false
@@ -354,6 +362,8 @@ export class AdvancedAquariumScene {
     sunLight.shadow.bias = -0.00018
     sunLight.shadow.normalBias = 0.018
     sunLight.target.position.set(0, -1.1, 0.4)
+    this.primaryShadowLight = sunLight
+    this.applyShadowQuality(this.currentVisualQuality)
     this.scene.add(sunLight)
     this.scene.add(sunLight.target)
 
@@ -418,7 +428,7 @@ export class AdvancedAquariumScene {
     this.createCausticsLayers(tankWidth, tankHeight, tankDepth)
     const initialTheme = this.scene instanceof THREE.Scene ? resolveTheme(this.scene) : defaultTheme
     this.applyTankTheme(initialTheme)
-    this.applyVisualQuality(this.currentVisualQuality ?? 'high')
+    this.applyVisualQuality(this.currentVisualQuality ?? 'standard')
   }
 
   private createBackdropTexture(): THREE.CanvasTexture {
@@ -2534,10 +2544,11 @@ export class AdvancedAquariumScene {
     this.controls.autoRotate = enabled
   }
   
-  public setWaterQuality(quality: 'low' | 'medium' | 'high'): void {
+  public setWaterQuality(quality: QualityLevel): void {
     this.currentVisualQuality = quality
+    this.syncRendererPipelineForQuality(quality)
     const { width, height } = this.getViewportSize()
-    const pixelRatioCap = quality === 'low' ? 1 : quality === 'medium' ? 1.5 : 2
+    const pixelRatioCap = quality === 'simple' ? 1 : 2
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap))
     this.renderer.setSize(width, height)
 
@@ -2549,7 +2560,11 @@ export class AdvancedAquariumScene {
       this.godRaysEffect.resize(width, height)
     }
 
-    this.renderer.shadowMap.enabled = quality !== 'low'
+    this.renderer.shadowMap.enabled = true
+    this.renderer.shadowMap.type = quality === 'simple'
+      ? THREE.PCFShadowMap
+      : THREE.PCFSoftShadowMap
+    this.applyShadowQuality(quality)
 
     if (this.fishSystem) {
       this.fishSystem.setQuality(quality)
@@ -2606,148 +2621,178 @@ export class AdvancedAquariumScene {
     }
   }
 
-  private applyVisualQuality(quality: 'low' | 'medium' | 'high'): void {
-    const resolvedQuality = quality ?? 'high'
+  private applyShadowQuality(quality: QualityLevel): void {
+    if (!this.primaryShadowLight) return
+    const shadowMapSize = quality === 'simple' ? 2048 : 4096
+    this.primaryShadowLight.shadow.mapSize.width = shadowMapSize
+    this.primaryShadowLight.shadow.mapSize.height = shadowMapSize
+  }
+
+  private syncRendererPipelineForQuality(quality: QualityLevel): void {
+    const nextAntialias = quality === 'standard'
+    if (this.currentRendererAntialias === nextAntialias) return
+    if (!this.renderer || !this.controls || !this.composer) return
+
+    const previousDomElement = this.renderer.domElement
+    const previousTarget = this.controls.target.clone()
+    const previousAutoRotate = this.controls.autoRotate
+    const previousAutoRotateSpeed = this.controls.autoRotateSpeed
+
+    this.godRaysEffect?.dispose()
+    this.godRaysEffect = null
+    this.composer.dispose()
+    this.controls.dispose()
+    this.renderer.dispose()
+
+    if (previousDomElement.parentElement) {
+      previousDomElement.parentElement.removeChild(previousDomElement)
+    }
+
+    this.setupRenderer(this.container)
+    this.setupComposer()
+    this.setupControls()
+    this.controls.target.copy(previousTarget)
+    this.controls.autoRotate = previousAutoRotate
+    this.controls.autoRotateSpeed = previousAutoRotateSpeed
+    this.controls.update()
+    this.setupAdvancedPostProcessing()
+  }
+
+  private applyVisualQuality(quality: QualityLevel): void {
+    const resolvedQuality = quality ?? 'standard'
+    const isStandard = resolvedQuality === 'standard'
     this.ensureTankVisualLayers()
 
     this.glassPanes.forEach((pane, index) => {
-      pane.visible = resolvedQuality !== 'low' || index === 0
+      pane.visible = isStandard || index === 0
       const material = pane.material as THREE.MeshPhysicalMaterial
-      material.thickness = resolvedQuality === 'high' ? 0.42 : resolvedQuality === 'medium' ? 0.38 : 0.3
-      material.attenuationDistance = resolvedQuality === 'high' ? 1.2 : resolvedQuality === 'medium' ? 1.45 : 1.75
-      material.envMapIntensity = resolvedQuality === 'high' ? 1.32 : resolvedQuality === 'medium' ? 1.1 : 0.92
+      material.thickness = isStandard ? 0.42 : 0.34
+      material.attenuationDistance = isStandard ? 1.2 : 1.6
+      material.envMapIntensity = isStandard ? 1.32 : 0.98
       material.opacity = index === 0
-        ? resolvedQuality === 'high' ? 0.17 : resolvedQuality === 'medium' ? 0.14 : 0.12
-        : resolvedQuality === 'high' ? 0.1 : resolvedQuality === 'medium' ? 0.08 : 0.05
+        ? isStandard ? 0.17 : 0.13
+        : isStandard ? 0.1 : 0.06
       material.needsUpdate = true
     })
 
     if (this.waterVolumeMesh) {
-      this.waterVolumeMesh.visible = resolvedQuality !== 'low'
+      this.waterVolumeMesh.visible = true
       const material = this.waterVolumeMesh.material as THREE.MeshPhysicalMaterial
-      material.thickness = resolvedQuality === 'high' ? 4.6 : resolvedQuality === 'medium' ? 4.1 : 3.6
-      material.attenuationDistance = resolvedQuality === 'high' ? 2.2 : resolvedQuality === 'medium' ? 2.5 : 2.9
-      material.envMapIntensity = resolvedQuality === 'high' ? 0.54 : resolvedQuality === 'medium' ? 0.42 : 0.28
-      material.opacity = resolvedQuality === 'high' ? 0.12 : resolvedQuality === 'medium' ? 0.1 : 0.08
+      material.thickness = isStandard ? 4.6 : 3.9
+      material.attenuationDistance = isStandard ? 2.2 : 2.65
+      material.envMapIntensity = isStandard ? 0.54 : 0.34
+      material.opacity = isStandard ? 0.12 : 0.09
       material.needsUpdate = true
     }
 
     if (this.waterSurfaceMesh) {
       this.waterSurfaceMesh.visible = true
       const material = this.waterSurfaceMesh.material as THREE.MeshPhysicalMaterial
-      material.thickness = resolvedQuality === 'high' ? 1.24 : resolvedQuality === 'medium' ? 1.04 : 0.84
-      material.attenuationDistance = resolvedQuality === 'high' ? 1.3 : resolvedQuality === 'medium' ? 1.55 : 1.9
-      material.envMapIntensity = resolvedQuality === 'high' ? 1.46 : resolvedQuality === 'medium' ? 1.18 : 0.92
-      material.opacity = resolvedQuality === 'high' ? 0.27 : resolvedQuality === 'medium' ? 0.24 : 0.2
+      material.thickness = isStandard ? 1.24 : 0.94
+      material.attenuationDistance = isStandard ? 1.3 : 1.7
+      material.envMapIntensity = isStandard ? 1.46 : 1.04
+      material.opacity = isStandard ? 0.27 : 0.22
       material.needsUpdate = true
     }
 
     if (this.frontGlassHighlightMesh) {
       const material = this.frontGlassHighlightMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.frontGlassHighlightMesh.userData.baseOpacity as number | undefined) ?? 0.16
-      this.frontGlassHighlightMesh.visible = resolvedQuality !== 'low'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : baseOpacity * 0.68
+      this.frontGlassHighlightMesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.58
       material.needsUpdate = true
     }
 
     this.glassEdgeHighlightMeshes.forEach((mesh) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? 0.13
-      mesh.visible = resolvedQuality !== 'low'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : baseOpacity * 0.7
+      mesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.56
       material.needsUpdate = true
     })
 
     this.wallPanelMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? (index === 0 ? 0.2 : 0.12)
-      mesh.visible = resolvedQuality === 'high' || resolvedQuality === 'medium' || index === 0
-      material.opacity = resolvedQuality === 'high'
-        ? baseOpacity
-        : resolvedQuality === 'medium'
-          ? baseOpacity * 0.74
-          : baseOpacity * 0.5
+      mesh.visible = isStandard || index === 0
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.54
       material.needsUpdate = true
     })
 
     if (this.waterSurfaceHighlightMesh) {
       const material = this.waterSurfaceHighlightMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.waterSurfaceHighlightMesh.userData.baseOpacity as number | undefined) ?? 0.2
-      this.waterSurfaceHighlightMesh.visible = resolvedQuality === 'high'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
+      this.waterSurfaceHighlightMesh.visible = isStandard
+      material.opacity = isStandard ? baseOpacity : 0
       material.needsUpdate = true
     }
 
     if (this.waterlineFrontMesh) {
       const material = this.waterlineFrontMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.waterlineFrontMesh.userData.baseOpacity as number | undefined) ?? 0.18
-      this.waterlineFrontMesh.visible = resolvedQuality === 'high'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
+      this.waterlineFrontMesh.visible = isStandard
+      material.opacity = isStandard ? baseOpacity : 0
       material.needsUpdate = true
     }
 
     if (this.depthMidgroundMesh) {
       const material = this.depthMidgroundMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.depthMidgroundMesh.userData.baseOpacity as number | undefined) ?? 0.28
-      this.depthMidgroundMesh.visible = resolvedQuality !== 'low'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : baseOpacity * 0.72
+      this.depthMidgroundMesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.68
       material.needsUpdate = true
     }
 
     if (this.foregroundShadowMesh) {
       const material = this.foregroundShadowMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.foregroundShadowMesh.userData.baseOpacity as number | undefined) ?? 0.22
-      this.foregroundShadowMesh.visible = resolvedQuality === 'high'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
+      this.foregroundShadowMesh.visible = isStandard
+      material.opacity = isStandard ? baseOpacity : 0
       material.needsUpdate = true
     }
 
     if (this.lightCanopyMesh) {
       const material = this.lightCanopyMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.lightCanopyMesh.userData.baseOpacity as number | undefined) ?? 0.18
-      this.lightCanopyMesh.visible = resolvedQuality !== 'low'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : resolvedQuality === 'medium' ? baseOpacity * 0.74 : 0
+      this.lightCanopyMesh.visible = isStandard
+      material.opacity = isStandard ? baseOpacity : 0
       material.needsUpdate = true
     }
 
     if (this.heroRimLightMesh) {
       const material = this.heroRimLightMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.heroRimLightMesh.userData.baseOpacity as number | undefined) ?? 0.2
-      this.heroRimLightMesh.visible = resolvedQuality !== 'low'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : resolvedQuality === 'medium' ? baseOpacity * 0.72 : 0
+      this.heroRimLightMesh.visible = isStandard
+      material.opacity = isStandard ? baseOpacity : 0
       material.needsUpdate = true
     }
 
     if (this.heroGroundGlowMesh) {
       const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.heroGroundGlowMesh.userData.baseOpacity as number | undefined) ?? 0.16
-      this.heroGroundGlowMesh.visible = resolvedQuality === 'high'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : 0
+      this.heroGroundGlowMesh.visible = isStandard
+      material.opacity = isStandard ? baseOpacity : 0
       material.needsUpdate = true
     }
 
     if (this.substrateDetailMesh) {
       const material = this.substrateDetailMesh.material as THREE.MeshStandardMaterial
       const baseOpacity = (this.substrateDetailMesh.userData.baseOpacity as number | undefined) ?? 0.58
-      this.substrateDetailMesh.visible = resolvedQuality !== 'low'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : resolvedQuality === 'medium' ? baseOpacity * 0.72 : 0
+      this.substrateDetailMesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.52
       material.needsUpdate = true
     }
 
     if (this.substrateFrontDetailMesh) {
       const material = this.substrateFrontDetailMesh.material as THREE.MeshStandardMaterial
       const baseOpacity = (this.substrateFrontDetailMesh.userData.baseOpacity as number | undefined) ?? 0.62
-      this.substrateFrontDetailMesh.visible = resolvedQuality !== 'low'
-      material.opacity = resolvedQuality === 'high' ? baseOpacity : resolvedQuality === 'medium' ? baseOpacity * 0.72 : 0
+      this.substrateFrontDetailMesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.56
       material.needsUpdate = true
     }
 
     this.causticsMeshes.forEach((mesh, index) => {
-      if (resolvedQuality === 'low') {
-        mesh.visible = false
-        return
-      }
-      mesh.visible = resolvedQuality === 'high' || index === 0
+      mesh.visible = isStandard || index === 0
     })
   }
 

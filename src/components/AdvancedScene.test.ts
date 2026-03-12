@@ -694,7 +694,7 @@ describe('AdvancedAquariumScene substrate', () => {
 })
 
 describe('AdvancedAquariumScene quality scaling', () => {
-  it('keeps the water surface but hides premium water layers on low quality', () => {
+  it('keeps shadows and core texture layers on simple quality', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
@@ -703,11 +703,13 @@ describe('AdvancedAquariumScene quality scaling', () => {
       renderer: {
         setPixelRatio: (value: number) => void
         setSize: (width: number, height: number) => void
-        shadowMap: { enabled: boolean }
+        shadowMap: { enabled: boolean; type: number }
       }
       composer: { setSize: (width: number, height: number) => void }
       godRaysEffect: { resize: (width: number, height: number) => void } | null
-      fishSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
+      fishSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      particleSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      primaryShadowLight: { shadow: { mapSize: { width: number; height: number } } } | null
       getViewportSize: () => { width: number; height: number }
     }
 
@@ -717,22 +719,24 @@ describe('AdvancedAquariumScene quality scaling', () => {
     internals.renderer = {
       setPixelRatio: vi.fn(),
       setSize: vi.fn(),
-      shadowMap: { enabled: true }
+      shadowMap: { enabled: true, type: THREE.PCFSoftShadowMap }
     }
     internals.composer = { setSize: vi.fn() }
     internals.godRaysEffect = { resize: vi.fn() }
     internals.fishSystem = { setQuality: vi.fn() }
+    internals.particleSystem = { setQuality: vi.fn() }
+    internals.primaryShadowLight = { shadow: { mapSize: { width: 4096, height: 4096 } } }
     internals.getViewportSize = () => ({ width: 1600, height: 900 })
 
     const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
       createAdvancedTank: () => void
     }).createAdvancedTank.bind(instance)
     const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
-      setWaterQuality: (quality: 'low' | 'medium' | 'high') => void
+      setWaterQuality: (quality: 'simple' | 'standard') => void
     }).setWaterQuality.bind(instance)
 
     createAdvancedTank()
-    setWaterQuality('low')
+    setWaterQuality('simple')
 
     const waterVolume = internals.tank.children.find((child) => child.name === 'tank-water-volume') as THREE.Mesh | undefined
     const waterSurface = internals.tank.children.find((child) => child.name === 'tank-water-surface') as THREE.Mesh | undefined
@@ -747,22 +751,26 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
 
-    expect(internals.renderer.shadowMap.enabled).toBe(false)
-    expect(waterVolume?.visible).toBe(false)
-    expect(caustics?.visible).toBe(false)
+    expect(internals.renderer.setPixelRatio).toHaveBeenCalledWith(1)
+    expect(internals.renderer.shadowMap.enabled).toBe(true)
+    expect(internals.renderer.shadowMap.type).toBe(THREE.PCFShadowMap)
+    expect(internals.primaryShadowLight?.shadow.mapSize.width).toBe(2048)
+    expect(internals.primaryShadowLight?.shadow.mapSize.height).toBe(2048)
+    expect(waterVolume?.visible).toBe(true)
+    expect(caustics?.visible).toBe(true)
     expect(waterSurface?.visible).toBe(true)
     expect(waterSurfaceHighlight?.visible).toBe(false)
-    expect(frontGlassHighlight?.visible).toBe(false)
-    expect(leftEdgeHighlight?.visible).toBe(false)
+    expect(frontGlassHighlight?.visible).toBe(true)
+    expect(leftEdgeHighlight?.visible).toBe(true)
     expect(waterlineFront?.visible).toBe(false)
-    expect(midground?.visible).toBe(false)
+    expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(false)
     expect(lightCanopy?.visible).toBe(false)
     expect(heroRimLight?.visible).toBe(false)
     expect(heroGroundGlow?.visible).toBe(false)
   })
 
-  it('keeps the midground depth layer and light canopy on medium quality but reserves the hero glow for high quality', () => {
+  it('keeps the richer hero layers on standard quality', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
@@ -771,11 +779,12 @@ describe('AdvancedAquariumScene quality scaling', () => {
       renderer: {
         setPixelRatio: (value: number) => void
         setSize: (width: number, height: number) => void
-        shadowMap: { enabled: boolean }
+        shadowMap: { enabled: boolean; type: number }
       }
       composer: { setSize: (width: number, height: number) => void }
       godRaysEffect: { resize: (width: number, height: number) => void } | null
-      fishSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
+      fishSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      primaryShadowLight: { shadow: { mapSize: { width: number; height: number } } } | null
       getViewportSize: () => { width: number; height: number }
     }
 
@@ -785,22 +794,23 @@ describe('AdvancedAquariumScene quality scaling', () => {
     internals.renderer = {
       setPixelRatio: vi.fn(),
       setSize: vi.fn(),
-      shadowMap: { enabled: true }
+      shadowMap: { enabled: true, type: THREE.PCFShadowMap }
     }
     internals.composer = { setSize: vi.fn() }
     internals.godRaysEffect = { resize: vi.fn() }
     internals.fishSystem = { setQuality: vi.fn() }
+    internals.primaryShadowLight = { shadow: { mapSize: { width: 2048, height: 2048 } } }
     internals.getViewportSize = () => ({ width: 1600, height: 900 })
 
     const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
       createAdvancedTank: () => void
     }).createAdvancedTank.bind(instance)
     const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
-      setWaterQuality: (quality: 'low' | 'medium' | 'high') => void
+      setWaterQuality: (quality: 'simple' | 'standard') => void
     }).setWaterQuality.bind(instance)
 
     createAdvancedTank()
-    setWaterQuality('medium')
+    setWaterQuality('standard')
 
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
@@ -808,11 +818,14 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
 
+    expect(internals.renderer.shadowMap.enabled).toBe(true)
+    expect(internals.renderer.shadowMap.type).toBe(THREE.PCFSoftShadowMap)
+    expect(internals.primaryShadowLight?.shadow.mapSize.width).toBe(4096)
     expect(midground?.visible).toBe(true)
-    expect(foreground?.visible).toBe(false)
+    expect(foreground?.visible).toBe(true)
     expect(lightCanopy?.visible).toBe(true)
     expect(heroRimLight?.visible).toBe(true)
-    expect(heroGroundGlow?.visible).toBe(false)
+    expect(heroGroundGlow?.visible).toBe(true)
   })
 
   it('forwards quality changes to the particle system so dense water haze can scale down cleanly', () => {
@@ -821,21 +834,21 @@ describe('AdvancedAquariumScene quality scaling', () => {
       renderer: {
         setPixelRatio: (value: number) => void
         setSize: (width: number, height: number) => void
-        shadowMap: { enabled: boolean }
+        shadowMap: { enabled: boolean; type: number }
       }
       composer: { setSize: (width: number, height: number) => void }
       godRaysEffect: { resize: (width: number, height: number) => void } | null
-      fishSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
-      particleSystem: { setQuality: (quality: 'low' | 'medium' | 'high') => void } | null
+      fishSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      particleSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
       getViewportSize: () => { width: number; height: number }
-      applyVisualQuality: (quality: 'low' | 'medium' | 'high') => void
-      currentVisualQuality: 'low' | 'medium' | 'high'
+      applyVisualQuality: (quality: 'simple' | 'standard') => void
+      currentVisualQuality: 'simple' | 'standard'
     }
 
     internals.renderer = {
       setPixelRatio: vi.fn(),
       setSize: vi.fn(),
-      shadowMap: { enabled: true }
+      shadowMap: { enabled: true, type: THREE.PCFSoftShadowMap }
     }
     internals.composer = { setSize: vi.fn() }
     internals.godRaysEffect = { resize: vi.fn() }
@@ -843,15 +856,56 @@ describe('AdvancedAquariumScene quality scaling', () => {
     internals.particleSystem = { setQuality: vi.fn() }
     internals.getViewportSize = () => ({ width: 1600, height: 900 })
     internals.applyVisualQuality = vi.fn()
-    internals.currentVisualQuality = 'high'
+    internals.currentVisualQuality = 'standard'
 
     const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
-      setWaterQuality: (quality: 'low' | 'medium' | 'high') => void
+      setWaterQuality: (quality: 'simple' | 'standard') => void
     }).setWaterQuality.bind(instance)
 
-    setWaterQuality('low')
+    setWaterQuality('simple')
 
-    expect(internals.particleSystem.setQuality).toHaveBeenCalledWith('low')
+    expect(internals.particleSystem.setQuality).toHaveBeenCalledWith('simple')
+  })
+
+  it('refreshes the renderer pipeline when switching quality tiers with different antialias settings', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      renderer: {
+        setPixelRatio: (value: number) => void
+        setSize: (width: number, height: number) => void
+        shadowMap: { enabled: boolean; type: number }
+      }
+      composer: { setSize: (width: number, height: number) => void }
+      godRaysEffect: { resize: (width: number, height: number) => void } | null
+      fishSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      particleSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      getViewportSize: () => { width: number; height: number }
+      applyVisualQuality: (quality: 'simple' | 'standard') => void
+      syncRendererPipelineForQuality: (quality: 'simple' | 'standard') => void
+      currentVisualQuality: 'simple' | 'standard'
+    }
+
+    internals.renderer = {
+      setPixelRatio: vi.fn(),
+      setSize: vi.fn(),
+      shadowMap: { enabled: true, type: THREE.PCFSoftShadowMap }
+    }
+    internals.composer = { setSize: vi.fn() }
+    internals.godRaysEffect = { resize: vi.fn() }
+    internals.fishSystem = { setQuality: vi.fn() }
+    internals.particleSystem = { setQuality: vi.fn() }
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+    internals.applyVisualQuality = vi.fn()
+    internals.syncRendererPipelineForQuality = vi.fn()
+    internals.currentVisualQuality = 'standard'
+
+    const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
+      setWaterQuality: (quality: 'simple' | 'standard') => void
+    }).setWaterQuality.bind(instance)
+
+    setWaterQuality('simple')
+
+    expect(internals.syncRendererPipelineForQuality).toHaveBeenCalledWith('simple')
   })
 })
 
@@ -910,8 +964,8 @@ describe('AdvancedAquariumScene theme application', () => {
       scene: THREE.Scene
       godRaysEffect: { applyTheme: (theme: Theme) => void } | null
       applyTankTheme: (theme: Theme) => void
-      applyVisualQuality: (quality: 'low' | 'medium' | 'high') => void
-      currentVisualQuality: 'low' | 'medium' | 'high'
+      applyVisualQuality: (quality: 'simple' | 'standard') => void
+      currentVisualQuality: 'simple' | 'standard'
     }
 
     const nextTheme: Theme = {
@@ -931,7 +985,7 @@ describe('AdvancedAquariumScene theme application', () => {
     internals.godRaysEffect = { applyTheme: vi.fn() }
     internals.applyTankTheme = vi.fn()
     internals.applyVisualQuality = vi.fn()
-    internals.currentVisualQuality = 'high'
+    internals.currentVisualQuality = 'standard'
 
     const applyTheme = (AdvancedAquariumScene.prototype as unknown as {
       applyTheme: (theme: Theme) => void

@@ -13,6 +13,7 @@ describe('gameSave', () => {
     expect(save.profile.currency.coins).toBe(12)
     expect(save.profile.preferences.hudVisible).toBe(true)
     expect(save.profile.preferences.photoModeEnabled).toBe(false)
+    expect(save.profile.preferences.quality).toBe('simple')
     expect(save.tanks[0]?.fishSchools[0]).toMatchObject({
       speciesId: 'neon-tetra',
       lane: 'middle'
@@ -58,13 +59,30 @@ describe('gameSave', () => {
 
     expect(migrated.profile.currency.coins).toBe(23)
     expect(migrated.profile.unlockedFishIds).toContain('clownfish')
-    expect(migrated.profile.preferences.quality).toBe('medium')
+    expect(migrated.profile.preferences.quality).toBe('standard')
     expect(migrated.profile.preferences.hudVisible).toBe(true)
     expect(migrated.profile.preferences.photoModeEnabled).toBe(false)
     expect(migrated.tanks[0]?.fishSchools).toEqual([
       expect.objectContaining({ speciesId: 'clownfish', count: 6, lane: 'middle' }),
       expect.objectContaining({ speciesId: 'angelfish', count: 2, lane: 'top' })
     ])
+  })
+
+  it('maps legacy low quality to simple', () => {
+    const migrated = migrateLegacySave({
+      nowIso: '2026-03-08T00:00:00.000Z',
+      legacyTank: null,
+      legacyProfile: null,
+      legacySettings: {
+        schemaVersion: 1,
+        soundEnabled: true,
+        motionEnabled: true,
+        quality: 'low'
+      },
+      legacyAutoSave: null
+    })
+
+    expect(migrated.profile.preferences.quality).toBe('simple')
   })
 
   it('hydrates offline progress and records the offline summary in ui state', () => {

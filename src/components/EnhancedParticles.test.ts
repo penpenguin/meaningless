@@ -24,12 +24,12 @@ describe('EnhancedParticleSystem layering', () => {
     expect((suspendedMotes?.material as THREE.ShaderMaterial | undefined)?.blending).toBe(THREE.NormalBlending)
   })
 
-  it('drops the suspended motes on low quality but keeps the bubble plumes active', () => {
+  it('drops the suspended motes on simple quality but keeps the bubble plumes active', () => {
     const scene = new THREE.Scene()
     const bounds = createOpenWaterBounds()
     const particleSystem = new EnhancedParticleSystem(scene, bounds)
 
-    particleSystem.setQuality('low')
+    particleSystem.setQuality('simple')
 
     const particleGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
     const bubblePlumes = particleGroup.children.find(
@@ -42,7 +42,7 @@ describe('EnhancedParticleSystem layering', () => {
     expect(bubblePlumes?.visible).toBe(true)
     expect(suspendedMotes?.visible).toBe(false)
 
-    particleSystem.setQuality('medium')
+    particleSystem.setQuality('standard')
 
     expect(suspendedMotes?.visible).toBe(true)
   })

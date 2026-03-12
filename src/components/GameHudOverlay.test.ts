@@ -219,7 +219,7 @@ describe('createGameHudOverlay', () => {
       expect(settingsPanel.querySelectorAll('.hud-toggle-button').length).toBe(3)
       expect(
         Array.from(settingsPanel.querySelectorAll('.hud-segmented button')).map((button) => button.textContent)
-      ).toEqual(['Low', 'Medium', 'High'])
+      ).toEqual(['簡易', '標準'])
       expect(settingsPanel.textContent).toContain('Photo Mode')
     } finally {
       store.destroy()
