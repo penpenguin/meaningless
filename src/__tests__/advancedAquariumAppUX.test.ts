@@ -12,7 +12,10 @@ const hoisted = vi.hoisted(() => ({
     textures: {},
     models: {}
   })),
-  lastSceneAssets: null as unknown
+  lastSceneAssets: null as unknown,
+  lastSceneInstance: null as {
+    getPerformanceStats: ReturnType<typeof vi.fn>
+  } | null
 }))
 
 vi.mock('../components/AdvancedScene', () => {
@@ -35,6 +38,9 @@ vi.mock('../components/AdvancedScene', () => {
 
       constructor(_container?: HTMLElement, assets?: unknown) {
         hoisted.lastSceneAssets = assets ?? null
+        hoisted.lastSceneInstance = this as unknown as {
+          getPerformanceStats: ReturnType<typeof vi.fn>
+        }
       }
     }
   }
@@ -114,6 +120,7 @@ describe('AdvancedAquariumApp UX integration', () => {
     hoisted.loadVisualAssets.mockReset()
     hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
     hoisted.lastSceneAssets = null
+    hoisted.lastSceneInstance = null
   })
 
   it('starts hiding the loading screen immediately after init completes', async () => {
@@ -176,6 +183,19 @@ describe('AdvancedAquariumApp UX integration', () => {
 
     expect(hoisted.loadVisualAssets).toHaveBeenCalledTimes(1)
     expect(hoisted.lastSceneAssets).toBe(hoisted.mockedAssets)
+
+    app.dispose()
+  })
+
+  it('does not poll scene performance stats after startup', async () => {
+    vi.useFakeTimers()
+    hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
+
+    const app = new AdvancedAquariumApp()
+    await flushMicrotasks()
+    await vi.advanceTimersByTimeAsync(2200)
+
+    expect(hoisted.lastSceneInstance?.getPerformanceStats).not.toHaveBeenCalled()
 
     app.dispose()
   })

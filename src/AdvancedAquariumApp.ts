@@ -18,19 +18,11 @@ export class AdvancedAquariumApp {
   private store: GameStore
   private overlay: HTMLDivElement | null = null
   private storeUnsubscribe: (() => void) | null = null
-  private performanceMonitor: ReturnType<typeof setInterval> | null = null
   private motionMediaQuery: MediaQueryList
   private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
   private keyHandler: ((event: KeyboardEvent) => void) | null = null
   private lastAppliedQuality: 'low' | 'medium' | 'high' | null = null
-  private advancedEffectsEnabled = true
   private visualAssets: VisualAssetBundle | null = null
-  private stats = {
-    fps: 0,
-    frameTime: 0,
-    fishVisible: 0,
-    drawCalls: 0
-  }
 
   constructor() {
     const nowIso = new Date().toISOString()
@@ -78,7 +70,6 @@ export class AdvancedAquariumApp {
     this.setupHudOverlay()
     this.setupStoreBinding()
     this.setupEventListeners()
-    this.startPerformanceMonitoring()
     this.scene.start()
     this.hideLoadingScreen()
   }
@@ -125,7 +116,6 @@ export class AdvancedAquariumApp {
     this.storeUnsubscribe = this.store.subscribe(({ state }) => {
       applySceneState(state)
       this.applyQualitySettings(state.game.profile.preferences.quality)
-      scene.setAdvancedEffects(this.advancedEffectsEnabled)
     })
   }
 
@@ -149,52 +139,7 @@ export class AdvancedAquariumApp {
     window.addEventListener('keydown', this.keyHandler)
   }
 
-  private startPerformanceMonitoring(): void {
-    this.performanceMonitor = setInterval(() => {
-      if (!this.scene) return
-      const stats = this.scene.getPerformanceStats()
-      this.stats.fps = stats.fps
-      this.stats.frameTime = Number(stats.frameTime.toFixed(1))
-      this.stats.fishVisible = stats.fishVisible
-      this.stats.drawCalls = stats.drawCalls
-
-      if (stats.fps < 30 && stats.fps > 0) {
-        this.autoOptimizePerformance()
-      }
-    }, 1000)
-  }
-
-  private autoOptimizePerformance(): void {
-    if (!this.scene) return
-    if (this.advancedEffectsEnabled) {
-      this.advancedEffectsEnabled = false
-      this.scene.setAdvancedEffects(false)
-      return
-    }
-
-    const quality = this.store.getState().game.profile.preferences.quality
-    if (quality === 'high') {
-      this.store.dispatch({
-        type: 'SETTINGS/SET_QUALITY',
-        payload: { quality: 'medium' }
-      })
-      return
-    }
-
-    if (quality === 'medium') {
-      this.store.dispatch({
-        type: 'SETTINGS/SET_QUALITY',
-        payload: { quality: 'low' }
-      })
-    }
-  }
-
   dispose(): void {
-    if (this.performanceMonitor) {
-      clearInterval(this.performanceMonitor)
-      this.performanceMonitor = null
-    }
-
     if (this.motionMediaHandler) {
       this.motionMediaQuery.removeEventListener('change', this.motionMediaHandler)
       this.motionMediaHandler = null
