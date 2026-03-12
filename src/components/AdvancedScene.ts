@@ -12,6 +12,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { defaultTheme } from '../utils/stateSchema'
 import { disposeSceneResources } from '../utils/threeDisposal'
 import { createOpenWaterBounds } from './sceneBounds'
+import type { VisualAssetBundle } from '../assets/visualAssets'
 
 interface PerformanceStats {
   fps: number
@@ -217,6 +218,7 @@ export class AdvancedAquariumScene {
   private depthMidgroundMesh: THREE.Mesh | null = null
   private foregroundShadowMesh: THREE.Mesh | null = null
   private lightCanopyMesh: THREE.Mesh | null = null
+  private heroRimLightMesh: THREE.Mesh | null = null
   private heroGroundGlowMesh: THREE.Mesh | null = null
   private substrateDetailMesh: THREE.Mesh | null = null
   private substrateFrontDetailMesh: THREE.Mesh | null = null
@@ -225,7 +227,15 @@ export class AdvancedAquariumScene {
   
   private animationId: number | null = null
   public motionEnabled = true
+  private photoModeEnabled = false
+  private motionScale = 1
   public advancedEffectsEnabled = true
+  private readonly defaultCameraPosition = new THREE.Vector3(0, 1.2, 11.8)
+  private readonly photoModeCameraPosition = new THREE.Vector3(-1.9, 1.85, 9.6)
+  private readonly defaultControlsTarget = new THREE.Vector3(0, -0.9, 0.6)
+  private readonly photoModeControlsTarget = new THREE.Vector3(0.7, -0.35, 0.15)
+  private readonly tempPhotoModeTarget = new THREE.Vector3()
+  private readonly visualAssets?: VisualAssetBundle
   
   // Performance monitoring
   private stats: PerformanceStats = {
@@ -241,8 +251,9 @@ export class AdvancedAquariumScene {
     low: 30
   }
   
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, visualAssets?: VisualAssetBundle) {
     this.container = container
+    this.visualAssets = visualAssets
     this.scene = new THREE.Scene()
     this.clock = new THREE.Clock()
     
@@ -267,8 +278,8 @@ export class AdvancedAquariumScene {
       0.1,
       1000
     )
-    this.camera.position.set(0, 1.2, 11.8)
-    this.camera.lookAt(0, -0.9, 0.6)
+    this.camera.position.copy(this.defaultCameraPosition)
+    this.camera.lookAt(this.defaultControlsTarget)
   }
   
   private setupRenderer(container: HTMLElement): void {
@@ -305,7 +316,7 @@ export class AdvancedAquariumScene {
     this.controls.enableZoom = false
     this.controls.enablePan = false
     this.controls.autoRotate = false
-    this.controls.target.set(0, -0.9, 0.6)
+    this.controls.target.copy(this.defaultControlsTarget)
     this.controls.update()
   }
   
@@ -383,6 +394,21 @@ export class AdvancedAquariumScene {
     backdropMesh.name = 'tank-backdrop'
     backdropMesh.position.set(0, -1.1, -tankDepth / 2 + 0.08)
     this.tank.add(backdropMesh)
+
+    const backdropOverlayTexture = this.visualAssets?.textures['backdrop-depth'] ?? null
+    if (backdropOverlayTexture) {
+      const backdropOverlayMaterial = new THREE.MeshBasicMaterial({
+        map: backdropOverlayTexture,
+        transparent: true,
+        opacity: 0.44,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      })
+      const backdropOverlayMesh = new THREE.Mesh(backdropGeometry.clone(), backdropOverlayMaterial)
+      backdropOverlayMesh.name = 'tank-backdrop-overlay'
+      backdropOverlayMesh.position.set(0, -1.2, -tankDepth / 2 + 0.16)
+      this.tank.add(backdropOverlayMesh)
+    }
 
     this.createDepthLayers(tankWidth, tankHeight, tankDepth)
     this.createSubstrate(tankWidth, tankHeight, tankDepth)
@@ -595,6 +621,27 @@ export class AdvancedAquariumScene {
     lightCanopy.userData.baseY = tankHeight / 2 - 1.55
     this.lightCanopyMesh = lightCanopy
     this.tank.add(lightCanopy)
+
+    const heroRimLight = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.24, tankHeight * 0.48),
+      new THREE.MeshBasicMaterial({
+        map: this.createHeroRimLightTexture(),
+        color: new THREE.Color('#dffaff'),
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    heroRimLight.name = 'tank-hero-rim-light'
+    heroRimLight.position.set(1.86, 0.42, -tankDepth * 0.18)
+    heroRimLight.rotation.y = -0.24
+    heroRimLight.renderOrder = 2
+    heroRimLight.userData.baseOpacity = 0.2
+    heroRimLight.userData.baseX = 1.86
+    this.heroRimLightMesh = heroRimLight
+    this.tank.add(heroRimLight)
 
     const heroGroundGlow = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.44, tankDepth * 0.34),
@@ -969,6 +1016,9 @@ export class AdvancedAquariumScene {
     }
     if (!(this.lightCanopyMesh instanceof THREE.Mesh)) {
       this.lightCanopyMesh = null
+    }
+    if (!(this.heroRimLightMesh instanceof THREE.Mesh)) {
+      this.heroRimLightMesh = null
     }
     if (!(this.heroGroundGlowMesh instanceof THREE.Mesh)) {
       this.heroGroundGlowMesh = null
@@ -1439,6 +1489,64 @@ export class AdvancedAquariumScene {
       )
     })
     ctx.globalCompositeOperation = 'source-over'
+
+    texture.colorSpace = THREE.SRGBColorSpace
+    return texture
+  }
+
+  private createHeroRimLightTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.ClampToEdgeWrapping
+    texture.wrapT = THREE.ClampToEdgeWrapping
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.createRadialGradient !== 'function'
+    ) {
+      return texture
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const verticalCore = ctx.createLinearGradient(canvas.width * 0.14, 0, canvas.width * 0.78, canvas.height)
+    verticalCore.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    verticalCore.addColorStop(0.28, 'rgba(198, 243, 248, 0.12)')
+    verticalCore.addColorStop(0.52, 'rgba(238, 252, 255, 0.36)')
+    verticalCore.addColorStop(0.78, 'rgba(166, 228, 238, 0.18)')
+    verticalCore.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = verticalCore
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ;[
+      { x: 0.56, y: 0.26, radius: 106, alpha: 0.24 },
+      { x: 0.48, y: 0.54, radius: 138, alpha: 0.3 },
+      { x: 0.6, y: 0.78, radius: 92, alpha: 0.18 }
+    ].forEach((glow) => {
+      const gradient = ctx.createRadialGradient(
+        canvas.width * glow.x,
+        canvas.height * glow.y,
+        glow.radius * 0.12,
+        canvas.width * glow.x,
+        canvas.height * glow.y,
+        glow.radius
+      )
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${glow.alpha})`)
+      gradient.addColorStop(0.48, `rgba(191, 238, 245, ${glow.alpha * 0.45})`)
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = gradient
+      ctx.fillRect(
+        (canvas.width * glow.x) - glow.radius,
+        (canvas.height * glow.y) - glow.radius,
+        glow.radius * 2,
+        glow.radius * 2
+      )
+    })
 
     texture.colorSpace = THREE.SRGBColorSpace
     return texture
@@ -2132,12 +2240,12 @@ export class AdvancedAquariumScene {
   
   private createAquascaping(): void {
     const tankBounds = createOpenWaterBounds()
-    this.aquascaping = new AquascapingSystem(this.scene, tankBounds)
+    this.aquascaping = new AquascapingSystem(this.scene, tankBounds, this.visualAssets)
   }
-
+  
   private createAdvancedFishSystem(): void {
     const tankBounds = createOpenWaterBounds()
-    this.fishSystem = new DetailedFishSystem(this.scene, tankBounds)
+    this.fishSystem = new DetailedFishSystem(this.scene, tankBounds, this.visualAssets)
     if (this.pendingFishGroups) {
       this.fishSystem.setFishGroups(this.pendingFishGroups)
       this.pendingFishGroups = null
@@ -2173,32 +2281,41 @@ export class AdvancedAquariumScene {
     // Reset render info
     this.renderer.info.reset()
     
+    const desiredCameraPosition = this.photoModeEnabled
+      ? this.photoModeCameraPosition
+      : this.defaultCameraPosition
+    const desiredCameraTarget = this.photoModeEnabled
+      ? this.resolvePhotoModeTarget()
+      : this.defaultControlsTarget
+    const frameLerp = this.photoModeEnabled ? 0.06 : 0.1
+    this.camera.position.lerp(desiredCameraPosition, frameLerp)
+    this.controls.target.lerp(desiredCameraTarget, frameLerp)
     this.controls.update()
     
     if (this.motionEnabled) {
       if (this.fishSystem) {
-        this.fishSystem.update(deltaTime, elapsedTime)
+        this.fishSystem.update(deltaTime * this.motionScale, elapsedTime * this.motionScale)
       }
       this.syncFishVisibleStat()
       
       if (this.particleSystem) {
-        this.particleSystem.update(elapsedTime)
+        this.particleSystem.update(elapsedTime * this.motionScale)
       }
 
-      this.updateTankWaterMotion(elapsedTime)
+      this.updateTankWaterMotion(elapsedTime * this.motionScale)
       
       if (this.aquascaping) {
-        this.aquascaping.update(elapsedTime)
+        this.aquascaping.update(elapsedTime * this.motionScale)
       }
       
       if (this.spiralDecorations) {
-        this.spiralDecorations.update(deltaTime)
+        this.spiralDecorations.update(deltaTime * this.motionScale)
       }
     }
     
     // Render with or without post-processing
     if (this.godRaysEffect && this.advancedEffectsEnabled) {
-      this.godRaysEffect.update(elapsedTime)
+      this.godRaysEffect.update(elapsedTime * this.motionScale)
       this.godRaysEffect.render()
     } else {
       this.renderer.render(this.scene, this.camera)
@@ -2206,6 +2323,26 @@ export class AdvancedAquariumScene {
     
     // Update performance stats
     this.updatePerformanceStats(startTime)
+  }
+
+  private resolvePhotoModeTarget(): THREE.Vector3 {
+    this.tempPhotoModeTarget.copy(this.photoModeControlsTarget)
+
+    const heroFocusPoint = this.fishSystem?.getHeroFocusPoint?.()
+    if (!heroFocusPoint) {
+      return this.tempPhotoModeTarget
+    }
+
+    this.tempPhotoModeTarget.lerp(
+      new THREE.Vector3(
+        heroFocusPoint.x,
+        heroFocusPoint.y + 0.18,
+        heroFocusPoint.z - 0.45
+      ),
+      0.45
+    )
+
+    return this.tempPhotoModeTarget
   }
 
   private updateTankWaterMotion(elapsedTime: number): void {
@@ -2271,6 +2408,14 @@ export class AdvancedAquariumScene {
       const baseOpacity = (this.lightCanopyMesh.userData.baseOpacity as number | undefined) ?? material.opacity
       this.lightCanopyMesh.position.y = baseY + Math.sin(elapsedTime * 0.22) * 0.06
       material.opacity = baseOpacity * (0.94 + Math.sin(elapsedTime * 0.34) * 0.06)
+    }
+
+    if (this.heroRimLightMesh) {
+      const material = this.heroRimLightMesh.material as THREE.MeshBasicMaterial
+      const baseX = (this.heroRimLightMesh.userData.baseX as number | undefined) ?? 1.86
+      const baseOpacity = (this.heroRimLightMesh.userData.baseOpacity as number | undefined) ?? material.opacity
+      this.heroRimLightMesh.position.x = baseX + Math.sin((elapsedTime * 0.26) + 0.8) * 0.04
+      material.opacity = baseOpacity * (0.92 + Math.sin((elapsedTime * 0.38) + 0.2) * 0.08)
     }
 
     if (this.heroGroundGlowMesh) {
@@ -2362,6 +2507,13 @@ export class AdvancedAquariumScene {
     if (this.aquascaping) {
       this.aquascaping.setMotionEnabled(enabled)
     }
+  }
+
+  public setPhotoMode(enabled: boolean): void {
+    this.photoModeEnabled = enabled
+    this.motionScale = enabled ? 0.72 : 1
+    this.controls.autoRotate = enabled
+    this.controls.autoRotateSpeed = enabled ? 0.45 : 1
   }
   
   public setAdvancedEffects(enabled: boolean): void {
@@ -2555,6 +2707,14 @@ export class AdvancedAquariumScene {
       const baseOpacity = (this.lightCanopyMesh.userData.baseOpacity as number | undefined) ?? 0.18
       this.lightCanopyMesh.visible = resolvedQuality !== 'low'
       material.opacity = resolvedQuality === 'high' ? baseOpacity : resolvedQuality === 'medium' ? baseOpacity * 0.74 : 0
+      material.needsUpdate = true
+    }
+
+    if (this.heroRimLightMesh) {
+      const material = this.heroRimLightMesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = (this.heroRimLightMesh.userData.baseOpacity as number | undefined) ?? 0.2
+      this.heroRimLightMesh.visible = resolvedQuality !== 'low'
+      material.opacity = resolvedQuality === 'high' ? baseOpacity : resolvedQuality === 'medium' ? baseOpacity * 0.72 : 0
       material.needsUpdate = true
     }
 

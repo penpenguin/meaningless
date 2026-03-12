@@ -143,4 +143,25 @@ describe('createGameStore', () => {
 
     store.destroy()
   })
+
+  it('toggles photo mode and hides the HUD while it is active', () => {
+    const store = createGameStore({
+      initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
+    })
+
+    expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(false)
+    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
+
+    store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled: true } })
+
+    expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(true)
+    expect(store.getState().game.profile.preferences.hudVisible).toBe(false)
+
+    store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled: false } })
+
+    expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(false)
+    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
+
+    store.destroy()
+  })
 })

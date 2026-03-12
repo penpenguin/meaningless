@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { VisualAssetBundle } from '../assets/visualAssets'
 
 type PlantLayer = 'foreground' | 'background' | 'midground'
 type PlantType = 'ribbon-seaweed' | 'sword-leaf' | 'fan-leaf'
@@ -19,9 +20,11 @@ export class AquascapingSystem {
   private plants: THREE.Group[] = []
   private decorations: THREE.Group[] = []
   private time = 0
+  private visualAssets: VisualAssetBundle | null
   
-  constructor(scene: THREE.Scene, bounds: THREE.Box3) {
+  constructor(scene: THREE.Scene, bounds: THREE.Box3, visualAssets: VisualAssetBundle | null = null) {
     this.group = new THREE.Group()
+    this.visualAssets = visualAssets
     scene.add(this.group)
     
     this.createSeaweed(bounds)
@@ -30,6 +33,8 @@ export class AquascapingSystem {
     this.createHeroDriftwood(bounds)
     this.createHeroRockRidge(bounds)
     this.createHeroCanopy(bounds)
+    this.createHardscapeTransitionDetails(bounds)
+    this.createHardscapeShadow(bounds)
     this.createSandDetails(bounds)
   }
   
@@ -340,6 +345,10 @@ export class AquascapingSystem {
     return material
   }
 
+  private getVisualTexture(id: string): THREE.Texture | null {
+    return this.visualAssets?.textures[id] ?? null
+  }
+
   private createLeafMaterial(
     hue: number,
     layer: PlantLayer,
@@ -352,6 +361,8 @@ export class AquascapingSystem {
     )
 
     const material = new THREE.MeshPhysicalMaterial({
+      map: this.getVisualTexture('leaf-diffuse'),
+      alphaMap: this.getVisualTexture('leaf-alpha'),
       color,
       metalness: 0,
       roughness: plantType === 'fan-leaf' ? 0.54 : 0.68,
@@ -430,6 +441,84 @@ export class AquascapingSystem {
     })
 
     ;[
+      {
+        radius: 0.04,
+        points: [
+          new THREE.Vector3(0.22, 1.88, 0.34),
+          new THREE.Vector3(0.86, 2.36, 0.54),
+          new THREE.Vector3(1.24, 2.72, 0.98)
+        ]
+      },
+      {
+        radius: 0.032,
+        points: [
+          new THREE.Vector3(0.62, 1.76, -0.22),
+          new THREE.Vector3(1.18, 2.12, -0.58),
+          new THREE.Vector3(1.72, 2.26, -1.04)
+        ]
+      },
+      {
+        radius: 0.028,
+        points: [
+          new THREE.Vector3(-0.48, 1.62, 0.12),
+          new THREE.Vector3(-0.06, 2.12, 0.22),
+          new THREE.Vector3(0.42, 2.54, 0.3)
+        ]
+      }
+    ].forEach((definition) => {
+      const curve = new THREE.CatmullRomCurve3(definition.points)
+      const branchlet = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 20, definition.radius, 6, false),
+        branchMaterial
+      )
+      branchlet.castShadow = true
+      branchlet.receiveShadow = true
+      branchlet.userData = {
+        role: 'driftwood-branchlet'
+      }
+      driftwoodGroup.add(branchlet)
+    })
+
+    ;[
+      {
+        radius: 0.022,
+        points: [
+          new THREE.Vector3(-1.32, 0.66, 0.34),
+          new THREE.Vector3(-1.18, 0.12, 0.18),
+          new THREE.Vector3(-1.06, -0.48, 0.08)
+        ]
+      },
+      {
+        radius: 0.018,
+        points: [
+          new THREE.Vector3(-0.24, 1.02, 0.28),
+          new THREE.Vector3(-0.16, 0.32, 0.12),
+          new THREE.Vector3(-0.08, -0.4, 0.06)
+        ]
+      },
+      {
+        radius: 0.016,
+        points: [
+          new THREE.Vector3(0.94, 1.24, -0.12),
+          new THREE.Vector3(0.98, 0.42, -0.18),
+          new THREE.Vector3(1.02, -0.34, -0.24)
+        ]
+      }
+    ].forEach((definition) => {
+      const curve = new THREE.CatmullRomCurve3(definition.points)
+      const root = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 18, definition.radius, 5, false),
+        branchMaterial
+      )
+      root.castShadow = true
+      root.receiveShadow = true
+      root.userData = {
+        role: 'driftwood-root'
+      }
+      driftwoodGroup.add(root)
+    })
+
+    ;[
       { offset: new THREE.Vector3(-0.25, 1.15, 0.32), hue: 0.29 },
       { offset: new THREE.Vector3(0.72, 1.95, 0.58), hue: 0.33 },
       { offset: new THREE.Vector3(1.02, 1.55, -0.42), hue: 0.26 }
@@ -487,12 +576,7 @@ export class AquascapingSystem {
     ].forEach((definition) => {
       const rock = new THREE.Mesh(
         definition.geometry,
-        new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color(definition.color),
-          roughness: 0.92,
-          metalness: 0.04,
-          clearcoat: 0.08
-        })
+        this.createRockMaterial(definition.color)
       )
       rock.position.copy(definition.position)
       rock.rotation.copy(definition.rotation)
@@ -503,6 +587,69 @@ export class AquascapingSystem {
         role: 'ridge-rock'
       }
       ridgeGroup.add(rock)
+    })
+
+    ;[
+      {
+        position: new THREE.Vector3(-0.36, 0.54, 0.24),
+        rotation: new THREE.Euler(-0.18, 0.12, 0.42),
+        scale: new THREE.Vector3(1.24, 0.08, 0.38),
+        color: '#8d8473'
+      },
+      {
+        position: new THREE.Vector3(0.58, 0.64, -0.12),
+        rotation: new THREE.Euler(0.12, -0.34, 0.24),
+        scale: new THREE.Vector3(1.42, 0.07, 0.32),
+        color: '#70695e'
+      },
+      {
+        position: new THREE.Vector3(1.42, 0.46, -0.48),
+        rotation: new THREE.Euler(0.22, 0.28, 0.36),
+        scale: new THREE.Vector3(1.02, 0.08, 0.28),
+        color: '#9b927f'
+      }
+    ].forEach((definition) => {
+      const slate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.84, 0.16, 0.34),
+        this.createRockMaterial(definition.color)
+      )
+      slate.position.copy(definition.position)
+      slate.rotation.copy(definition.rotation)
+      slate.scale.copy(definition.scale)
+      slate.castShadow = true
+      slate.receiveShadow = true
+      slate.userData = {
+        role: 'ridge-slate'
+      }
+      ridgeGroup.add(slate)
+    })
+
+    ;[
+      { position: new THREE.Vector3(-1.36, -0.06, 0.74), scale: 0.24, color: '#7a7264' },
+      { position: new THREE.Vector3(-0.54, -0.12, 0.88), scale: 0.18, color: '#93886f' },
+      { position: new THREE.Vector3(0.38, -0.08, 0.54), scale: 0.22, color: '#665f55' },
+      { position: new THREE.Vector3(1.04, -0.1, -0.68), scale: 0.2, color: '#847a67' },
+      { position: new THREE.Vector3(1.56, -0.06, -0.12), scale: 0.16, color: '#a09681' }
+    ].forEach((definition, index) => {
+      const rubbleGeometry = index % 2 === 0
+        ? new THREE.DodecahedronGeometry(definition.scale, 0)
+        : new THREE.IcosahedronGeometry(definition.scale, 0)
+      const rubble = new THREE.Mesh(
+        rubbleGeometry,
+        this.createRockMaterial(definition.color)
+      )
+      rubble.position.copy(definition.position)
+      rubble.rotation.set(
+        0.14 + index * 0.05,
+        -0.22 + index * 0.08,
+        0.18 - index * 0.03
+      )
+      rubble.castShadow = true
+      rubble.receiveShadow = true
+      rubble.userData = {
+        role: 'ridge-rubble'
+      }
+      ridgeGroup.add(rubble)
     })
 
     this.decorations.push(ridgeGroup)
@@ -606,9 +753,22 @@ export class AquascapingSystem {
 
   private createDriftwoodMaterial(): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
+      map: this.getVisualTexture('driftwood-diffuse'),
       color: new THREE.Color('#6f5641'),
+      roughnessMap: this.getVisualTexture('driftwood-roughness'),
       roughness: 0.96,
       metalness: 0.03
+    })
+  }
+
+  private createRockMaterial(color: string): THREE.MeshPhysicalMaterial {
+    return new THREE.MeshPhysicalMaterial({
+      map: this.getVisualTexture('rock-diffuse'),
+      roughnessMap: this.getVisualTexture('rock-roughness'),
+      color: new THREE.Color(color),
+      metalness: 0.04,
+      roughness: 0.9,
+      clearcoat: 0.08
     })
   }
   
@@ -703,16 +863,13 @@ export class AquascapingSystem {
       }
       geometry.computeVertexNormals()
       
-      const material = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color().setHSL(
-          0.1 + Math.random() * 0.1, // Brown-gray hues
+      const material = this.createRockMaterial(
+        new THREE.Color().setHSL(
+          0.1 + Math.random() * 0.1,
           0.2 + Math.random() * 0.3,
           0.2 + Math.random() * 0.3
-        ),
-        metalness: 0.1,
-        roughness: 0.9,
-        bumpScale: 0.5
-      })
+        ).getStyle()
+      )
       
       const rock = new THREE.Mesh(geometry, material)
       
@@ -752,7 +909,104 @@ export class AquascapingSystem {
       this.group.add(rock)
     }
   }
-  
+
+  private createHardscapeShadow(bounds: THREE.Box3): void {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')
+    let shadowTexture: THREE.Texture | null = null
+
+    if (ctx && typeof ctx.createRadialGradient === 'function') {
+      const gradient = ctx.createRadialGradient(128, 128, 18, 128, 128, 112)
+      gradient.addColorStop(0, 'rgba(7, 17, 20, 0.64)')
+      gradient.addColorStop(0.52, 'rgba(7, 17, 20, 0.2)')
+      gradient.addColorStop(1, 'rgba(7, 17, 20, 0)')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      shadowTexture = new THREE.CanvasTexture(canvas)
+      shadowTexture.colorSpace = THREE.SRGBColorSpace
+    }
+
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(5.8, 3.8),
+      new THREE.MeshBasicMaterial({
+        map: shadowTexture,
+        color: new THREE.Color('#122329'),
+        transparent: true,
+        opacity: 0.34,
+        depthWrite: false
+      })
+    )
+    shadow.rotation.x = -Math.PI / 2
+    shadow.position.set(0.94, bounds.min.y + 0.02, -0.16)
+    shadow.userData = {
+      role: 'hero-hardscape-shadow'
+    }
+    this.group.add(shadow)
+  }
+
+  private createHardscapeTransitionDetails(bounds: THREE.Box3): void {
+    const size = new THREE.Vector3()
+    bounds.getSize(size)
+    const center = new THREE.Vector3()
+    bounds.getCenter(center)
+
+    const berm = new THREE.Mesh(
+      new THREE.SphereGeometry(1.08, 28, 18),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color('#9f8b70'),
+        roughness: 0.97,
+        metalness: 0,
+        transparent: true,
+        opacity: 0.94
+      })
+    )
+    berm.scale.set(2.2, 0.38, 1.18)
+    berm.position.set(
+      center.x + size.x * 0.12,
+      bounds.min.y + 0.26,
+      center.z - size.z * 0.04
+    )
+    berm.receiveShadow = true
+    berm.userData = {
+      role: 'hardscape-transition-berm'
+    }
+    this.group.add(berm)
+
+    ;[
+      { offset: new THREE.Vector3(-1.48, 0.02, 0.92), scale: 0.18, color: '#8a7c68' },
+      { offset: new THREE.Vector3(-0.86, 0.05, 0.62), scale: 0.14, color: '#9a8b75' },
+      { offset: new THREE.Vector3(-0.08, 0.03, 0.46), scale: 0.16, color: '#756959' },
+      { offset: new THREE.Vector3(0.74, 0.04, 0.1), scale: 0.13, color: '#a09076' },
+      { offset: new THREE.Vector3(1.34, 0.02, -0.34), scale: 0.17, color: '#6c6255' },
+      { offset: new THREE.Vector3(1.82, 0.03, -0.8), scale: 0.12, color: '#91826e' }
+    ].forEach((definition, index) => {
+      const pebble = new THREE.Mesh(
+        index % 2 === 0
+          ? new THREE.DodecahedronGeometry(definition.scale, 0)
+          : new THREE.IcosahedronGeometry(definition.scale, 0),
+        this.createRockMaterial(definition.color)
+      )
+      pebble.position.set(
+        berm.position.x + definition.offset.x,
+        bounds.min.y + 0.08 + definition.offset.y,
+        berm.position.z + definition.offset.z
+      )
+      pebble.rotation.set(
+        0.14 + index * 0.05,
+        -0.3 + index * 0.08,
+        0.08 + index * 0.04
+      )
+      pebble.castShadow = true
+      pebble.receiveShadow = true
+      pebble.userData = {
+        role: 'hardscape-transition-pebble'
+      }
+      this.group.add(pebble)
+    })
+  }
+
   private createSandDetails(bounds: THREE.Box3): void {
     // Sand ripples
     const rippleGeometry = new THREE.PlaneGeometry(1, 0.1, 10, 1)

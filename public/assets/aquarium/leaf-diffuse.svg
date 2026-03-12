@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a5c3a"/>
+      <stop offset="55%" stop-color="#4ea66b"/>
+      <stop offset="100%" stop-color="#d0f1a7"/>
+    </linearGradient>
+    <linearGradient id="vein" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f3f8cf" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#6fb276" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="48" fill="url(#bg)"/>
+  <path d="M88 420C148 318 180 222 194 120C262 146 332 242 392 414C330 452 232 470 88 420Z" fill="#296e47" opacity="0.55"/>
+  <path d="M132 420C194 330 226 218 240 92C314 124 364 222 394 412C322 448 236 454 132 420Z" fill="url(#vein)"/>
+  <path d="M244 102C248 206 220 316 170 418" stroke="#e4efc4" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+  <path d="M230 174C268 190 308 224 344 284" stroke="#dcedb2" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+  <path d="M216 242C258 266 294 308 328 364" stroke="#dcedb2" stroke-width="7" stroke-linecap="round" opacity="0.35"/>
+</svg>

@@ -133,9 +133,13 @@ describe('AdvancedAquariumScene camera', () => {
     const internals = instance as unknown as {
       camera: THREE.PerspectiveCamera
       getViewportSize: () => { width: number; height: number }
+      defaultCameraPosition: THREE.Vector3
+      defaultControlsTarget: THREE.Vector3
     }
 
     internals.getViewportSize = () => ({ width: 1600, height: 900 })
+    internals.defaultCameraPosition = new THREE.Vector3(0, 1.2, 11.8)
+    internals.defaultControlsTarget = new THREE.Vector3(0, -0.9, 0.6)
 
     const setupCamera = (AdvancedAquariumScene.prototype as unknown as {
       setupCamera: () => void
@@ -149,6 +153,65 @@ describe('AdvancedAquariumScene camera', () => {
     expect(internals.camera.position.z).toBeCloseTo(11.8, 1)
     expect(internals.camera.position.y).toBeCloseTo(1.2, 1)
     expect(direction.y).toBeLessThan(-0.14)
+  })
+})
+
+describe('AdvancedAquariumScene photo mode', () => {
+  it('enables slower showcase motion and auto-rotate while active', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      controls: { autoRotate: boolean; autoRotateSpeed: number }
+      motionScale: number
+      photoModeEnabled: boolean
+    }
+
+    internals.controls = {
+      autoRotate: false,
+      autoRotateSpeed: 1
+    }
+    internals.motionScale = 1
+    internals.photoModeEnabled = false
+
+    const setPhotoMode = (AdvancedAquariumScene.prototype as unknown as {
+      setPhotoMode: (enabled: boolean) => void
+    }).setPhotoMode.bind(instance)
+
+    setPhotoMode(true)
+    expect(internals.photoModeEnabled).toBe(true)
+    expect(internals.motionScale).toBeCloseTo(0.72)
+    expect(internals.controls.autoRotate).toBe(true)
+    expect(internals.controls.autoRotateSpeed).toBeCloseTo(0.45)
+
+    setPhotoMode(false)
+    expect(internals.photoModeEnabled).toBe(false)
+    expect(internals.motionScale).toBe(1)
+    expect(internals.controls.autoRotate).toBe(false)
+  })
+
+  it('pulls the camera target toward the hero fish focus point while photo mode is active', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      photoModeControlsTarget: THREE.Vector3
+      tempPhotoModeTarget: THREE.Vector3
+      fishSystem: {
+        getHeroFocusPoint: () => THREE.Vector3
+      }
+    }
+
+    internals.photoModeControlsTarget = new THREE.Vector3(0.7, -0.35, 0.15)
+    internals.tempPhotoModeTarget = new THREE.Vector3()
+    internals.fishSystem = {
+      getHeroFocusPoint: () => new THREE.Vector3(2.4, -0.1, 2.7)
+    }
+
+    const resolvePhotoModeTarget = (AdvancedAquariumScene.prototype as unknown as {
+      resolvePhotoModeTarget: () => THREE.Vector3
+    }).resolvePhotoModeTarget.bind(instance)
+
+    const target = resolvePhotoModeTarget()
+
+    expect(target.x).toBeGreaterThan(0.7)
+    expect(target.z).toBeGreaterThan(0.15)
   })
 })
 
@@ -176,6 +239,37 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(internals.createSubstrate).toHaveBeenCalledWith(14, 14, 10)
     expect(backdrop).toBeDefined()
     expect(backdrop?.position.z).toBeLessThan(-4.7)
+  })
+
+  it('adds an asset-backed backdrop overlay when premium visual assets are available', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const overlayTexture = new THREE.Texture()
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+      visualAssets: { textures: Record<string, THREE.Texture | null> } | undefined
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.visualAssets = {
+      textures: {
+        'backdrop-depth': overlayTexture
+      }
+    }
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const overlay = internals.tank.children.find((child) => child.name === 'tank-backdrop-overlay') as THREE.Mesh | undefined
+
+    expect(overlay).toBeDefined()
+    expect((overlay?.material as THREE.MeshBasicMaterial | undefined)?.map).toBe(overlayTexture)
   })
 
   it('builds visible glass and water layers around the tank volume', () => {
@@ -362,6 +456,31 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(lightCanopy?.position.y).toBeGreaterThan(4.5)
     expect(heroGroundGlow?.position.y).toBeLessThan(-6)
     expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
+  })
+
+  it('adds a rear hero rim light panel to separate the hardscape silhouette from the backdrop', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
+
+    expect(heroRimLight).toBeDefined()
+    expect(heroRimLight?.position.z).toBeLessThan(-1.2)
+    expect((heroRimLight?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 })
 
@@ -625,6 +744,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
     const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
 
     expect(internals.renderer.shadowMap.enabled).toBe(false)
@@ -638,6 +758,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(midground?.visible).toBe(false)
     expect(foreground?.visible).toBe(false)
     expect(lightCanopy?.visible).toBe(false)
+    expect(heroRimLight?.visible).toBe(false)
     expect(heroGroundGlow?.visible).toBe(false)
   })
 
@@ -684,11 +805,13 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
     const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
 
     expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(false)
     expect(lightCanopy?.visible).toBe(true)
+    expect(heroRimLight?.visible).toBe(true)
     expect(heroGroundGlow?.visible).toBe(false)
   })
 

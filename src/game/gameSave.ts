@@ -31,7 +31,8 @@ const createDefaultProfile = () => ({
     soundEnabled: true,
     motionEnabled: true,
     quality: 'high' as const,
-    hudVisible: true
+    hudVisible: true,
+    photoModeEnabled: false
   }
 })
 
@@ -135,7 +136,8 @@ export const migrateLegacySave = (options: {
             ? legacyAutoSaveSettings.motionEnabled
             : fallbackState.profile.preferences.motionEnabled),
         quality: migratedSettings?.quality ?? fallbackState.profile.preferences.quality,
-        hudVisible: fallbackState.profile.preferences.hudVisible
+        hudVisible: fallbackState.profile.preferences.hudVisible,
+        photoModeEnabled: fallbackState.profile.preferences.photoModeEnabled
       },
       stats: {
         ...fallbackState.profile.stats,
@@ -264,7 +266,10 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
           : fallback.profile.preferences.quality,
         hudVisible: typeof preferencesSource.hudVisible === 'boolean'
           ? preferencesSource.hudVisible
-          : fallback.profile.preferences.hudVisible
+          : fallback.profile.preferences.hudVisible,
+        photoModeEnabled: typeof preferencesSource.photoModeEnabled === 'boolean'
+          ? preferencesSource.photoModeEnabled
+          : fallback.profile.preferences.photoModeEnabled
       }
     },
     tanks,

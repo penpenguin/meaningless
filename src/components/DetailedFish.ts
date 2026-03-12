@@ -3,6 +3,7 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
 import { BoidsSystem } from '../utils/Boids'
 import type { FishGroup, SchoolMood, Tuning } from '../types/aquarium'
 import { getFishContent, getFishContentList } from '../content/registry'
+import type { VisualAssetBundle } from '../assets/visualAssets'
 
 interface FishVariant {
   name: string
@@ -10,6 +11,7 @@ interface FishVariant {
   secondaryColor: THREE.Color
   scale: number
   speed: number
+  patternTextureId?: string
   silhouette?: {
     bodyLength?: number
     bodyHeight?: number
@@ -52,6 +54,7 @@ const DEFAULT_BEHAVIOR_PROFILE: BehaviorProfile = {
 export class DetailedFishSystem {
   private group: THREE.Group
   private instancedMeshes: THREE.InstancedMesh[] = []
+  private heroFishMeshes: THREE.Mesh[] = []
   private boids: BoidsSystem
   private fishCount: number
   private bounds: THREE.Box3
@@ -79,9 +82,18 @@ export class DetailedFishSystem {
   private tempBoundsSize = new THREE.Vector3()
   private behaviorProfile: BehaviorProfile = { ...DEFAULT_BEHAVIOR_PROFILE }
   private currentQuality: 'low' | 'medium' | 'high' = 'high'
+  private visualAssets: VisualAssetBundle | null
+  private heroAssignments = new Map<number, {
+    mesh: THREE.Mesh
+    lateralOffset: number
+    verticalOffset: number
+    depthOffset: number
+    scaleMultiplier: number
+  }>()
   
-  constructor(scene: THREE.Scene, bounds: THREE.Box3) {
+  constructor(scene: THREE.Scene, bounds: THREE.Box3, visualAssets: VisualAssetBundle | null = null) {
     this.group = new THREE.Group()
+    this.visualAssets = visualAssets
     scene.add(this.group)
 
     this.bounds = bounds
@@ -142,6 +154,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xffd700),
         scale: 0.5,
         speed: 1.0,
+        patternTextureId: 'fish-tropical',
         silhouette: {
           bodyLength: 1.45,
           bodyHeight: 0.38,
@@ -162,6 +175,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0x4169e1),
         scale: 0.65,
         speed: 0.8,
+        patternTextureId: 'fish-angelfish',
         silhouette: {
           bodyLength: 1.06,
           bodyHeight: 0.62,
@@ -182,6 +196,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff1493),
         scale: 0.35,
         speed: 1.5,
+        patternTextureId: 'fish-neon',
         silhouette: {
           bodyLength: 1.82,
           bodyHeight: 0.18,
@@ -202,6 +217,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff8c00),
         scale: 0.55,
         speed: 0.9,
+        patternTextureId: 'fish-goldfish',
         silhouette: {
           bodyLength: 1.26,
           bodyHeight: 0.48,
@@ -328,6 +344,80 @@ export class DetailedFishSystem {
     })
 
     this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)
+    this.createHeroFishMeshes(counts)
+  }
+
+  private createHeroFishMeshes(counts: number[]): void {
+    this.heroAssignments.clear()
+
+    const candidates: Array<{
+      boidIndex: number
+      variantIndex: number
+      priority: number
+      slotIndex: number
+    }> = []
+
+    let boidStartIndex = 0
+    counts.forEach((count, variantIndex) => {
+      const normalizedCount = Math.max(0, count ?? 0)
+      if (normalizedCount <= 0) {
+        return
+      }
+
+      const heroSlots = Math.min(normalizedCount, normalizedCount >= 6 ? 2 : 1)
+      for (let slotIndex = 0; slotIndex < heroSlots; slotIndex++) {
+        candidates.push({
+          boidIndex: boidStartIndex + Math.min(slotIndex * 2, normalizedCount - 1),
+          variantIndex,
+          priority: normalizedCount - (slotIndex * 1.25),
+          slotIndex
+        })
+      }
+
+      boidStartIndex += normalizedCount
+    })
+
+    const placements = [
+      { lateralOffset: -1.25, verticalOffset: 0.12, depthOffset: 1.75, scaleMultiplier: 2.4 },
+      { lateralOffset: 1.05, verticalOffset: -0.08, depthOffset: 1.42, scaleMultiplier: 2.1 },
+      { lateralOffset: 0.18, verticalOffset: 0.32, depthOffset: 1.92, scaleMultiplier: 1.9 }
+    ]
+
+    candidates
+      .sort((left, right) => right.priority - left.priority)
+      .slice(0, placements.length)
+      .forEach((candidate, index) => {
+        const variant = this.variants[candidate.variantIndex]
+        if (!variant) return
+
+        const geometry = this.createDetailedFishGeometry(variant)
+        const material = this.createFishMaterial(variant).clone()
+        material.envMapIntensity = Math.min(1.2, (material.envMapIntensity ?? 0.5) + 0.25)
+        material.clearcoat = Math.min(1, (material.clearcoat ?? 0.8) + 0.12)
+        material.emissive = variant.secondaryColor.clone().multiplyScalar(0.08)
+        material.emissiveIntensity = 0.65
+
+        const heroMesh = new THREE.Mesh(geometry, material)
+        heroMesh.castShadow = true
+        heroMesh.receiveShadow = true
+        heroMesh.visible = this.currentQuality === 'high'
+        heroMesh.userData = {
+          role: 'hero-fish',
+          variantIndex: candidate.variantIndex
+        }
+
+        const placement = placements[index] ?? placements[placements.length - 1]
+        const isSlenderVariant = variant.name === 'Neon'
+        this.heroAssignments.set(candidate.boidIndex, {
+          mesh: heroMesh,
+          lateralOffset: placement.lateralOffset,
+          verticalOffset: placement.verticalOffset,
+          depthOffset: placement.depthOffset,
+          scaleMultiplier: placement.scaleMultiplier * (isSlenderVariant ? 1.28 : 1)
+        })
+        this.heroFishMeshes.push(heroMesh)
+        this.group.add(heroMesh)
+      })
   }
 
   private resolveBehaviorProfile(groups: FishGroup[]): BehaviorProfile {
@@ -448,12 +538,19 @@ export class DetailedFishSystem {
     const disposed = new Set<THREE.Texture>()
     textures.forEach((texture) => {
       if (!texture || disposed.has(texture)) return
+      if ((texture.userData as { sharedAsset?: boolean } | undefined)?.sharedAsset) return
       texture.dispose()
       disposed.add(texture)
     })
   }
 
+  private getVisualTexture(id?: string): THREE.Texture | null {
+    if (!id) return null
+    return this.visualAssets?.textures[id] ?? null
+  }
+
   private clearMeshes(): void {
+    const heroFishMeshes = this.heroFishMeshes ?? []
     this.instancedMeshes.forEach((mesh) => {
       this.group.remove(mesh)
       mesh.geometry.dispose()
@@ -468,6 +565,22 @@ export class DetailedFishSystem {
       }
     })
     this.instancedMeshes = []
+
+    heroFishMeshes.forEach((mesh) => {
+      this.group.remove(mesh)
+      mesh.geometry.dispose()
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((material) => {
+          this.disposeMaterialTextures(material)
+          material.dispose()
+        })
+      } else if (mesh.material instanceof THREE.Material) {
+        this.disposeMaterialTextures(mesh.material)
+        mesh.material.dispose()
+      }
+    })
+    this.heroFishMeshes = []
+    this.heroAssignments?.clear()
   }
 
   private mapGroupsToVariantCounts(groups: FishGroup[]): number[] {
@@ -644,6 +757,22 @@ export class DetailedFishSystem {
   }
   
   private createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
+    const assetTexture = this.getVisualTexture(variant.patternTextureId)
+    if (assetTexture) {
+      return new THREE.MeshPhysicalMaterial({
+        map: assetTexture,
+        color: 0xffffff,
+        metalness: 0.04,
+        roughness: 0.28,
+        clearcoat: 0.82,
+        clearcoatRoughness: 0.18,
+        reflectivity: 0.9,
+        envMapIntensity: 0.7,
+        transparent: false,
+        side: THREE.FrontSide
+      })
+    }
+
     // 魚のテクスチャを手続き的に生成
     const canvas = document.createElement('canvas')
     canvas.width = 256
@@ -762,6 +891,7 @@ export class DetailedFishSystem {
     let boidIndex = 0
     
     this.instancedMeshes.forEach((mesh, meshIndex) => {
+      const heroAssignments = this.heroAssignments ?? new Map()
       const variantIndex =
         typeof mesh.userData.variantIndex === 'number' ? mesh.userData.variantIndex : meshIndex
       const variant = this.variants[variantIndex] ?? this.variants[meshIndex]
@@ -843,6 +973,18 @@ export class DetailedFishSystem {
         const breathing = Math.sin(elapsedTime * breathingSpeed + swimPhase) * 0.015 + 1.0
         const scale = variant.scale * breathing * (0.98 + Math.sin(randomOffset * 7) * 0.04)
         this.dummy.scale.set(scale, scale, scale)
+
+        const heroAssignment = heroAssignments.get(boidIndex)
+        if (heroAssignment && heroAssignment.mesh.visible) {
+          heroAssignment.mesh.position.copy(this.dummy.position)
+          heroAssignment.mesh.position.x += heroAssignment.lateralOffset
+          heroAssignment.mesh.position.y += heroAssignment.verticalOffset
+          heroAssignment.mesh.position.z += heroAssignment.depthOffset
+          heroAssignment.mesh.rotation.copy(this.dummy.rotation)
+          heroAssignment.mesh.scale.setScalar(scale * heroAssignment.scaleMultiplier)
+          heroAssignment.mesh.updateMatrixWorld()
+          this.dummy.scale.setScalar(0.0001)
+        }
         
         // 突然の停止・方向転換を減らして直線性を維持
         if (Math.random() < 0.0002 + (behavior.turnBias * 0.0025)) {
@@ -862,6 +1004,12 @@ export class DetailedFishSystem {
   getVisibleFishCount(): number {
     return this.instancedMeshes.reduce((count, mesh) => count + mesh.count, 0)
   }
+
+  getHeroFocusPoint(): THREE.Vector3 | null {
+    const heroFishMeshes = this.heroFishMeshes ?? []
+    const visibleHero = heroFishMeshes.find((mesh) => mesh.visible)
+    return visibleHero ? visibleHero.position.clone() : null
+  }
   
   setMotionEnabled(enabled: boolean): void {
     if (!enabled) {
@@ -874,6 +1022,7 @@ export class DetailedFishSystem {
 
   setQuality(quality: 'low' | 'medium' | 'high'): void {
     this.currentQuality = quality
+    const heroFishMeshes = this.heroFishMeshes ?? []
     const qualityScale = quality === 'low' ? 0.5 : quality === 'medium' ? 0.75 : 1
     if (this.baseInstanceCounts.length === 0) {
       this.baseInstanceCounts = this.instancedMeshes.map(mesh => mesh.count)
@@ -887,6 +1036,10 @@ export class DetailedFishSystem {
       }
 
       mesh.count = Math.max(1, Math.floor(baseCount * qualityScale))
+    })
+
+    heroFishMeshes.forEach((mesh) => {
+      mesh.visible = quality === 'high'
     })
   }
 }

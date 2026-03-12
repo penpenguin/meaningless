@@ -29,6 +29,7 @@ vi.mock('../components/AdvancedScene', () => {
   return {
     AdvancedAquariumScene: class {
       setMotionEnabled: ReturnType<typeof vi.fn>
+      setPhotoMode: ReturnType<typeof vi.fn>
       setAdvancedEffects: ReturnType<typeof vi.fn>
       setWaterQuality: ReturnType<typeof vi.fn>
       applyTheme: ReturnType<typeof vi.fn>
@@ -39,6 +40,7 @@ vi.mock('../components/AdvancedScene', () => {
 
       constructor() {
         this.setMotionEnabled = vi.fn()
+        this.setPhotoMode = vi.fn()
         this.setAdvancedEffects = vi.fn()
         this.setWaterQuality = vi.fn()
         this.applyTheme = vi.fn()
@@ -79,6 +81,17 @@ vi.mock('../components/GameHudOverlay', () => {
       overlay.className = 'hud-overlay'
       return overlay
     }
+  }
+})
+
+vi.mock('../assets/visualAssets', () => {
+  return {
+    aquariumAssetManifest: { textures: [], models: [] },
+    loadVisualAssets: vi.fn(async () => ({
+      manifest: { textures: [], models: [] },
+      textures: {},
+      models: {}
+    }))
   }
 })
 

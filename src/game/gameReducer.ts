@@ -328,6 +328,21 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
           }
         }
       }
+    case 'SETTINGS/SET_PHOTO_MODE':
+      return {
+        ...state,
+        game: {
+          ...state.game,
+          profile: {
+            ...state.game.profile,
+            preferences: {
+              ...state.game.profile.preferences,
+              photoModeEnabled: action.payload.enabled,
+              hudVisible: action.payload.enabled ? false : true
+            }
+          }
+        }
+      }
     default:
       return state
   }

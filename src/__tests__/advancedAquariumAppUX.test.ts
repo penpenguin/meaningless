@@ -1,10 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdvancedAquariumApp } from '../AdvancedAquariumApp'
 
+const hoisted = vi.hoisted(() => ({
+  mockedAssets: {
+    manifest: { textures: [], models: [] },
+    textures: {},
+    models: {}
+  },
+  loadVisualAssets: vi.fn(async () => ({
+    manifest: { textures: [], models: [] },
+    textures: {},
+    models: {}
+  })),
+  lastSceneAssets: null as unknown
+}))
+
 vi.mock('../components/AdvancedScene', () => {
   return {
     AdvancedAquariumScene: class {
       setMotionEnabled = vi.fn()
+      setPhotoMode = vi.fn()
       setAdvancedEffects = vi.fn()
       setWaterQuality = vi.fn()
       applyTheme = vi.fn()
@@ -17,7 +32,18 @@ vi.mock('../components/AdvancedScene', () => {
         fishVisible: 0,
         drawCalls: 0
       }))
+
+      constructor(_container?: HTMLElement, assets?: unknown) {
+        hoisted.lastSceneAssets = assets ?? null
+      }
     }
+  }
+})
+
+vi.mock('../assets/visualAssets', () => {
+  return {
+    aquariumAssetManifest: { textures: [], models: [] },
+    loadVisualAssets: hoisted.loadVisualAssets
   }
 })
 
@@ -85,10 +111,14 @@ describe('AdvancedAquariumApp UX integration', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    hoisted.loadVisualAssets.mockReset()
+    hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
+    hoisted.lastSceneAssets = null
   })
 
   it('starts hiding the loading screen immediately after init completes', async () => {
     vi.useFakeTimers()
+    hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
     const app = new AdvancedAquariumApp()
 
     const loadingScreen = document.getElementById('loading-screen') as HTMLDivElement
@@ -104,6 +134,7 @@ describe('AdvancedAquariumApp UX integration', () => {
 
   it('renders game HUD overlay with coins indicator', async () => {
     vi.useFakeTimers()
+    hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
     const app = new AdvancedAquariumApp()
     await flushMicrotasks()
 
@@ -113,6 +144,38 @@ describe('AdvancedAquariumApp UX integration', () => {
     const pearlsLabel = document.querySelector('.hud-pearls')
     expect(pearlsLabel?.textContent).toContain('Coins:')
     expect(document.querySelector('[data-mode="tank"]')?.textContent).toBe('Tank')
+
+    app.dispose()
+  })
+
+  it('forwards photo mode state to the scene', async () => {
+    vi.useFakeTimers()
+    hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
+    const app = new AdvancedAquariumApp()
+    await flushMicrotasks()
+
+    const settingsButton = document.querySelector('[data-mode="settings"]') as HTMLButtonElement
+    settingsButton.click()
+
+    const toggles = Array.from(document.querySelectorAll('.hud-toggle-button')) as HTMLButtonElement[]
+    const photoModeButton = toggles[2]
+    photoModeButton?.click()
+
+    const scene = (app as unknown as { scene: { setPhotoMode: ReturnType<typeof vi.fn> } | null }).scene
+    expect(scene?.setPhotoMode).toHaveBeenCalledWith(true)
+
+    app.dispose()
+  })
+
+  it('passes preloaded visual assets into the scene constructor', async () => {
+    vi.useFakeTimers()
+    hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
+
+    const app = new AdvancedAquariumApp()
+    await flushMicrotasks()
+
+    expect(hoisted.loadVisualAssets).toHaveBeenCalledTimes(1)
+    expect(hoisted.lastSceneAssets).toBe(hoisted.mockedAssets)
 
     app.dispose()
   })

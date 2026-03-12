@@ -684,6 +684,22 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
   motionRow.appendChild(motionButton)
   panel.appendChild(motionRow)
 
+  const photoModeRow = document.createElement('div')
+  photoModeRow.className = 'hud-setting-row'
+  const photoModeCopy = document.createElement('div')
+  photoModeCopy.className = 'hud-setting-copy'
+  photoModeCopy.innerHTML = '<strong class="hud-setting-label">Photo Mode</strong><div class="hud-setting-meta">Hide the HUD and shift into a slower showcase framing</div>'
+  const photoModeButton = document.createElement('button')
+  photoModeButton.type = 'button'
+  photoModeButton.className = 'hud-toggle-button'
+  photoModeButton.addEventListener('click', () => {
+    const enabled = !store.getState().game.profile.preferences.photoModeEnabled
+    store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled } })
+  })
+  photoModeRow.appendChild(photoModeCopy)
+  photoModeRow.appendChild(photoModeButton)
+  panel.appendChild(photoModeRow)
+
   const qualityLabel = createSectionLabel('Visual quality')
   panel.appendChild(qualityLabel)
 
@@ -717,6 +733,7 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
   store.subscribe(({ state }) => {
     const soundEnabled = state.game.profile.preferences.soundEnabled
     const motionEnabled = state.game.profile.preferences.motionEnabled
+    const photoModeEnabled = state.game.profile.preferences.photoModeEnabled
     const quality = state.game.profile.preferences.quality
 
     soundButton.textContent = soundEnabled ? 'On' : 'Off'
@@ -726,6 +743,10 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
     motionButton.textContent = motionEnabled ? 'On' : 'Off'
     motionButton.classList.toggle('is-on', motionEnabled)
     motionButton.setAttribute('aria-pressed', String(motionEnabled))
+
+    photoModeButton.textContent = photoModeEnabled ? 'On' : 'Off'
+    photoModeButton.classList.toggle('is-on', photoModeEnabled)
+    photoModeButton.setAttribute('aria-pressed', String(photoModeEnabled))
 
     qualityButtons.forEach((button, index) => {
       const value = ['low', 'medium', 'high'][index]
@@ -738,12 +759,16 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
   const initial = store.getState()
   const initialSound = initial.game.profile.preferences.soundEnabled
   const initialMotion = initial.game.profile.preferences.motionEnabled
+  const initialPhotoMode = initial.game.profile.preferences.photoModeEnabled
   soundButton.textContent = initialSound ? 'On' : 'Off'
   soundButton.classList.toggle('is-on', initialSound)
   soundButton.setAttribute('aria-pressed', String(initialSound))
   motionButton.textContent = initialMotion ? 'On' : 'Off'
   motionButton.classList.toggle('is-on', initialMotion)
   motionButton.setAttribute('aria-pressed', String(initialMotion))
+  photoModeButton.textContent = initialPhotoMode ? 'On' : 'Off'
+  photoModeButton.classList.toggle('is-on', initialPhotoMode)
+  photoModeButton.setAttribute('aria-pressed', String(initialPhotoMode))
   qualityButtons.forEach((button, index) => {
     const isActive = ['low', 'medium', 'high'][index] === initial.game.profile.preferences.quality
     button.classList.toggle('is-active', isActive)
@@ -764,6 +789,11 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   revealTab.textContent = 'Show HUD'
   revealTab.hidden = true
   revealTab.addEventListener('click', () => {
+    const { photoModeEnabled } = store.getState().game.profile.preferences
+    if (photoModeEnabled) {
+      store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled: false } })
+      return
+    }
     store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: true } })
   })
 
@@ -895,6 +925,7 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
     guideTitle.textContent = guideContent.title
     guideBody.textContent = guideContent.body
     guideHint.textContent = guideContent.hint
+    revealTab.textContent = state.game.profile.preferences.photoModeEnabled ? 'Exit Photo Mode' : 'Show HUD'
     applyMode(state.ui.mode)
     applyVisibility(state.game.profile.preferences.hudVisible)
   }

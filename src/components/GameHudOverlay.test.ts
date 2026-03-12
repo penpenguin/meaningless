@@ -216,10 +216,11 @@ describe('createGameHudOverlay', () => {
 
       expect(settingsPanel.querySelectorAll('input[type="checkbox"]').length).toBe(0)
       expect(settingsPanel.querySelectorAll('select').length).toBe(0)
-      expect(settingsPanel.querySelectorAll('.hud-toggle-button').length).toBe(2)
+      expect(settingsPanel.querySelectorAll('.hud-toggle-button').length).toBe(3)
       expect(
         Array.from(settingsPanel.querySelectorAll('.hud-segmented button')).map((button) => button.textContent)
       ).toEqual(['Low', 'Medium', 'High'])
+      expect(settingsPanel.textContent).toContain('Photo Mode')
     } finally {
       store.destroy()
       document.body.innerHTML = ''
@@ -335,6 +336,38 @@ describe('createGameHudOverlay', () => {
       expect(rail.hidden).toBe(true)
       expect(revealTab.hidden).toBe(false)
       expect(revealTab.textContent).toContain('Show HUD')
+    } finally {
+      store.destroy()
+      document.body.innerHTML = ''
+    }
+  })
+
+  it('uses the reveal tab to exit photo mode and restore the HUD', () => {
+    const store = createGameStore({ tickIntervalMs: 60_000 })
+
+    try {
+      const overlay = createGameHudOverlay({ store })
+      document.body.appendChild(overlay)
+
+      const settingsButton = overlay.querySelector('[data-mode="settings"]') as HTMLButtonElement
+      settingsButton.click()
+
+      const toggles = Array.from(overlay.querySelectorAll('.hud-toggle-button')) as HTMLButtonElement[]
+      const photoModeButton = toggles[2]
+      expect(photoModeButton?.textContent).toBe('Off')
+
+      photoModeButton?.click()
+
+      const revealTab = overlay.querySelector('[data-action="show-hud"]') as HTMLButtonElement
+      expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(true)
+      expect(store.getState().game.profile.preferences.hudVisible).toBe(false)
+      expect(revealTab.hidden).toBe(false)
+      expect(revealTab.textContent).toContain('Exit Photo Mode')
+
+      revealTab.click()
+
+      expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(false)
+      expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
     } finally {
       store.destroy()
       document.body.innerHTML = ''

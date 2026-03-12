@@ -85,6 +85,46 @@ describe('DetailedFishSystem silhouette archetypes', () => {
   })
 })
 
+describe('DetailedFishSystem premium materials', () => {
+  test('uses external fish pattern textures when visual assets are available', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const tropicalTexture = new THREE.Texture()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-tropical': tropicalTexture
+      }
+    }
+
+    const { createFishVariants, createFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }>
+      createFishMaterial: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.MeshPhysicalMaterial
+    }
+
+    const tropical = createFishVariants.bind(instance)().find((variant) => variant.name === 'Tropical')
+    if (!tropical) throw new Error('Tropical variant missing')
+
+    const material = createFishMaterial.bind(instance)(tropical)
+
+    expect(material.map).toBe(tropicalTexture)
+  })
+})
+
 describe('DetailedFishSystem wander target timing', () => {
   test('updates wander targets after 5 seconds when elapsed time is in seconds', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
@@ -168,6 +208,53 @@ describe('DetailedFishSystem quality scaling', () => {
     setQuality('low')
     expect(internals.instancedMeshes[0].count).toBe(0)
     expect(internals.instancedMeshes[1].count).toBe(2)
+  })
+
+  test('shows dedicated hero fish only on high quality', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const system = new DetailedFishSystem(scene, bounds)
+
+    system.setFishGroups([
+      { speciesId: 'neon-tetra', count: 8 }
+    ])
+
+    const internals = system as unknown as {
+      heroFishMeshes: THREE.Mesh[]
+    }
+
+    expect(internals.heroFishMeshes.length).toBeGreaterThan(0)
+    expect(internals.heroFishMeshes.every((mesh) => mesh.userData.role === 'hero-fish')).toBe(true)
+    expect(internals.heroFishMeshes.every((mesh) => mesh.visible)).toBe(true)
+
+    system.setQuality('medium')
+    expect(internals.heroFishMeshes.every((mesh) => mesh.visible === false)).toBe(true)
+
+    system.setQuality('high')
+    expect(internals.heroFishMeshes.every((mesh) => mesh.visible)).toBe(true)
+  })
+})
+
+describe('DetailedFishSystem photo mode focus', () => {
+  test('returns the first visible hero fish as the focus point', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const hiddenHero = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial())
+    hiddenHero.visible = false
+    hiddenHero.position.set(-2, 1, 3)
+
+    const visibleHero = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial())
+    visibleHero.visible = true
+    visibleHero.position.set(1.5, -0.25, 2.2)
+
+    ;(instance as unknown as {
+      heroFishMeshes: THREE.Mesh[]
+    }).heroFishMeshes = [hiddenHero, visibleHero]
+
+    const getHeroFocusPoint = (DetailedFishSystem.prototype as unknown as {
+      getHeroFocusPoint: () => THREE.Vector3 | null
+    }).getHeroFocusPoint.bind(instance)
+
+    expect(getHeroFocusPoint()).toEqual(new THREE.Vector3(1.5, -0.25, 2.2))
   })
 })
 

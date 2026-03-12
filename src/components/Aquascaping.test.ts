@@ -10,6 +10,7 @@ const createMockCanvasContext = (): CanvasRenderingContext2D => {
 
   return {
     createLinearGradient: () => gradient,
+    createRadialGradient: () => gradient,
     fillRect: vi.fn(),
     beginPath: vi.fn(),
     moveTo: vi.fn(),
@@ -68,6 +69,12 @@ describe('AquascapingSystem composition', () => {
     const branches = driftwood?.children.filter(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-branch'
     ) ?? []
+    const branchlets = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-branchlet'
+    ) ?? []
+    const roots = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-root'
+    ) ?? []
     const epiphytes = driftwood?.children.filter(
       (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'epiphyte-cluster'
     ) ?? []
@@ -80,6 +87,8 @@ describe('AquascapingSystem composition', () => {
     expect(driftwood).toBeDefined()
     expect(branches.some((branch) => branch.geometry.type === 'TubeGeometry')).toBe(true)
     expect(branches.every((branch) => branch.castShadow)).toBe(true)
+    expect(branchlets.length).toBeGreaterThanOrEqual(2)
+    expect(roots.length).toBeGreaterThanOrEqual(3)
     expect(epiphytes.length).toBeGreaterThanOrEqual(2)
     expect(epiphyteLeaves.length).toBeGreaterThan(0)
   })
@@ -99,6 +108,12 @@ describe('AquascapingSystem composition', () => {
     const ridgeRocks = ridge?.children.filter(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'ridge-rock'
     ) ?? []
+    const ridgeSlates = ridge?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'ridge-slate'
+    ) ?? []
+    const ridgeRubble = ridge?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'ridge-rubble'
+    ) ?? []
     const canopyPlants = aquascapingGroup.children.filter(
       (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-canopy'
     )
@@ -106,9 +121,55 @@ describe('AquascapingSystem composition', () => {
 
     expect(ridge).toBeDefined()
     expect(ridgeRocks.length).toBeGreaterThanOrEqual(3)
+    expect(ridgeSlates.length).toBeGreaterThanOrEqual(2)
+    expect(ridgeRubble.length).toBeGreaterThanOrEqual(4)
     expect(canopyPlants.length).toBeGreaterThanOrEqual(2)
     expect(canopyTypes.has('sword-leaf')).toBe(true)
     expect(canopyTypes.has('ribbon-seaweed')).toBe(true)
+  })
+
+  it('adds a soft hardscape shadow to ground the hero scape on the substrate', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const hardscapeShadow = aquascapingGroup.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'hero-hardscape-shadow'
+    )
+
+    expect(hardscapeShadow).toBeDefined()
+    expect(hardscapeShadow?.rotation.x).toBeCloseTo(-Math.PI / 2)
+    expect((hardscapeShadow?.material as THREE.MeshBasicMaterial | undefined)?.transparent).toBe(true)
+  })
+
+  it('blends the hardscape into the substrate with a berm and pebble scatter', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const transitionBerm = aquascapingGroup.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'hardscape-transition-berm'
+    )
+    const transitionPebbles = aquascapingGroup.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'hardscape-transition-pebble'
+    )
+
+    expect(transitionBerm).toBeDefined()
+    expect(transitionBerm?.position.y).toBeGreaterThan(bounds.min.y)
+    expect(transitionPebbles.length).toBeGreaterThanOrEqual(5)
+    expect(transitionPebbles.every((pebble) => pebble.castShadow)).toBe(true)
   })
 
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
@@ -179,5 +240,61 @@ describe('AquascapingSystem composition', () => {
     expect(plantMeshes.every((mesh) => mesh.receiveShadow)).toBe(true)
     expect(coralBranches.length).toBeGreaterThan(0)
     expect(coralBranches.every((mesh) => mesh.castShadow)).toBe(true)
+  })
+})
+
+describe('AquascapingSystem premium materials', () => {
+  it('uses external plant textures when visual assets are available', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const leafDiffuse = new THREE.Texture()
+    const leafAlpha = new THREE.Texture()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'leaf-diffuse': leafDiffuse,
+        'leaf-alpha': leafAlpha
+      }
+    }
+
+    const createLeafMaterial = (AquascapingSystem.prototype as unknown as {
+      createLeafMaterial: (
+        hue: number,
+        layer: 'foreground' | 'background' | 'midground',
+        plantType: 'sword-leaf' | 'fan-leaf'
+      ) => THREE.MeshPhysicalMaterial
+    }).createLeafMaterial.bind(instance)
+
+    const material = createLeafMaterial(0.32, 'foreground', 'sword-leaf')
+
+    expect(material.map).toBe(leafDiffuse)
+    expect(material.alphaMap).toBe(leafAlpha)
+  })
+
+  it('uses external wood textures for driftwood when visual assets are available', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const driftwoodDiffuse = new THREE.Texture()
+    const driftwoodRoughness = new THREE.Texture()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'driftwood-diffuse': driftwoodDiffuse,
+        'driftwood-roughness': driftwoodRoughness
+      }
+    }
+
+    const createDriftwoodMaterial = (AquascapingSystem.prototype as unknown as {
+      createDriftwoodMaterial: () => THREE.MeshStandardMaterial
+    }).createDriftwoodMaterial.bind(instance)
+
+    const material = createDriftwoodMaterial()
+
+    expect(material.map).toBe(driftwoodDiffuse)
+    expect(material.roughnessMap).toBe(driftwoodRoughness)
   })
 })

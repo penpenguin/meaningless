@@ -64,6 +64,7 @@ export type GameProfile = {
     motionEnabled: boolean
     quality: QualityLevel
     hudVisible: boolean
+    photoModeEnabled: boolean
   }
 }
 
@@ -117,3 +118,4 @@ export type GameAction =
   | { type: 'SETTINGS/SET_MOTION'; payload: { enabled: boolean } }
   | { type: 'SETTINGS/SET_QUALITY'; payload: { quality: QualityLevel } }
   | { type: 'SETTINGS/SET_HUD_VISIBILITY'; payload: { visible: boolean } }
+  | { type: 'SETTINGS/SET_PHOTO_MODE'; payload: { enabled: boolean } }

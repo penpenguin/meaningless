@@ -10,6 +10,7 @@ import { loadProfileState } from './utils/profileStorage'
 import { loadSettingsState } from './utils/settingsStorage'
 import { getAutoSave } from './utils/storage'
 import { loadTankState } from './utils/tankStorage'
+import { loadVisualAssets, type VisualAssetBundle } from './assets/visualAssets'
 
 export class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
@@ -23,6 +24,7 @@ export class AdvancedAquariumApp {
   private keyHandler: ((event: KeyboardEvent) => void) | null = null
   private lastAppliedQuality: 'low' | 'medium' | 'high' | null = null
   private advancedEffectsEnabled = true
+  private visualAssets: VisualAssetBundle | null = null
   private stats = {
     fps: 0,
     frameTime: 0,
@@ -72,7 +74,7 @@ export class AdvancedAquariumApp {
     const container = document.getElementById('canvas-container')
     if (!container) return
 
-    this.scene = new AdvancedAquariumScene(container)
+    this.scene = new AdvancedAquariumScene(container, this.visualAssets ?? undefined)
     this.setupHudOverlay()
     this.setupStoreBinding()
     this.setupEventListeners()
@@ -90,7 +92,7 @@ export class AdvancedAquariumApp {
   }
 
   private async loadAssets(): Promise<void> {
-    await Promise.resolve()
+    this.visualAssets = await loadVisualAssets()
   }
 
   private setupHudOverlay(): void {
