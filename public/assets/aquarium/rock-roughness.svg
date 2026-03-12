@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#c6c6c6"/>
-  <path d="M0 126L126 0L236 74L118 184Z" fill="#8d8d8d"/>
-  <path d="M232 44L448 20L512 164L308 218Z" fill="#dfdfdf"/>
-  <path d="M28 250L214 194L304 310L160 458L0 388Z" fill="#a7a7a7"/>
-  <path d="M280 236L512 168L512 462L360 512L228 388Z" fill="#f2f2f2"/>
+  <rect width="512" height="512" fill="#8a8a8a"/>
+  <path d="M0 126L126 0L236 74L118 184Z" fill="#595959"/>
+  <path d="M232 44L448 20L512 164L308 218Z" fill="#bdbdbd"/>
+  <path d="M28 250L214 194L304 310L160 458L0 388Z" fill="#6e6e6e"/>
+  <path d="M280 236L512 168L512 462L360 512L228 388Z" fill="#d4d4d4"/>
+  <path d="M48 184L174 122L214 162" stroke="#f1f1f1" stroke-width="10" stroke-linecap="round" opacity="0.34"/>
+  <path d="M250 164L376 126L430 178" stroke="#3b3b3b" stroke-width="10" stroke-linecap="round" opacity="0.46"/>
+  <path d="M128 318L200 382L156 420" stroke="#eeeeee" stroke-width="8" stroke-linecap="round" opacity="0.24"/>
+  <path d="M294 308L394 394L332 432" stroke="#484848" stroke-width="8" stroke-linecap="round" opacity="0.38"/>
 </svg>

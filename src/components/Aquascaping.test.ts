@@ -248,6 +248,8 @@ describe('AquascapingSystem premium materials', () => {
     const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
     const leafDiffuse = new THREE.Texture()
     const leafAlpha = new THREE.Texture()
+    const leafNormal = new THREE.Texture()
+    const leafRoughness = new THREE.Texture()
     ;(instance as unknown as {
       visualAssets: {
         textures: Record<string, THREE.Texture | null>
@@ -255,7 +257,9 @@ describe('AquascapingSystem premium materials', () => {
     }).visualAssets = {
       textures: {
         'leaf-diffuse': leafDiffuse,
-        'leaf-alpha': leafAlpha
+        'leaf-alpha': leafAlpha,
+        'leaf-normal': leafNormal,
+        'leaf-roughness': leafRoughness
       }
     }
 
@@ -271,12 +275,15 @@ describe('AquascapingSystem premium materials', () => {
 
     expect(material.map).toBe(leafDiffuse)
     expect(material.alphaMap).toBe(leafAlpha)
+    expect(material.normalMap).toBe(leafNormal)
+    expect(material.roughnessMap).toBe(leafRoughness)
   })
 
   it('uses external wood textures for driftwood when visual assets are available', () => {
     const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
     const driftwoodDiffuse = new THREE.Texture()
     const driftwoodRoughness = new THREE.Texture()
+    const driftwoodNormal = new THREE.Texture()
     ;(instance as unknown as {
       visualAssets: {
         textures: Record<string, THREE.Texture | null>
@@ -284,7 +291,8 @@ describe('AquascapingSystem premium materials', () => {
     }).visualAssets = {
       textures: {
         'driftwood-diffuse': driftwoodDiffuse,
-        'driftwood-roughness': driftwoodRoughness
+        'driftwood-roughness': driftwoodRoughness,
+        'driftwood-normal': driftwoodNormal
       }
     }
 
@@ -296,5 +304,34 @@ describe('AquascapingSystem premium materials', () => {
 
     expect(material.map).toBe(driftwoodDiffuse)
     expect(material.roughnessMap).toBe(driftwoodRoughness)
+    expect(material.normalMap).toBe(driftwoodNormal)
+  })
+
+  it('uses external rock detail maps when visual assets are available', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const rockDiffuse = new THREE.Texture()
+    const rockRoughness = new THREE.Texture()
+    const rockNormal = new THREE.Texture()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'rock-diffuse': rockDiffuse,
+        'rock-roughness': rockRoughness,
+        'rock-normal': rockNormal
+      }
+    }
+
+    const createRockMaterial = (AquascapingSystem.prototype as unknown as {
+      createRockMaterial: (color: string) => THREE.MeshPhysicalMaterial
+    }).createRockMaterial.bind(instance)
+
+    const material = createRockMaterial('#7a7364')
+
+    expect(material.map).toBe(rockDiffuse)
+    expect(material.roughnessMap).toBe(rockRoughness)
+    expect(material.normalMap).toBe(rockNormal)
   })
 })

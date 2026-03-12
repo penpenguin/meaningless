@@ -363,6 +363,12 @@ export class AquascapingSystem {
     const material = new THREE.MeshPhysicalMaterial({
       map: this.getVisualTexture('leaf-diffuse'),
       alphaMap: this.getVisualTexture('leaf-alpha'),
+      normalMap: this.getVisualTexture('leaf-normal'),
+      normalScale: new THREE.Vector2(
+        plantType === 'fan-leaf' ? 0.42 : 0.34,
+        plantType === 'fan-leaf' ? 0.42 : 0.34
+      ),
+      roughnessMap: this.getVisualTexture('leaf-roughness'),
       color,
       metalness: 0,
       roughness: plantType === 'fan-leaf' ? 0.54 : 0.68,
@@ -754,6 +760,8 @@ export class AquascapingSystem {
   private createDriftwoodMaterial(): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
       map: this.getVisualTexture('driftwood-diffuse'),
+      normalMap: this.getVisualTexture('driftwood-normal'),
+      normalScale: new THREE.Vector2(0.7, 0.38),
       color: new THREE.Color('#6f5641'),
       roughnessMap: this.getVisualTexture('driftwood-roughness'),
       roughness: 0.96,
@@ -764,6 +772,8 @@ export class AquascapingSystem {
   private createRockMaterial(color: string): THREE.MeshPhysicalMaterial {
     return new THREE.MeshPhysicalMaterial({
       map: this.getVisualTexture('rock-diffuse'),
+      normalMap: this.getVisualTexture('rock-normal'),
+      normalScale: new THREE.Vector2(0.58, 0.58),
       roughnessMap: this.getVisualTexture('rock-roughness'),
       color: new THREE.Color(color),
       metalness: 0.04,

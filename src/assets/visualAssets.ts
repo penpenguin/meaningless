@@ -42,15 +42,21 @@ export const aquariumAssetManifest: AssetManifest = {
   textures: [
     { id: 'leaf-diffuse', url: '/assets/aquarium/leaf-diffuse.svg', usageTag: 'plant', lod: 'high' },
     { id: 'leaf-alpha', url: '/assets/aquarium/leaf-alpha.svg', usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
+    { id: 'leaf-normal', url: '/assets/aquarium/leaf-normal.svg', usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
+    { id: 'leaf-roughness', url: '/assets/aquarium/leaf-roughness.svg', usageTag: 'plant', lod: 'medium', colorSpace: 'linear' },
     { id: 'rock-diffuse', url: '/assets/aquarium/rock-diffuse.svg', usageTag: 'rock', lod: 'high' },
+    { id: 'rock-normal', url: '/assets/aquarium/rock-normal.svg', usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
     { id: 'rock-roughness', url: '/assets/aquarium/rock-roughness.svg', usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
     { id: 'driftwood-diffuse', url: '/assets/aquarium/driftwood-diffuse.svg', usageTag: 'wood', lod: 'high' },
+    { id: 'driftwood-normal', url: '/assets/aquarium/driftwood-normal.svg', usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
     { id: 'driftwood-roughness', url: '/assets/aquarium/driftwood-roughness.svg', usageTag: 'wood', lod: 'medium', colorSpace: 'linear' },
     { id: 'backdrop-depth', url: '/assets/aquarium/backdrop-depth.svg', usageTag: 'backdrop', lod: 'high' },
     { id: 'fish-tropical', url: '/assets/aquarium/fish-tropical.svg', usageTag: 'fish', lod: 'high' },
     { id: 'fish-angelfish', url: '/assets/aquarium/fish-angelfish.svg', usageTag: 'fish', lod: 'high' },
     { id: 'fish-neon', url: '/assets/aquarium/fish-neon.svg', usageTag: 'fish', lod: 'high' },
-    { id: 'fish-goldfish', url: '/assets/aquarium/fish-goldfish.svg', usageTag: 'fish', lod: 'high' }
+    { id: 'fish-goldfish', url: '/assets/aquarium/fish-goldfish.svg', usageTag: 'fish', lod: 'high' },
+    { id: 'fish-scale-normal', url: '/assets/aquarium/fish-scale-normal.svg', usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-scale-roughness', url: '/assets/aquarium/fish-scale-roughness.svg', usageTag: 'fish', lod: 'medium', colorSpace: 'linear' }
   ],
   models: []
 }

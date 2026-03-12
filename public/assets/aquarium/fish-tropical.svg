@@ -1,15 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffeb8d"/>
-      <stop offset="50%" stop-color="#ff8a3d"/>
-      <stop offset="100%" stop-color="#d94c19"/>
+      <stop offset="0%" stop-color="#fff2a8"/>
+      <stop offset="34%" stop-color="#ffb451"/>
+      <stop offset="64%" stop-color="#f06f2b"/>
+      <stop offset="100%" stop-color="#b33f18"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff8d4" stop-opacity="0.62"/>
+      <stop offset="100%" stop-color="#fff8d4" stop-opacity="0"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#body)"/>
-  <path d="M88 64L152 0H226L146 96Z" fill="#fff5bf" opacity="0.65"/>
-  <path d="M144 0H210L0 512H0Z" fill="#ffffff" opacity="0.18"/>
-  <path d="M248 0H320L54 512H0Z" fill="#402112" opacity="0.18"/>
-  <path d="M348 0H424L160 512H84Z" fill="#fff5bf" opacity="0.24"/>
-  <circle cx="394" cy="128" r="34" fill="#fff5bf" opacity="0.36"/>
+  <rect width="512" height="192" fill="url(#shine)"/>
+  <path d="M84 60L156 0H232L146 108Z" fill="#fff7cc" opacity="0.7"/>
+  <path d="M132 0H208L0 512H0Z" fill="#fff8dd" opacity="0.18"/>
+  <path d="M232 0H306L38 512H0Z" fill="#5a2a17" opacity="0.2"/>
+  <path d="M332 0H416L154 512H82Z" fill="#fff3b8" opacity="0.28"/>
+  <path d="M432 0H512V86L242 512H176Z" fill="#7f3217" opacity="0.16"/>
+  <path d="M0 134C128 112 234 110 350 138C414 154 468 154 512 146V210C468 220 414 220 350 204C234 176 128 176 0 198Z" fill="#fff0ba" opacity="0.14"/>
+  <path d="M0 286C112 252 222 252 340 282C404 298 462 302 512 294V344C462 352 404 350 340 334C222 304 112 306 0 336Z" fill="#5c2416" opacity="0.2"/>
+  <circle cx="394" cy="128" r="34" fill="#fff5bf" opacity="0.4"/>
+  <circle cx="314" cy="280" r="18" fill="#fff6d0" opacity="0.2"/>
 </svg>
