@@ -38,6 +38,12 @@ const createModelAssetScene = (role: string): THREE.Group => {
   return group
 }
 
+const createMaterialAssetScene = (material: THREE.Material): THREE.Group => {
+  const group = new THREE.Group()
+  group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material))
+  return group
+}
+
 describe('AquascapingSystem composition', () => {
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
 
@@ -345,6 +351,102 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.map).toBe(rockDiffuse)
     expect(material.roughnessMap).toBe(rockRoughness)
     expect(material.normalMap).toBe(rockNormal)
+  })
+
+  it('preserves authored driftwood materials when the asset already includes the key maps', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const authoredMap = new THREE.Texture()
+    const authoredNormal = new THREE.Texture()
+    const authoredRoughness = new THREE.Texture()
+    const sharedDiffuse = new THREE.Texture()
+    const sharedNormal = new THREE.Texture()
+    const sharedRoughness = new THREE.Texture()
+    const driftwoodAsset = createMaterialAssetScene(new THREE.MeshStandardMaterial({
+      color: '#8a715a',
+      map: authoredMap,
+      normalMap: authoredNormal,
+      roughnessMap: authoredRoughness
+    }))
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { scene: THREE.Group; sourceMesh: null } | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'driftwood-diffuse': sharedDiffuse,
+        'driftwood-normal': sharedNormal,
+        'driftwood-roughness': sharedRoughness
+      },
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null }
+      }
+    }
+
+    const cloneVisualModelGroup = (AquascapingSystem.prototype as unknown as {
+      cloneVisualModelGroup: (id: string, userData: Record<string, unknown>) => THREE.Group | null
+    }).cloneVisualModelGroup.bind(instance)
+
+    const clone = cloneVisualModelGroup('driftwood-hero', { role: 'hero-driftwood' })
+    const clonedMesh = clone?.children[0] as THREE.Mesh | undefined
+    const clonedMaterial = clonedMesh?.material as THREE.MeshStandardMaterial | undefined
+
+    expect(clone).toBeDefined()
+    expect(clonedMaterial).toBeInstanceOf(THREE.Material)
+    expect(clonedMaterial).not.toBe((driftwoodAsset.children[0] as THREE.Mesh).material)
+    expect(clonedMaterial?.map).toBe(authoredMap)
+    expect(clonedMaterial?.normalMap).toBe(authoredNormal)
+    expect(clonedMaterial?.roughnessMap).toBe(authoredRoughness)
+    expect(clonedMesh?.castShadow).toBe(true)
+    expect(clonedMesh?.receiveShadow).toBe(true)
+  })
+
+  it('supplements missing plant maps without replacing the authored base color map', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const authoredMap = new THREE.Texture()
+    const sharedAlpha = new THREE.Texture()
+    const sharedNormal = new THREE.Texture()
+    const sharedRoughness = new THREE.Texture()
+    const plantAsset = createMaterialAssetScene(new THREE.MeshStandardMaterial({
+      color: '#5f8f57',
+      map: authoredMap,
+      transparent: true
+    }))
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { scene: THREE.Group; sourceMesh: null } | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'leaf-alpha': sharedAlpha,
+        'leaf-normal': sharedNormal,
+        'leaf-roughness': sharedRoughness
+      },
+      models: {
+        'plant-sword-cluster': { scene: plantAsset, sourceMesh: null }
+      }
+    }
+
+    const cloneVisualModelGroup = (AquascapingSystem.prototype as unknown as {
+      cloneVisualModelGroup: (id: string, userData: Record<string, unknown>) => THREE.Group | null
+    }).cloneVisualModelGroup.bind(instance)
+
+    const clone = cloneVisualModelGroup('plant-sword-cluster', {
+      role: 'hero-canopy',
+      layer: 'background',
+      plantType: 'sword-leaf'
+    })
+    const clonedMesh = clone?.children[0] as THREE.Mesh | undefined
+    const clonedMaterial = clonedMesh?.material as THREE.MeshPhysicalMaterial | undefined
+
+    expect(clone).toBeDefined()
+    expect(clonedMaterial?.map).toBe(authoredMap)
+    expect(clonedMaterial?.alphaMap).toBe(sharedAlpha)
+    expect(clonedMaterial?.normalMap).toBe(sharedNormal)
+    expect(clonedMaterial?.roughnessMap).toBe(sharedRoughness)
   })
 })
 

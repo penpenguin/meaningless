@@ -136,6 +136,10 @@ const extractSingleSourceMesh = (
   return meshes.length === 1 ? meshes[0] : null
 }
 
+const requiresSingleSourceMesh = (entryId: string): boolean => entryId.endsWith('-school')
+
+const acceptsSceneWithoutSourceMesh = (entryId: string): boolean => !requiresSingleSourceMesh(entryId)
+
 const configureTexture = (texture: THREE.Texture, entry: ManifestTextureEntry): THREE.Texture => {
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
@@ -163,7 +167,10 @@ const loadModelAsset = async (
     markSharedObjectResources(scene)
 
     const sourceMesh = extractSingleSourceMesh(scene)
-    if (entry.id.endsWith('-school') && !sourceMesh) {
+    if (requiresSingleSourceMesh(entry.id) && !sourceMesh) {
+      return null
+    }
+    if (!sourceMesh && !acceptsSceneWithoutSourceMesh(entry.id)) {
       return null
     }
 

@@ -514,6 +514,42 @@ describe('AdvancedAquariumScene lighting', () => {
   })
 })
 
+describe('AdvancedAquariumScene post-processing', () => {
+  it('adds an OutputPass after the RenderPass so composer output owns the final color conversion', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      renderer: {
+        getPixelRatio: () => number
+        getSize: (target: THREE.Vector2) => { width: number; height: number }
+      }
+      composer: { passes: Array<{ constructor: { name: string } }> }
+      scene: THREE.Scene
+      camera: THREE.PerspectiveCamera
+    }
+
+    internals.renderer = {
+      getPixelRatio: () => 1,
+      getSize: (target: THREE.Vector2) => {
+        target.set(1280, 720)
+        return { width: 1280, height: 720 }
+      }
+    }
+    internals.scene = new THREE.Scene()
+    internals.camera = new THREE.PerspectiveCamera()
+
+    const setupComposer = (AdvancedAquariumScene.prototype as unknown as {
+      setupComposer: () => void
+    }).setupComposer.bind(instance)
+
+    setupComposer()
+
+    expect(internals.composer.passes.map((pass) => pass.constructor.name)).toEqual([
+      'RenderPass',
+      'OutputPass'
+    ])
+  })
+})
+
 describe('AdvancedAquariumScene substrate', () => {
   it('builds a rectangular floor that matches the tank footprint', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
@@ -757,6 +793,60 @@ describe('AdvancedAquariumScene substrate', () => {
 })
 
 describe('AdvancedAquariumScene quality scaling', () => {
+  it('uses different exposure and light balances for simple and standard quality', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      renderer: {
+        toneMappingExposure: number
+        setPixelRatio: (value: number) => void
+        setSize: (width: number, height: number) => void
+        shadowMap: { enabled: boolean; type: number }
+      }
+      composer: { setSize: (width: number, height: number) => void }
+      godRaysEffect: { resize: (width: number, height: number) => void } | null
+      fishSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      particleSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      primaryShadowLight: { shadow: { mapSize: { width: number; height: number } } } | null
+      hemiLight: THREE.HemisphereLight | null
+      fillLight: THREE.DirectionalLight | null
+      bounceLight: THREE.PointLight | null
+      rimLight: THREE.DirectionalLight | null
+      getViewportSize: () => { width: number; height: number }
+    }
+
+    internals.renderer = {
+      toneMappingExposure: 1.2,
+      setPixelRatio: vi.fn(),
+      setSize: vi.fn(),
+      shadowMap: { enabled: true, type: THREE.PCFSoftShadowMap }
+    }
+    internals.composer = { setSize: vi.fn() }
+    internals.godRaysEffect = null
+    internals.fishSystem = null
+    internals.particleSystem = null
+    internals.primaryShadowLight = { shadow: { mapSize: { width: 4096, height: 4096 } } }
+    internals.hemiLight = new THREE.HemisphereLight()
+    internals.fillLight = new THREE.DirectionalLight()
+    internals.bounceLight = new THREE.PointLight()
+    internals.rimLight = new THREE.DirectionalLight()
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+
+    const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
+      setWaterQuality: (quality: 'simple' | 'standard') => void
+    }).setWaterQuality.bind(instance)
+
+    setWaterQuality('simple')
+    const simpleExposure = internals.renderer.toneMappingExposure
+    const simpleHemi = internals.hemiLight.intensity
+    const simpleRim = internals.rimLight.intensity
+
+    setWaterQuality('standard')
+
+    expect(internals.renderer.toneMappingExposure).toBeGreaterThan(simpleExposure)
+    expect(internals.hemiLight.intensity).toBeGreaterThan(simpleHemi)
+    expect(internals.rimLight.intensity).toBeGreaterThan(simpleRim)
+  })
+
   it('keeps shadows and core texture layers on simple quality', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
@@ -969,6 +1059,59 @@ describe('AdvancedAquariumScene quality scaling', () => {
     setWaterQuality('simple')
 
     expect(internals.syncRendererPipelineForQuality).toHaveBeenCalledWith('simple')
+  })
+
+  it('keeps the post-processing stack lightweight when quality changes', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      renderer: {
+        toneMappingExposure: number
+        setPixelRatio: (value: number) => void
+        setSize: (width: number, height: number) => void
+        shadowMap: { enabled: boolean; type: number }
+      }
+      composer: {
+        passes: Array<{ constructor: { name: string } }>
+        setSize: (width: number, height: number) => void
+      }
+      godRaysEffect: { resize: (width: number, height: number) => void } | null
+      fishSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      particleSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      getViewportSize: () => { width: number; height: number }
+      applyVisualQuality: (quality: 'simple' | 'standard') => void
+      syncRendererPipelineForQuality: (quality: 'simple' | 'standard') => void
+      currentVisualQuality: 'simple' | 'standard'
+    }
+
+    internals.renderer = {
+      toneMappingExposure: 1.2,
+      setPixelRatio: vi.fn(),
+      setSize: vi.fn(),
+      shadowMap: { enabled: true, type: THREE.PCFSoftShadowMap }
+    }
+    internals.composer = {
+      passes: [
+        { constructor: { name: 'RenderPass' } },
+        { constructor: { name: 'OutputPass' } }
+      ],
+      setSize: vi.fn()
+    }
+    internals.godRaysEffect = null
+    internals.fishSystem = null
+    internals.particleSystem = null
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+    internals.applyVisualQuality = vi.fn()
+    internals.syncRendererPipelineForQuality = vi.fn()
+    internals.currentVisualQuality = 'standard'
+
+    const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
+      setWaterQuality: (quality: 'simple' | 'standard') => void
+    }).setWaterQuality.bind(instance)
+
+    setWaterQuality('simple')
+
+    expect(internals.composer.passes).toHaveLength(2)
+    expect(internals.composer.passes[1]?.constructor.name).toBe('OutputPass')
   })
 })
 

@@ -57,7 +57,7 @@ const DEFAULT_BEHAVIOR_PROFILE: BehaviorProfile = {
 export class DetailedFishSystem {
   private group: THREE.Group
   private instancedMeshes: THREE.InstancedMesh[] = []
-  private heroFishMeshes: THREE.Mesh[] = []
+  private heroFishMeshes: THREE.Object3D[] = []
   private boids: BoidsSystem
   private fishCount: number
   private bounds: THREE.Box3
@@ -87,7 +87,7 @@ export class DetailedFishSystem {
   private currentQuality: QualityLevel = 'standard'
   private visualAssets: VisualAssetBundle | null
   private heroAssignments = new Map<number, {
-    mesh: THREE.Mesh
+    object: THREE.Object3D
     lateralOffset: number
     verticalOffset: number
     depthOffset: number
@@ -406,21 +406,10 @@ export class DetailedFishSystem {
         if (!variant) return
 
         const heroAsset = this.getVisualModel(variant.heroModelId)
-        const sourceMesh = heroAsset?.sourceMesh ?? null
-        const geometry = sourceMesh?.geometry ?? this.createDetailedFishGeometry(variant)
-        const material = sourceMesh
-          ? this.createFishAssetMaterial(sourceMesh.material, variant, true)
-          : this.createFishMaterial(variant).clone()
-        material.envMapIntensity = Math.min(1.2, (material.envMapIntensity ?? 0.5) + 0.25)
-        material.clearcoat = Math.min(1, (material.clearcoat ?? 0.8) + 0.12)
-        material.emissive = variant.secondaryColor.clone().multiplyScalar(0.08)
-        material.emissiveIntensity = 0.65
-
-        const heroMesh = new THREE.Mesh(geometry, material)
-        heroMesh.castShadow = true
-        heroMesh.receiveShadow = true
-        heroMesh.visible = this.currentQuality === 'standard'
-        heroMesh.userData = {
+        const heroObject = this.createHeroFishObject(variant, heroAsset)
+        heroObject.visible = this.currentQuality === 'standard'
+        heroObject.userData = {
+          ...heroObject.userData,
           role: 'hero-fish',
           variantIndex: candidate.variantIndex
         }
@@ -428,15 +417,74 @@ export class DetailedFishSystem {
         const placement = placements[index] ?? placements[placements.length - 1]
         const isSlenderVariant = variant.name === 'Neon'
         this.heroAssignments.set(candidate.boidIndex, {
-          mesh: heroMesh,
+          object: heroObject,
           lateralOffset: placement.lateralOffset,
           verticalOffset: placement.verticalOffset,
           depthOffset: placement.depthOffset,
           scaleMultiplier: placement.scaleMultiplier * (isSlenderVariant ? 1.28 : 1)
         })
-        this.heroFishMeshes.push(heroMesh)
-        this.group.add(heroMesh)
+        this.heroFishMeshes.push(heroObject)
+        this.group.add(heroObject)
       })
+  }
+
+  private createHeroFishObject(
+    variant: FishVariant,
+    heroAsset: LoadedModelAsset | null
+  ): THREE.Object3D {
+    const sourceMesh = heroAsset?.sourceMesh ?? null
+    if (sourceMesh) {
+      const heroMesh = new THREE.Mesh(
+        sourceMesh.geometry,
+        this.createHeroFishMaterial(sourceMesh.material, variant)
+      )
+      heroMesh.castShadow = true
+      heroMesh.receiveShadow = true
+      return heroMesh
+    }
+
+    if (heroAsset?.scene) {
+      const heroGroup = heroAsset.scene.clone(true)
+      heroGroup.traverse((object) => {
+        const mesh = object as THREE.Mesh
+        const material = (mesh as { material?: THREE.Material | THREE.Material[] }).material
+        if (!(mesh instanceof THREE.Mesh)) return
+
+        if (Array.isArray(material)) {
+          mesh.material = material.map((entry) => this.createHeroFishMaterial(entry, variant))
+        } else if (material instanceof THREE.Material) {
+          mesh.material = this.createHeroFishMaterial(material, variant)
+        }
+
+        mesh.castShadow = true
+        mesh.receiveShadow = true
+      })
+
+      return heroGroup
+    }
+
+    const heroMaterial = this.createFishMaterial(variant).clone()
+    heroMaterial.envMapIntensity = Math.min(1.08, (heroMaterial.envMapIntensity ?? 0.68) + 0.12)
+    heroMaterial.clearcoat = Math.min(1, (heroMaterial.clearcoat ?? 0.72) + 0.08)
+    heroMaterial.emissive = variant.secondaryColor.clone().multiplyScalar(0.012)
+    heroMaterial.emissiveIntensity = 0.08
+
+    const heroMesh = new THREE.Mesh(this.createDetailedFishGeometry(variant), heroMaterial)
+    heroMesh.castShadow = true
+    heroMesh.receiveShadow = true
+    return heroMesh
+  }
+
+  private createHeroFishMaterial(
+    baseMaterial: THREE.Material,
+    variant: FishVariant
+  ): THREE.MeshPhysicalMaterial {
+    const heroMaterial = this.createFishAssetMaterial(baseMaterial, variant, true)
+    heroMaterial.envMapIntensity = Math.min(1.12, (heroMaterial.envMapIntensity ?? 0.95) + 0.12)
+    heroMaterial.clearcoat = Math.min(1, (heroMaterial.clearcoat ?? 0.84) + 0.08)
+    heroMaterial.emissive = variant.secondaryColor.clone().multiplyScalar(0.015)
+    heroMaterial.emissiveIntensity = 0.12
+    return heroMaterial
   }
 
   private resolveBehaviorProfile(groups: FishGroup[]): BehaviorProfile {
@@ -623,20 +671,30 @@ export class DetailedFishSystem {
     })
     this.instancedMeshes = []
 
-    heroFishMeshes.forEach((mesh) => {
-      this.group.remove(mesh)
-      if (!(mesh.geometry.userData as { sharedAsset?: boolean } | undefined)?.sharedAsset) {
-        mesh.geometry.dispose()
-      }
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((material) => {
+    heroFishMeshes.forEach((object) => {
+      this.group.remove(object)
+      object.traverse((child) => {
+        const mesh = child as THREE.Mesh
+        const material = (mesh as { material?: THREE.Material | THREE.Material[] }).material
+        if (!(mesh instanceof THREE.Mesh)) return
+
+        if (!(mesh.geometry.userData as { sharedAsset?: boolean } | undefined)?.sharedAsset) {
+          mesh.geometry.dispose()
+        }
+
+        if (Array.isArray(material)) {
+          material.forEach((entry) => {
+            this.disposeMaterialTextures(entry)
+            entry.dispose()
+          })
+          return
+        }
+
+        if (material instanceof THREE.Material) {
           this.disposeMaterialTextures(material)
           material.dispose()
-        })
-      } else if (mesh.material instanceof THREE.Material) {
-        this.disposeMaterialTextures(mesh.material)
-        mesh.material.dispose()
-      }
+        }
+      })
     })
     this.heroFishMeshes = []
     this.heroAssignments?.clear()
@@ -1039,14 +1097,14 @@ export class DetailedFishSystem {
         this.dummy.scale.set(scale, scale, scale)
 
         const heroAssignment = heroAssignments.get(boidIndex)
-        if (heroAssignment && heroAssignment.mesh.visible) {
-          heroAssignment.mesh.position.copy(this.dummy.position)
-          heroAssignment.mesh.position.x += heroAssignment.lateralOffset
-          heroAssignment.mesh.position.y += heroAssignment.verticalOffset
-          heroAssignment.mesh.position.z += heroAssignment.depthOffset
-          heroAssignment.mesh.rotation.copy(this.dummy.rotation)
-          heroAssignment.mesh.scale.setScalar(scale * heroAssignment.scaleMultiplier)
-          heroAssignment.mesh.updateMatrixWorld()
+        if (heroAssignment && heroAssignment.object.visible) {
+          heroAssignment.object.position.copy(this.dummy.position)
+          heroAssignment.object.position.x += heroAssignment.lateralOffset
+          heroAssignment.object.position.y += heroAssignment.verticalOffset
+          heroAssignment.object.position.z += heroAssignment.depthOffset
+          heroAssignment.object.rotation.copy(this.dummy.rotation)
+          heroAssignment.object.scale.setScalar(scale * heroAssignment.scaleMultiplier)
+          heroAssignment.object.updateMatrixWorld()
           this.dummy.scale.setScalar(0.0001)
         }
         
@@ -1071,7 +1129,7 @@ export class DetailedFishSystem {
 
   getHeroFocusPoint(): THREE.Vector3 | null {
     const heroFishMeshes = this.heroFishMeshes ?? []
-    const visibleHero = heroFishMeshes.find((mesh) => mesh.visible)
+    const visibleHero = heroFishMeshes.find((object) => object.visible)
     return visibleHero ? visibleHero.position.clone() : null
   }
   
@@ -1102,8 +1160,8 @@ export class DetailedFishSystem {
       mesh.count = Math.max(1, Math.floor(baseCount * qualityScale))
     })
 
-    heroFishMeshes.forEach((mesh) => {
-      mesh.visible = quality === 'standard'
+    heroFishMeshes.forEach((object) => {
+      object.visible = quality === 'standard'
     })
   }
 }

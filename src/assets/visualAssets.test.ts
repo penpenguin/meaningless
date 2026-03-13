@@ -107,6 +107,49 @@ describe('loadVisualAssets', () => {
 
     expect(assets.models['fish-angelfish-school']).toBeNull()
   })
+
+  it('treats multi-mesh hero fish models as valid and preserves the authored scene', async () => {
+    const heroScene = createMultiMeshScene()
+    const gltfLoader = {
+      loadAsync: vi.fn(async () => ({ scene: heroScene }))
+    }
+
+    const assets = await loadVisualAssets({
+      textures: [],
+      models: [
+        { id: 'fish-angelfish-hero', url: '/assets/aquarium/fish-angelfish-hero.glb', usageTag: 'fish', lod: 'high' }
+      ],
+      environment: []
+    }, {
+      gltfLoader
+    })
+
+    expect(assets.models['fish-angelfish-hero']).not.toBeNull()
+    expect(assets.models['fish-angelfish-hero']?.scene).toBe(heroScene)
+    expect(assets.models['fish-angelfish-hero']?.sourceMesh).toBeNull()
+  })
+
+  it('treats hardscape and plant assets as valid when only the scene is available', async () => {
+    const gltfLoader = {
+      loadAsync: vi.fn(async () => ({ scene: createMultiMeshScene() }))
+    }
+
+    const assets = await loadVisualAssets({
+      textures: [],
+      models: [
+        { id: 'driftwood-hero', url: '/assets/aquarium/driftwood-hero.glb', usageTag: 'wood', lod: 'high' },
+        { id: 'plant-fan-cluster', url: '/assets/aquarium/plant-fan-cluster.glb', usageTag: 'plant', lod: 'high' }
+      ],
+      environment: []
+    }, {
+      gltfLoader
+    })
+
+    expect(assets.models['driftwood-hero']).not.toBeNull()
+    expect(assets.models['driftwood-hero']?.sourceMesh).toBeNull()
+    expect(assets.models['plant-fan-cluster']).not.toBeNull()
+    expect(assets.models['plant-fan-cluster']?.sourceMesh).toBeNull()
+  })
 })
 
 describe('public aquarium asset urls', () => {

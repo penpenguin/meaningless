@@ -384,6 +384,90 @@ export class AquascapingSystem {
   }
 
   private createAssetBackedMaterial(id: string, material: THREE.Material): THREE.Material {
+    if (!(material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshPhysicalMaterial)) {
+      return this.createReplacementAssetMaterial(id, material)
+    }
+
+    const baseMaterial = material.clone() as THREE.MeshStandardMaterial & THREE.MeshPhysicalMaterial & {
+      envMapIntensity?: number
+      clearcoat?: number
+      clearcoatRoughness?: number
+      transmission?: number
+      thickness?: number
+      shadowSide?: THREE.Side
+    }
+
+    if (id.startsWith('plant-')) {
+      baseMaterial.map = baseMaterial.map ?? this.getVisualTexture('leaf-diffuse')
+      baseMaterial.alphaMap = baseMaterial.alphaMap ?? this.getVisualTexture('leaf-alpha')
+      baseMaterial.normalMap = baseMaterial.normalMap ?? this.getVisualTexture('leaf-normal')
+      if (baseMaterial.normalMap) {
+        baseMaterial.normalScale = new THREE.Vector2(0.36, 0.36)
+      }
+      baseMaterial.roughnessMap = baseMaterial.roughnessMap ?? this.getVisualTexture('leaf-roughness')
+      baseMaterial.color = baseMaterial.color?.clone() ?? new THREE.Color('#4d8150')
+      baseMaterial.metalness = 0
+      baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
+        ? Math.min(0.78, Math.max(baseMaterial.roughness, 0.48))
+        : 0.66
+      baseMaterial.transparent = baseMaterial.transparent || Boolean(baseMaterial.alphaMap)
+      baseMaterial.opacity = Math.min(baseMaterial.opacity ?? 0.92, 0.96)
+      baseMaterial.alphaTest = Math.max(baseMaterial.alphaTest ?? 0, baseMaterial.alphaMap ? 0.04 : 0)
+      baseMaterial.side = THREE.DoubleSide
+      baseMaterial.envMapIntensity = Math.max(baseMaterial.envMapIntensity ?? 0, 0.16)
+      if (baseMaterial instanceof THREE.MeshPhysicalMaterial) {
+        baseMaterial.transmission = Math.max(baseMaterial.transmission ?? 0, 0.02)
+        baseMaterial.thickness = Math.max(baseMaterial.thickness ?? 0, 0.02)
+        baseMaterial.clearcoat = Math.max(baseMaterial.clearcoat ?? 0, 0.04)
+        baseMaterial.clearcoatRoughness = baseMaterial.clearcoatRoughness ?? 0.78
+      }
+      baseMaterial.shadowSide = THREE.DoubleSide
+      return baseMaterial
+    }
+
+    if (id.startsWith('driftwood-')) {
+      baseMaterial.map = baseMaterial.map ?? this.getVisualTexture('driftwood-diffuse')
+      baseMaterial.normalMap = baseMaterial.normalMap ?? this.getVisualTexture('driftwood-normal')
+      if (baseMaterial.normalMap) {
+        baseMaterial.normalScale = new THREE.Vector2(0.7, 0.38)
+      }
+      baseMaterial.roughnessMap = baseMaterial.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
+      baseMaterial.color = baseMaterial.color?.clone() ?? new THREE.Color('#6f5641')
+      baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
+        ? Math.max(baseMaterial.roughness, 0.82)
+        : 0.96
+      baseMaterial.metalness = typeof baseMaterial.metalness === 'number'
+        ? Math.min(baseMaterial.metalness, 0.03)
+        : 0.03
+      baseMaterial.envMapIntensity = Math.max(baseMaterial.envMapIntensity ?? 0, 0.12)
+      return baseMaterial
+    }
+
+    if (id.startsWith('rock-')) {
+      baseMaterial.map = baseMaterial.map ?? this.getVisualTexture('rock-diffuse')
+      baseMaterial.normalMap = baseMaterial.normalMap ?? this.getVisualTexture('rock-normal')
+      if (baseMaterial.normalMap) {
+        baseMaterial.normalScale = new THREE.Vector2(0.58, 0.58)
+      }
+      baseMaterial.roughnessMap = baseMaterial.roughnessMap ?? this.getVisualTexture('rock-roughness')
+      baseMaterial.color = baseMaterial.color?.clone() ?? new THREE.Color('#7a7364')
+      baseMaterial.metalness = typeof baseMaterial.metalness === 'number'
+        ? Math.min(baseMaterial.metalness, 0.04)
+        : 0.04
+      baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
+        ? Math.max(baseMaterial.roughness, 0.78)
+        : 0.9
+      baseMaterial.envMapIntensity = Math.max(baseMaterial.envMapIntensity ?? 0, 0.14)
+      if (baseMaterial instanceof THREE.MeshPhysicalMaterial) {
+        baseMaterial.clearcoat = Math.max(baseMaterial.clearcoat ?? 0, 0.04)
+      }
+      return baseMaterial
+    }
+
+    return baseMaterial
+  }
+
+  private createReplacementAssetMaterial(id: string, material: THREE.Material): THREE.Material {
     const baseMaterial = material as THREE.MeshStandardMaterial
 
     if (id.startsWith('plant-')) {

@@ -17,16 +17,16 @@ type EnvironmentBackdropPalette = {
 }
 
 const defaultBackdropPalette: EnvironmentBackdropPalette = {
-  topColor: '#386b7d',
-  upperMidColor: '#2d6476',
-  lowerMidColor: '#163947',
-  deepColor: '#081d27',
-  upperBloomInner: 'rgba(239, 252, 255, 0.34)',
-  upperBloomOuter: 'rgba(156, 217, 229, 0.12)',
-  midBloomInner: 'rgba(212, 244, 250, 0.16)',
-  midBloomOuter: 'rgba(115, 178, 189, 0.08)',
-  lowerVignetteInner: 'rgba(11, 34, 43, 0)',
-  lowerVignetteOuter: 'rgba(3, 8, 12, 0.38)',
+  topColor: '#4a8092',
+  upperMidColor: '#3b7385',
+  lowerMidColor: '#214b59',
+  deepColor: '#0d2631',
+  upperBloomInner: 'rgba(243, 252, 255, 0.4)',
+  upperBloomOuter: 'rgba(174, 223, 234, 0.16)',
+  midBloomInner: 'rgba(218, 245, 251, 0.22)',
+  midBloomOuter: 'rgba(128, 186, 198, 0.11)',
+  lowerVignetteInner: 'rgba(16, 41, 51, 0)',
+  lowerVignetteOuter: 'rgba(5, 13, 18, 0.32)',
   silhouetteColor: 'rgba(7, 23, 29, 0.24)'
 }
 

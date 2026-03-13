@@ -9,6 +9,7 @@ import { SpiralDecorations } from './SpiralDecorations'
 import { GodRaysEffect } from './GodRays'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { defaultTheme } from '../utils/stateSchema'
 import { disposeSceneResources } from '../utils/threeDisposal'
 import { createOpenWaterBounds } from './sceneBounds'
@@ -226,6 +227,10 @@ export class AdvancedAquariumScene {
   private causticsMeshes: THREE.Mesh[] = []
   private currentVisualQuality: QualityLevel
   private primaryShadowLight: THREE.DirectionalLight | null = null
+  private hemiLight: THREE.HemisphereLight | null = null
+  private fillLight: THREE.DirectionalLight | null = null
+  private bounceLight: THREE.PointLight | null = null
+  private rimLight: THREE.DirectionalLight | null = null
   private currentRendererAntialias = false
   
   private animationId: number | null = null
@@ -300,7 +305,7 @@ export class AdvancedAquariumScene {
     this.renderer.setSize(width, height)
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.currentVisualQuality === 'simple' ? 1 : 2))
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.2
+    this.renderer.toneMappingExposure = this.resolveToneMappingExposure(this.currentVisualQuality)
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = this.currentVisualQuality === 'simple'
       ? THREE.PCFShadowMap
@@ -318,6 +323,7 @@ export class AdvancedAquariumScene {
     
     const renderPass = new RenderPass(this.scene, this.camera)
     this.composer.addPass(renderPass)
+    this.composer.addPass(new OutputPass())
   }
   
   private setupControls(): void {
@@ -345,14 +351,15 @@ export class AdvancedAquariumScene {
   }
 
   private setupAdvancedLighting(): void {
-    const ambientLight = new THREE.AmbientLight(0x9bc4cf, 0.24)
+    const ambientLight = new THREE.AmbientLight(0xa9d2db, 0.28)
     this.scene.add(ambientLight)
 
-    const hemiLight = new THREE.HemisphereLight(0xdff5fb, 0x0c1d26, 0.7)
+    const hemiLight = new THREE.HemisphereLight(0xe4f8fd, 0x153341, 0.82)
+    this.hemiLight = hemiLight
     this.scene.add(hemiLight)
 
-    const sunLight = new THREE.DirectionalLight(0xfff1d2, 1.68)
-    sunLight.position.set(2.8, 12.8, 5.1)
+    const sunLight = new THREE.DirectionalLight(0xfff3da, 1.82)
+    sunLight.position.set(2.3, 13.4, 4.8)
     sunLight.castShadow = true
     sunLight.shadow.camera.near = 0.5
     sunLight.shadow.camera.far = 42
@@ -364,23 +371,60 @@ export class AdvancedAquariumScene {
     sunLight.shadow.mapSize.height = 4096
     sunLight.shadow.bias = -0.00018
     sunLight.shadow.normalBias = 0.018
-    sunLight.target.position.set(0, -1.1, 0.4)
+    sunLight.target.position.set(0, -0.8, 0.6)
     this.primaryShadowLight = sunLight
     this.applyShadowQuality(this.currentVisualQuality)
     this.scene.add(sunLight)
     this.scene.add(sunLight.target)
 
-    const fillLight = new THREE.DirectionalLight(0xa7dceb, 0.32)
-    fillLight.position.set(-8.4, 4.8, 10.5)
+    const fillLight = new THREE.DirectionalLight(0xb5e5f1, 0.4)
+    fillLight.position.set(-9.6, 6.4, 9.8)
+    this.fillLight = fillLight
     this.scene.add(fillLight)
 
-    const bounceLight = new THREE.PointLight(0x548b97, 0.2, 22)
-    bounceLight.position.set(0, -3.1, 1.8)
+    const bounceLight = new THREE.PointLight(0x6e9ea7, 0.24, 22)
+    bounceLight.position.set(0, -2.7, 1.6)
+    this.bounceLight = bounceLight
     this.scene.add(bounceLight)
 
-    const rimLight = new THREE.DirectionalLight(0xf0fcff, 0.28)
-    rimLight.position.set(-1.2, 4.2, -14.2)
+    const rimLight = new THREE.DirectionalLight(0xe9f9ff, 0.16)
+    rimLight.position.set(-2.4, 5.6, -13.6)
+    this.rimLight = rimLight
     this.scene.add(rimLight)
+
+    this.applyLightingQuality(this.currentVisualQuality)
+  }
+
+  private resolveToneMappingExposure(quality: QualityLevel): number {
+    return (quality ?? 'standard') === 'standard' ? 1.38 : 1.28
+  }
+
+  private applyLightingQuality(quality: QualityLevel): void {
+    const isStandard = (quality ?? 'standard') === 'standard'
+
+    if (this.renderer) {
+      this.renderer.toneMappingExposure = this.resolveToneMappingExposure(quality)
+    }
+
+    if (this.primaryShadowLight) {
+      this.primaryShadowLight.intensity = isStandard ? 1.82 : 1.7
+    }
+
+    if (this.hemiLight) {
+      this.hemiLight.intensity = isStandard ? 0.86 : 0.76
+    }
+
+    if (this.fillLight) {
+      this.fillLight.intensity = isStandard ? 0.4 : 0.32
+    }
+
+    if (this.bounceLight) {
+      this.bounceLight.intensity = isStandard ? 0.24 : 0.2
+    }
+
+    if (this.rimLight) {
+      this.rimLight.intensity = isStandard ? 0.24 : 0.14
+    }
   }
 
   private setupGradientBackground(): void {
@@ -625,7 +669,7 @@ export class AdvancedAquariumScene {
         map: this.createHeroLightCanopyTexture(),
         color: new THREE.Color('#dff7ff'),
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.25,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -634,7 +678,7 @@ export class AdvancedAquariumScene {
     lightCanopy.name = 'tank-light-canopy'
     lightCanopy.position.set(0.4, tankHeight / 2 - 1.55, -tankDepth * 0.18)
     lightCanopy.renderOrder = 2
-    lightCanopy.userData.baseOpacity = 0.22
+    lightCanopy.userData.baseOpacity = 0.25
     lightCanopy.userData.baseY = tankHeight / 2 - 1.55
     this.lightCanopyMesh = lightCanopy
     this.tank.add(lightCanopy)
@@ -645,7 +689,7 @@ export class AdvancedAquariumScene {
         map: this.createHeroRimLightTexture(),
         color: new THREE.Color('#dffaff'),
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.14,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -655,7 +699,7 @@ export class AdvancedAquariumScene {
     heroRimLight.position.set(1.86, 0.42, -tankDepth * 0.18)
     heroRimLight.rotation.y = -0.24
     heroRimLight.renderOrder = 2
-    heroRimLight.userData.baseOpacity = 0.2
+    heroRimLight.userData.baseOpacity = 0.14
     heroRimLight.userData.baseX = 1.86
     this.heroRimLightMesh = heroRimLight
     this.tank.add(heroRimLight)
@@ -666,7 +710,7 @@ export class AdvancedAquariumScene {
         map: this.createHeroGroundGlowTexture(),
         color: new THREE.Color('#fff2c9'),
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.14,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -676,7 +720,7 @@ export class AdvancedAquariumScene {
     heroGroundGlow.rotation.x = -Math.PI / 2
     heroGroundGlow.position.set(1.2, -tankHeight / 2 + 0.72, -tankDepth * 0.05)
     heroGroundGlow.renderOrder = 2
-    heroGroundGlow.userData.baseOpacity = 0.18
+    heroGroundGlow.userData.baseOpacity = 0.14
     this.heroGroundGlowMesh = heroGroundGlow
     this.tank.add(heroGroundGlow)
   }
@@ -1310,7 +1354,7 @@ export class AdvancedAquariumScene {
         map: this.createWaterSurfaceHighlightTexture(),
         color: new THREE.Color('#e4fbff'),
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.22,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -1320,7 +1364,7 @@ export class AdvancedAquariumScene {
     surfaceHighlight.rotation.x = -Math.PI / 2
     surfaceHighlight.position.y = tankHeight / 2 - 0.39
     surfaceHighlight.renderOrder = 4
-    surfaceHighlight.userData.baseOpacity = 0.2
+    surfaceHighlight.userData.baseOpacity = 0.22
     this.waterSurfaceHighlightMesh = surfaceHighlight
     this.tank.add(surfaceHighlight)
 
@@ -2690,6 +2734,7 @@ export class AdvancedAquariumScene {
     const resolvedQuality = quality ?? 'standard'
     const isStandard = resolvedQuality === 'standard'
     this.ensureTankVisualLayers()
+    this.applyLightingQuality(resolvedQuality)
 
     this.glassPanes.forEach((pane, index) => {
       pane.visible = isStandard || index === 0
@@ -2751,7 +2796,7 @@ export class AdvancedAquariumScene {
       const material = this.waterSurfaceHighlightMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.waterSurfaceHighlightMesh.userData.baseOpacity as number | undefined) ?? 0.2
       this.waterSurfaceHighlightMesh.visible = isStandard
-      material.opacity = isStandard ? baseOpacity : 0
+      material.opacity = isStandard ? baseOpacity * 1.05 : 0
       material.needsUpdate = true
     }
 
@@ -2783,7 +2828,7 @@ export class AdvancedAquariumScene {
       const material = this.lightCanopyMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.lightCanopyMesh.userData.baseOpacity as number | undefined) ?? 0.18
       this.lightCanopyMesh.visible = isStandard
-      material.opacity = isStandard ? baseOpacity : 0
+      material.opacity = isStandard ? baseOpacity * 1.04 : 0
       material.needsUpdate = true
     }
 
@@ -2799,7 +2844,7 @@ export class AdvancedAquariumScene {
       const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.heroGroundGlowMesh.userData.baseOpacity as number | undefined) ?? 0.16
       this.heroGroundGlowMesh.visible = isStandard
-      material.opacity = isStandard ? baseOpacity : 0
+      material.opacity = isStandard ? baseOpacity * 0.94 : 0
       material.needsUpdate = true
     }
 
