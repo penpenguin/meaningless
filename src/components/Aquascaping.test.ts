@@ -26,6 +26,18 @@ const createMockCanvasContext = (): CanvasRenderingContext2D => {
   } as unknown as CanvasRenderingContext2D
 }
 
+const createModelAssetScene = (role: string): THREE.Group => {
+  const group = new THREE.Group()
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: '#ffffff' })
+  )
+  mesh.userData = { role: `${role}-mesh` }
+  group.userData = { sourceRole: role }
+  group.add(mesh)
+  return group
+}
+
 describe('AquascapingSystem composition', () => {
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
 
@@ -333,5 +345,81 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.map).toBe(rockDiffuse)
     expect(material.roughnessMap).toBe(rockRoughness)
     expect(material.normalMap).toBe(rockNormal)
+  })
+})
+
+describe('AquascapingSystem asset-backed hero scape', () => {
+  it('clones hero asset scenes when premium models are available', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const driftwoodAsset = createModelAssetScene('driftwood-hero')
+    const rockAsset = createModelAssetScene('rock-ridge-hero')
+    const swordPlantAsset = createModelAssetScene('plant-sword-cluster')
+    const fanPlantAsset = createModelAssetScene('plant-fan-cluster')
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null },
+        'rock-ridge-hero': { scene: rockAsset, sourceMesh: null },
+        'plant-sword-cluster': { scene: swordPlantAsset, sourceMesh: null },
+        'plant-fan-cluster': { scene: fanPlantAsset, sourceMesh: null }
+      }
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const heroDriftwood = aquascapingGroup.children.find((child) => child.userData.role === 'hero-driftwood') as THREE.Group
+    const heroRockRidge = aquascapingGroup.children.find((child) => child.userData.role === 'hero-rock-ridge') as THREE.Group
+    const heroCanopyAssets = aquascapingGroup.children.filter(
+      (child) => child.userData.role === 'hero-canopy' && typeof child.userData.assetId === 'string'
+    )
+
+    expect(heroDriftwood).toBeDefined()
+    expect(heroDriftwood).not.toBe(driftwoodAsset)
+    expect(heroDriftwood.userData.assetId).toBe('driftwood-hero')
+    expect(heroRockRidge).toBeDefined()
+    expect(heroRockRidge.userData.assetId).toBe('rock-ridge-hero')
+    expect(heroCanopyAssets.length).toBeGreaterThanOrEqual(2)
+    expect(heroCanopyAssets.some((child) => child.userData.assetId === 'plant-sword-cluster')).toBe(true)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('falls back to procedural hero generators when premium models are missing', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': null,
+        'rock-ridge-hero': null,
+        'plant-sword-cluster': null,
+        'plant-fan-cluster': null
+      }
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find((child) => child.userData.role === 'hero-driftwood') as THREE.Group | undefined
+    const ridge = aquascapingGroup.children.find((child) => child.userData.role === 'hero-rock-ridge') as THREE.Group | undefined
+    const branches = driftwood?.children.filter((child) => child.userData.role === 'driftwood-branch') ?? []
+    const ridgeRocks = ridge?.children.filter((child) => child.userData.role === 'ridge-rock') ?? []
+
+    expect(branches.length).toBeGreaterThan(0)
+    expect(ridgeRocks.length).toBeGreaterThan(0)
+
+    getContextSpy.mockRestore()
   })
 })

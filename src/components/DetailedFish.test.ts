@@ -131,6 +131,198 @@ describe('DetailedFishSystem premium materials', () => {
   })
 })
 
+describe('DetailedFishSystem asset-backed models', () => {
+  test('maps fish archetypes to school and hero model ids', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        schoolModelId?: string
+        heroModelId?: string
+      }>
+    }
+
+    const variants = createFishVariants.bind(instance)()
+
+    expect(variants.find((variant) => variant.name === 'Tropical')).toMatchObject({
+      schoolModelId: 'fish-tropical-school',
+      heroModelId: 'fish-tropical-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'Angelfish')).toMatchObject({
+      schoolModelId: 'fish-angelfish-school',
+      heroModelId: 'fish-angelfish-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'Neon')).toMatchObject({
+      schoolModelId: 'fish-neon-school',
+      heroModelId: 'fish-neon-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'Goldfish')).toMatchObject({
+      schoolModelId: 'fish-goldfish-school',
+      heroModelId: 'fish-goldfish-hero'
+    })
+  })
+
+  test('falls back to procedural geometry when a school model is unavailable', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const fallbackGeometry = new THREE.BoxGeometry(1, 1, 1)
+    const fallbackMaterial = new THREE.MeshPhysicalMaterial({ color: '#ffffff' })
+    const geometrySpy = vi.fn(() => fallbackGeometry)
+    const materialSpy = vi.fn(() => fallbackMaterial)
+
+    ;(instance as unknown as {
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        schoolModelId?: string
+      }>
+      instancedMeshes: THREE.InstancedMesh[]
+      heroFishMeshes: THREE.Mesh[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).variants = [{
+      name: 'Neon',
+      scale: 1,
+      speed: 1,
+      primaryColor: new THREE.Color('#ffffff'),
+      secondaryColor: new THREE.Color('#000000'),
+      schoolModelId: 'fish-neon-school'
+    }]
+    ;(instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      heroFishMeshes: THREE.Mesh[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).instancedMeshes = []
+    ;(instance as unknown as {
+      heroFishMeshes: THREE.Mesh[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).heroFishMeshes = []
+    ;(instance as unknown as {
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).baseInstanceCounts = []
+    ;(instance as unknown as {
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).group = new THREE.Group()
+    ;(instance as unknown as {
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).fishCount = 2
+    ;(instance as unknown as {
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).currentQuality = 'standard'
+    ;(instance as unknown as {
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).heroAssignments = new Map()
+    ;(instance as unknown as {
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).visualAssets = {
+      models: {
+        'fish-neon-school': null
+      }
+    }
+    ;(instance as unknown as {
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createDetailedFishGeometry = geometrySpy
+    ;(instance as unknown as {
+      createFishMaterial: (variant: unknown) => THREE.MeshPhysicalMaterial
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createFishMaterial = materialSpy
+    ;(instance as unknown as {
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createHeroFishMeshes = vi.fn()
+
+    const createDetailedFishMeshes = (DetailedFishSystem.prototype as unknown as {
+      createDetailedFishMeshes: (countsPerVariant?: number[]) => void
+    }).createDetailedFishMeshes.bind(instance)
+
+    createDetailedFishMeshes([2])
+
+    const createdMesh = (instance as unknown as { instancedMeshes: THREE.InstancedMesh[] }).instancedMeshes[0]
+
+    expect(geometrySpy).toHaveBeenCalledTimes(1)
+    expect(materialSpy).toHaveBeenCalledTimes(1)
+    expect(createdMesh.geometry).toBe(fallbackGeometry)
+    expect(createdMesh.material).toBe(fallbackMaterial)
+  })
+})
+
 describe('DetailedFishSystem wander target timing', () => {
   test('updates wander targets after 5 seconds when elapsed time is in seconds', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem

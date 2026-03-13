@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <filter id="grain" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="3" seed="8" />
+      <feColorMatrix type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 0.24 0" />
+    </filter>
+    <radialGradient id="warmGlow" cx="50%" cy="18%" r="90%">
+      <stop offset="0%" stop-color="#e8d2b0" />
+      <stop offset="45%" stop-color="#d2b78f" />
+      <stop offset="100%" stop-color="#b89368" />
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#warmGlow)" />
+  <rect width="512" height="512" fill="#c3a379" opacity="0.28" filter="url(#grain)" />
+  <g opacity="0.34">
+    <circle cx="74" cy="88" r="18" fill="#f0debe" />
+    <circle cx="154" cy="204" r="13" fill="#d7ba8e" />
+    <circle cx="248" cy="126" r="11" fill="#f1dfbf" />
+    <circle cx="314" cy="246" r="15" fill="#b78c63" />
+    <circle cx="396" cy="132" r="10" fill="#efd9b5" />
+    <circle cx="438" cy="300" r="14" fill="#c59a71" />
+    <circle cx="104" cy="348" r="12" fill="#ebd3ab" />
+    <circle cx="236" cy="384" r="16" fill="#b98960" />
+    <circle cx="352" cy="404" r="12" fill="#e0c49a" />
+    <circle cx="458" cy="428" r="9" fill="#c89f75" />
+  </g>
+  <g opacity="0.18" fill="#8c6847">
+    <ellipse cx="118" cy="148" rx="12" ry="8" />
+    <ellipse cx="286" cy="190" rx="14" ry="9" />
+    <ellipse cx="402" cy="222" rx="10" ry="7" />
+    <ellipse cx="180" cy="306" rx="9" ry="6" />
+    <ellipse cx="332" cy="334" rx="11" ry="7" />
+    <ellipse cx="78" cy="430" rx="13" ry="8" />
+  </g>
+</svg>

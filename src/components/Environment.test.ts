@@ -131,4 +131,56 @@ describe('EnvironmentLoader depth cues', () => {
     expect(scene.environment).toBeInstanceOf(THREE.CubeTexture)
     expect(scene.background).toBe(existingBackground)
   })
+
+  it('uses a preloaded hdri texture with PMREM when premium environment assets are available', async () => {
+    const scene = new THREE.Scene()
+    const hdriTexture = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1)
+    const pmremTexture = new THREE.Texture()
+    const pmremFactory = vi.fn(() => ({
+      fromEquirectangular: vi.fn(() => ({ texture: pmremTexture })),
+      dispose: vi.fn()
+    }))
+
+    const loader = new EnvironmentLoader(scene, {
+      renderer: {} as THREE.WebGLRenderer,
+      visualAssets: {
+        manifest: { textures: [], models: [], environment: [] },
+        textures: {},
+        models: {},
+        environment: {
+          'aquarium-hdri': hdriTexture
+        }
+      },
+      pmremGeneratorFactory: pmremFactory
+    })
+
+    await loader.loadHDRI()
+
+    expect(pmremFactory).toHaveBeenCalledTimes(1)
+    expect(scene.environment).toBe(pmremTexture)
+  })
+
+  it('falls back to the procedural env map when hdri assets are unavailable', async () => {
+    const scene = new THREE.Scene()
+    const proceduralEnv = new THREE.CubeTexture()
+    const loader = new EnvironmentLoader(scene, {
+      renderer: {} as THREE.WebGLRenderer,
+      visualAssets: {
+        manifest: { textures: [], models: [], environment: [] },
+        textures: {},
+        models: {},
+        environment: {}
+      },
+      pmremGeneratorFactory: vi.fn()
+    })
+    const createEnvironmentCubeMapSpy = vi
+      .spyOn(loader as unknown as { createEnvironmentCubeMap: () => THREE.CubeTexture }, 'createEnvironmentCubeMap')
+      .mockReturnValue(proceduralEnv)
+
+    await loader.loadHDRI()
+
+    expect(scene.environment).toBe(proceduralEnv)
+    expect(createEnvironmentCubeMapSpy).toHaveBeenCalledTimes(1)
+    createEnvironmentCubeMapSpy.mockRestore()
+  })
 })

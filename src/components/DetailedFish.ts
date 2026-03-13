@@ -3,7 +3,7 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
 import { BoidsSystem } from '../utils/Boids'
 import type { FishGroup, SchoolMood, Tuning } from '../types/aquarium'
 import { getFishContent, getFishContentList } from '../content/registry'
-import type { VisualAssetBundle } from '../assets/visualAssets'
+import type { LoadedModelAsset, VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
 
 interface FishVariant {
@@ -13,6 +13,8 @@ interface FishVariant {
   scale: number
   speed: number
   patternTextureId?: string
+  schoolModelId?: string
+  heroModelId?: string
   silhouette?: {
     bodyLength?: number
     bodyHeight?: number
@@ -156,6 +158,8 @@ export class DetailedFishSystem {
         scale: 0.5,
         speed: 1.0,
         patternTextureId: 'fish-tropical',
+        schoolModelId: 'fish-tropical-school',
+        heroModelId: 'fish-tropical-hero',
         silhouette: {
           bodyLength: 1.45,
           bodyHeight: 0.38,
@@ -177,6 +181,8 @@ export class DetailedFishSystem {
         scale: 0.65,
         speed: 0.8,
         patternTextureId: 'fish-angelfish',
+        schoolModelId: 'fish-angelfish-school',
+        heroModelId: 'fish-angelfish-hero',
         silhouette: {
           bodyLength: 1.06,
           bodyHeight: 0.62,
@@ -198,6 +204,8 @@ export class DetailedFishSystem {
         scale: 0.35,
         speed: 1.5,
         patternTextureId: 'fish-neon',
+        schoolModelId: 'fish-neon-school',
+        heroModelId: 'fish-neon-hero',
         silhouette: {
           bodyLength: 1.82,
           bodyHeight: 0.18,
@@ -219,6 +227,8 @@ export class DetailedFishSystem {
         scale: 0.55,
         speed: 0.9,
         patternTextureId: 'fish-goldfish',
+        schoolModelId: 'fish-goldfish-school',
+        heroModelId: 'fish-goldfish-hero',
         silhouette: {
           bodyLength: 1.26,
           bodyHeight: 0.48,
@@ -306,8 +316,12 @@ export class DetailedFishSystem {
       const actualCount = counts[variantIndex] ?? 0
       if (actualCount <= 0) return
       
-      const fishGeometry = this.createDetailedFishGeometry(variant)
-      const fishMaterial = this.createFishMaterial(variant)
+      const schoolAsset = this.getVisualModel(variant.schoolModelId)
+      const sourceMesh = schoolAsset?.sourceMesh ?? null
+      const fishGeometry = sourceMesh?.geometry ?? this.createDetailedFishGeometry(variant)
+      const fishMaterial = sourceMesh
+        ? this.createFishAssetMaterial(sourceMesh.material, variant, false)
+        : this.createFishMaterial(variant)
       
       const instancedMesh = new THREE.InstancedMesh(
         fishGeometry,
@@ -391,8 +405,12 @@ export class DetailedFishSystem {
         const variant = this.variants[candidate.variantIndex]
         if (!variant) return
 
-        const geometry = this.createDetailedFishGeometry(variant)
-        const material = this.createFishMaterial(variant).clone()
+        const heroAsset = this.getVisualModel(variant.heroModelId)
+        const sourceMesh = heroAsset?.sourceMesh ?? null
+        const geometry = sourceMesh?.geometry ?? this.createDetailedFishGeometry(variant)
+        const material = sourceMesh
+          ? this.createFishAssetMaterial(sourceMesh.material, variant, true)
+          : this.createFishMaterial(variant).clone()
         material.envMapIntensity = Math.min(1.2, (material.envMapIntensity ?? 0.5) + 0.25)
         material.clearcoat = Math.min(1, (material.clearcoat ?? 0.8) + 0.12)
         material.emissive = variant.secondaryColor.clone().multiplyScalar(0.08)
@@ -550,11 +568,49 @@ export class DetailedFishSystem {
     return this.visualAssets?.textures[id] ?? null
   }
 
+  private getVisualModel(id?: string): LoadedModelAsset | null {
+    if (!id) return null
+    return this.visualAssets?.models[id] ?? null
+  }
+
+  private createFishAssetMaterial(
+    baseMaterial: THREE.Material,
+    variant: FishVariant,
+    hero: boolean
+  ): THREE.MeshPhysicalMaterial {
+    const texturedMaterial = baseMaterial as THREE.MeshStandardMaterial & {
+      clearcoat?: number
+      clearcoatRoughness?: number
+      envMapIntensity?: number
+      alphaMap?: THREE.Texture | null
+    }
+
+    return new THREE.MeshPhysicalMaterial({
+      map: texturedMaterial.map ?? this.getVisualTexture(variant.patternTextureId),
+      alphaMap: texturedMaterial.alphaMap ?? null,
+      normalMap: texturedMaterial.normalMap ?? this.getVisualTexture('fish-scale-normal'),
+      normalScale: new THREE.Vector2(hero ? 0.4 : 0.3, hero ? 0.24 : 0.18),
+      roughnessMap: texturedMaterial.roughnessMap ?? this.getVisualTexture('fish-scale-roughness'),
+      color: 0xffffff,
+      metalness: typeof texturedMaterial.metalness === 'number' ? texturedMaterial.metalness : 0.04,
+      roughness: hero ? 0.24 : 0.34,
+      clearcoat: Math.max(hero ? 0.84 : 0.72, texturedMaterial.clearcoat ?? 0),
+      clearcoatRoughness: Math.min(0.28, texturedMaterial.clearcoatRoughness ?? 0.2),
+      reflectivity: 0.9,
+      envMapIntensity: hero ? 0.95 : Math.max(0.72, texturedMaterial.envMapIntensity ?? 0),
+      transparent: texturedMaterial.transparent,
+      alphaTest: texturedMaterial.alphaTest,
+      side: texturedMaterial.side ?? THREE.FrontSide
+    })
+  }
+
   private clearMeshes(): void {
     const heroFishMeshes = this.heroFishMeshes ?? []
     this.instancedMeshes.forEach((mesh) => {
       this.group.remove(mesh)
-      mesh.geometry.dispose()
+      if (!(mesh.geometry.userData as { sharedAsset?: boolean } | undefined)?.sharedAsset) {
+        mesh.geometry.dispose()
+      }
       if (Array.isArray(mesh.material)) {
         mesh.material.forEach((material) => {
           this.disposeMaterialTextures(material)
@@ -569,7 +625,9 @@ export class DetailedFishSystem {
 
     heroFishMeshes.forEach((mesh) => {
       this.group.remove(mesh)
-      mesh.geometry.dispose()
+      if (!(mesh.geometry.userData as { sharedAsset?: boolean } | undefined)?.sharedAsset) {
+        mesh.geometry.dispose()
+      }
       if (Array.isArray(mesh.material)) {
         mesh.material.forEach((material) => {
           this.disposeMaterialTextures(material)

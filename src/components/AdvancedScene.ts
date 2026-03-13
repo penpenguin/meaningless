@@ -269,7 +269,10 @@ export class AdvancedAquariumScene {
     this.tank = new THREE.Group()
     this.scene.add(this.tank)
     
-    this.environmentLoader = new EnvironmentLoader(this.scene)
+    this.environmentLoader = new EnvironmentLoader(this.scene, {
+      renderer: this.renderer,
+      visualAssets: this.visualAssets
+    })
     
     this.init()
   }
@@ -429,6 +432,10 @@ export class AdvancedAquariumScene {
     const initialTheme = this.scene instanceof THREE.Scene ? resolveTheme(this.scene) : defaultTheme
     this.applyTankTheme(initialTheme)
     this.applyVisualQuality(this.currentVisualQuality ?? 'standard')
+  }
+
+  private getVisualTexture(id: string): THREE.Texture | null {
+    return this.visualAssets?.textures[id] ?? null
   }
 
   private createBackdropTexture(): THREE.CanvasTexture {
@@ -851,21 +858,38 @@ export class AdvancedAquariumScene {
     sandGeometry.attributes.position.needsUpdate = true
     sandGeometry.computeVertexNormals()
 
-    const sandTexture = this.createSandTexture()
-    const sandNormalTexture = this.createSandNormalTexture()
-    const sandRoughnessTexture = this.createSandRoughnessTexture()
+    const uv = sandGeometry.getAttribute('uv')
+    if (uv && !sandGeometry.getAttribute('uv2')) {
+      sandGeometry.setAttribute('uv2', uv.clone())
+    }
+
+    const sandTexture = this.getVisualTexture('substrate-sand-albedo') ?? this.createSandTexture()
+    const sandNormalTexture = this.getVisualTexture('substrate-sand-normal') ?? this.createSandNormalTexture()
+    const sandRoughnessTexture = this.getVisualTexture('substrate-sand-roughness') ?? this.createSandRoughnessTexture()
+    const sandAoTexture = this.getVisualTexture('substrate-sand-ao')
     sandTexture.repeat.set(
       Math.max(2.4, tankWidth / 2.6),
       Math.max(2, tankDepth / 2.3)
     )
     sandNormalTexture.repeat.copy(sandTexture.repeat)
     sandRoughnessTexture.repeat.copy(sandTexture.repeat)
+    sandAoTexture?.repeat.copy(sandTexture.repeat)
+
+    const maxAnisotropy = this.renderer?.capabilities?.getMaxAnisotropy?.() ?? 1
+    sandTexture.anisotropy = maxAnisotropy
+    sandNormalTexture.anisotropy = maxAnisotropy
+    sandRoughnessTexture.anisotropy = maxAnisotropy
+    if (sandAoTexture) {
+      sandAoTexture.anisotropy = maxAnisotropy
+    }
     
     const sandMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
       normalMap: sandNormalTexture,
       normalScale: new THREE.Vector2(0.42, 0.42),
       roughnessMap: sandRoughnessTexture,
+      aoMap: sandAoTexture,
+      aoMapIntensity: sandAoTexture ? 0.88 : 1,
       color: 0xD2BB9B,
       roughness: 0.92,
       metalness: 0,
@@ -942,6 +966,10 @@ export class AdvancedAquariumScene {
 
     frontGeometry.attributes.position.needsUpdate = true
     frontGeometry.computeVertexNormals()
+    const frontUv = frontGeometry.getAttribute('uv')
+    if (frontUv && !frontGeometry.getAttribute('uv2')) {
+      frontGeometry.setAttribute('uv2', frontUv.clone())
+    }
 
     const sandFrontMaterial = sandMaterial.clone()
     sandFrontMaterial.color = new THREE.Color(0xC8B08E)

@@ -691,6 +691,69 @@ describe('AdvancedAquariumScene substrate', () => {
     expect(detailMaterial?.transparent).toBe(true)
     expect(detailMaterial?.alphaMap).toBeInstanceOf(THREE.Texture)
   })
+
+  it('prefers authored substrate maps and prepares uv2 for ao when premium visual assets are available', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const albedo = new THREE.Texture()
+    const normal = new THREE.Texture()
+    const roughness = new THREE.Texture()
+    const ao = new THREE.Texture()
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      renderer: { capabilities: { getMaxAnisotropy: () => number } }
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, unknown>
+        environment: Record<string, THREE.Texture | null>
+        manifest: { textures: unknown[]; models: unknown[]; environment: unknown[] }
+      } | undefined
+      createSandTexture: () => THREE.Texture
+      createSandNormalTexture: () => THREE.Texture
+      createSandRoughnessTexture: () => THREE.Texture
+      createSubstrateDetailTexture: () => THREE.Texture
+      createSubstrateDetailAlphaTexture: () => THREE.Texture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.renderer = {
+      capabilities: {
+        getMaxAnisotropy: () => 8
+      }
+    }
+    internals.visualAssets = {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {
+        'substrate-sand-albedo': albedo,
+        'substrate-sand-normal': normal,
+        'substrate-sand-roughness': roughness,
+        'substrate-sand-ao': ao
+      },
+      models: {},
+      environment: {}
+    }
+    internals.createSandTexture = () => new THREE.Texture()
+    internals.createSandNormalTexture = () => new THREE.Texture()
+    internals.createSandRoughnessTexture = () => new THREE.Texture()
+    internals.createSubstrateDetailTexture = () => new THREE.Texture()
+    internals.createSubstrateDetailAlphaTexture = () => new THREE.Texture()
+
+    const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+    }).createSubstrate.bind(instance)
+
+    createSubstrate(14, 14, 10)
+
+    const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh | undefined
+    const sandMaterial = sandMesh?.material as THREE.MeshStandardMaterial | undefined
+    const uv2 = sandMesh?.geometry.getAttribute('uv2')
+
+    expect(sandMaterial?.map).toBe(albedo)
+    expect(sandMaterial?.normalMap).toBe(normal)
+    expect(sandMaterial?.roughnessMap).toBe(roughness)
+    expect(sandMaterial?.aoMap).toBe(ao)
+    expect(albedo.anisotropy).toBe(8)
+    expect(uv2).toBeDefined()
+  })
 })
 
 describe('AdvancedAquariumScene quality scaling', () => {

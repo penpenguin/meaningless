@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
+import type { VisualAssetBundle } from '../assets/visualAssets'
 
 type EnvironmentBackdropPalette = {
   topColor: string
@@ -164,19 +166,89 @@ export const createEnvironmentBackdropTexture = (
 
 export class EnvironmentLoader {
   private scene: THREE.Scene
-  private envMap: THREE.CubeTexture | null = null
-  
-  constructor(scene: THREE.Scene) {
+  private envMap: THREE.Texture | null = null
+  private renderer: THREE.WebGLRenderer | null
+  private visualAssets: VisualAssetBundle | null
+  private hdriLoader: Pick<RGBELoader, 'loadAsync'>
+  private pmremGeneratorFactory: (renderer: THREE.WebGLRenderer) => {
+    fromEquirectangular(texture: THREE.Texture): { texture: THREE.Texture }
+    dispose(): void
+    compileEquirectangularShader?: () => void
+  }
+
+  constructor(
+    scene: THREE.Scene,
+    options: {
+      renderer?: THREE.WebGLRenderer | null
+      visualAssets?: VisualAssetBundle | null
+      hdriLoader?: Pick<RGBELoader, 'loadAsync'>
+      pmremGeneratorFactory?: (renderer: THREE.WebGLRenderer) => {
+        fromEquirectangular(texture: THREE.Texture): { texture: THREE.Texture }
+        dispose(): void
+        compileEquirectangularShader?: () => void
+      }
+    } = {}
+  ) {
     this.scene = scene
+    this.renderer = options.renderer ?? null
+    this.visualAssets = options.visualAssets ?? null
+    this.hdriLoader = options.hdriLoader ?? new RGBELoader()
+    this.pmremGeneratorFactory = options.pmremGeneratorFactory ?? ((renderer) => new THREE.PMREMGenerator(renderer))
   }
   
-  async loadHDRI(): Promise<THREE.CubeTexture> {
-    // HDRIの代わりにキューブマップを生成
+  private async resolveHdriTexture(): Promise<THREE.Texture | null> {
+    const bundledTexture = this.visualAssets?.environment['aquarium-hdri'] ?? null
+    if (bundledTexture) {
+      return bundledTexture
+    }
+
+    const hdriEntry = this.visualAssets?.manifest.environment.find((entry) => entry.id === 'aquarium-hdri')
+    if (!hdriEntry) {
+      return null
+    }
+
+    try {
+      const texture = await this.hdriLoader.loadAsync(hdriEntry.url)
+      texture.mapping = THREE.EquirectangularReflectionMapping
+      texture.colorSpace = THREE.LinearSRGBColorSpace
+      texture.userData.sharedAsset = true
+      texture.needsUpdate = true
+      return texture
+    } catch {
+      return null
+    }
+  }
+
+  private createPmremEnvironment(texture: THREE.Texture): THREE.Texture | null {
+    if (!this.renderer) {
+      return null
+    }
+
+    try {
+      const pmremGenerator = this.pmremGeneratorFactory(this.renderer)
+      pmremGenerator.compileEquirectangularShader?.()
+      const envMap = pmremGenerator.fromEquirectangular(texture).texture
+      envMap.userData.sharedAsset = true
+      pmremGenerator.dispose()
+      return envMap
+    } catch {
+      return null
+    }
+  }
+
+  async loadHDRI(): Promise<THREE.Texture> {
+    const hdriTexture = await this.resolveHdriTexture()
+    const pmremTexture = hdriTexture ? this.createPmremEnvironment(hdriTexture) : null
+
+    if (pmremTexture) {
+      this.envMap = pmremTexture
+      this.scene.environment = pmremTexture
+      return pmremTexture
+    }
+
     const envMap = this.createEnvironmentCubeMap()
     this.envMap = envMap
-    
     this.scene.environment = envMap
-    
     return envMap
   }
   
@@ -284,7 +356,7 @@ export class EnvironmentLoader {
     return envMap
   }
   
-  getEnvironmentMap(): THREE.CubeTexture | null {
+  getEnvironmentMap(): THREE.Texture | null {
     return this.envMap
   }
 }

@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { VisualAssetBundle } from '../assets/visualAssets'
+import type { LoadedModelAsset, VisualAssetBundle } from '../assets/visualAssets'
 
 type PlantLayer = 'foreground' | 'background' | 'midground'
 type PlantType = 'ribbon-seaweed' | 'sword-leaf' | 'fan-leaf'
@@ -349,6 +349,95 @@ export class AquascapingSystem {
     return this.visualAssets?.textures[id] ?? null
   }
 
+  private getVisualModel(id?: string): LoadedModelAsset | null {
+    if (!id) return null
+    return this.visualAssets?.models[id] ?? null
+  }
+
+  private cloneVisualModelGroup(
+    id: string,
+    userData: Record<string, unknown>
+  ): THREE.Group | null {
+    const model = this.getVisualModel(id)
+    if (!model) return null
+
+    const clone = model.scene.clone(true)
+    clone.userData = {
+      ...clone.userData,
+      ...userData,
+      assetId: id
+    }
+
+    clone.traverse((object) => {
+      const mesh = object as THREE.Mesh
+      if (!(mesh instanceof THREE.Mesh)) return
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material.map((material) => this.createAssetBackedMaterial(id, material))
+      } else if (mesh.material instanceof THREE.Material) {
+        mesh.material = this.createAssetBackedMaterial(id, mesh.material)
+      }
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+    })
+
+    return clone
+  }
+
+  private createAssetBackedMaterial(id: string, material: THREE.Material): THREE.Material {
+    const baseMaterial = material as THREE.MeshStandardMaterial
+
+    if (id.startsWith('plant-')) {
+      const plantMaterial = new THREE.MeshPhysicalMaterial({
+        map: this.getVisualTexture('leaf-diffuse'),
+        alphaMap: this.getVisualTexture('leaf-alpha'),
+        normalMap: this.getVisualTexture('leaf-normal'),
+        normalScale: new THREE.Vector2(0.36, 0.36),
+        roughnessMap: this.getVisualTexture('leaf-roughness'),
+        color: baseMaterial.color?.clone() ?? new THREE.Color('#4d8150'),
+        metalness: 0,
+        roughness: 0.66,
+        transmission: 0.06,
+        thickness: 0.04,
+        transparent: true,
+        opacity: 0.92,
+        alphaTest: 0.06,
+        side: THREE.DoubleSide,
+        envMapIntensity: 0.16,
+        clearcoat: 0.08,
+        clearcoatRoughness: 0.78
+      })
+      plantMaterial.shadowSide = THREE.DoubleSide
+      return plantMaterial
+    }
+
+    if (id.startsWith('driftwood-')) {
+      return new THREE.MeshStandardMaterial({
+        map: this.getVisualTexture('driftwood-diffuse'),
+        normalMap: this.getVisualTexture('driftwood-normal'),
+        normalScale: new THREE.Vector2(0.7, 0.38),
+        roughnessMap: this.getVisualTexture('driftwood-roughness'),
+        color: baseMaterial.color?.clone() ?? new THREE.Color('#6f5641'),
+        roughness: 0.96,
+        metalness: 0.03
+      })
+    }
+
+    if (id.startsWith('rock-')) {
+      return new THREE.MeshPhysicalMaterial({
+        map: this.getVisualTexture('rock-diffuse'),
+        normalMap: this.getVisualTexture('rock-normal'),
+        normalScale: new THREE.Vector2(0.58, 0.58),
+        roughnessMap: this.getVisualTexture('rock-roughness'),
+        color: baseMaterial.color?.clone() ?? new THREE.Color('#7a7364'),
+        metalness: 0.04,
+        roughness: 0.9,
+        clearcoat: 0.08
+      })
+    }
+
+    return material.clone()
+  }
+
   private createLeafMaterial(
     hue: number,
     layer: PlantLayer,
@@ -401,6 +490,18 @@ export class AquascapingSystem {
     driftwoodGroup.rotation.y = -0.38
     driftwoodGroup.userData = {
       role: 'hero-driftwood'
+    }
+
+    const driftwoodAsset = this.cloneVisualModelGroup('driftwood-hero', {
+      role: 'hero-driftwood'
+    })
+    if (driftwoodAsset) {
+      driftwoodAsset.position.copy(driftwoodGroup.position)
+      driftwoodAsset.rotation.copy(driftwoodGroup.rotation)
+      driftwoodAsset.scale.set(1.18, 1.18, 1.18)
+      this.decorations.push(driftwoodAsset)
+      this.group.add(driftwoodAsset)
+      return
     }
 
     const branchMaterial = this.createDriftwoodMaterial()
@@ -557,6 +658,18 @@ export class AquascapingSystem {
       role: 'hero-rock-ridge'
     }
 
+    const ridgeAsset = this.cloneVisualModelGroup('rock-ridge-hero', {
+      role: 'hero-rock-ridge'
+    })
+    if (ridgeAsset) {
+      ridgeAsset.position.copy(ridgeGroup.position)
+      ridgeAsset.rotation.copy(ridgeGroup.rotation)
+      ridgeAsset.scale.set(1.24, 1.24, 1.24)
+      this.decorations.push(ridgeAsset)
+      this.group.add(ridgeAsset)
+      return
+    }
+
     ;[
       {
         geometry: new THREE.DodecahedronGeometry(0.92, 0),
@@ -673,6 +786,7 @@ export class AquascapingSystem {
         position: new THREE.Vector3(center.x - size.x * 0.04, bounds.min.y + 0.42, center.z - size.z * 0.18),
         rotationY: -0.18,
         scale: new THREE.Vector3(0.92, 1.18, 0.92),
+        assetId: 'plant-sword-cluster',
         plantType: 'sword-leaf' as const,
         height: 6.2,
         hue: 0.35
@@ -681,7 +795,9 @@ export class AquascapingSystem {
         position: new THREE.Vector3(center.x + size.x * 0.2, bounds.min.y + 0.42, center.z - size.z * 0.12),
         rotationY: 0.24,
         scale: new THREE.Vector3(0.82, 1.28, 0.82),
-        plantType: 'ribbon-seaweed' as const,
+        assetId: 'plant-fan-cluster',
+        plantType: 'fan-leaf' as const,
+        fallbackPlantType: 'ribbon-seaweed' as const,
         height: 6.8,
         hue: 0.42
       },
@@ -689,11 +805,26 @@ export class AquascapingSystem {
         position: new THREE.Vector3(center.x + size.x * 0.06, bounds.min.y + 0.42, center.z - size.z * 0.24),
         rotationY: -0.36,
         scale: new THREE.Vector3(0.86, 1.1, 0.86),
+        assetId: 'plant-sword-cluster',
         plantType: 'sword-leaf' as const,
         height: 5.7,
         hue: 0.31
       }
     ].forEach((definition) => {
+      const assetCanopy = this.cloneVisualModelGroup(definition.assetId, {
+        role: 'hero-canopy',
+        layer: 'background',
+        plantType: definition.plantType
+      })
+      if (assetCanopy) {
+        assetCanopy.position.copy(definition.position)
+        assetCanopy.rotation.y = definition.rotationY
+        assetCanopy.scale.copy(definition.scale)
+        this.plants.push(assetCanopy)
+        this.group.add(assetCanopy)
+        return
+      }
+
       const canopyGroup = new THREE.Group()
       canopyGroup.position.copy(definition.position)
       canopyGroup.rotation.y = definition.rotationY
@@ -701,10 +832,10 @@ export class AquascapingSystem {
       canopyGroup.userData = {
         role: 'hero-canopy',
         layer: 'background',
-        plantType: definition.plantType
+        plantType: definition.fallbackPlantType ?? definition.plantType
       }
 
-      if (definition.plantType === 'sword-leaf') {
+      if ((definition.fallbackPlantType ?? definition.plantType) === 'sword-leaf') {
         this.createSwordLeafPlant(canopyGroup, 'background', definition.height, definition.hue)
       } else {
         this.createRibbonSeaweed(canopyGroup, 'background', definition.height, definition.hue)
