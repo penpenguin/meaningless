@@ -547,7 +547,7 @@ export class AquascapingSystem {
       driftwoodGroup.add(branch)
     })
 
-    ;[
+    const branchletDefinitions = [
       {
         radius: 0.04,
         points: [
@@ -572,7 +572,8 @@ export class AquascapingSystem {
           new THREE.Vector3(0.42, 2.54, 0.3)
         ]
       }
-    ].forEach((definition) => {
+    ]
+    branchletDefinitions.forEach((definition) => {
       const curve = new THREE.CatmullRomCurve3(definition.points)
       const branchlet = new THREE.Mesh(
         new THREE.TubeGeometry(curve, 20, definition.radius, 6, false),
@@ -586,7 +587,7 @@ export class AquascapingSystem {
       driftwoodGroup.add(branchlet)
     })
 
-    ;[
+    const rootDefinitions = [
       {
         radius: 0.022,
         points: [
@@ -611,7 +612,8 @@ export class AquascapingSystem {
           new THREE.Vector3(1.02, -0.34, -0.24)
         ]
       }
-    ].forEach((definition) => {
+    ]
+    rootDefinitions.forEach((definition) => {
       const curve = new THREE.CatmullRomCurve3(definition.points)
       const root = new THREE.Mesh(
         new THREE.TubeGeometry(curve, 18, definition.radius, 5, false),
@@ -625,11 +627,12 @@ export class AquascapingSystem {
       driftwoodGroup.add(root)
     })
 
-    ;[
+    const epiphyteAttachments = [
       { offset: new THREE.Vector3(-0.25, 1.15, 0.32), hue: 0.29 },
       { offset: new THREE.Vector3(0.72, 1.95, 0.58), hue: 0.33 },
       { offset: new THREE.Vector3(1.02, 1.55, -0.42), hue: 0.26 }
-    ].forEach((attachment) => {
+    ]
+    epiphyteAttachments.forEach((attachment) => {
       const cluster = this.createEpiphyteCluster(attachment.hue)
       cluster.position.copy(attachment.offset)
       cluster.rotation.y = Math.random() * Math.PI * 2
@@ -670,7 +673,7 @@ export class AquascapingSystem {
       return
     }
 
-    ;[
+    const ridgeRockDefinitions = [
       {
         geometry: new THREE.DodecahedronGeometry(0.92, 0),
         position: new THREE.Vector3(-1.05, 0.04, 0.46),
@@ -692,7 +695,8 @@ export class AquascapingSystem {
         scale: new THREE.Vector3(1.24, 0.68, 1.28),
         color: '#625b4f'
       }
-    ].forEach((definition) => {
+    ]
+    ridgeRockDefinitions.forEach((definition) => {
       const rock = new THREE.Mesh(
         definition.geometry,
         this.createRockMaterial(definition.color)
@@ -708,7 +712,7 @@ export class AquascapingSystem {
       ridgeGroup.add(rock)
     })
 
-    ;[
+    const ridgeSlateDefinitions = [
       {
         position: new THREE.Vector3(-0.36, 0.54, 0.24),
         rotation: new THREE.Euler(-0.18, 0.12, 0.42),
@@ -727,7 +731,8 @@ export class AquascapingSystem {
         scale: new THREE.Vector3(1.02, 0.08, 0.28),
         color: '#9b927f'
       }
-    ].forEach((definition) => {
+    ]
+    ridgeSlateDefinitions.forEach((definition) => {
       const slate = new THREE.Mesh(
         new THREE.BoxGeometry(0.84, 0.16, 0.34),
         this.createRockMaterial(definition.color)
@@ -743,13 +748,14 @@ export class AquascapingSystem {
       ridgeGroup.add(slate)
     })
 
-    ;[
+    const ridgeRubbleDefinitions = [
       { position: new THREE.Vector3(-1.36, -0.06, 0.74), scale: 0.24, color: '#7a7264' },
       { position: new THREE.Vector3(-0.54, -0.12, 0.88), scale: 0.18, color: '#93886f' },
       { position: new THREE.Vector3(0.38, -0.08, 0.54), scale: 0.22, color: '#665f55' },
       { position: new THREE.Vector3(1.04, -0.1, -0.68), scale: 0.2, color: '#847a67' },
       { position: new THREE.Vector3(1.56, -0.06, -0.12), scale: 0.16, color: '#a09681' }
-    ].forEach((definition, index) => {
+    ]
+    ridgeRubbleDefinitions.forEach((definition, index) => {
       const rubbleGeometry = index % 2 === 0
         ? new THREE.DodecahedronGeometry(definition.scale, 0)
         : new THREE.IcosahedronGeometry(definition.scale, 0)
@@ -781,7 +787,7 @@ export class AquascapingSystem {
     const center = new THREE.Vector3()
     bounds.getCenter(center)
 
-    ;[
+    const canopyDefinitions = [
       {
         position: new THREE.Vector3(center.x - size.x * 0.04, bounds.min.y + 0.42, center.z - size.z * 0.18),
         rotationY: -0.18,
@@ -810,7 +816,8 @@ export class AquascapingSystem {
         height: 5.7,
         hue: 0.31
       }
-    ].forEach((definition) => {
+    ]
+    canopyDefinitions.forEach((definition) => {
       const assetCanopy = this.cloneVisualModelGroup(definition.assetId, {
         role: 'hero-canopy',
         layer: 'background',
@@ -1115,14 +1122,15 @@ export class AquascapingSystem {
     }
     this.group.add(berm)
 
-    ;[
+    const pebbleDefinitions = [
       { offset: new THREE.Vector3(-1.48, 0.02, 0.92), scale: 0.18, color: '#8a7c68' },
       { offset: new THREE.Vector3(-0.86, 0.05, 0.62), scale: 0.14, color: '#9a8b75' },
       { offset: new THREE.Vector3(-0.08, 0.03, 0.46), scale: 0.16, color: '#756959' },
       { offset: new THREE.Vector3(0.74, 0.04, 0.1), scale: 0.13, color: '#a09076' },
       { offset: new THREE.Vector3(1.34, 0.02, -0.34), scale: 0.17, color: '#6c6255' },
       { offset: new THREE.Vector3(1.82, 0.03, -0.8), scale: 0.12, color: '#91826e' }
-    ].forEach((definition, index) => {
+    ]
+    pebbleDefinitions.forEach((definition, index) => {
       const pebble = new THREE.Mesh(
         index % 2 === 0
           ? new THREE.DodecahedronGeometry(definition.scale, 0)
