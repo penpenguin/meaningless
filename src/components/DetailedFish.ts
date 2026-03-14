@@ -12,7 +12,10 @@ interface FishVariant {
   secondaryColor: THREE.Color
   scale: number
   speed: number
-  patternTextureId?: string
+  baseColorTextureId?: string
+  normalTextureId?: string
+  roughnessTextureId?: string
+  alphaTextureId?: string
   schoolModelId?: string
   heroModelId?: string
   silhouette?: {
@@ -157,7 +160,10 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xffd700),
         scale: 0.5,
         speed: 1.0,
-        patternTextureId: 'fish-tropical',
+        baseColorTextureId: 'fish-tropical-basecolor',
+        normalTextureId: 'fish-tropical-normal',
+        roughnessTextureId: 'fish-tropical-roughness',
+        alphaTextureId: 'fish-tropical-alpha',
         schoolModelId: 'fish-tropical-school',
         heroModelId: 'fish-tropical-hero',
         silhouette: {
@@ -180,7 +186,10 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0x4169e1),
         scale: 0.65,
         speed: 0.8,
-        patternTextureId: 'fish-angelfish',
+        baseColorTextureId: 'fish-angelfish-basecolor',
+        normalTextureId: 'fish-angelfish-normal',
+        roughnessTextureId: 'fish-angelfish-roughness',
+        alphaTextureId: 'fish-angelfish-alpha',
         schoolModelId: 'fish-angelfish-school',
         heroModelId: 'fish-angelfish-hero',
         silhouette: {
@@ -203,7 +212,10 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff1493),
         scale: 0.35,
         speed: 1.5,
-        patternTextureId: 'fish-neon',
+        baseColorTextureId: 'fish-neon-basecolor',
+        normalTextureId: 'fish-neon-normal',
+        roughnessTextureId: 'fish-neon-roughness',
+        alphaTextureId: 'fish-neon-alpha',
         schoolModelId: 'fish-neon-school',
         heroModelId: 'fish-neon-hero',
         silhouette: {
@@ -226,7 +238,10 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff8c00),
         scale: 0.55,
         speed: 0.9,
-        patternTextureId: 'fish-goldfish',
+        baseColorTextureId: 'fish-goldfish-basecolor',
+        normalTextureId: 'fish-goldfish-normal',
+        roughnessTextureId: 'fish-goldfish-roughness',
+        alphaTextureId: 'fish-goldfish-alpha',
         schoolModelId: 'fish-goldfish-school',
         heroModelId: 'fish-goldfish-hero',
         silhouette: {
@@ -335,18 +350,23 @@ export class DetailedFishSystem {
       
       // 個体差のある色を設定
       const colors = new Float32Array(actualCount * 3)
+      const useSubtleInstanceTint = !!schoolAsset || !!variant.baseColorTextureId
       for (let i = 0; i < actualCount; i++) {
-        const hue = Math.random() * 0.1 - 0.05
-        const saturation = 0.8 + Math.random() * 0.2
-        const lightness = 0.5 + Math.random() * 0.3
-        
         const color = new THREE.Color()
-        const hslTarget = { h: 0, s: 0, l: 0 }
-        color.setHSL(
-          (variant.primaryColor.getHSL(hslTarget).h + hue) % 1,
-          saturation,
-          lightness
-        )
+        if (useSubtleInstanceTint) {
+          const brightness = 0.9 + (Math.random() * 0.08)
+          color.setRGB(brightness, brightness, brightness)
+        } else {
+          const hue = Math.random() * 0.1 - 0.05
+          const saturation = 0.8 + Math.random() * 0.2
+          const lightness = 0.5 + Math.random() * 0.3
+          const hslTarget = { h: 0, s: 0, l: 0 }
+          color.setHSL(
+            (variant.primaryColor.getHSL(hslTarget).h + hue) % 1,
+            saturation,
+            lightness
+          )
+        }
         
         colors[i * 3] = color.r
         colors[i * 3 + 1] = color.g
@@ -466,8 +486,8 @@ export class DetailedFishSystem {
     const heroMaterial = this.createFishMaterial(variant).clone()
     heroMaterial.envMapIntensity = Math.min(1.08, (heroMaterial.envMapIntensity ?? 0.68) + 0.12)
     heroMaterial.clearcoat = Math.min(1, (heroMaterial.clearcoat ?? 0.72) + 0.08)
-    heroMaterial.emissive = variant.secondaryColor.clone().multiplyScalar(0.012)
-    heroMaterial.emissiveIntensity = 0.08
+    heroMaterial.emissive.set(0x000000)
+    heroMaterial.emissiveIntensity = 0
 
     const heroMesh = new THREE.Mesh(this.createDetailedFishGeometry(variant), heroMaterial)
     heroMesh.castShadow = true
@@ -482,8 +502,8 @@ export class DetailedFishSystem {
     const heroMaterial = this.createFishAssetMaterial(baseMaterial, variant, true)
     heroMaterial.envMapIntensity = Math.min(1.12, (heroMaterial.envMapIntensity ?? 0.95) + 0.12)
     heroMaterial.clearcoat = Math.min(1, (heroMaterial.clearcoat ?? 0.84) + 0.08)
-    heroMaterial.emissive = variant.secondaryColor.clone().multiplyScalar(0.015)
-    heroMaterial.emissiveIntensity = 0.12
+    heroMaterial.emissive.set(0x000000)
+    heroMaterial.emissiveIntensity = 0
     return heroMaterial
   }
 
@@ -632,21 +652,25 @@ export class DetailedFishSystem {
       envMapIntensity?: number
       alphaMap?: THREE.Texture | null
     }
+    const resolvedMap = texturedMaterial.map ?? this.getVisualTexture(variant.baseColorTextureId)
+    const resolvedAlphaMap = texturedMaterial.alphaMap ?? (hero ? this.getVisualTexture(variant.alphaTextureId) : null)
+    const resolvedNormalMap = texturedMaterial.normalMap ?? this.getVisualTexture(variant.normalTextureId)
+    const resolvedRoughnessMap = texturedMaterial.roughnessMap ?? this.getVisualTexture(variant.roughnessTextureId)
 
     return new THREE.MeshPhysicalMaterial({
-      map: texturedMaterial.map ?? this.getVisualTexture(variant.patternTextureId),
-      alphaMap: texturedMaterial.alphaMap ?? null,
-      normalMap: texturedMaterial.normalMap ?? this.getVisualTexture('fish-scale-normal'),
+      map: resolvedMap,
+      alphaMap: resolvedAlphaMap,
+      normalMap: resolvedNormalMap,
       normalScale: new THREE.Vector2(hero ? 0.4 : 0.3, hero ? 0.24 : 0.18),
-      roughnessMap: texturedMaterial.roughnessMap ?? this.getVisualTexture('fish-scale-roughness'),
-      color: 0xffffff,
+      roughnessMap: resolvedRoughnessMap,
+      color: texturedMaterial.color?.clone() ?? new THREE.Color(0xffffff),
       metalness: typeof texturedMaterial.metalness === 'number' ? texturedMaterial.metalness : 0.04,
       roughness: hero ? 0.24 : 0.34,
       clearcoat: Math.max(hero ? 0.84 : 0.72, texturedMaterial.clearcoat ?? 0),
       clearcoatRoughness: Math.min(0.28, texturedMaterial.clearcoatRoughness ?? 0.2),
       reflectivity: 0.9,
       envMapIntensity: hero ? 0.95 : Math.max(0.72, texturedMaterial.envMapIntensity ?? 0),
-      transparent: texturedMaterial.transparent,
+      transparent: texturedMaterial.transparent || !!resolvedAlphaMap,
       alphaTest: texturedMaterial.alphaTest,
       side: texturedMaterial.side ?? THREE.FrontSide
     })
@@ -872,17 +896,120 @@ export class DetailedFishSystem {
 
     return mergedGeometry
   }
+
+  private createEmergencyFishTexture(variant: FishVariant): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')
+
+    if (!ctx) {
+      const texture = new THREE.CanvasTexture(canvas)
+      texture.wrapS = THREE.RepeatWrapping
+      texture.wrapT = THREE.RepeatWrapping
+      return texture
+    }
+
+    const width = canvas.width
+    const height = canvas.height
+    const dorsalColor = variant.primaryColor.clone().multiplyScalar(0.58)
+    const midColor = variant.primaryColor.clone().lerp(variant.secondaryColor, 0.28)
+    const bellyColor = variant.secondaryColor.clone().lerp(new THREE.Color('#f5f6ea'), 0.52)
+
+    ctx.clearRect(0, 0, width, height)
+    const baseGradient = ctx.createLinearGradient(0, 0, 0, height)
+    baseGradient.addColorStop(0, dorsalColor.getStyle())
+    baseGradient.addColorStop(0.42, midColor.getStyle())
+    baseGradient.addColorStop(1, bellyColor.getStyle())
+    ctx.fillStyle = baseGradient
+    ctx.fillRect(0, 0, width, height)
+
+    ctx.globalAlpha = 0.18
+    for (let i = -height; i < width; i += 22) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.28)'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(i, 0)
+      ctx.lineTo(i + height * 0.42, height)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+
+    const bodyGradient = ctx.createLinearGradient(0, height * 0.1, 0, height * 0.9)
+    bodyGradient.addColorStop(0, variant.primaryColor.clone().multiplyScalar(0.92).getStyle())
+    bodyGradient.addColorStop(0.55, variant.primaryColor.clone().lerp(variant.secondaryColor, 0.18).getStyle())
+    bodyGradient.addColorStop(1, variant.secondaryColor.clone().lerp(new THREE.Color('#fff8e8'), 0.6).getStyle())
+    ctx.fillStyle = bodyGradient
+    ctx.fillRect(width * 0.06, height * 0.14, width * 0.88, height * 0.72)
+
+    const species = variant.name.toLowerCase()
+    if (species === 'neon') {
+      ctx.fillStyle = 'rgba(18, 224, 255, 0.9)'
+      ctx.fillRect(width * 0.08, height * 0.42, width * 0.68, height * 0.09)
+      ctx.fillStyle = 'rgba(255, 82, 162, 0.72)'
+      ctx.fillRect(width * 0.44, height * 0.5, width * 0.34, height * 0.12)
+      const tailGradient = ctx.createLinearGradient(width * 0.72, 0, width * 0.94, 0)
+      tailGradient.addColorStop(0, 'rgba(93, 157, 255, 0.18)')
+      tailGradient.addColorStop(1, 'rgba(255, 255, 255, 0.4)')
+      ctx.fillStyle = tailGradient
+      ctx.fillRect(width * 0.72, height * 0.28, width * 0.2, height * 0.38)
+    } else if (species === 'angelfish') {
+      ctx.fillStyle = 'rgba(36, 44, 64, 0.55)'
+      ;[0.22, 0.38, 0.56].forEach((offset) => {
+        ctx.fillRect(width * offset, height * 0.16, width * 0.05, height * 0.72)
+      })
+      ctx.fillStyle = 'rgba(245, 250, 255, 0.26)'
+      ctx.fillRect(width * 0.18, height * 0.04, width * 0.16, height * 0.16)
+      ctx.fillRect(width * 0.26, height * 0.8, width * 0.18, height * 0.14)
+    } else if (species === 'goldfish') {
+      const warmGradient = ctx.createLinearGradient(width * 0.08, 0, width * 0.86, 0)
+      warmGradient.addColorStop(0, 'rgba(255, 213, 143, 0.92)')
+      warmGradient.addColorStop(0.45, 'rgba(255, 155, 74, 0.84)')
+      warmGradient.addColorStop(1, 'rgba(255, 108, 46, 0.72)')
+      ctx.fillStyle = warmGradient
+      ctx.fillRect(width * 0.08, height * 0.2, width * 0.82, height * 0.58)
+      ctx.fillStyle = 'rgba(255, 244, 221, 0.38)'
+      ctx.fillRect(width * 0.1, height * 0.28, width * 0.18, height * 0.22)
+      ctx.fillStyle = 'rgba(255, 246, 231, 0.28)'
+      ctx.fillRect(width * 0.76, height * 0.18, width * 0.14, height * 0.5)
+    } else {
+      ctx.fillStyle = 'rgba(43, 54, 80, 0.5)'
+      ctx.fillRect(width * 0.13, height * 0.33, width * 0.2, height * 0.06)
+      ctx.fillStyle = 'rgba(255, 229, 148, 0.72)'
+      ctx.fillRect(width * 0.08, height * 0.48, width * 0.54, height * 0.14)
+      ctx.fillStyle = 'rgba(255, 249, 235, 0.3)'
+      ctx.fillRect(width * 0.74, height * 0.22, width * 0.16, height * 0.42)
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
+    ctx.fillRect(width * 0.16, height * 0.22, width * 0.44, height * 0.07)
+    ctx.fillStyle = 'rgba(23, 28, 40, 0.78)'
+    ctx.beginPath()
+    ctx.arc(width * 0.16, height * 0.48, height * 0.055, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,0.82)'
+    ctx.beginPath()
+    ctx.arc(width * 0.145, height * 0.46, height * 0.018, 0, Math.PI * 2)
+    ctx.fill()
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    return texture
+  }
   
   private createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
-    const assetTexture = this.getVisualTexture(variant.patternTextureId)
+    const assetTexture = this.getVisualTexture(variant.baseColorTextureId)
     if (assetTexture) {
-      const scaleNormalTexture = this.getVisualTexture('fish-scale-normal')
-      const scaleRoughnessTexture = this.getVisualTexture('fish-scale-roughness')
+      const authoredNormalTexture = this.getVisualTexture(variant.normalTextureId)
+      const authoredRoughnessTexture = this.getVisualTexture(variant.roughnessTextureId)
+      const authoredAlphaTexture = this.getVisualTexture(variant.alphaTextureId)
       return new THREE.MeshPhysicalMaterial({
         map: assetTexture,
-        normalMap: scaleNormalTexture,
+        alphaMap: authoredAlphaTexture,
+        normalMap: authoredNormalTexture,
         normalScale: new THREE.Vector2(0.3, 0.18),
-        roughnessMap: scaleRoughnessTexture,
+        roughnessMap: authoredRoughnessTexture,
         color: 0xffffff,
         metalness: 0.04,
         roughness: 0.34,
@@ -890,52 +1017,23 @@ export class DetailedFishSystem {
         clearcoatRoughness: 0.2,
         reflectivity: 0.9,
         envMapIntensity: 0.7,
-        transparent: false,
+        transparent: !!authoredAlphaTexture,
+        alphaTest: authoredAlphaTexture ? 0.05 : 0,
         side: THREE.FrontSide
       })
     }
 
-    // 魚のテクスチャを手続き的に生成
-    const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 256
-    const ctx = canvas.getContext('2d')!
-    
-    // グラデーション背景
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-    gradient.addColorStop(0, variant.primaryColor.getStyle())
-    gradient.addColorStop(0.5, variant.secondaryColor.getStyle())
-    gradient.addColorStop(1, variant.primaryColor.clone().multiplyScalar(0.7).getStyle())
-    
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // 鱗のパターン
-    ctx.globalCompositeOperation = 'overlay'
-    for (let x = 0; x < canvas.width; x += 12) {
-      for (let y = 0; y < canvas.height; y += 12) {
-        const offsetX = (y % 24 === 0) ? 6 : 0
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + Math.random() * 0.1})`
-        ctx.beginPath()
-        ctx.arc(x + offsetX, y, 4, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-    ctx.globalCompositeOperation = 'source-over'
-    
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
+    const texture = this.createEmergencyFishTexture(variant)
     
     return new THREE.MeshPhysicalMaterial({
       map: texture,
       color: 0xffffff,
-      metalness: 0.1,
-      roughness: 0.3,
-      clearcoat: 0.8,
-      clearcoatRoughness: 0.2,
+      metalness: 0.04,
+      roughness: 0.42,
+      clearcoat: 0.58,
+      clearcoatRoughness: 0.24,
       reflectivity: 0.9,
-      envMapIntensity: 0.5,
+      envMapIntensity: 0.46,
       transparent: false,
       side: THREE.FrontSide
     })

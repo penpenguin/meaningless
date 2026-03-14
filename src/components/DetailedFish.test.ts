@@ -108,26 +108,29 @@ describe('DetailedFishSystem silhouette archetypes', () => {
 })
 
 describe('DetailedFishSystem premium materials', () => {
-  test('uses external fish pattern textures when visual assets are available', () => {
+  test('uses authored species textures when visual assets are available', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const tropicalTexture = new THREE.Texture()
-    const fishScaleNormal = new THREE.Texture()
-    const fishScaleRoughness = new THREE.Texture()
+    const tropicalNormal = new THREE.Texture()
+    const tropicalRoughness = new THREE.Texture()
     ;(instance as unknown as {
       visualAssets: {
         textures: Record<string, THREE.Texture | null>
       } | null
     }).visualAssets = {
       textures: {
-        'fish-tropical': tropicalTexture,
-        'fish-scale-normal': fishScaleNormal,
-        'fish-scale-roughness': fishScaleRoughness
+        'fish-tropical-basecolor': tropicalTexture,
+        'fish-tropical-normal': tropicalNormal,
+        'fish-tropical-roughness': tropicalRoughness
       }
     }
 
     const { createFishVariants, createFishMaterial } = DetailedFishSystem.prototype as unknown as {
       createFishVariants: () => Array<{
         name: string
+        baseColorTextureId?: string
+        normalTextureId?: string
+        roughnessTextureId?: string
         primaryColor: THREE.Color
         secondaryColor: THREE.Color
         scale: number
@@ -148,8 +151,105 @@ describe('DetailedFishSystem premium materials', () => {
     const material = createFishMaterial.bind(instance)(tropical)
 
     expect(material.map).toBe(tropicalTexture)
-    expect(material.normalMap).toBe(fishScaleNormal)
-    expect(material.roughnessMap).toBe(fishScaleRoughness)
+    expect(material.normalMap).toBe(tropicalNormal)
+    expect(material.roughnessMap).toBe(tropicalRoughness)
+  })
+
+  test('preserves authored base material maps before consulting shared species textures', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const authoredMap = new THREE.Texture()
+    const authoredAlpha = new THREE.Texture()
+    const tropicalFallbackMap = new THREE.Texture()
+    const tropicalFallbackNormal = new THREE.Texture()
+    const tropicalFallbackRoughness = new THREE.Texture()
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-tropical-basecolor': tropicalFallbackMap,
+        'fish-tropical-normal': tropicalFallbackNormal,
+        'fish-tropical-roughness': tropicalFallbackRoughness
+      }
+    }
+
+    const { createFishAssetMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          baseColorTextureId?: string
+          normalTextureId?: string
+          roughnessTextureId?: string
+          alphaTextureId?: string
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        },
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({
+        map: authoredMap,
+        alphaMap: authoredAlpha,
+        roughness: 0.52
+      }),
+      {
+        primaryColor: new THREE.Color('#ff8844'),
+        secondaryColor: new THREE.Color('#ffee88'),
+        scale: 1,
+        speed: 1,
+        baseColorTextureId: 'fish-tropical-basecolor',
+        normalTextureId: 'fish-tropical-normal',
+        roughnessTextureId: 'fish-tropical-roughness'
+      },
+      false
+    )
+
+    expect(material.map).toBe(authoredMap)
+    expect(material.alphaMap).toBe(authoredAlpha)
+    expect(material.normalMap).toBe(tropicalFallbackNormal)
+    expect(material.roughnessMap).toBe(tropicalFallbackRoughness)
+  })
+
+  test('hero asset materials do not add emissive brightness', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {}
+    }
+
+    const { createHeroFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createHeroFishMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        }
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createHeroFishMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({ color: '#ffffff' }),
+      {
+        primaryColor: new THREE.Color('#44eeff'),
+        secondaryColor: new THREE.Color('#ff44aa'),
+        scale: 1,
+        speed: 1
+      }
+    )
+
+    expect(material.emissiveIntensity).toBe(0)
+    expect(material.emissive.getHex()).toBe(0x000000)
   })
 })
 
@@ -342,6 +442,157 @@ describe('DetailedFishSystem asset-backed models', () => {
     expect(materialSpy).toHaveBeenCalledTimes(1)
     expect(createdMesh.geometry).toBe(fallbackGeometry)
     expect(createdMesh.material).toBe(fallbackMaterial)
+  })
+
+  test('keeps school instance colors near-neutral when using authored fish assets', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const sourceMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: '#ffffff', map: new THREE.Texture() })
+    )
+
+    ;(instance as unknown as {
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        schoolModelId?: string
+      }>
+      instancedMeshes: THREE.InstancedMesh[]
+      heroFishMeshes: THREE.Object3D[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).variants = [{
+      name: 'Tropical',
+      scale: 1,
+      speed: 1,
+      primaryColor: new THREE.Color('#ff8844'),
+      secondaryColor: new THREE.Color('#ffee88'),
+      schoolModelId: 'fish-tropical-school'
+    }]
+    ;(instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      heroFishMeshes: THREE.Object3D[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).instancedMeshes = []
+    ;(instance as unknown as {
+      heroFishMeshes: THREE.Object3D[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).heroFishMeshes = []
+    ;(instance as unknown as {
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).baseInstanceCounts = []
+    ;(instance as unknown as {
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).group = new THREE.Group()
+    ;(instance as unknown as {
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).fishCount = 2
+    ;(instance as unknown as {
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).currentQuality = 'standard'
+    ;(instance as unknown as {
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).heroAssignments = new Map()
+    ;(instance as unknown as {
+      visualAssets: {
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).visualAssets = {
+      models: {
+        'fish-tropical-school': { sourceMesh }
+      }
+    }
+    ;(instance as unknown as {
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createDetailedFishGeometry = vi.fn(() => new THREE.BoxGeometry(1, 1, 1))
+    ;(instance as unknown as {
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createHeroFishMeshes = vi.fn()
+
+    const createDetailedFishMeshes = (DetailedFishSystem.prototype as unknown as {
+      createDetailedFishMeshes: (countsPerVariant?: number[]) => void
+    }).createDetailedFishMeshes.bind(instance)
+
+    createDetailedFishMeshes([2])
+
+    const createdMesh = (instance as unknown as { instancedMeshes: THREE.InstancedMesh[] }).instancedMeshes[0]
+    const colors = createdMesh.instanceColor?.array ?? new Float32Array()
+
+    expect(colors[0]).toBeGreaterThan(0.85)
+    expect(colors[1]).toBeGreaterThan(0.85)
+    expect(colors[2]).toBeGreaterThan(0.85)
+    expect(Math.abs(colors[0] - colors[1])).toBeLessThan(0.02)
+    expect(Math.abs(colors[1] - colors[2])).toBeLessThan(0.02)
+
+    randomSpy.mockRestore()
   })
 
   test('uses the authored single-mesh hero asset when a source mesh is available', () => {

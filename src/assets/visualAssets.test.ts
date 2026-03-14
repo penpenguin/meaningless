@@ -153,6 +153,28 @@ describe('loadVisualAssets', () => {
 })
 
 describe('public aquarium asset urls', () => {
+  it('uses authored fish texture atlases instead of fish SVG diffuse assets', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const textureIds = new Set(manifest.textures.map((entry) => entry.id))
+    const textureUrls = manifest.textures.map((entry) => entry.url)
+
+    expect(textureIds.has('fish-neon')).toBe(false)
+    expect(textureIds.has('fish-angelfish')).toBe(false)
+    expect(textureIds.has('fish-goldfish')).toBe(false)
+    expect(textureIds.has('fish-tropical')).toBe(false)
+
+    expect(textureIds.has('fish-neon-basecolor')).toBe(true)
+    expect(textureIds.has('fish-neon-normal')).toBe(true)
+    expect(textureIds.has('fish-neon-roughness')).toBe(true)
+    expect(textureIds.has('fish-neon-alpha')).toBe(true)
+
+    expect(textureUrls.some((url) => url.endsWith('fish-neon.svg'))).toBe(false)
+    expect(textureUrls.some((url) => url.endsWith('fish-angelfish.svg'))).toBe(false)
+    expect(textureUrls.some((url) => url.endsWith('fish-goldfish.svg'))).toBe(false)
+    expect(textureUrls.some((url) => url.endsWith('fish-tropical.svg'))).toBe(false)
+    expect(textureUrls.some((url) => url.endsWith('fish-neon-basecolor.png'))).toBe(true)
+  })
+
   it('resolves public asset urls through BASE_URL without hardcoding a leading slash', () => {
     expect(resolvePublicAssetUrl('assets/aquarium/fish-neon-school.glb', '/meaningless/')).toBe(
       '/meaningless/assets/aquarium/fish-neon-school.glb'
