@@ -13,6 +13,15 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { defaultTheme } from '../utils/stateSchema'
 import { disposeSceneResources } from '../utils/threeDisposal'
 import { createOpenWaterBounds } from './sceneBounds'
+import {
+  AQUARIUM_CAMERA_FRAMING,
+  AQUARIUM_TANK_DIMENSIONS,
+  type AquariumTankDimensions,
+  resolveDefaultCameraPosition,
+  resolveDefaultControlsTarget,
+  resolvePhotoModeCameraPosition,
+  resolvePhotoModeControlsTarget
+} from './aquariumLayout'
 import type { VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
 
@@ -462,10 +471,11 @@ export class AdvancedAquariumScene {
   private photoModeEnabled = false
   private motionScale = 1
   public advancedEffectsEnabled = true
-  private readonly defaultCameraPosition = new THREE.Vector3(0, 1.2, 11.8)
-  private readonly photoModeCameraPosition = new THREE.Vector3(-1.9, 1.85, 9.6)
-  private readonly defaultControlsTarget = new THREE.Vector3(0, -0.9, 0.6)
-  private readonly photoModeControlsTarget = new THREE.Vector3(0.7, -0.35, 0.15)
+  private readonly tankDimensions = AQUARIUM_TANK_DIMENSIONS
+  private readonly defaultCameraPosition = resolveDefaultCameraPosition(this.tankDimensions)
+  private readonly photoModeCameraPosition = resolvePhotoModeCameraPosition(this.tankDimensions)
+  private readonly defaultControlsTarget = resolveDefaultControlsTarget(this.tankDimensions)
+  private readonly photoModeControlsTarget = resolvePhotoModeControlsTarget(this.tankDimensions)
   private readonly tempPhotoModeTarget = new THREE.Vector3()
   private readonly visualAssets?: VisualAssetBundle
   
@@ -509,7 +519,7 @@ export class AdvancedAquariumScene {
   private setupCamera(): void {
     const { width, height } = this.getViewportSize()
     this.camera = new THREE.PerspectiveCamera(
-      48,
+      AQUARIUM_CAMERA_FRAMING.standardFov,
       width / height,
       0.1,
       1000
@@ -655,14 +665,17 @@ export class AdvancedAquariumScene {
     applyGradientBackground(this.scene)
   }
 
+  private getTankDimensions(): AquariumTankDimensions {
+    return this.tankDimensions ?? AQUARIUM_TANK_DIMENSIONS
+  }
+
   private createAdvancedTank(): void {
-    const tankWidth = 14
-    const tankHeight = 14
-    const tankDepth = 10
+    const dimensions = this.getTankDimensions()
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
 
     this.ensureTankVisualLayers()
-    this.createGlassShell(tankWidth, tankHeight, tankDepth)
-    this.createInteriorWallPanels(tankWidth, tankHeight, tankDepth)
+    this.createGlassShell(dimensions)
+    this.createInteriorWallPanels(dimensions)
 
     const backdropGeometry = new THREE.PlaneGeometry(tankWidth * 0.92, tankHeight * 0.74)
     const backdropMaterial = new THREE.MeshBasicMaterial({
@@ -691,14 +704,14 @@ export class AdvancedAquariumScene {
       this.tank.add(backdropOverlayMesh)
     }
 
-    this.createDepthLayers(tankWidth, tankHeight, tankDepth)
-    this.createSubstrate(tankWidth, tankHeight, tankDepth)
-    this.createHeroLightingLayers(tankWidth, tankHeight, tankDepth)
-    this.createUnderwaterLightingBands(tankWidth, tankHeight, tankDepth)
-    this.createWaterVolume(tankWidth, tankHeight, tankDepth)
-    this.createWaterSurface(tankWidth, tankHeight, tankDepth)
-    this.createCausticsLayers(tankWidth, tankHeight, tankDepth)
-    this.createHardscapeOcclusionLayers(tankWidth, tankHeight, tankDepth)
+    this.createDepthLayers(dimensions)
+    this.createSubstrate(dimensions)
+    this.createHeroLightingLayers(dimensions)
+    this.createUnderwaterLightingBands(dimensions)
+    this.createWaterVolume(dimensions)
+    this.createWaterSurface(dimensions)
+    this.createCausticsLayers(dimensions)
+    this.createHardscapeOcclusionLayers(dimensions)
     const initialTheme = this.scene instanceof THREE.Scene ? resolveTheme(this.scene) : defaultTheme
     this.applyTankTheme(initialTheme)
     this.applyVisualQuality(this.currentVisualQuality ?? 'standard')
@@ -850,7 +863,9 @@ export class AdvancedAquariumScene {
     return texture
   }
 
-  private createDepthLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createDepthLayers(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const midground = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.78, tankHeight * 0.54),
       new THREE.MeshBasicMaterial({
@@ -888,7 +903,9 @@ export class AdvancedAquariumScene {
     this.tank.add(foregroundShadow)
   }
 
-  private createHeroLightingLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createHeroLightingLayers(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const lightCanopy = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.6, tankHeight * 0.34),
       new THREE.MeshBasicMaterial({
@@ -951,7 +968,9 @@ export class AdvancedAquariumScene {
     this.tank.add(heroGroundGlow)
   }
 
-  private createUnderwaterLightingBands(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createUnderwaterLightingBands(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     this.nearSurfaceLightMeshes = [
       {
         name: 'tank-light-near-surface-band-0',
@@ -1059,7 +1078,9 @@ export class AdvancedAquariumScene {
     this.tank.add(midwaterLayer)
   }
 
-  private createHardscapeOcclusionLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createHardscapeOcclusionLayers(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const driftwoodAnchor = substrateHardscapeAnchors.find((anchor) => anchor.id === 'driftwood-root-flare')
     const ridgeAnchor = substrateHardscapeAnchors.find((anchor) => anchor.id === 'ridge-rock-hero')
 
@@ -1277,7 +1298,9 @@ export class AdvancedAquariumScene {
     return texture
   }
   
-  private createSubstrate(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createSubstrate(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const baseHeight = 0.68
     const baseBottomY = -tankHeight / 2
     const baseGeometry = new THREE.BoxGeometry(
@@ -1553,7 +1576,9 @@ export class AdvancedAquariumScene {
     }
   }
 
-  private createGlassShell(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createGlassShell(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const thickness = 0.06
     const halfDepth = tankDepth / 2
     const halfWidth = tankWidth / 2
@@ -1645,7 +1670,9 @@ export class AdvancedAquariumScene {
     this.glassEdgeHighlightMeshes = [leftEdgeHighlight, rightEdgeHighlight]
   }
 
-  private createInteriorWallPanels(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createInteriorWallPanels(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const halfWidth = tankWidth / 2
     const halfDepth = tankDepth / 2
     const createWallMaterial = (opacity: number): THREE.MeshBasicMaterial => new THREE.MeshBasicMaterial({
@@ -1715,7 +1742,9 @@ export class AdvancedAquariumScene {
     })
   }
 
-  private createWaterVolume(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createWaterVolume(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const waterVolume = new THREE.Mesh(
       new THREE.BoxGeometry(tankWidth - 0.24, tankHeight - 0.72, tankDepth - 0.24),
       new THREE.MeshPhysicalMaterial({
@@ -1741,7 +1770,9 @@ export class AdvancedAquariumScene {
     this.tank.add(waterVolume)
   }
 
-  private createWaterSurface(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createWaterSurface(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const surfaceTexture = this.createWaterSurfaceTexture()
     const surfaceGeometry = new THREE.PlaneGeometry(tankWidth - 0.32, tankDepth - 0.32, 48, 36)
     surfaceGeometry.rotateX(-Math.PI / 2)
@@ -2365,7 +2396,9 @@ export class AdvancedAquariumScene {
     return texture
   }
 
-  private createCausticsLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
+  private createCausticsLayers(dimensions: AquariumTankDimensions): void {
+    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+
     const causticsTexture = this.createCausticsTexture()
     const floorMaterial = new THREE.MeshBasicMaterial({
       map: causticsTexture,
@@ -3130,12 +3163,12 @@ export class AdvancedAquariumScene {
   }
   
   private createAquascaping(): void {
-    const tankBounds = createOpenWaterBounds()
+    const tankBounds = createOpenWaterBounds(this.getTankDimensions())
     this.aquascaping = new AquascapingSystem(this.scene, tankBounds, this.visualAssets)
   }
   
   private createAdvancedFishSystem(): void {
-    const tankBounds = createOpenWaterBounds()
+    const tankBounds = createOpenWaterBounds(this.getTankDimensions())
     this.fishSystem = new DetailedFishSystem(this.scene, tankBounds, this.visualAssets)
     if (this.pendingFishGroups) {
       this.fishSystem.setFishGroups(this.pendingFishGroups)
@@ -3144,7 +3177,7 @@ export class AdvancedAquariumScene {
   }
 
   private createAdvancedWaterEffects(): void {
-    const tankBounds = createOpenWaterBounds()
+    const tankBounds = createOpenWaterBounds(this.getTankDimensions())
     this.particleSystem = new EnhancedParticleSystem(this.scene, tankBounds)
     this.particleSystem.setQuality(this.currentVisualQuality)
   }

@@ -1,7 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 import { AdvancedAquariumScene } from './AdvancedScene'
+import { substrateHardscapeAnchors } from './Aquascaping'
+import {
+  AQUARIUM_TANK_DIMENSIONS,
+  type AquariumTankDimensions,
+  resolveDefaultCameraPosition,
+  resolveDefaultControlsTarget,
+  resolvePhotoModeControlsTarget
+} from './aquariumLayout'
 import type { Theme } from '../types/aquarium'
+
+type CreateSubstrateFn = (dimensions: AquariumTankDimensions) => void
 
 const createSubstrateTestScene = () => {
   const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
@@ -20,10 +30,10 @@ const createSubstrateTestScene = () => {
   internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
   const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-    createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+    createSubstrate: CreateSubstrateFn
   }).createSubstrate.bind(instance)
 
-  createSubstrate(14, 14, 10)
+  createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
   return {
     tank: internals.tank,
@@ -88,6 +98,15 @@ const getFrontTopEdgeHeights = (mesh: THREE.Mesh): number[] => {
 }
 
 const getValueRange = (values: number[]): number => Math.max(...values) - Math.min(...values)
+
+const getHardscapeAnchor = (anchorId: string) => {
+  const anchor = substrateHardscapeAnchors.find((candidate) => candidate.id === anchorId)
+  if (!anchor) {
+    throw new Error(`Missing hardscape anchor: ${anchorId}`)
+  }
+
+  return anchor
+}
 
 describe('AdvancedAquariumScene disposal', () => {
   it('removes renderer canvas from the DOM', () => {
@@ -224,8 +243,8 @@ describe('AdvancedAquariumScene camera', () => {
     }
 
     internals.getViewportSize = () => ({ width: 1600, height: 900 })
-    internals.defaultCameraPosition = new THREE.Vector3(0, 1.2, 11.8)
-    internals.defaultControlsTarget = new THREE.Vector3(0, -0.9, 0.6)
+    internals.defaultCameraPosition = resolveDefaultCameraPosition(AQUARIUM_TANK_DIMENSIONS)
+    internals.defaultControlsTarget = resolveDefaultControlsTarget(AQUARIUM_TANK_DIMENSIONS)
 
     const setupCamera = (AdvancedAquariumScene.prototype as unknown as {
       setupCamera: () => void
@@ -236,9 +255,10 @@ describe('AdvancedAquariumScene camera', () => {
     const direction = new THREE.Vector3()
     internals.camera.getWorldDirection(direction)
 
-    expect(internals.camera.position.z).toBeCloseTo(11.8, 1)
-    expect(internals.camera.position.y).toBeCloseTo(1.2, 1)
-    expect(direction.y).toBeLessThan(-0.14)
+    expect(internals.camera.fov).toBe(47)
+    expect(internals.camera.position.z).toBeCloseTo(resolveDefaultCameraPosition(AQUARIUM_TANK_DIMENSIONS).z, 1)
+    expect(internals.camera.position.y).toBeCloseTo(resolveDefaultCameraPosition(AQUARIUM_TANK_DIMENSIONS).y, 1)
+    expect(direction.y).toBeLessThan(-0.12)
   })
 })
 
@@ -284,7 +304,7 @@ describe('AdvancedAquariumScene photo mode', () => {
       }
     }
 
-    internals.photoModeControlsTarget = new THREE.Vector3(0.7, -0.35, 0.15)
+    internals.photoModeControlsTarget = resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS)
     internals.tempPhotoModeTarget = new THREE.Vector3()
     internals.fishSystem = {
       getHeroFocusPoint: () => new THREE.Vector3(2.4, -0.1, 2.7)
@@ -296,8 +316,8 @@ describe('AdvancedAquariumScene photo mode', () => {
 
     const target = resolvePhotoModeTarget()
 
-    expect(target.x).toBeGreaterThan(0.7)
-    expect(target.z).toBeGreaterThan(0.15)
+    expect(target.x).toBeGreaterThan(resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS).x)
+    expect(target.z).toBeGreaterThan(resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS).z)
   })
 })
 
@@ -306,7 +326,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -322,9 +342,9 @@ describe('AdvancedAquariumScene tank backdrop', () => {
 
     const backdrop = internals.tank.children.find((child) => child.name === 'tank-backdrop') as THREE.Mesh | undefined
 
-    expect(internals.createSubstrate).toHaveBeenCalledWith(14, 14, 10)
+    expect(internals.createSubstrate).toHaveBeenCalledWith(AQUARIUM_TANK_DIMENSIONS)
     expect(backdrop).toBeDefined()
-    expect(backdrop?.position.z).toBeLessThan(-4.7)
+    expect(backdrop?.position.z).toBeCloseTo((-AQUARIUM_TANK_DIMENSIONS.depth / 2) + 0.08)
   })
 
   it('adds an asset-backed backdrop overlay when premium visual assets are available', () => {
@@ -332,7 +352,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const overlayTexture = new THREE.Texture()
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
       visualAssets: { textures: Record<string, THREE.Texture | null> } | undefined
     }
@@ -362,7 +382,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -392,7 +412,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -428,7 +448,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -449,8 +469,8 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(leftEdgeHighlight).toBeDefined()
     expect(rightEdgeHighlight).toBeDefined()
     expect(waterlineFront).toBeDefined()
-    expect(leftEdgeHighlight?.position.z).toBeGreaterThan(4.9)
-    expect(rightEdgeHighlight?.position.x).toBeGreaterThan(6.5)
+    expect(leftEdgeHighlight?.position.z).toBeCloseTo((AQUARIUM_TANK_DIMENSIONS.depth / 2) + 0.076)
+    expect(rightEdgeHighlight?.position.x).toBeCloseTo((AQUARIUM_TANK_DIMENSIONS.width / 2) - 0.12)
     expect((waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 
@@ -458,7 +478,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -483,7 +503,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(rightWallPanel).toBeDefined()
     expect(backWallMaterial?.transparent).toBe(true)
     expect(backWallMaterial?.map).toBeInstanceOf(THREE.Texture)
-    expect(backWallPanel?.position.z).toBeGreaterThan(-5)
+    expect(backWallPanel?.position.z).toBeCloseTo((-AQUARIUM_TANK_DIMENSIONS.depth / 2) + 0.18)
     expect(leftWallPanel?.rotation.y).toBeCloseTo(Math.PI / 2)
     expect(rightWallPanel?.rotation.y).toBeCloseTo(-Math.PI / 2)
   })
@@ -492,7 +512,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -520,7 +540,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -540,7 +560,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(lightCanopy).toBeDefined()
     expect(heroGroundGlow).toBeDefined()
     expect(lightCanopy?.position.y).toBeGreaterThan(4.5)
-    expect(heroGroundGlow?.position.y).toBeLessThan(-6)
+    expect(heroGroundGlow?.position.y).toBeCloseTo((-AQUARIUM_TANK_DIMENSIONS.height / 2) + 0.72)
     expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 
@@ -548,7 +568,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -584,7 +604,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(midwaterLayer?.position.z).toBeGreaterThan(-3.5)
     expect(midwaterLayer?.position.z).toBeLessThan(0.5)
     expect((midwaterLayer?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
-    expect(substrateGlow?.position.y).toBeLessThan(-6)
+    expect(substrateGlow?.position.y).toBeCloseTo((-AQUARIUM_TANK_DIMENSIONS.height / 2) + 0.72)
     expect(backCaustics?.position.z).toBeLessThan(-4.5)
   })
 
@@ -592,7 +612,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -635,7 +655,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
     }
 
@@ -742,21 +762,21 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const baseMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-base') as THREE.Mesh
     const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
 
     expect(baseMesh.geometry).toBeInstanceOf(THREE.BoxGeometry)
-    expect((baseMesh.geometry as THREE.BoxGeometry).parameters.width).toBeCloseTo(14.6)
-    expect((baseMesh.geometry as THREE.BoxGeometry).parameters.depth).toBeCloseTo(10.6)
+    expect((baseMesh.geometry as THREE.BoxGeometry).parameters.width).toBeCloseTo(AQUARIUM_TANK_DIMENSIONS.width + 0.6)
+    expect((baseMesh.geometry as THREE.BoxGeometry).parameters.depth).toBeCloseTo(AQUARIUM_TANK_DIMENSIONS.depth + 0.6)
 
     expect(sandMesh.geometry).toBeInstanceOf(THREE.PlaneGeometry)
-    expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.width).toBeCloseTo(14)
-    expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.height).toBeCloseTo(10)
+    expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.width).toBeCloseTo(AQUARIUM_TANK_DIMENSIONS.width)
+    expect((sandMesh.geometry as THREE.PlaneGeometry).parameters.height).toBeCloseTo(AQUARIUM_TANK_DIMENSIONS.depth)
   })
 
   it('uses muted sand tones instead of a bright white substrate', () => {
@@ -776,10 +796,10 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const baseMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-base') as THREE.Mesh
     const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
@@ -807,10 +827,10 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const sandTop = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
     const sandFront = internals.tank.children.find((child) => child.name === 'tank-substrate-front') as THREE.Mesh
@@ -837,10 +857,10 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
     const sandMaterial = sandMesh.material as THREE.MeshStandardMaterial
@@ -866,10 +886,10 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const sandTop = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh
     const sedimentDetail = internals.tank.children.find((child) => child.name === 'tank-substrate-detail') as THREE.Mesh | undefined
@@ -899,10 +919,10 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const sandFront = internals.tank.children.find((child) => child.name === 'tank-substrate-front') as THREE.Mesh
     const frontDetail = internals.tank.children.find((child) => child.name === 'tank-substrate-front-detail') as THREE.Mesh | undefined
@@ -960,10 +980,10 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSubstrateDetailAlphaTexture = () => new THREE.Texture()
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh | undefined
     const sandMaterial = sandMesh?.material as THREE.MeshStandardMaterial | undefined
@@ -1029,10 +1049,10 @@ describe('AdvancedAquariumScene substrate', () => {
     internals.createSubstrateDetailAlphaTexture = () => new THREE.Texture()
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
     }).createSubstrate.bind(instance)
 
-    createSubstrate(14, 14, 10)
+    createSubstrate(AQUARIUM_TANK_DIMENSIONS)
 
     const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh | undefined
     const sandFrontMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-front') as THREE.Mesh | undefined
@@ -1151,23 +1171,35 @@ describe('AdvancedAquariumScene substrate', () => {
 
   it('sculpts a local sink and sand berm around the hero hardscape so it does not read as tabletop placement', () => {
     const { sandTop } = createSubstrateTestScene()
-    const driftwoodContact = getNearestTopHeight(sandTop, -0.2, -0.45)
-    const driftwoodRing = [
-      getNearestTopHeight(sandTop, -0.72, -0.18),
-      getNearestTopHeight(sandTop, 0.16, -0.12),
-      getNearestTopHeight(sandTop, -0.44, -0.88),
-      getNearestTopHeight(sandTop, 0.08, -0.78)
-    ].reduce((sum, height) => sum + height, 0) / 4
-    const rockContact = getNearestTopHeight(sandTop, 0.56, 0.08)
-    const rockRing = [
-      getNearestTopHeight(sandTop, 0.08, 0.34),
-      getNearestTopHeight(sandTop, 1.02, 0.32),
-      getNearestTopHeight(sandTop, 0.36, -0.38),
-      getNearestTopHeight(sandTop, 1.18, -0.16)
-    ].reduce((sum, height) => sum + height, 0) / 4
+    const driftwoodAnchor = getHardscapeAnchor('driftwood-root-flare')
+    const heroRockAnchor = getHardscapeAnchor('ridge-rock-hero')
+    const toWorldPoint = (anchor: typeof driftwoodAnchor, offsetX = 0, offsetZ = 0) => ({
+      x: (anchor.x + offsetX) * AQUARIUM_TANK_DIMENSIONS.width,
+      z: (anchor.z + offsetZ) * AQUARIUM_TANK_DIMENSIONS.depth
+    })
+    const getRimAverageHeight = (anchor: typeof driftwoodAnchor) => {
+      const sampleOffsets: Array<[number, number]> = [
+        [anchor.rimBiasX - (anchor.radiusX * 0.55), anchor.rimBiasZ],
+        [anchor.rimBiasX + (anchor.radiusX * 0.55), anchor.rimBiasZ],
+        [anchor.rimBiasX, anchor.rimBiasZ - (anchor.radiusZ * 0.55)],
+        [anchor.rimBiasX, anchor.rimBiasZ + (anchor.radiusZ * 0.55)]
+      ]
 
-    expect(driftwoodRing - driftwoodContact).toBeGreaterThan(0.03)
-    expect(rockRing - rockContact).toBeGreaterThan(0.03)
+      return sampleOffsets.reduce((sum, [offsetX, offsetZ]) => {
+        const samplePoint = toWorldPoint(anchor, offsetX, offsetZ)
+        return sum + getNearestTopHeight(sandTop, samplePoint.x, samplePoint.z)
+      }, 0) / sampleOffsets.length
+    }
+
+    const driftwoodContactPoint = toWorldPoint(driftwoodAnchor)
+    const heroRockContactPoint = toWorldPoint(heroRockAnchor)
+    const driftwoodContact = getNearestTopHeight(sandTop, driftwoodContactPoint.x, driftwoodContactPoint.z)
+    const driftwoodRing = getRimAverageHeight(driftwoodAnchor)
+    const rockContact = getNearestTopHeight(sandTop, heroRockContactPoint.x, heroRockContactPoint.z)
+    const rockRing = getRimAverageHeight(heroRockAnchor)
+
+    expect(driftwoodRing - driftwoodContact).toBeGreaterThan(0.02)
+    expect(rockRing - rockContact).toBeGreaterThan(0.02)
   })
 })
 
@@ -1230,7 +1262,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
       renderer: {
         setPixelRatio: (value: number) => void
@@ -1321,7 +1353,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
       renderer: {
         setPixelRatio: (value: number) => void
@@ -1520,7 +1552,7 @@ describe('AdvancedAquariumScene theme application', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
-      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createSubstrate: CreateSubstrateFn
       createBackdropTexture: () => THREE.CanvasTexture
       scene: THREE.Scene
       godRaysEffect: { applyTheme: (theme: Theme) => void } | null
