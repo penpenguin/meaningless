@@ -51,9 +51,9 @@ type AquariumCameraFitOptions = Readonly<{
 }>
 
 export const AQUARIUM_TANK_DIMENSIONS: AquariumTankDimensions = {
-  width: 16.8,
-  height: 13.4,
-  depth: 11.8
+  width: 19.8,
+  height: 12.4,
+  depth: 11.4
 }
 
 export const AQUARIUM_OPEN_WATER_MARGINS = {
@@ -72,7 +72,7 @@ const minFrontGlassCameraClearance = 0.6
 const standardCameraFitRatios = {
   x: 0,
   y: 1 / AQUARIUM_TANK_DIMENSIONS.height,
-  widthCoverage: 0.82
+  widthCoverage: 0.84
 } as const satisfies AquariumCameraFitRatios
 
 const standardTargetRatios = {
@@ -83,7 +83,7 @@ const standardTargetRatios = {
 const photoCameraFitRatios = {
   x: -2.1 / AQUARIUM_TANK_DIMENSIONS.width,
   y: 1.85 / AQUARIUM_TANK_DIMENSIONS.height,
-  widthCoverage: 0.855
+  widthCoverage: 0.868
 } as const satisfies AquariumCameraFitRatios
 
 const photoTargetRatios = {
@@ -167,10 +167,10 @@ export const MAIN_LIGHT_TARGET_OFFSETS = {
 } as const satisfies Record<'sun' | 'fill' | 'rim', TankRelativeOffset>
 
 export const PRIMARY_SHADOW_FRUSTUM_RATIOS = {
-  left: -11.8 / AQUARIUM_TANK_DIMENSIONS.width,
-  right: 11.8 / AQUARIUM_TANK_DIMENSIONS.width,
-  top: 10.7 / AQUARIUM_TANK_DIMENSIONS.height,
-  bottom: -9.7 / AQUARIUM_TANK_DIMENSIONS.height
+  left: -0.71,
+  right: 0.71,
+  top: 0.8,
+  bottom: -0.73
 } as const
 
 export const PRIMARY_SHADOW_CAMERA_RANGE = {

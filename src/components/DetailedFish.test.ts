@@ -1435,6 +1435,15 @@ describe('DetailedFishSystem asset-backed models', () => {
 })
 
 describe('DetailedFishSystem wander target timing', () => {
+  test('uses a slightly denser default school count on desktop for the wider tank', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-9, -4, -5), new THREE.Vector3(9, 4, 5))
+    const system = new DetailedFishSystem(scene, bounds)
+    const internals = system as unknown as { fishCount: number }
+
+    expect(internals.fishCount).toBe(66)
+  })
+
   test('initializeRandomness seeds wander targets relative to the tank bounds', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const internals = instance as unknown as {
@@ -1464,9 +1473,10 @@ describe('DetailedFishSystem wander target timing', () => {
     initializeRandomness()
 
     const target = internals.wanderTargets[0]
-    expect(Math.abs(target.x)).toBeLessThanOrEqual(5.5)
-    expect(Math.abs(target.y)).toBeLessThanOrEqual(2.5)
-    expect(Math.abs(target.z)).toBeLessThanOrEqual(2.2)
+    expect(target.x).toBeGreaterThan(4.8)
+    expect(Math.abs(target.x)).toBeLessThanOrEqual(5)
+    expect(Math.abs(target.y)).toBeLessThanOrEqual(2.1)
+    expect(Math.abs(target.z)).toBeLessThanOrEqual(1.3)
 
     randomSpy.mockRestore()
   })

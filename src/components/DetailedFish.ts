@@ -110,7 +110,7 @@ export class DetailedFishSystem {
     this.bounds = bounds
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    this.fishCount = isMobile ? 25 : 60
+    this.fishCount = isMobile ? 25 : 66
     
     this.variants = this.createFishVariants()
     this.boids = new BoidsSystem(this.fishCount, bounds)
@@ -283,9 +283,9 @@ export class DetailedFishSystem {
     const boundsSize = this.tempBoundsSize ?? new THREE.Vector3()
     bounds.getSize(boundsSize)
     this.tempBoundsSize = boundsSize
-    const xInset = boundsSize.x * 0.12
-    const yInset = boundsSize.y * 0.22
-    const zInset = boundsSize.z * 0.28
+    const xInset = boundsSize.x * 0.09
+    const yInset = boundsSize.y * 0.24
+    const zInset = boundsSize.z * 0.3
     const xMin = bounds.min.x + xInset
     const xMax = bounds.max.x - xInset
     const yMin = bounds.min.y + yInset
@@ -334,9 +334,9 @@ export class DetailedFishSystem {
         const boundsSize = this.tempBoundsSize ?? new THREE.Vector3()
         bounds.getSize(boundsSize)
         this.tempBoundsSize = boundsSize
-        const lateralDistance = boundsSize.x * (0.16 + Math.random() * 0.18)
-        const verticalDistance = boundsSize.y * (0.03 + Math.random() * 0.06)
-        const depthDistance = boundsSize.z * (0.04 + Math.random() * 0.09)
+        const lateralDistance = boundsSize.x * (0.22 + Math.random() * 0.2)
+        const verticalDistance = boundsSize.y * (0.025 + Math.random() * 0.05)
+        const depthDistance = boundsSize.z * (0.03 + Math.random() * 0.07)
 
         this.tempWanderDirection.set(
           (Math.random() - 0.5) * 2,
@@ -354,18 +354,18 @@ export class DetailedFishSystem {
 
         this.tempWanderTarget.x = THREE.MathUtils.clamp(
           this.tempWanderTarget.x,
-          bounds.min.x + boundsSize.x * 0.08,
-          bounds.max.x - boundsSize.x * 0.08
+          bounds.min.x + boundsSize.x * 0.06,
+          bounds.max.x - boundsSize.x * 0.06
         )
         this.tempWanderTarget.y = THREE.MathUtils.clamp(
           this.tempWanderTarget.y,
-          bounds.min.y + boundsSize.y * 0.14,
-          bounds.max.y - boundsSize.y * 0.14
+          bounds.min.y + boundsSize.y * 0.16,
+          bounds.max.y - boundsSize.y * 0.16
         )
         this.tempWanderTarget.z = THREE.MathUtils.clamp(
           this.tempWanderTarget.z,
-          bounds.min.z + boundsSize.z * 0.18,
-          bounds.max.z - boundsSize.z * 0.18
+          bounds.min.z + boundsSize.z * 0.2,
+          bounds.max.z - boundsSize.z * 0.2
         )
 
         this.wanderTargets[fishIndex].copy(this.tempWanderTarget)

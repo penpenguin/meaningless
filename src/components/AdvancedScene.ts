@@ -57,41 +57,41 @@ const substrateGeometrySegments = {
 
 const tankRelativeLightingAnchors = {
   lightCanopy: {
-    x: 0.5 / AQUARIUM_TANK_DIMENSIONS.width,
-    topClearance: 1.48 / AQUARIUM_TANK_DIMENSIONS.height,
-    z: -0.2
-  },
-  heroRimLight: {
-    x: 1.86 / AQUARIUM_TANK_DIMENSIONS.width,
-    y: 0.42 / AQUARIUM_TANK_DIMENSIONS.height,
+    x: 0.04,
+    topClearance: 0.114,
     z: -0.18
   },
+  heroRimLight: {
+    x: 0.142,
+    y: 0.034,
+    z: -0.188
+  },
   heroGroundGlow: {
-    x: 1.2 / AQUARIUM_TANK_DIMENSIONS.width,
-    bottomClearance: 0.72 / AQUARIUM_TANK_DIMENSIONS.height,
-    z: -0.08
+    x: 0.106,
+    bottomClearance: 0.058,
+    z: -0.1
   },
   nearSurfaceBands: [
     {
-      x: -2.55 / AQUARIUM_TANK_DIMENSIONS.width,
-      topClearance: ((AQUARIUM_TANK_DIMENSIONS.height / 2) - 3.95) / AQUARIUM_TANK_DIMENSIONS.height,
-      z: -0.08
+      x: -0.205,
+      topClearance: 0.198,
+      z: -0.1
     },
     {
-      x: 0.48 / AQUARIUM_TANK_DIMENSIONS.width,
-      topClearance: ((AQUARIUM_TANK_DIMENSIONS.height / 2) - 4.15) / AQUARIUM_TANK_DIMENSIONS.height,
-      z: -0.14
+      x: 0.032,
+      topClearance: 0.214,
+      z: -0.15
     },
     {
-      x: 2.82 / AQUARIUM_TANK_DIMENSIONS.width,
-      topClearance: ((AQUARIUM_TANK_DIMENSIONS.height / 2) - 3.82) / AQUARIUM_TANK_DIMENSIONS.height,
-      z: -0.18
+      x: 0.217,
+      topClearance: 0.189,
+      z: -0.2
     }
   ] satisfies TankRelativeAnchor[],
   midwater: {
-    x: 0.42 / AQUARIUM_TANK_DIMENSIONS.width,
-    y: 1.12 / AQUARIUM_TANK_DIMENSIONS.height,
-    z: -0.16
+    x: 0.052,
+    y: 0.084,
+    z: -0.178
   }
 } satisfies Record<string, TankRelativeAnchor | TankRelativeAnchor[]>
 
@@ -1248,7 +1248,7 @@ export class AdvancedAquariumScene {
       })
     )
     backwallOcclusion.name = 'tank-hardscape-occlusion-backwall'
-    backwallOcclusion.position.set(0.96, -0.1, -tankDepth / 2 + 0.1)
+    backwallOcclusion.position.set(tankWidth * 0.09, -tankHeight * 0.02, -tankDepth / 2 + 0.12)
     backwallOcclusion.renderOrder = 3
     backwallOcclusion.userData.baseOpacity = 0.14
     backwallOcclusion.userData.occlusionLayer = 'backwall'
@@ -2519,7 +2519,7 @@ export class AdvancedAquariumScene {
       floorMaterial.clone()
     )
     backCaustics.name = 'tank-caustics-back'
-    backCaustics.position.set(0.3, -0.84, -tankDepth / 2 + 0.1)
+    backCaustics.position.set(tankWidth * 0.08, -tankHeight * 0.06, -tankDepth / 2 + 0.12)
     backCaustics.renderOrder = 2
     backCaustics.userData.baseOpacity = 0.11
     this.tank.add(backCaustics)
