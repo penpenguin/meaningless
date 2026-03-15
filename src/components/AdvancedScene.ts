@@ -46,6 +46,81 @@ const substrateGeometrySegments = {
   frontHeight: 28
 }
 
+type TankRelativeAnchor = {
+  x: number
+  z: number
+  y?: number
+  topClearance?: number
+  bottomClearance?: number
+}
+
+const tankRelativeLightingAnchors = {
+  lightCanopy: {
+    x: 0.5 / AQUARIUM_TANK_DIMENSIONS.width,
+    topClearance: 1.48 / AQUARIUM_TANK_DIMENSIONS.height,
+    z: -0.2
+  },
+  heroRimLight: {
+    x: 1.86 / AQUARIUM_TANK_DIMENSIONS.width,
+    y: 0.42 / AQUARIUM_TANK_DIMENSIONS.height,
+    z: -0.18
+  },
+  heroGroundGlow: {
+    x: 1.2 / AQUARIUM_TANK_DIMENSIONS.width,
+    bottomClearance: 0.72 / AQUARIUM_TANK_DIMENSIONS.height,
+    z: -0.08
+  },
+  nearSurfaceBands: [
+    {
+      x: -2.55 / AQUARIUM_TANK_DIMENSIONS.width,
+      topClearance: ((AQUARIUM_TANK_DIMENSIONS.height / 2) - 3.95) / AQUARIUM_TANK_DIMENSIONS.height,
+      z: -0.08
+    },
+    {
+      x: 0.48 / AQUARIUM_TANK_DIMENSIONS.width,
+      topClearance: ((AQUARIUM_TANK_DIMENSIONS.height / 2) - 4.15) / AQUARIUM_TANK_DIMENSIONS.height,
+      z: -0.14
+    },
+    {
+      x: 2.82 / AQUARIUM_TANK_DIMENSIONS.width,
+      topClearance: ((AQUARIUM_TANK_DIMENSIONS.height / 2) - 3.82) / AQUARIUM_TANK_DIMENSIONS.height,
+      z: -0.18
+    }
+  ] satisfies TankRelativeAnchor[],
+  midwater: {
+    x: 0.42 / AQUARIUM_TANK_DIMENSIONS.width,
+    y: 1.12 / AQUARIUM_TANK_DIMENSIONS.height,
+    z: -0.16
+  },
+  primaryShadowTarget: {
+    x: 0.8 / AQUARIUM_TANK_DIMENSIONS.width,
+    y: -0.35 / AQUARIUM_TANK_DIMENSIONS.height,
+    z: 0.2 / AQUARIUM_TANK_DIMENSIONS.depth
+  }
+} satisfies Record<string, TankRelativeAnchor | TankRelativeAnchor[]>
+
+const primaryShadowFrustumRatios = {
+  left: -11.5 / AQUARIUM_TANK_DIMENSIONS.width,
+  right: 11.5 / AQUARIUM_TANK_DIMENSIONS.width,
+  top: 10.5 / AQUARIUM_TANK_DIMENSIONS.height,
+  bottom: -9.5 / AQUARIUM_TANK_DIMENSIONS.height
+} as const
+
+const resolveTankRelativePosition = (
+  dimensions: AquariumTankDimensions,
+  anchor: TankRelativeAnchor
+): THREE.Vector3 => {
+  const { width, height, depth } = dimensions
+  const y =
+    anchor.topClearance !== undefined
+      ? (height / 2) - (height * anchor.topClearance)
+      : anchor.bottomClearance !== undefined
+        ? (-height / 2) + (height * anchor.bottomClearance)
+        : height * (anchor.y ?? 0)
+
+  return new THREE.Vector3(width * anchor.x, y, depth * anchor.z)
+}
+
 const calculateGaussianFalloff = (
   x: number,
   z: number,
@@ -585,6 +660,8 @@ export class AdvancedAquariumScene {
   }
 
   private setupAdvancedLighting(): void {
+    const dimensions = this.getTankDimensions()
+    const shadowTarget = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.primaryShadowTarget)
     const ambientLight = new THREE.AmbientLight(0xa9d2db, 0.3)
     this.scene.add(ambientLight)
 
@@ -597,15 +674,15 @@ export class AdvancedAquariumScene {
     sunLight.castShadow = true
     sunLight.shadow.camera.near = 0.5
     sunLight.shadow.camera.far = 42
-    sunLight.shadow.camera.left = -11.5
-    sunLight.shadow.camera.right = 11.5
-    sunLight.shadow.camera.top = 10.5
-    sunLight.shadow.camera.bottom = -9.5
+    sunLight.shadow.camera.left = dimensions.width * primaryShadowFrustumRatios.left
+    sunLight.shadow.camera.right = dimensions.width * primaryShadowFrustumRatios.right
+    sunLight.shadow.camera.top = dimensions.height * primaryShadowFrustumRatios.top
+    sunLight.shadow.camera.bottom = dimensions.height * primaryShadowFrustumRatios.bottom
     sunLight.shadow.mapSize.width = 4096
     sunLight.shadow.mapSize.height = 4096
     sunLight.shadow.bias = -0.00018
     sunLight.shadow.normalBias = 0.018
-    sunLight.target.position.set(0.8, -0.35, 0.2)
+    sunLight.target.position.copy(shadowTarget)
     this.primaryShadowLight = sunLight
     this.applyShadowQuality(this.currentVisualQuality)
     this.scene.add(sunLight)
@@ -905,6 +982,9 @@ export class AdvancedAquariumScene {
 
   private createHeroLightingLayers(dimensions: AquariumTankDimensions): void {
     const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+    const lightCanopyPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.lightCanopy)
+    const heroRimLightPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.heroRimLight)
+    const heroGroundGlowPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.heroGroundGlow)
 
     const lightCanopy = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.6, tankHeight * 0.34),
@@ -919,10 +999,10 @@ export class AdvancedAquariumScene {
       })
     )
     lightCanopy.name = 'tank-light-canopy'
-    lightCanopy.position.set(0.5, tankHeight / 2 - 1.48, -tankDepth * 0.2)
+    lightCanopy.position.copy(lightCanopyPosition)
     lightCanopy.renderOrder = 2
     lightCanopy.userData.baseOpacity = 0.18
-    lightCanopy.userData.baseY = tankHeight / 2 - 1.48
+    lightCanopy.userData.baseY = lightCanopyPosition.y
     this.lightCanopyMesh = lightCanopy
     this.tank.add(lightCanopy)
 
@@ -939,11 +1019,11 @@ export class AdvancedAquariumScene {
       })
     )
     heroRimLight.name = 'tank-hero-rim-light'
-    heroRimLight.position.set(1.86, 0.42, -tankDepth * 0.18)
+    heroRimLight.position.copy(heroRimLightPosition)
     heroRimLight.rotation.y = -0.24
     heroRimLight.renderOrder = 2
     heroRimLight.userData.baseOpacity = 0.08
-    heroRimLight.userData.baseX = 1.86
+    heroRimLight.userData.baseX = heroRimLightPosition.x
     this.heroRimLightMesh = heroRimLight
     this.tank.add(heroRimLight)
 
@@ -961,7 +1041,7 @@ export class AdvancedAquariumScene {
     )
     heroGroundGlow.name = 'tank-hero-ground-glow'
     heroGroundGlow.rotation.x = -Math.PI / 2
-    heroGroundGlow.position.set(1.2, -tankHeight / 2 + 0.72, -tankDepth * 0.08)
+    heroGroundGlow.position.copy(heroGroundGlowPosition)
     heroGroundGlow.renderOrder = 2
     heroGroundGlow.userData.baseOpacity = 0.18
     this.heroGroundGlowMesh = heroGroundGlow
@@ -969,13 +1049,13 @@ export class AdvancedAquariumScene {
   }
 
   private createUnderwaterLightingBands(dimensions: AquariumTankDimensions): void {
-    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+    const { width: tankWidth, height: tankHeight } = dimensions
 
     this.nearSurfaceLightMeshes = [
       {
         name: 'tank-light-near-surface-band-0',
         size: new THREE.Vector2(tankWidth * 0.16, tankHeight * 0.5),
-        position: new THREE.Vector3(-2.55, 3.95, -tankDepth * 0.08),
+        anchor: tankRelativeLightingAnchors.nearSurfaceBands[0],
         rotationY: 0.08,
         rotationZ: -0.04,
         opacity: 0.18,
@@ -989,7 +1069,7 @@ export class AdvancedAquariumScene {
       {
         name: 'tank-light-near-surface-band-1',
         size: new THREE.Vector2(tankWidth * 0.18, tankHeight * 0.54),
-        position: new THREE.Vector3(0.48, 4.15, -tankDepth * 0.14),
+        anchor: tankRelativeLightingAnchors.nearSurfaceBands[1],
         rotationY: -0.06,
         rotationZ: 0.03,
         opacity: 0.2,
@@ -1003,7 +1083,7 @@ export class AdvancedAquariumScene {
       {
         name: 'tank-light-near-surface-band-2',
         size: new THREE.Vector2(tankWidth * 0.14, tankHeight * 0.46),
-        position: new THREE.Vector3(2.82, 3.82, -tankDepth * 0.18),
+        anchor: tankRelativeLightingAnchors.nearSurfaceBands[2],
         rotationY: -0.12,
         rotationZ: -0.02,
         opacity: 0.14,
@@ -1027,14 +1107,15 @@ export class AdvancedAquariumScene {
           side: THREE.DoubleSide
         })
       )
+      const position = resolveTankRelativePosition(dimensions, config.anchor)
       mesh.name = config.name
-      mesh.position.copy(config.position)
+      mesh.position.copy(position)
       mesh.rotation.y = config.rotationY
       mesh.rotation.z = config.rotationZ
       mesh.renderOrder = 2
       mesh.userData.baseOpacity = config.opacity
-      mesh.userData.baseX = config.position.x
-      mesh.userData.baseY = config.position.y
+      mesh.userData.baseX = position.x
+      mesh.userData.baseY = position.y
       mesh.userData.scrollX = config.scrollX
       mesh.userData.scrollY = config.scrollY
       mesh.userData.swayX = config.swayX
@@ -1057,15 +1138,16 @@ export class AdvancedAquariumScene {
         side: THREE.DoubleSide
       })
     )
+    const midwaterPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.midwater)
     midwaterLayer.name = 'tank-light-midwater'
-    midwaterLayer.position.set(0.42, 1.12, -tankDepth * 0.16)
+    midwaterLayer.position.copy(midwaterPosition)
     midwaterLayer.rotation.y = -0.08
     midwaterLayer.rotation.z = 0.03
     midwaterLayer.renderOrder = 2
     midwaterLayer.userData.baseOpacity = 0.12
-    midwaterLayer.userData.baseX = 0.42
-    midwaterLayer.userData.baseY = 1.12
-    midwaterLayer.userData.baseZ = -tankDepth * 0.16
+    midwaterLayer.userData.baseX = midwaterPosition.x
+    midwaterLayer.userData.baseY = midwaterPosition.y
+    midwaterLayer.userData.baseZ = midwaterPosition.z
     midwaterLayer.userData.baseRotationZ = 0.03
     midwaterLayer.userData.scrollX = 0.0012
     midwaterLayer.userData.scrollY = 0.0048

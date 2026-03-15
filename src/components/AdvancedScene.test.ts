@@ -99,6 +99,40 @@ const getFrontTopEdgeHeights = (mesh: THREE.Mesh): number[] => {
 
 const getValueRange = (values: number[]): number => Math.max(...values) - Math.min(...values)
 
+const EXPANDED_TANK_DIMENSIONS: AquariumTankDimensions = {
+  width: 19.8,
+  height: 15.3,
+  depth: 13.6
+}
+
+const setTankDimensions = (instance: AdvancedAquariumScene, dimensions: AquariumTankDimensions) => {
+  Object.defineProperty(instance as object, 'tankDimensions', {
+    value: dimensions,
+    configurable: true,
+    writable: true
+  })
+}
+
+const getWidthRatio = (position: THREE.Vector3, dimensions: AquariumTankDimensions): number => (
+  position.x / dimensions.width
+)
+
+const getHeightRatio = (position: THREE.Vector3, dimensions: AquariumTankDimensions): number => (
+  position.y / dimensions.height
+)
+
+const getDepthRatio = (position: THREE.Vector3, dimensions: AquariumTankDimensions): number => (
+  position.z / dimensions.depth
+)
+
+const getTopClearanceRatio = (position: THREE.Vector3, dimensions: AquariumTankDimensions): number => (
+  ((dimensions.height / 2) - position.y) / dimensions.height
+)
+
+const getBottomClearanceRatio = (position: THREE.Vector3, dimensions: AquariumTankDimensions): number => (
+  (position.y + (dimensions.height / 2)) / dimensions.height
+)
+
 const getHardscapeAnchor = (anchorId: string) => {
   const anchor = substrateHardscapeAnchors.find((candidate) => candidate.id === anchorId)
   if (!anchor) {
@@ -559,8 +593,10 @@ describe('AdvancedAquariumScene tank backdrop', () => {
 
     expect(lightCanopy).toBeDefined()
     expect(heroGroundGlow).toBeDefined()
-    expect(lightCanopy?.position.y).toBeGreaterThan(4.5)
-    expect(heroGroundGlow?.position.y).toBeCloseTo((-AQUARIUM_TANK_DIMENSIONS.height / 2) + 0.72)
+    expect(getTopClearanceRatio(lightCanopy!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(0.105)
+    expect(getTopClearanceRatio(lightCanopy!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(0.116)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(0.05)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(0.058)
     expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 
@@ -597,15 +633,88 @@ describe('AdvancedAquariumScene tank backdrop', () => {
       'tank-light-near-surface-band-1',
       'tank-light-near-surface-band-2'
     ])
-    expect(nearSurfaceBands.every((mesh) => mesh.position.y > 3.5)).toBe(true)
+    expect(nearSurfaceBands.every((mesh) => (
+      getTopClearanceRatio(mesh.position, AQUARIUM_TANK_DIMENSIONS) > 0.18 &&
+      getTopClearanceRatio(mesh.position, AQUARIUM_TANK_DIMENSIONS) < 0.225
+    ))).toBe(true)
     expect(midwaterLayer).toBeDefined()
-    expect(midwaterLayer?.position.y).toBeGreaterThan(-1.5)
-    expect(midwaterLayer?.position.y).toBeLessThan(3.6)
-    expect(midwaterLayer?.position.z).toBeGreaterThan(-3.5)
-    expect(midwaterLayer?.position.z).toBeLessThan(0.5)
+    expect(getHeightRatio(midwaterLayer!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(0.075)
+    expect(getHeightRatio(midwaterLayer!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(0.09)
+    expect(getDepthRatio(midwaterLayer!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(-0.18)
+    expect(getDepthRatio(midwaterLayer!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(-0.14)
     expect((midwaterLayer?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
-    expect(substrateGlow?.position.y).toBeCloseTo((-AQUARIUM_TANK_DIMENSIONS.height / 2) + 0.72)
-    expect(backCaustics?.position.z).toBeLessThan(-4.5)
+    expect(getBottomClearanceRatio(substrateGlow!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(0.05)
+    expect(getBottomClearanceRatio(substrateGlow!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(0.058)
+    expect(getDepthRatio(backCaustics!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(-0.4)
+  })
+
+  it('keeps hero lighting anchors tank-relative when the tank dimensions grow', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: CreateSubstrateFn
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    setTankDimensions(instance, EXPANDED_TANK_DIMENSIONS)
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const nearSurfaceBand0 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-0') as THREE.Mesh | undefined
+    const nearSurfaceBand1 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-1') as THREE.Mesh | undefined
+    const nearSurfaceBand2 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-2') as THREE.Mesh | undefined
+    const midwaterLayer = internals.tank.children.find((child) => child.name === 'tank-light-midwater') as THREE.Mesh | undefined
+    const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
+    const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
+
+    expect(lightCanopy).toBeDefined()
+    expect(nearSurfaceBand0).toBeDefined()
+    expect(nearSurfaceBand1).toBeDefined()
+    expect(nearSurfaceBand2).toBeDefined()
+    expect(midwaterLayer).toBeDefined()
+    expect(heroRimLight).toBeDefined()
+    expect(heroGroundGlow).toBeDefined()
+
+    expect(getWidthRatio(nearSurfaceBand0!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.162)
+    expect(getWidthRatio(nearSurfaceBand0!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.142)
+    expect(getWidthRatio(nearSurfaceBand1!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.025)
+    expect(getWidthRatio(nearSurfaceBand1!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.033)
+    expect(getWidthRatio(nearSurfaceBand2!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.158)
+    expect(getWidthRatio(nearSurfaceBand2!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.178)
+    expect(getTopClearanceRatio(nearSurfaceBand0!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.195)
+    expect(getTopClearanceRatio(nearSurfaceBand0!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.215)
+    expect(getTopClearanceRatio(nearSurfaceBand1!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.18)
+    expect(getTopClearanceRatio(nearSurfaceBand1!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.2)
+    expect(getTopClearanceRatio(nearSurfaceBand2!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.205)
+    expect(getTopClearanceRatio(nearSurfaceBand2!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.225)
+    expect(getWidthRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.022)
+    expect(getWidthRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.029)
+    expect(getHeightRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.079)
+    expect(getHeightRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.088)
+    expect(getDepthRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.18)
+    expect(getDepthRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.14)
+    expect(getWidthRatio(lightCanopy!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.024)
+    expect(getWidthRatio(lightCanopy!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.035)
+    expect(getTopClearanceRatio(lightCanopy!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.105)
+    expect(getTopClearanceRatio(lightCanopy!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.116)
+    expect(getWidthRatio(heroRimLight!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.104)
+    expect(getWidthRatio(heroRimLight!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.118)
+    expect(getDepthRatio(heroRimLight!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.19)
+    expect(getDepthRatio(heroRimLight!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.17)
+    expect(getWidthRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.067)
+    expect(getWidthRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.076)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.05)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.058)
+    expect(getDepthRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.09)
+    expect(getDepthRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.07)
   })
 
   it('adds hardscape-linked occlusion pools and backwall cutouts instead of leaving the tank evenly lit', () => {
@@ -672,7 +781,8 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
 
     expect(heroRimLight).toBeDefined()
-    expect(heroRimLight?.position.z).toBeLessThan(-1.2)
+    expect(getDepthRatio(heroRimLight!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(-0.19)
+    expect(getDepthRatio(heroRimLight!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(-0.17)
     expect((heroRimLight?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 })
@@ -701,10 +811,46 @@ describe('AdvancedAquariumScene lighting', () => {
     expect(strongestLight.intensity).toBeGreaterThan(1.5)
     expect(rearRimLight?.intensity).toBeGreaterThan(0.08)
     expect(rearRimLight?.intensity).toBeLessThan(0.18)
-    expect(strongestLight.position.y).toBeGreaterThan(12)
-    expect(strongestLight.shadow.camera.left).toBeGreaterThan(-14)
-    expect(strongestLight.shadow.camera.right).toBeLessThan(14)
+    expect(getHeightRatio(strongestLight.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(1)
+    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).left / AQUARIUM_TANK_DIMENSIONS.width).toBeGreaterThan(-0.695)
+    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).left / AQUARIUM_TANK_DIMENSIONS.width).toBeLessThan(-0.675)
+    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).right / AQUARIUM_TANK_DIMENSIONS.width).toBeGreaterThan(0.675)
+    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).right / AQUARIUM_TANK_DIMENSIONS.width).toBeLessThan(0.695)
     expect(strongestLight.shadow.normalBias).toBeGreaterThan(0)
+  })
+
+  it('scales the main shadow target and frustum relative to the tank dimensions', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as { scene: THREE.Scene }
+
+    internals.scene = new THREE.Scene()
+    setTankDimensions(instance, EXPANDED_TANK_DIMENSIONS)
+
+    const setupAdvancedLighting = (AdvancedAquariumScene.prototype as unknown as {
+      setupAdvancedLighting: () => void
+    }).setupAdvancedLighting.bind(instance)
+
+    setupAdvancedLighting()
+
+    const primaryShadowLight = internals.scene.children.find((child) => (
+      child instanceof THREE.DirectionalLight && child.castShadow
+    )) as THREE.DirectionalLight | undefined
+
+    expect(primaryShadowLight).toBeDefined()
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).left / EXPANDED_TANK_DIMENSIONS.width).toBeGreaterThan(-0.695)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).left / EXPANDED_TANK_DIMENSIONS.width).toBeLessThan(-0.675)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).right / EXPANDED_TANK_DIMENSIONS.width).toBeGreaterThan(0.675)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).right / EXPANDED_TANK_DIMENSIONS.width).toBeLessThan(0.695)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).top / EXPANDED_TANK_DIMENSIONS.height).toBeGreaterThan(0.775)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).top / EXPANDED_TANK_DIMENSIONS.height).toBeLessThan(0.792)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).bottom / EXPANDED_TANK_DIMENSIONS.height).toBeGreaterThan(-0.718)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).bottom / EXPANDED_TANK_DIMENSIONS.height).toBeLessThan(-0.7)
+    expect(getWidthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.045)
+    expect(getWidthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.05)
+    expect(getHeightRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.029)
+    expect(getHeightRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.024)
+    expect(getDepthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.016)
+    expect(getDepthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.0185)
   })
 })
 
@@ -1291,6 +1437,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     internals.particleSystem = { setQuality: vi.fn() }
     internals.primaryShadowLight = { shadow: { mapSize: { width: 4096, height: 4096 } } }
     internals.getViewportSize = () => ({ width: 1600, height: 900 })
+    setTankDimensions(instance, EXPANDED_TANK_DIMENSIONS)
 
     const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
       createAdvancedTank: () => void
@@ -1341,9 +1488,17 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(nearSurfaceBand1?.visible).toBe(true)
     expect(nearSurfaceBand2?.visible).toBe(true)
     expect(midwaterLayer?.visible).toBe(true)
+    expect(getTopClearanceRatio(lightCanopy!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.105)
+    expect(getTopClearanceRatio(lightCanopy!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.116)
+    expect(getWidthRatio(nearSurfaceBand0!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.162)
+    expect(getWidthRatio(nearSurfaceBand0!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.142)
+    expect(getDepthRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.18)
+    expect(getDepthRatio(midwaterLayer!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.14)
     expect((midwaterLayer?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0)
     expect(heroRimLight?.visible).toBe(true)
     expect(heroGroundGlow?.visible).toBe(true)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.05)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.058)
     expect(driftwoodOcclusion?.visible).toBe(true)
     expect(ridgeOcclusion?.visible).toBe(true)
     expect(backwallOcclusion?.visible).toBe(true)
@@ -1380,6 +1535,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     internals.fishSystem = { setQuality: vi.fn() }
     internals.primaryShadowLight = { shadow: { mapSize: { width: 2048, height: 2048 } } }
     internals.getViewportSize = () => ({ width: 1600, height: 900 })
+    setTankDimensions(instance, EXPANDED_TANK_DIMENSIONS)
 
     const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
       createAdvancedTank: () => void
@@ -1407,9 +1563,15 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(foreground?.visible).toBe(true)
     expect(lightCanopy?.visible).toBe(true)
     expect(nearSurfaceBand2?.visible).toBe(true)
+    expect(getWidthRatio(nearSurfaceBand2!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.158)
+    expect(getWidthRatio(nearSurfaceBand2!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.178)
     expect(midwaterLayer?.visible).toBe(true)
     expect(heroRimLight?.visible).toBe(true)
+    expect(getWidthRatio(heroRimLight!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.104)
+    expect(getWidthRatio(heroRimLight!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.118)
     expect(heroGroundGlow?.visible).toBe(true)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.05)
+    expect(getBottomClearanceRatio(heroGroundGlow!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.058)
     expect(backwallOcclusion?.visible).toBe(true)
   })
 
