@@ -108,12 +108,13 @@ describe('DetailedFishSystem silhouette archetypes', () => {
 })
 
 describe('DetailedFishSystem premium materials', () => {
-  test('keeps createFishMaterial on legacy or procedural fallback paths instead of using atlas textures directly', () => {
+  test('uses species textures for createFishMaterial before the legacy pattern fallback when available', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const tropicalLegacyPattern = new THREE.Texture()
     const tropicalTexture = new THREE.Texture()
     const tropicalNormal = new THREE.Texture()
     const tropicalRoughness = new THREE.Texture()
+    const tropicalAlpha = new THREE.Texture()
     ;(instance as unknown as {
       visualAssets: {
         textures: Record<string, THREE.Texture | null>
@@ -123,7 +124,8 @@ describe('DetailedFishSystem premium materials', () => {
         'fish-tropical': tropicalLegacyPattern,
         'fish-tropical-basecolor': tropicalTexture,
         'fish-tropical-normal': tropicalNormal,
-        'fish-tropical-roughness': tropicalRoughness
+        'fish-tropical-roughness': tropicalRoughness,
+        'fish-tropical-alpha': tropicalAlpha
       }
     }
 
@@ -134,6 +136,134 @@ describe('DetailedFishSystem premium materials', () => {
         baseColorTextureId?: string
         normalTextureId?: string
         roughnessTextureId?: string
+        alphaTextureId?: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }>
+      createFishMaterial: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.MeshPhysicalMaterial
+    }
+
+    const tropical = createFishVariants.bind(instance)().find((variant) => variant.name === 'Tropical')
+    if (!tropical) throw new Error('Tropical variant missing')
+
+    const material = createFishMaterial.bind(instance)(tropical)
+
+    expect(material.map).toBe(tropicalTexture)
+    expect(material.map).not.toBe(tropicalLegacyPattern)
+    expect(material.normalMap).toBe(tropicalNormal)
+    expect(material.roughnessMap).toBe(tropicalRoughness)
+    expect(material.alphaMap).toBe(tropicalAlpha)
+    expect(material.alphaTest).toBeCloseTo(0.05)
+  })
+
+  test('uses the emergency texture path only when species textures are unavailable', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const emergencyTexture = new THREE.CanvasTexture(document.createElement('canvas'))
+    const createEmergencyFishTexture = vi.fn(() => emergencyTexture)
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+      createEmergencyFishTexture: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.CanvasTexture
+    }).visualAssets = {
+      textures: {}
+    }
+    ;(instance as unknown as {
+      createEmergencyFishTexture: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.CanvasTexture
+    }).createEmergencyFishTexture = createEmergencyFishTexture
+
+    const { createFishVariants, createFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        patternTextureId?: string
+        baseColorTextureId?: string
+        normalTextureId?: string
+        roughnessTextureId?: string
+        alphaTextureId?: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }>
+      createFishMaterial: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.MeshPhysicalMaterial
+    }
+
+    const tropical = createFishVariants.bind(instance)().find((variant) => variant.name === 'Tropical')
+    if (!tropical) throw new Error('Tropical variant missing')
+
+    const material = createFishMaterial.bind(instance)(tropical)
+
+    expect(createEmergencyFishTexture).toHaveBeenCalledWith(tropical)
+    expect(material.map).toBe(emergencyTexture)
+    expect(material.normalMap).toBeNull()
+    expect(material.roughnessMap).toBeNull()
+    expect(material.alphaMap).toBeNull()
+  })
+
+  test('uses the legacy pattern fallback before the emergency texture path', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const tropicalLegacyPattern = new THREE.Texture()
+    const createEmergencyFishTexture = vi.fn(() => new THREE.CanvasTexture(document.createElement('canvas')))
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+      createEmergencyFishTexture: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.CanvasTexture
+    }).visualAssets = {
+      textures: {
+        'fish-tropical': tropicalLegacyPattern
+      }
+    }
+    ;(instance as unknown as {
+      createEmergencyFishTexture: (variant: {
+        name: string
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        scale: number
+        speed: number
+      }) => THREE.CanvasTexture
+    }).createEmergencyFishTexture = createEmergencyFishTexture
+
+    const { createFishVariants, createFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        patternTextureId?: string
+        baseColorTextureId?: string
+        normalTextureId?: string
+        roughnessTextureId?: string
+        alphaTextureId?: string
         primaryColor: THREE.Color
         secondaryColor: THREE.Color
         scale: number
@@ -154,10 +284,7 @@ describe('DetailedFishSystem premium materials', () => {
     const material = createFishMaterial.bind(instance)(tropical)
 
     expect(material.map).toBe(tropicalLegacyPattern)
-    expect(material.map).not.toBe(tropicalTexture)
-    expect(material.normalMap).toBeNull()
-    expect(material.roughnessMap).toBeNull()
-    expect(material.alphaMap).toBeNull()
+    expect(createEmergencyFishTexture).not.toHaveBeenCalled()
   })
 
   test('preserves authored base material maps before consulting shared species textures', () => {

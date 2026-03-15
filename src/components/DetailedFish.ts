@@ -1023,10 +1023,19 @@ export class DetailedFishSystem {
   }
   
   private createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
+    const speciesBaseColorTexture = this.getVisualTexture(variant.baseColorTextureId)
+    const speciesNormalTexture = this.getVisualTexture(variant.normalTextureId)
+    const speciesRoughnessTexture = this.getVisualTexture(variant.roughnessTextureId)
+    const speciesAlphaTexture = this.getVisualTexture(variant.alphaTextureId)
     const legacyPatternTexture = this.getVisualTexture(variant.patternTextureId)
-    if (legacyPatternTexture) {
-      return new THREE.MeshPhysicalMaterial({
-        map: legacyPatternTexture,
+    const resolvedMap = speciesBaseColorTexture ?? legacyPatternTexture
+    if (resolvedMap) {
+      const alphaTest = speciesAlphaTexture ? 0.05 : 0
+      const materialOptions: THREE.MeshPhysicalMaterialParameters = {
+        map: resolvedMap,
+        normalMap: speciesNormalTexture,
+        roughnessMap: speciesRoughnessTexture,
+        alphaMap: speciesAlphaTexture,
         color: 0xffffff,
         metalness: 0.04,
         roughness: 0.28,
@@ -1035,8 +1044,13 @@ export class DetailedFishSystem {
         reflectivity: 0.9,
         envMapIntensity: 0.7,
         transparent: false,
+        alphaTest,
         side: THREE.FrontSide
-      })
+      }
+      if (speciesNormalTexture) {
+        materialOptions.normalScale = new THREE.Vector2(0.3, 0.18)
+      }
+      return new THREE.MeshPhysicalMaterial(materialOptions)
     }
 
     const texture = this.createEmergencyFishTexture(variant)
