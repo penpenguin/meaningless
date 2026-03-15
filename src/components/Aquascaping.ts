@@ -526,22 +526,7 @@ export class AquascapingSystem {
     }
 
     if (id.startsWith('driftwood-')) {
-      baseMaterial.map = baseMaterial.map ?? this.getVisualTexture('driftwood-diffuse')
-      baseMaterial.normalMap = baseMaterial.normalMap ?? this.getVisualTexture('driftwood-normal')
-      if (baseMaterial.normalMap) {
-        baseMaterial.normalScale = new THREE.Vector2(1.14, 0.62)
-      }
-      baseMaterial.roughnessMap = baseMaterial.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
-      baseMaterial.aoMap = baseMaterial.aoMap ?? this.getVisualTexture('driftwood-ao')
-      baseMaterial.color = baseMaterial.color?.clone() ?? new THREE.Color('#6f5641')
-      baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
-        ? Math.max(baseMaterial.roughness, baseMaterial.roughnessMap ? 0.72 : 0.86)
-        : 0.94
-      baseMaterial.metalness = typeof baseMaterial.metalness === 'number'
-        ? Math.min(baseMaterial.metalness, 0.03)
-        : 0.03
-      baseMaterial.envMapIntensity = THREE.MathUtils.clamp(baseMaterial.envMapIntensity ?? 0.08, 0.04, 0.16)
-      return baseMaterial
+      return this.tuneDriftwoodMaterial(baseMaterial)
     }
 
     if (id.startsWith('rock-')) {
@@ -596,17 +581,7 @@ export class AquascapingSystem {
     }
 
     if (id.startsWith('driftwood-')) {
-      return new THREE.MeshStandardMaterial({
-        map: this.getVisualTexture('driftwood-diffuse'),
-        normalMap: this.getVisualTexture('driftwood-normal'),
-        normalScale: new THREE.Vector2(1.14, 0.62),
-        roughnessMap: this.getVisualTexture('driftwood-roughness'),
-        aoMap: this.getVisualTexture('driftwood-ao'),
-        color: baseMaterial.color?.clone() ?? new THREE.Color('#6f5641'),
-        roughness: 0.94,
-        metalness: 0.03,
-        envMapIntensity: 0.08
-      })
+      return this.createDriftwoodReplacementMaterial(material)
     }
 
     if (id.startsWith('rock-')) {
@@ -623,6 +598,72 @@ export class AquascapingSystem {
     }
 
     return material.clone()
+  }
+
+  private tuneDriftwoodMaterial<T extends THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial>(material: T): T {
+    material.map = material.map ?? this.getVisualTexture('driftwood-diffuse')
+    material.normalMap = material.normalMap ?? this.getVisualTexture('driftwood-normal')
+    if (material.normalMap) {
+      material.normalScale = new THREE.Vector2(1.18, 0.68)
+    }
+    material.roughnessMap = material.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
+    material.aoMap = material.aoMap ?? this.getVisualTexture('driftwood-ao')
+    material.aoMapIntensity = material.aoMap ? Math.max(material.aoMapIntensity ?? 0.94, 0.94) : 0
+    material.color = material.color?.clone() ?? new THREE.Color('#6f5641')
+    material.roughness = typeof material.roughness === 'number'
+      ? Math.max(material.roughness, material.roughnessMap ? 0.9 : 0.94)
+      : material.roughnessMap ? 0.92 : 0.96
+    material.metalness = typeof material.metalness === 'number'
+      ? Math.min(material.metalness, 0.03)
+      : 0.02
+    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.07, 0.03, 0.14)
+
+    if (material instanceof THREE.MeshPhysicalMaterial) {
+      material.clearcoat = Math.min(material.clearcoat ?? 0, 0.03)
+      material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.94, 0.94)
+    }
+
+    return material
+  }
+
+  private createDriftwoodReplacementMaterial(material: THREE.Material): THREE.MeshPhysicalMaterial {
+    const sourceMaterial = material as THREE.Material & {
+      map?: THREE.Texture | null
+      normalMap?: THREE.Texture | null
+      roughnessMap?: THREE.Texture | null
+      aoMap?: THREE.Texture | null
+      color?: THREE.Color
+      roughness?: number
+      metalness?: number
+      envMapIntensity?: number
+      transparent?: boolean
+      opacity?: number
+      side?: THREE.Side
+      alphaTest?: number
+      depthWrite?: boolean
+    }
+
+    const driftwoodMaterial = new THREE.MeshPhysicalMaterial({
+      map: sourceMaterial.map ?? this.getVisualTexture('driftwood-diffuse'),
+      normalMap: sourceMaterial.normalMap ?? this.getVisualTexture('driftwood-normal'),
+      roughnessMap: sourceMaterial.roughnessMap ?? this.getVisualTexture('driftwood-roughness'),
+      aoMap: sourceMaterial.aoMap ?? this.getVisualTexture('driftwood-ao'),
+      color: sourceMaterial.color?.clone() ?? new THREE.Color('#6f5641'),
+      roughness: typeof sourceMaterial.roughness === 'number' ? sourceMaterial.roughness : 0.94,
+      metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : 0.02,
+      transparent: sourceMaterial.transparent ?? false,
+      opacity: sourceMaterial.opacity ?? 1,
+      side: sourceMaterial.side ?? THREE.FrontSide,
+      alphaTest: sourceMaterial.alphaTest ?? 0,
+      depthWrite: sourceMaterial.depthWrite ?? true,
+      envMapIntensity: typeof sourceMaterial.envMapIntensity === 'number' ? sourceMaterial.envMapIntensity : 0.07,
+      clearcoat: 0,
+      clearcoatRoughness: 1
+    })
+    driftwoodMaterial.name = material.name
+    driftwoodMaterial.userData = { ...material.userData }
+
+    return this.tuneDriftwoodMaterial(driftwoodMaterial)
   }
 
   private createLeafMaterial(
@@ -1253,18 +1294,10 @@ export class AquascapingSystem {
     geometry.computeVertexNormals()
   }
 
-  private createDriftwoodMaterial(): THREE.MeshStandardMaterial {
-    return new THREE.MeshStandardMaterial({
-      map: this.getVisualTexture('driftwood-diffuse'),
-      normalMap: this.getVisualTexture('driftwood-normal'),
-      normalScale: new THREE.Vector2(1.14, 0.62),
-      color: new THREE.Color('#6f5641'),
-      roughnessMap: this.getVisualTexture('driftwood-roughness'),
-      aoMap: this.getVisualTexture('driftwood-ao'),
-      roughness: 0.94,
-      metalness: 0.03,
-      envMapIntensity: 0.08
-    })
+  private createDriftwoodMaterial(): THREE.MeshPhysicalMaterial {
+    return this.createDriftwoodReplacementMaterial(new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#6f5641')
+    }))
   }
 
   private createDriftwoodBurialDetails(bounds: THREE.Box3): void {

@@ -359,6 +359,8 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.roughnessMap).toBe(driftwoodRoughness)
     expect(material.normalMap).toBe(driftwoodNormal)
     expect(material.aoMap).toBe(driftwoodAo)
+    expect(material).toBeInstanceOf(THREE.MeshPhysicalMaterial)
+    expect(material.envMapIntensity).toBeLessThanOrEqual(0.14)
   })
 
   it('uses external rock detail maps when visual assets are available', () => {
@@ -491,6 +493,46 @@ describe('AquascapingSystem premium materials', () => {
     expect(clonedMaterial?.envMapIntensity).toBeLessThanOrEqual(0.16)
     expect(clonedMaterial?.metalness).toBeLessThanOrEqual(0.03)
     expect((clonedMesh?.geometry as THREE.BufferGeometry | undefined)?.getAttribute('uv2')).toBeDefined()
+  })
+
+  it('preserves authored driftwood base color textures when non-pbr authored materials need replacement', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const authoredMap = new THREE.Texture()
+    const sharedDiffuse = new THREE.Texture()
+    const sharedNormal = new THREE.Texture()
+    const sharedRoughness = new THREE.Texture()
+    const sharedAo = new THREE.Texture()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'driftwood-diffuse': sharedDiffuse,
+        'driftwood-normal': sharedNormal,
+        'driftwood-roughness': sharedRoughness,
+        'driftwood-ao': sharedAo
+      }
+    }
+
+    const createAssetBackedMaterial = (AquascapingSystem.prototype as unknown as {
+      createAssetBackedMaterial: (id: string, material: THREE.Material) => THREE.Material
+    }).createAssetBackedMaterial.bind(instance)
+
+    const material = createAssetBackedMaterial('driftwood-hero', new THREE.MeshBasicMaterial({
+      color: '#7b624f',
+      map: authoredMap
+    })) as THREE.MeshPhysicalMaterial
+
+    expect(material).toBeInstanceOf(THREE.MeshPhysicalMaterial)
+    expect(material.map).toBe(authoredMap)
+    expect(material.normalMap).toBe(sharedNormal)
+    expect(material.roughnessMap).toBe(sharedRoughness)
+    expect(material.aoMap).toBe(sharedAo)
+    expect(material.color.getHexString()).toBe('7b624f')
+    expect(material.envMapIntensity).toBeLessThanOrEqual(0.14)
+    expect(material.roughness).toBeGreaterThanOrEqual(0.9)
+    expect(material.metalness).toBeLessThanOrEqual(0.03)
   })
 
   it('supplements missing plant maps without replacing the authored base color map', () => {
