@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { AdvancedAquariumScene } from './AdvancedScene'
 import { substrateHardscapeAnchors } from './Aquascaping'
 import {
+  AQUARIUM_MAIN_LIGHT_RIG,
   AQUARIUM_TANK_DIMENSIONS,
   type AquariumTankDimensions,
   resolveDefaultCameraPosition,
@@ -132,6 +133,15 @@ const getTopClearanceRatio = (position: THREE.Vector3, dimensions: AquariumTankD
 const getBottomClearanceRatio = (position: THREE.Vector3, dimensions: AquariumTankDimensions): number => (
   (position.y + (dimensions.height / 2)) / dimensions.height
 )
+
+const expectRatioInRange = (
+  actual: number,
+  expected: number,
+  tolerance = 0.015
+) => {
+  expect(actual).toBeGreaterThan(expected - tolerance)
+  expect(actual).toBeLessThan(expected + tolerance)
+}
 
 const getHardscapeAnchor = (anchorId: string) => {
   const anchor = substrateHardscapeAnchors.find((candidate) => candidate.id === anchorId)
@@ -788,9 +798,15 @@ describe('AdvancedAquariumScene tank backdrop', () => {
 })
 
 describe('AdvancedAquariumScene lighting', () => {
-  it('uses a stronger hero key light and rear rim light for premium depth', () => {
+  it('uses tank-relative main light anchors while keeping premium key and rim balance', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
-    const internals = instance as unknown as { scene: THREE.Scene }
+    const internals = instance as unknown as {
+      scene: THREE.Scene
+      primaryShadowLight: THREE.DirectionalLight | null
+      fillLight: THREE.DirectionalLight | null
+      bounceLight: THREE.PointLight | null
+      rimLight: THREE.DirectionalLight | null
+    }
 
     internals.scene = new THREE.Scene()
 
@@ -800,28 +816,92 @@ describe('AdvancedAquariumScene lighting', () => {
 
     setupAdvancedLighting()
 
-    const directionalLights = internals.scene.children.filter(
-      (child): child is THREE.DirectionalLight => child instanceof THREE.DirectionalLight
-    )
-    const strongestLight = directionalLights.reduce((current, light) => (
-      light.intensity > current.intensity ? light : current
-    ))
-    const rearRimLight = directionalLights.find((light) => light.position.z < -13)
+    const strongestLight = internals.primaryShadowLight
+    const fillLight = internals.fillLight
+    const bounceLight = internals.bounceLight
+    const rearRimLight = internals.rimLight
+    const defaultControlsTarget = resolveDefaultControlsTarget(AQUARIUM_TANK_DIMENSIONS)
 
-    expect(strongestLight.intensity).toBeGreaterThan(1.5)
-    expect(rearRimLight?.intensity).toBeGreaterThan(0.08)
-    expect(rearRimLight?.intensity).toBeLessThan(0.18)
-    expect(getHeightRatio(strongestLight.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(1)
-    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).left / AQUARIUM_TANK_DIMENSIONS.width).toBeGreaterThan(-0.695)
-    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).left / AQUARIUM_TANK_DIMENSIONS.width).toBeLessThan(-0.675)
-    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).right / AQUARIUM_TANK_DIMENSIONS.width).toBeGreaterThan(0.675)
-    expect((strongestLight.shadow.camera as THREE.OrthographicCamera).right / AQUARIUM_TANK_DIMENSIONS.width).toBeLessThan(0.695)
-    expect(strongestLight.shadow.normalBias).toBeGreaterThan(0)
+    expect(strongestLight).toBeDefined()
+    expect(fillLight).toBeDefined()
+    expect(bounceLight).toBeDefined()
+    expect(rearRimLight).toBeDefined()
+    const sunLight = strongestLight!
+    const frontFillLight = fillLight!
+    const substrateBounceLight = bounceLight!
+    const rimLight = rearRimLight!
+
+    expect(sunLight.intensity).toBeGreaterThan(1.5)
+    expect(rimLight.intensity).toBeGreaterThan(0.08)
+    expect(rimLight.intensity).toBeLessThan(0.18)
+    expectRatioInRange(getWidthRatio(sunLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.x)
+    expectRatioInRange(getHeightRatio(sunLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.y)
+    expectRatioInRange(getDepthRatio(sunLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.z)
+    expectRatioInRange(getWidthRatio(frontFillLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.fill.x)
+    expectRatioInRange(getHeightRatio(frontFillLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.fill.y)
+    expectRatioInRange(getDepthRatio(frontFillLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.fill.z)
+    expectRatioInRange(getWidthRatio(substrateBounceLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.bounce.x)
+    expectRatioInRange(getHeightRatio(substrateBounceLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.bounce.y)
+    expectRatioInRange(getDepthRatio(substrateBounceLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.bounce.z)
+    expectRatioInRange(getWidthRatio(rimLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.rim.x)
+    expectRatioInRange(getHeightRatio(rimLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.rim.y)
+    expectRatioInRange(getDepthRatio(rimLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.rim.z)
+    expectRatioInRange(
+      (sunLight.target.position.x - defaultControlsTarget.x) / AQUARIUM_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.sun.x
+    )
+    expectRatioInRange(
+      (sunLight.target.position.y - defaultControlsTarget.y) / AQUARIUM_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.sun.y
+    )
+    expectRatioInRange(
+      (sunLight.target.position.z - defaultControlsTarget.z) / AQUARIUM_TANK_DIMENSIONS.depth,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.sun.z
+    )
+    expectRatioInRange(
+      (frontFillLight.target.position.x - defaultControlsTarget.x) / AQUARIUM_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.fill.x
+    )
+    expectRatioInRange(
+      (frontFillLight.target.position.y - defaultControlsTarget.y) / AQUARIUM_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.fill.y
+    )
+    expectRatioInRange(
+      (frontFillLight.target.position.z - defaultControlsTarget.z) / AQUARIUM_TANK_DIMENSIONS.depth,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.fill.z
+    )
+    expectRatioInRange(
+      (rimLight.target.position.x - defaultControlsTarget.x) / AQUARIUM_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.rim.x
+    )
+    expectRatioInRange(
+      (rimLight.target.position.y - defaultControlsTarget.y) / AQUARIUM_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.rim.y
+    )
+    expectRatioInRange(
+      (rimLight.target.position.z - defaultControlsTarget.z) / AQUARIUM_TANK_DIMENSIONS.depth,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.rim.z
+    )
+    expectRatioInRange(
+      (sunLight.shadow.camera as THREE.OrthographicCamera).left / AQUARIUM_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.shadowFrustumRatios.left
+    )
+    expectRatioInRange(
+      (sunLight.shadow.camera as THREE.OrthographicCamera).right / AQUARIUM_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.shadowFrustumRatios.right
+    )
+    expect(sunLight.shadow.normalBias).toBeGreaterThan(0)
   })
 
-  it('scales the main shadow target and frustum relative to the tank dimensions', () => {
+  it('scales the main light rig positions, target, and frustum relative to the tank dimensions', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
-    const internals = instance as unknown as { scene: THREE.Scene }
+    const internals = instance as unknown as {
+      scene: THREE.Scene
+      primaryShadowLight: THREE.DirectionalLight | null
+      fillLight: THREE.DirectionalLight | null
+      bounceLight: THREE.PointLight | null
+      rimLight: THREE.DirectionalLight | null
+    }
 
     internals.scene = new THREE.Scene()
     setTankDimensions(instance, EXPANDED_TANK_DIMENSIONS)
@@ -832,25 +912,82 @@ describe('AdvancedAquariumScene lighting', () => {
 
     setupAdvancedLighting()
 
-    const primaryShadowLight = internals.scene.children.find((child) => (
-      child instanceof THREE.DirectionalLight && child.castShadow
-    )) as THREE.DirectionalLight | undefined
+    const primaryShadowLight = internals.primaryShadowLight
+    const fillLight = internals.fillLight
+    const bounceLight = internals.bounceLight
+    const rimLight = internals.rimLight
+    const defaultControlsTarget = resolveDefaultControlsTarget(EXPANDED_TANK_DIMENSIONS)
 
     expect(primaryShadowLight).toBeDefined()
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).left / EXPANDED_TANK_DIMENSIONS.width).toBeGreaterThan(-0.695)
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).left / EXPANDED_TANK_DIMENSIONS.width).toBeLessThan(-0.675)
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).right / EXPANDED_TANK_DIMENSIONS.width).toBeGreaterThan(0.675)
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).right / EXPANDED_TANK_DIMENSIONS.width).toBeLessThan(0.695)
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).top / EXPANDED_TANK_DIMENSIONS.height).toBeGreaterThan(0.775)
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).top / EXPANDED_TANK_DIMENSIONS.height).toBeLessThan(0.792)
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).bottom / EXPANDED_TANK_DIMENSIONS.height).toBeGreaterThan(-0.718)
-    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).bottom / EXPANDED_TANK_DIMENSIONS.height).toBeLessThan(-0.7)
-    expect(getWidthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.045)
-    expect(getWidthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.05)
-    expect(getHeightRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(-0.029)
-    expect(getHeightRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(-0.024)
-    expect(getDepthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.016)
-    expect(getDepthRatio(primaryShadowLight!.target.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.0185)
+    expect(fillLight).toBeDefined()
+    expect(bounceLight).toBeDefined()
+    expect(rimLight).toBeDefined()
+    expectRatioInRange(getWidthRatio(primaryShadowLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.x)
+    expectRatioInRange(getHeightRatio(primaryShadowLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.y)
+    expectRatioInRange(getDepthRatio(primaryShadowLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.z)
+    expectRatioInRange(getWidthRatio(fillLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.fill.x)
+    expectRatioInRange(getHeightRatio(fillLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.fill.y)
+    expectRatioInRange(getDepthRatio(fillLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.fill.z)
+    expectRatioInRange(getWidthRatio(bounceLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.bounce.x)
+    expectRatioInRange(getHeightRatio(bounceLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.bounce.y)
+    expectRatioInRange(getDepthRatio(bounceLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.bounce.z)
+    expectRatioInRange(getWidthRatio(rimLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.rim.x)
+    expectRatioInRange(getHeightRatio(rimLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.rim.y)
+    expectRatioInRange(getDepthRatio(rimLight!.position, EXPANDED_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.rim.z)
+    expectRatioInRange(
+      (primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).left / EXPANDED_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.shadowFrustumRatios.left
+    )
+    expectRatioInRange(
+      (primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).right / EXPANDED_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.shadowFrustumRatios.right
+    )
+    expectRatioInRange(
+      (primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).top / EXPANDED_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.shadowFrustumRatios.top
+    )
+    expectRatioInRange(
+      (primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).bottom / EXPANDED_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.shadowFrustumRatios.bottom
+    )
+    expectRatioInRange(
+      (primaryShadowLight!.target.position.x - defaultControlsTarget.x) / EXPANDED_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.sun.x
+    )
+    expectRatioInRange(
+      (primaryShadowLight!.target.position.y - defaultControlsTarget.y) / EXPANDED_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.sun.y
+    )
+    expectRatioInRange(
+      (primaryShadowLight!.target.position.z - defaultControlsTarget.z) / EXPANDED_TANK_DIMENSIONS.depth,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.sun.z
+    )
+    expectRatioInRange(
+      (fillLight!.target.position.x - defaultControlsTarget.x) / EXPANDED_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.fill.x
+    )
+    expectRatioInRange(
+      (fillLight!.target.position.y - defaultControlsTarget.y) / EXPANDED_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.fill.y
+    )
+    expectRatioInRange(
+      (fillLight!.target.position.z - defaultControlsTarget.z) / EXPANDED_TANK_DIMENSIONS.depth,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.fill.z
+    )
+    expectRatioInRange(
+      (rimLight!.target.position.x - defaultControlsTarget.x) / EXPANDED_TANK_DIMENSIONS.width,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.rim.x
+    )
+    expectRatioInRange(
+      (rimLight!.target.position.y - defaultControlsTarget.y) / EXPANDED_TANK_DIMENSIONS.height,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.rim.y
+    )
+    expectRatioInRange(
+      (rimLight!.target.position.z - defaultControlsTarget.z) / EXPANDED_TANK_DIMENSIONS.depth,
+      AQUARIUM_MAIN_LIGHT_RIG.targets.rim.z
+    )
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).left / EXPANDED_TANK_DIMENSIONS.width).toBeLessThan(-0.69)
+    expect((primaryShadowLight!.shadow.camera as THREE.OrthographicCamera).right / EXPANDED_TANK_DIMENSIONS.width).toBeGreaterThan(0.69)
   })
 })
 

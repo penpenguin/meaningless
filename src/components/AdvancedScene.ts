@@ -16,11 +16,18 @@ import { createOpenWaterBounds } from './sceneBounds'
 import {
   AQUARIUM_CAMERA_FRAMING,
   AQUARIUM_TANK_DIMENSIONS,
+  MAIN_LIGHT_RIG_ANCHORS,
+  MAIN_LIGHT_TARGET_OFFSETS,
+  PRIMARY_SHADOW_CAMERA_RANGE,
+  PRIMARY_SHADOW_FRUSTUM_RATIOS,
   type AquariumTankDimensions,
+  type TankRelativeAnchor,
   resolveDefaultCameraPosition,
   resolveDefaultControlsTarget,
+  resolveLightTarget,
   resolvePhotoModeCameraPosition,
-  resolvePhotoModeControlsTarget
+  resolvePhotoModeControlsTarget,
+  resolveTankRelativePosition
 } from './aquariumLayout'
 import type { VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
@@ -44,14 +51,6 @@ const substrateGeometrySegments = {
   topDepth: 64,
   frontWidth: 72,
   frontHeight: 28
-}
-
-type TankRelativeAnchor = {
-  x: number
-  z: number
-  y?: number
-  topClearance?: number
-  bottomClearance?: number
 }
 
 const tankRelativeLightingAnchors = {
@@ -91,35 +90,8 @@ const tankRelativeLightingAnchors = {
     x: 0.42 / AQUARIUM_TANK_DIMENSIONS.width,
     y: 1.12 / AQUARIUM_TANK_DIMENSIONS.height,
     z: -0.16
-  },
-  primaryShadowTarget: {
-    x: 0.8 / AQUARIUM_TANK_DIMENSIONS.width,
-    y: -0.35 / AQUARIUM_TANK_DIMENSIONS.height,
-    z: 0.2 / AQUARIUM_TANK_DIMENSIONS.depth
   }
 } satisfies Record<string, TankRelativeAnchor | TankRelativeAnchor[]>
-
-const primaryShadowFrustumRatios = {
-  left: -11.5 / AQUARIUM_TANK_DIMENSIONS.width,
-  right: 11.5 / AQUARIUM_TANK_DIMENSIONS.width,
-  top: 10.5 / AQUARIUM_TANK_DIMENSIONS.height,
-  bottom: -9.5 / AQUARIUM_TANK_DIMENSIONS.height
-} as const
-
-const resolveTankRelativePosition = (
-  dimensions: AquariumTankDimensions,
-  anchor: TankRelativeAnchor
-): THREE.Vector3 => {
-  const { width, height, depth } = dimensions
-  const y =
-    anchor.topClearance !== undefined
-      ? (height / 2) - (height * anchor.topClearance)
-      : anchor.bottomClearance !== undefined
-        ? (-height / 2) + (height * anchor.bottomClearance)
-        : height * (anchor.y ?? 0)
-
-  return new THREE.Vector3(width * anchor.x, y, depth * anchor.z)
-}
 
 const calculateGaussianFalloff = (
   x: number,
@@ -661,7 +633,10 @@ export class AdvancedAquariumScene {
 
   private setupAdvancedLighting(): void {
     const dimensions = this.getTankDimensions()
-    const shadowTarget = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.primaryShadowTarget)
+    const controlsTarget = resolveDefaultControlsTarget(dimensions)
+    const shadowTarget = resolveLightTarget(dimensions, controlsTarget, MAIN_LIGHT_TARGET_OFFSETS.sun)
+    const fillTarget = resolveLightTarget(dimensions, controlsTarget, MAIN_LIGHT_TARGET_OFFSETS.fill)
+    const rimTarget = resolveLightTarget(dimensions, controlsTarget, MAIN_LIGHT_TARGET_OFFSETS.rim)
     const ambientLight = new THREE.AmbientLight(0xa9d2db, 0.3)
     this.scene.add(ambientLight)
 
@@ -670,14 +645,14 @@ export class AdvancedAquariumScene {
     this.scene.add(hemiLight)
 
     const sunLight = new THREE.DirectionalLight(0xfff4dc, 1.88)
-    sunLight.position.set(2.6, 13.9, 4.4)
+    sunLight.position.copy(resolveTankRelativePosition(dimensions, MAIN_LIGHT_RIG_ANCHORS.sun))
     sunLight.castShadow = true
-    sunLight.shadow.camera.near = 0.5
-    sunLight.shadow.camera.far = 42
-    sunLight.shadow.camera.left = dimensions.width * primaryShadowFrustumRatios.left
-    sunLight.shadow.camera.right = dimensions.width * primaryShadowFrustumRatios.right
-    sunLight.shadow.camera.top = dimensions.height * primaryShadowFrustumRatios.top
-    sunLight.shadow.camera.bottom = dimensions.height * primaryShadowFrustumRatios.bottom
+    sunLight.shadow.camera.near = PRIMARY_SHADOW_CAMERA_RANGE.near
+    sunLight.shadow.camera.far = PRIMARY_SHADOW_CAMERA_RANGE.far
+    sunLight.shadow.camera.left = dimensions.width * PRIMARY_SHADOW_FRUSTUM_RATIOS.left
+    sunLight.shadow.camera.right = dimensions.width * PRIMARY_SHADOW_FRUSTUM_RATIOS.right
+    sunLight.shadow.camera.top = dimensions.height * PRIMARY_SHADOW_FRUSTUM_RATIOS.top
+    sunLight.shadow.camera.bottom = dimensions.height * PRIMARY_SHADOW_FRUSTUM_RATIOS.bottom
     sunLight.shadow.mapSize.width = 4096
     sunLight.shadow.mapSize.height = 4096
     sunLight.shadow.bias = -0.00018
@@ -689,19 +664,23 @@ export class AdvancedAquariumScene {
     this.scene.add(sunLight.target)
 
     const fillLight = new THREE.DirectionalLight(0xc4edf2, 0.5)
-    fillLight.position.set(-10.2, 6.8, 8.9)
+    fillLight.position.copy(resolveTankRelativePosition(dimensions, MAIN_LIGHT_RIG_ANCHORS.fill))
+    fillLight.target.position.copy(fillTarget)
     this.fillLight = fillLight
     this.scene.add(fillLight)
+    this.scene.add(fillLight.target)
 
     const bounceLight = new THREE.PointLight(0x7faeaa, 0.3, 24)
-    bounceLight.position.set(0.8, -2.5, 1.2)
+    bounceLight.position.copy(resolveTankRelativePosition(dimensions, MAIN_LIGHT_RIG_ANCHORS.bounce))
     this.bounceLight = bounceLight
     this.scene.add(bounceLight)
 
     const rimLight = new THREE.DirectionalLight(0xdaf4f7, 0.12)
-    rimLight.position.set(-2.2, 5.2, -13.4)
+    rimLight.position.copy(resolveTankRelativePosition(dimensions, MAIN_LIGHT_RIG_ANCHORS.rim))
+    rimLight.target.position.copy(rimTarget)
     this.rimLight = rimLight
     this.scene.add(rimLight)
+    this.scene.add(rimLight.target)
 
     this.applyLightingQuality(this.currentVisualQuality)
   }
