@@ -542,6 +542,77 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 
+  it('splits underwater lighting into near-surface, midwater, and substrate/backwall depth bands', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const nearSurfaceBands = internals.tank.children.filter((child) => (
+      child.name.startsWith('tank-light-near-surface-band-')
+    )) as THREE.Mesh[]
+    const midwater = internals.tank.children.find((child) => child.name === 'tank-light-midwater') as THREE.Mesh | undefined
+    const substrateGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
+    const backCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-back') as THREE.Mesh | undefined
+
+    expect(nearSurfaceBands).toHaveLength(3)
+    expect(nearSurfaceBands.every((mesh) => mesh.position.y > 3.5)).toBe(true)
+    expect(midwater).toBeDefined()
+    expect(midwater?.position.y).toBeGreaterThan(-1.5)
+    expect(midwater?.position.y).toBeLessThan(2)
+    expect(substrateGlow?.position.y).toBeLessThan(-6)
+    expect(backCaustics?.position.z).toBeLessThan(-4.5)
+  })
+
+  it('adds hardscape-linked occlusion pools instead of leaving the tank evenly lit', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const driftwoodOcclusion = internals.tank.children.find((child) => (
+      child.name === 'tank-hardscape-occlusion-driftwood'
+    )) as THREE.Mesh | undefined
+    const ridgeOcclusion = internals.tank.children.find((child) => (
+      child.name === 'tank-hardscape-occlusion-ridge'
+    )) as THREE.Mesh | undefined
+    const backwallOcclusion = internals.tank.children.find((child) => (
+      child.name === 'tank-hardscape-occlusion-backwall'
+    )) as THREE.Mesh | undefined
+
+    expect(driftwoodOcclusion).toBeDefined()
+    expect(ridgeOcclusion).toBeDefined()
+    expect(backwallOcclusion).toBeDefined()
+    expect(driftwoodOcclusion?.position.x).toBeLessThan(0.2)
+    expect(ridgeOcclusion?.position.x).toBeGreaterThan(1.2)
+    expect(backwallOcclusion?.position.z).toBeLessThan(-4.6)
+    expect((driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.NormalBlending)
+  })
+
   it('adds a rear hero rim light panel to separate the hardscape silhouette from the backdrop', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
@@ -590,7 +661,8 @@ describe('AdvancedAquariumScene lighting', () => {
     const rearRimLight = directionalLights.find((light) => light.position.z < -13)
 
     expect(strongestLight.intensity).toBeGreaterThan(1.5)
-    expect(rearRimLight?.intensity).toBeGreaterThan(0.22)
+    expect(rearRimLight?.intensity).toBeGreaterThan(0.08)
+    expect(rearRimLight?.intensity).toBeLessThan(0.18)
     expect(strongestLight.position.y).toBeGreaterThan(12)
     expect(strongestLight.shadow.camera.left).toBeGreaterThan(-14)
     expect(strongestLight.shadow.camera.right).toBeLessThan(14)
@@ -1026,8 +1098,15 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
     const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const nearSurfaceBand1 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-1') as THREE.Mesh | undefined
+    const nearSurfaceBand2 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-2') as THREE.Mesh | undefined
+    const nearSurfaceBand3 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-3') as THREE.Mesh | undefined
+    const midwater = internals.tank.children.find((child) => child.name === 'tank-light-midwater') as THREE.Mesh | undefined
     const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
+    const driftwoodOcclusion = internals.tank.children.find((child) => child.name === 'tank-hardscape-occlusion-driftwood') as THREE.Mesh | undefined
+    const ridgeOcclusion = internals.tank.children.find((child) => child.name === 'tank-hardscape-occlusion-ridge') as THREE.Mesh | undefined
+    const backwallOcclusion = internals.tank.children.find((child) => child.name === 'tank-hardscape-occlusion-backwall') as THREE.Mesh | undefined
 
     expect(internals.renderer.setPixelRatio).toHaveBeenCalledWith(1)
     expect(internals.renderer.shadowMap.enabled).toBe(true)
@@ -1044,8 +1123,15 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(false)
     expect(lightCanopy?.visible).toBe(false)
+    expect(nearSurfaceBand1?.visible).toBe(true)
+    expect(nearSurfaceBand2?.visible).toBe(true)
+    expect(nearSurfaceBand3?.visible).toBe(false)
+    expect(midwater?.visible).toBe(false)
     expect(heroRimLight?.visible).toBe(false)
     expect(heroGroundGlow?.visible).toBe(false)
+    expect(driftwoodOcclusion?.visible).toBe(true)
+    expect(ridgeOcclusion?.visible).toBe(true)
+    expect(backwallOcclusion?.visible).toBe(true)
   })
 
   it('keeps the richer hero layers on standard quality', () => {
@@ -1093,8 +1179,11 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
     const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const nearSurfaceBand3 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-3') as THREE.Mesh | undefined
+    const midwater = internals.tank.children.find((child) => child.name === 'tank-light-midwater') as THREE.Mesh | undefined
     const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
+    const backwallOcclusion = internals.tank.children.find((child) => child.name === 'tank-hardscape-occlusion-backwall') as THREE.Mesh | undefined
 
     expect(internals.renderer.shadowMap.enabled).toBe(true)
     expect(internals.renderer.shadowMap.type).toBe(THREE.PCFSoftShadowMap)
@@ -1102,8 +1191,11 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(true)
     expect(lightCanopy?.visible).toBe(true)
+    expect(nearSurfaceBand3?.visible).toBe(true)
+    expect(midwater?.visible).toBe(true)
     expect(heroRimLight?.visible).toBe(true)
     expect(heroGroundGlow?.visible).toBe(true)
+    expect(backwallOcclusion?.visible).toBe(true)
   })
 
   it('forwards quality changes to the particle system so dense water haze can scale down cleanly', () => {
