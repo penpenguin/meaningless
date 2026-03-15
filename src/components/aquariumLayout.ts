@@ -35,6 +35,21 @@ export type AquariumMainLightRig = Readonly<{
   }>
 }>
 
+type AquariumCameraFitRatios = Readonly<{
+  x: number
+  y: number
+  widthCoverage: number
+}>
+
+type AquariumCameraFitOptions = Readonly<{
+  aspect: number
+  fov: number
+  target: THREE.Vector3
+  x: number
+  y: number
+  widthCoverage: number
+}>
+
 export const AQUARIUM_TANK_DIMENSIONS: AquariumTankDimensions = {
   width: 16.8,
   height: 13.4,
@@ -48,21 +63,28 @@ export const AQUARIUM_OPEN_WATER_MARGINS = {
   frontBack: 0.6
 } as const
 
-const standardCameraRatios = {
+export const AQUARIUM_FRONT_GLASS_THICKNESS = 0.06
+
+const standardAspectRatio = 16 / 9
+const cameraFitIterations = 24
+const minFrontGlassCameraClearance = 0.6
+
+const standardCameraFitRatios = {
+  x: 0,
   y: 1 / AQUARIUM_TANK_DIMENSIONS.height,
-  z: 13.4 / AQUARIUM_TANK_DIMENSIONS.width
-} as const
+  widthCoverage: 0.82
+} as const satisfies AquariumCameraFitRatios
 
 const standardTargetRatios = {
   y: -0.7 / AQUARIUM_TANK_DIMENSIONS.height,
   z: 0.45 / AQUARIUM_TANK_DIMENSIONS.depth
 } as const
 
-const photoCameraRatios = {
+const photoCameraFitRatios = {
   x: -2.1 / AQUARIUM_TANK_DIMENSIONS.width,
   y: 1.85 / AQUARIUM_TANK_DIMENSIONS.height,
-  z: 11.4 / AQUARIUM_TANK_DIMENSIONS.width
-} as const
+  widthCoverage: 0.855
+} as const satisfies AquariumCameraFitRatios
 
 const photoTargetRatios = {
   x: 0.81 / AQUARIUM_TANK_DIMENSIONS.width,
@@ -71,8 +93,37 @@ const photoTargetRatios = {
 } as const
 
 export const AQUARIUM_CAMERA_FRAMING = {
-  standardFov: 47
+  standardFov: 47,
+  standardAspect: standardAspectRatio,
+  defaultWidthCoverage: standardCameraFitRatios.widthCoverage,
+  photoWidthCoverage: photoCameraFitRatios.widthCoverage
 } as const
+
+export const AQUARIUM_DEPTH_LAYER_ANCHORS = {
+  backdrop: {
+    x: 0,
+    y: -0.08,
+    z: -0.5 + (0.08 / AQUARIUM_TANK_DIMENSIONS.depth)
+  },
+  backdropOverlay: {
+    x: 0,
+    y: -0.09,
+    z: -0.5 + (0.16 / AQUARIUM_TANK_DIMENSIONS.depth)
+  },
+  midground: {
+    x: 0,
+    y: -0.09,
+    z: -0.22
+  },
+  foregroundShadow: {
+    x: 0,
+    y: 0.03,
+    z: 0.26
+  }
+} as const satisfies Record<
+  'backdrop' | 'backdropOverlay' | 'midground' | 'foregroundShadow',
+  TankRelativeAnchor
+>
 
 export const MAIN_LIGHT_RIG_ANCHORS = {
   sun: {
@@ -168,15 +219,68 @@ export const resolveLightTarget = (
   controlsTarget.clone().add(resolveTankRelativeOffset(dimensions, offset))
 )
 
-export const resolveDefaultCameraPosition = (
+const resolveProjectedFrontGlassCoverage = (
+  camera: THREE.PerspectiveCamera,
   dimensions: AquariumTankDimensions
-): THREE.Vector3 => (
-  new THREE.Vector3(
-    0,
-    dimensions.height * standardCameraRatios.y,
-    dimensions.width * standardCameraRatios.z
-  )
-)
+): number => {
+  const frontGlassZ = (dimensions.depth / 2) + AQUARIUM_FRONT_GLASS_THICKNESS
+  const leftEdge = new THREE.Vector3(-dimensions.width / 2, 0, frontGlassZ).project(camera)
+  const rightEdge = new THREE.Vector3(dimensions.width / 2, 0, frontGlassZ).project(camera)
+  return Math.abs(rightEdge.x - leftEdge.x) / 2
+}
+
+const resolveFitDrivenCameraPosition = (
+  dimensions: AquariumTankDimensions,
+  options: AquariumCameraFitOptions
+): THREE.Vector3 => {
+  const safeAspect = Math.max(options.aspect, 0.1)
+  const widthCoverage = THREE.MathUtils.clamp(options.widthCoverage, 0.1, 0.98)
+  const positionX = dimensions.width * options.x
+  const positionY = dimensions.height * options.y
+  const frontGlassZ = (dimensions.depth / 2) + AQUARIUM_FRONT_GLASS_THICKNESS
+  const verticalFovRadians = THREE.MathUtils.degToRad(options.fov)
+  const horizontalFovRadians = 2 * Math.atan(Math.tan(verticalFovRadians / 2) * safeAspect)
+  const estimatedDistance =
+    dimensions.width / (widthCoverage * 2 * Math.tan(horizontalFovRadians / 2))
+  const camera = new THREE.PerspectiveCamera(options.fov, safeAspect, 0.1, 1000)
+
+  const getCoverage = (positionZ: number): number => {
+    camera.position.set(positionX, positionY, positionZ)
+    camera.lookAt(options.target)
+    camera.updateProjectionMatrix()
+    camera.updateMatrixWorld(true)
+    return resolveProjectedFrontGlassCoverage(camera, dimensions)
+  }
+
+  let nearZ = frontGlassZ + Math.max(minFrontGlassCameraClearance, dimensions.depth * 0.06)
+  let nearCoverage = getCoverage(nearZ)
+
+  for (let contraction = 0; contraction < 8 && nearCoverage < widthCoverage; contraction += 1) {
+    nearZ = frontGlassZ + Math.max((nearZ - frontGlassZ) * 0.7, 0.15)
+    nearCoverage = getCoverage(nearZ)
+  }
+
+  let farZ = frontGlassZ + Math.max(estimatedDistance * 1.35, dimensions.width)
+  let farCoverage = getCoverage(farZ)
+
+  for (let expansion = 0; expansion < 8 && farCoverage > widthCoverage; expansion += 1) {
+    farZ = frontGlassZ + ((farZ - frontGlassZ) * 1.35)
+    farCoverage = getCoverage(farZ)
+  }
+
+  for (let iteration = 0; iteration < cameraFitIterations; iteration += 1) {
+    const midZ = (nearZ + farZ) / 2
+    const coverage = getCoverage(midZ)
+
+    if (coverage > widthCoverage) {
+      nearZ = midZ
+    } else {
+      farZ = midZ
+    }
+  }
+
+  return new THREE.Vector3(positionX, positionY, farZ)
+}
 
 export const resolveDefaultControlsTarget = (
   dimensions: AquariumTankDimensions
@@ -188,16 +292,6 @@ export const resolveDefaultControlsTarget = (
   )
 )
 
-export const resolvePhotoModeCameraPosition = (
-  dimensions: AquariumTankDimensions
-): THREE.Vector3 => (
-  new THREE.Vector3(
-    dimensions.width * photoCameraRatios.x,
-    dimensions.height * photoCameraRatios.y,
-    dimensions.width * photoCameraRatios.z
-  )
-)
-
 export const resolvePhotoModeControlsTarget = (
   dimensions: AquariumTankDimensions
 ): THREE.Vector3 => (
@@ -206,4 +300,30 @@ export const resolvePhotoModeControlsTarget = (
     dimensions.height * photoTargetRatios.y,
     dimensions.depth * photoTargetRatios.z
   )
+)
+
+export const resolveDefaultCameraPosition = (
+  dimensions: AquariumTankDimensions,
+  fov = AQUARIUM_CAMERA_FRAMING.standardFov,
+  aspect = AQUARIUM_CAMERA_FRAMING.standardAspect
+): THREE.Vector3 => (
+  resolveFitDrivenCameraPosition(dimensions, {
+    aspect,
+    fov,
+    target: resolveDefaultControlsTarget(dimensions),
+    ...standardCameraFitRatios
+  })
+)
+
+export const resolvePhotoModeCameraPosition = (
+  dimensions: AquariumTankDimensions,
+  fov = AQUARIUM_CAMERA_FRAMING.standardFov,
+  aspect = AQUARIUM_CAMERA_FRAMING.standardAspect
+): THREE.Vector3 => (
+  resolveFitDrivenCameraPosition(dimensions, {
+    aspect,
+    fov,
+    target: resolvePhotoModeControlsTarget(dimensions),
+    ...photoCameraFitRatios
+  })
 )

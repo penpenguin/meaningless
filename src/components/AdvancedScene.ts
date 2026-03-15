@@ -15,6 +15,8 @@ import { disposeSceneResources } from '../utils/threeDisposal'
 import { createOpenWaterBounds } from './sceneBounds'
 import {
   AQUARIUM_CAMERA_FRAMING,
+  AQUARIUM_DEPTH_LAYER_ANCHORS,
+  AQUARIUM_FRONT_GLASS_THICKNESS,
   AQUARIUM_TANK_DIMENSIONS,
   MAIN_LIGHT_RIG_ANCHORS,
   MAIN_LIGHT_TARGET_OFFSETS,
@@ -519,10 +521,10 @@ export class AdvancedAquariumScene {
   private motionScale = 1
   public advancedEffectsEnabled = true
   private readonly tankDimensions = AQUARIUM_TANK_DIMENSIONS
-  private readonly defaultCameraPosition = resolveDefaultCameraPosition(this.tankDimensions)
-  private readonly photoModeCameraPosition = resolvePhotoModeCameraPosition(this.tankDimensions)
-  private readonly defaultControlsTarget = resolveDefaultControlsTarget(this.tankDimensions)
-  private readonly photoModeControlsTarget = resolvePhotoModeControlsTarget(this.tankDimensions)
+  private defaultCameraPosition = resolveDefaultCameraPosition(this.tankDimensions)
+  private photoModeCameraPosition = resolvePhotoModeCameraPosition(this.tankDimensions)
+  private defaultControlsTarget = resolveDefaultControlsTarget(this.tankDimensions)
+  private photoModeControlsTarget = resolvePhotoModeControlsTarget(this.tankDimensions)
   private readonly tempPhotoModeTarget = new THREE.Vector3()
   private readonly visualAssets?: VisualAssetBundle
   
@@ -563,11 +565,33 @@ export class AdvancedAquariumScene {
     this.init()
   }
   
+  private refreshCameraFraming(aspect: number): void {
+    const dimensions = this.getTankDimensions()
+    this.defaultControlsTarget.copy(resolveDefaultControlsTarget(dimensions))
+    this.photoModeControlsTarget.copy(resolvePhotoModeControlsTarget(dimensions))
+    this.defaultCameraPosition.copy(
+      resolveDefaultCameraPosition(
+        dimensions,
+        AQUARIUM_CAMERA_FRAMING.standardFov,
+        aspect
+      )
+    )
+    this.photoModeCameraPosition.copy(
+      resolvePhotoModeCameraPosition(
+        dimensions,
+        AQUARIUM_CAMERA_FRAMING.standardFov,
+        aspect
+      )
+    )
+  }
+
   private setupCamera(): void {
     const { width, height } = this.getViewportSize()
+    const aspect = width / height
+    this.refreshCameraFraming(aspect)
     this.camera = new THREE.PerspectiveCamera(
       AQUARIUM_CAMERA_FRAMING.standardFov,
-      width / height,
+      aspect,
       0.1,
       1000
     )
@@ -727,7 +751,7 @@ export class AdvancedAquariumScene {
 
   private createAdvancedTank(): void {
     const dimensions = this.getTankDimensions()
-    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+    const { width: tankWidth, height: tankHeight } = dimensions
 
     this.ensureTankVisualLayers()
     this.createGlassShell(dimensions)
@@ -742,7 +766,9 @@ export class AdvancedAquariumScene {
     })
     const backdropMesh = new THREE.Mesh(backdropGeometry, backdropMaterial)
     backdropMesh.name = 'tank-backdrop'
-    backdropMesh.position.set(0, -1.1, -tankDepth / 2 + 0.08)
+    backdropMesh.position.copy(
+      resolveTankRelativePosition(dimensions, AQUARIUM_DEPTH_LAYER_ANCHORS.backdrop)
+    )
     this.tank.add(backdropMesh)
 
     const backdropOverlayTexture = this.visualAssets?.textures['backdrop-depth'] ?? null
@@ -756,7 +782,9 @@ export class AdvancedAquariumScene {
       })
       const backdropOverlayMesh = new THREE.Mesh(backdropGeometry.clone(), backdropOverlayMaterial)
       backdropOverlayMesh.name = 'tank-backdrop-overlay'
-      backdropOverlayMesh.position.set(0, -1.2, -tankDepth / 2 + 0.16)
+      backdropOverlayMesh.position.copy(
+        resolveTankRelativePosition(dimensions, AQUARIUM_DEPTH_LAYER_ANCHORS.backdropOverlay)
+      )
       this.tank.add(backdropOverlayMesh)
     }
 
@@ -920,7 +948,7 @@ export class AdvancedAquariumScene {
   }
 
   private createDepthLayers(dimensions: AquariumTankDimensions): void {
-    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
+    const { width: tankWidth, height: tankHeight } = dimensions
 
     const midground = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.78, tankHeight * 0.54),
@@ -934,7 +962,9 @@ export class AdvancedAquariumScene {
       })
     )
     midground.name = 'tank-depth-midground'
-    midground.position.set(0, -1.2, -tankDepth * 0.22)
+    midground.position.copy(
+      resolveTankRelativePosition(dimensions, AQUARIUM_DEPTH_LAYER_ANCHORS.midground)
+    )
     midground.renderOrder = 1
     midground.userData.baseOpacity = 0.28
     this.depthMidgroundMesh = midground
@@ -952,7 +982,9 @@ export class AdvancedAquariumScene {
       })
     )
     foregroundShadow.name = 'tank-depth-foreground-shadow'
-    foregroundShadow.position.set(0, 0.35, tankDepth * 0.26)
+    foregroundShadow.position.copy(
+      resolveTankRelativePosition(dimensions, AQUARIUM_DEPTH_LAYER_ANCHORS.foregroundShadow)
+    )
     foregroundShadow.renderOrder = 4
     foregroundShadow.userData.baseOpacity = 0.11
     this.foregroundShadowMesh = foregroundShadow
@@ -1640,7 +1672,7 @@ export class AdvancedAquariumScene {
   private createGlassShell(dimensions: AquariumTankDimensions): void {
     const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
 
-    const thickness = 0.06
+    const thickness = AQUARIUM_FRONT_GLASS_THICKNESS
     const halfDepth = tankDepth / 2
     const halfWidth = tankWidth / 2
     const halfHeight = tankHeight / 2
@@ -3650,8 +3682,20 @@ export class AdvancedAquariumScene {
 
   private handleResize = (): void => {
     const { width, height } = this.getViewportSize()
-    this.camera.aspect = width / height
+    const aspect = width / height
+    this.refreshCameraFraming(aspect)
+    this.camera.aspect = aspect
+    const desiredCameraPosition = this.photoModeEnabled
+      ? this.photoModeCameraPosition
+      : this.defaultCameraPosition
+    const desiredCameraTarget = this.photoModeEnabled
+      ? this.resolvePhotoModeTarget()
+      : this.defaultControlsTarget
+    this.camera.position.copy(desiredCameraPosition)
+    this.camera.lookAt(desiredCameraTarget)
     this.camera.updateProjectionMatrix()
+    this.controls.target.copy(desiredCameraTarget)
+    this.controls.update()
     this.renderer.setSize(width, height)
     
     if (this.composer) {

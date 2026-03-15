@@ -3,11 +3,13 @@ import * as THREE from 'three'
 import { AdvancedAquariumScene } from './AdvancedScene'
 import { substrateHardscapeAnchors } from './Aquascaping'
 import {
+  AQUARIUM_CAMERA_FRAMING,
   AQUARIUM_MAIN_LIGHT_RIG,
   AQUARIUM_TANK_DIMENSIONS,
   type AquariumTankDimensions,
   resolveDefaultCameraPosition,
   resolveDefaultControlsTarget,
+  resolvePhotoModeCameraPosition,
   resolvePhotoModeControlsTarget
 } from './aquariumLayout'
 import type { Theme } from '../types/aquarium'
@@ -99,6 +101,34 @@ const getFrontTopEdgeHeights = (mesh: THREE.Mesh): number[] => {
 }
 
 const getValueRange = (values: number[]): number => Math.max(...values) - Math.min(...values)
+
+const createFramingCamera = (
+  position: THREE.Vector3,
+  target: THREE.Vector3,
+  aspect: number
+): THREE.PerspectiveCamera => {
+  const camera = new THREE.PerspectiveCamera(
+    AQUARIUM_CAMERA_FRAMING.standardFov,
+    aspect,
+    0.1,
+    1000
+  )
+  camera.position.copy(position)
+  camera.lookAt(target)
+  camera.updateProjectionMatrix()
+  camera.updateMatrixWorld(true)
+  return camera
+}
+
+const getFrontGlassCoverageRatio = (
+  camera: THREE.PerspectiveCamera,
+  dimensions: AquariumTankDimensions
+): number => {
+  const frontGlassZ = (dimensions.depth / 2) + 0.06
+  const leftEdge = new THREE.Vector3(-dimensions.width / 2, 0, frontGlassZ).project(camera)
+  const rightEdge = new THREE.Vector3(dimensions.width / 2, 0, frontGlassZ).project(camera)
+  return Math.abs(rightEdge.x - leftEdge.x) / 2
+}
 
 const EXPANDED_TANK_DIMENSIONS: AquariumTankDimensions = {
   width: 19.8,
@@ -277,18 +307,59 @@ describe('AdvancedAquariumScene performance stats', () => {
 })
 
 describe('AdvancedAquariumScene camera', () => {
-  it('frames the aquascape higher with a tighter hero composition', () => {
+  it('keeps the default framing fit-driven across common aspect ratios', () => {
+    const createCoverageSnapshot = (aspect: number) => {
+      const position = resolveDefaultCameraPosition(
+        AQUARIUM_TANK_DIMENSIONS,
+        AQUARIUM_CAMERA_FRAMING.standardFov,
+        aspect
+      )
+      const target = resolveDefaultControlsTarget(AQUARIUM_TANK_DIMENSIONS)
+      const camera = createFramingCamera(position, target, aspect)
+
+      return {
+        position,
+        coverage: getFrontGlassCoverageRatio(camera, AQUARIUM_TANK_DIMENSIONS)
+      }
+    }
+
+    const standard = createCoverageSnapshot(16 / 9)
+    const fourThree = createCoverageSnapshot(4 / 3)
+    const ultrawide = createCoverageSnapshot(21 / 9)
+
+    expect(standard.coverage).toBeGreaterThan(0.8)
+    expect(standard.coverage).toBeLessThan(0.84)
+    expect(Math.abs(fourThree.coverage - standard.coverage)).toBeLessThan(0.03)
+    expect(Math.abs(ultrawide.coverage - standard.coverage)).toBeLessThan(0.03)
+    expect(fourThree.position.z).toBeGreaterThan(standard.position.z)
+    expect(ultrawide.position.z).toBeLessThan(standard.position.z)
+  })
+
+  it('recomputes camera framing when setup runs against a new viewport aspect', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const viewport = { width: 1600, height: 900 }
     const internals = instance as unknown as {
       camera: THREE.PerspectiveCamera
       getViewportSize: () => { width: number; height: number }
       defaultCameraPosition: THREE.Vector3
+      photoModeCameraPosition: THREE.Vector3
       defaultControlsTarget: THREE.Vector3
+      photoModeControlsTarget: THREE.Vector3
     }
 
-    internals.getViewportSize = () => ({ width: 1600, height: 900 })
-    internals.defaultCameraPosition = resolveDefaultCameraPosition(AQUARIUM_TANK_DIMENSIONS)
+    internals.getViewportSize = () => viewport
+    internals.defaultCameraPosition = resolveDefaultCameraPosition(
+      AQUARIUM_TANK_DIMENSIONS,
+      AQUARIUM_CAMERA_FRAMING.standardFov,
+      viewport.width / viewport.height
+    )
+    internals.photoModeCameraPosition = resolvePhotoModeCameraPosition(
+      AQUARIUM_TANK_DIMENSIONS,
+      AQUARIUM_CAMERA_FRAMING.standardFov,
+      viewport.width / viewport.height
+    )
     internals.defaultControlsTarget = resolveDefaultControlsTarget(AQUARIUM_TANK_DIMENSIONS)
+    internals.photoModeControlsTarget = resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS)
 
     const setupCamera = (AdvancedAquariumScene.prototype as unknown as {
       setupCamera: () => void
@@ -296,13 +367,19 @@ describe('AdvancedAquariumScene camera', () => {
 
     setupCamera()
 
-    const direction = new THREE.Vector3()
-    internals.camera.getWorldDirection(direction)
+    const standardDefaultZ = internals.defaultCameraPosition.z
+    const standardPhotoZ = internals.photoModeCameraPosition.z
 
-    expect(internals.camera.fov).toBe(47)
-    expect(internals.camera.position.z).toBeCloseTo(resolveDefaultCameraPosition(AQUARIUM_TANK_DIMENSIONS).z, 1)
-    expect(internals.camera.position.y).toBeCloseTo(resolveDefaultCameraPosition(AQUARIUM_TANK_DIMENSIONS).y, 1)
-    expect(direction.y).toBeLessThan(-0.12)
+    viewport.width = 1024
+    viewport.height = 768
+
+    setupCamera()
+
+    expect(internals.camera.aspect).toBeCloseTo(4 / 3)
+    expect(internals.defaultControlsTarget.y).toBeLessThan(0)
+    expect(internals.photoModeControlsTarget.x).toBeGreaterThan(0)
+    expect(internals.defaultCameraPosition.z).toBeGreaterThan(standardDefaultZ)
+    expect(internals.photoModeCameraPosition.z).toBeGreaterThan(standardPhotoZ)
   })
 })
 
@@ -362,6 +439,46 @@ describe('AdvancedAquariumScene photo mode', () => {
 
     expect(target.x).toBeGreaterThan(resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS).x)
     expect(target.z).toBeGreaterThan(resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS).z)
+  })
+
+  it('keeps photo mode fit-driven while remaining slightly tighter than the default framing', () => {
+    const createCoverageSnapshot = (aspect: number) => {
+      const position = resolvePhotoModeCameraPosition(
+        AQUARIUM_TANK_DIMENSIONS,
+        AQUARIUM_CAMERA_FRAMING.standardFov,
+        aspect
+      )
+      const target = resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS)
+      const camera = createFramingCamera(position, target, aspect)
+
+      return {
+        position,
+        coverage: getFrontGlassCoverageRatio(camera, AQUARIUM_TANK_DIMENSIONS)
+      }
+    }
+
+    const defaultCoverage = getFrontGlassCoverageRatio(
+      createFramingCamera(
+        resolveDefaultCameraPosition(
+          AQUARIUM_TANK_DIMENSIONS,
+          AQUARIUM_CAMERA_FRAMING.standardFov,
+          16 / 9
+        ),
+        resolveDefaultControlsTarget(AQUARIUM_TANK_DIMENSIONS),
+        16 / 9
+      ),
+      AQUARIUM_TANK_DIMENSIONS
+    )
+    const standard = createCoverageSnapshot(16 / 9)
+    const fourThree = createCoverageSnapshot(4 / 3)
+    const ultrawide = createCoverageSnapshot(21 / 9)
+
+    expect(standard.coverage).toBeGreaterThan(defaultCoverage)
+    expect(standard.coverage).toBeLessThan(0.89)
+    expect(Math.abs(fourThree.coverage - standard.coverage)).toBeLessThan(0.035)
+    expect(Math.abs(ultrawide.coverage - standard.coverage)).toBeLessThan(0.035)
+    expect(fourThree.position.z).toBeGreaterThan(standard.position.z)
+    expect(ultrawide.position.z).toBeLessThan(standard.position.z)
   })
 })
 
@@ -578,6 +695,101 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(midground?.position.z).toBeLessThan(0)
     expect(foreground?.position.z).toBeGreaterThan(1.5)
     expect(foreground?.position.z).toBeLessThan(4.2)
+  })
+
+  it('keeps backdrop and depth-layer anchors tank-relative when the tank dimensions change', () => {
+    const createTankLayers = (dimensions: AquariumTankDimensions) => {
+      const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+      const overlayTexture = new THREE.Texture()
+      const internals = instance as unknown as {
+        tank: THREE.Group
+        createSubstrate: CreateSubstrateFn
+        createBackdropTexture: () => THREE.CanvasTexture
+        visualAssets: { textures: Record<string, THREE.Texture | null> } | undefined
+      }
+
+      internals.tank = new THREE.Group()
+      internals.createSubstrate = vi.fn()
+      internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+      internals.visualAssets = {
+        textures: {
+          'backdrop-depth': overlayTexture
+        }
+      }
+
+      setTankDimensions(instance, dimensions)
+
+      const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+        createAdvancedTank: () => void
+      }).createAdvancedTank.bind(instance)
+
+      createAdvancedTank()
+
+      return {
+        backdrop: internals.tank.children.find((child) => child.name === 'tank-backdrop') as THREE.Mesh | undefined,
+        overlay: internals.tank.children.find((child) => child.name === 'tank-backdrop-overlay') as THREE.Mesh | undefined,
+        midground: internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined,
+        foreground: internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
+      }
+    }
+
+    const standard = createTankLayers(AQUARIUM_TANK_DIMENSIONS)
+    const expanded = createTankLayers(EXPANDED_TANK_DIMENSIONS)
+
+    expect(standard.backdrop).toBeDefined()
+    expect(standard.overlay).toBeDefined()
+    expect(standard.midground).toBeDefined()
+    expect(standard.foreground).toBeDefined()
+    expect(expanded.backdrop).toBeDefined()
+    expect(expanded.overlay).toBeDefined()
+    expect(expanded.midground).toBeDefined()
+    expect(expanded.foreground).toBeDefined()
+
+    expect(getHeightRatio(standard.backdrop!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(-0.085)
+    expect(getHeightRatio(standard.backdrop!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(-0.075)
+    expect(getHeightRatio(standard.overlay!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(-0.095)
+    expect(getHeightRatio(standard.overlay!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(-0.085)
+    expect(getHeightRatio(standard.midground!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(-0.095)
+    expect(getHeightRatio(standard.midground!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(-0.085)
+    expect(getHeightRatio(standard.foreground!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(0.02)
+    expect(getHeightRatio(standard.foreground!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(0.04)
+
+    expect(getHeightRatio(expanded.backdrop!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getHeightRatio(standard.backdrop!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+    expect(getHeightRatio(expanded.overlay!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getHeightRatio(standard.overlay!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+    expect(getHeightRatio(expanded.midground!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getHeightRatio(standard.midground!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+    expect(getHeightRatio(expanded.foreground!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getHeightRatio(standard.foreground!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+
+    expect(getDepthRatio(expanded.backdrop!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getDepthRatio(standard.backdrop!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+    expect(getDepthRatio(expanded.overlay!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getDepthRatio(standard.overlay!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+    expect(getDepthRatio(expanded.midground!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getDepthRatio(standard.midground!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+    expect(getDepthRatio(expanded.foreground!.position, EXPANDED_TANK_DIMENSIONS)).toBeCloseTo(
+      getDepthRatio(standard.foreground!.position, AQUARIUM_TANK_DIMENSIONS),
+      2
+    )
+    expect(standard.backdrop!.position.z).toBeLessThan(standard.overlay!.position.z)
+    expect(standard.overlay!.position.z).toBeLessThan(standard.midground!.position.z)
+    expect(standard.midground!.position.z).toBeLessThan(standard.foreground!.position.z)
   })
 
   it('adds a suspended light canopy and focused substrate glow around the hero hardscape', () => {
