@@ -653,9 +653,13 @@ export class DetailedFishSystem {
       alphaMap?: THREE.Texture | null
     }
     const resolvedMap = texturedMaterial.map ?? this.getVisualTexture(variant.baseColorTextureId)
-    const resolvedAlphaMap = texturedMaterial.alphaMap ?? (hero ? this.getVisualTexture(variant.alphaTextureId) : null)
+    const resolvedAlphaMap = texturedMaterial.alphaMap ?? this.getVisualTexture(variant.alphaTextureId)
     const resolvedNormalMap = texturedMaterial.normalMap ?? this.getVisualTexture(variant.normalTextureId)
     const resolvedRoughnessMap = texturedMaterial.roughnessMap ?? this.getVisualTexture(variant.roughnessTextureId)
+    const resolvedAlphaTest = Math.max(texturedMaterial.alphaTest ?? 0, resolvedAlphaMap ? 0.05 : 0)
+    const transparent = hero
+      ? texturedMaterial.transparent || !!resolvedAlphaMap
+      : texturedMaterial.transparent
 
     return new THREE.MeshPhysicalMaterial({
       map: resolvedMap,
@@ -665,13 +669,15 @@ export class DetailedFishSystem {
       roughnessMap: resolvedRoughnessMap,
       color: texturedMaterial.color?.clone() ?? new THREE.Color(0xffffff),
       metalness: typeof texturedMaterial.metalness === 'number' ? texturedMaterial.metalness : 0.04,
-      roughness: hero ? 0.24 : 0.34,
-      clearcoat: Math.max(hero ? 0.84 : 0.72, texturedMaterial.clearcoat ?? 0),
+      roughness: hero ? 0.24 : 0.38,
+      clearcoat: Math.max(hero ? 0.84 : 0.64, texturedMaterial.clearcoat ?? 0),
       clearcoatRoughness: Math.min(0.28, texturedMaterial.clearcoatRoughness ?? 0.2),
       reflectivity: 0.9,
-      envMapIntensity: hero ? 0.95 : Math.max(0.72, texturedMaterial.envMapIntensity ?? 0),
-      transparent: texturedMaterial.transparent || !!resolvedAlphaMap,
-      alphaTest: texturedMaterial.alphaTest,
+      envMapIntensity: hero
+        ? 0.95
+        : Math.min(0.78, Math.max(0.62, texturedMaterial.envMapIntensity ?? 0)),
+      transparent,
+      alphaTest: resolvedAlphaTest,
       side: texturedMaterial.side ?? THREE.FrontSide
     })
   }

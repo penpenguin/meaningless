@@ -216,6 +216,164 @@ describe('DetailedFishSystem premium materials', () => {
     expect(material.roughnessMap).toBe(tropicalFallbackRoughness)
   })
 
+  test('uses variant alpha texture fallback for school fish without forcing transparent blending', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const tropicalFallbackAlpha = new THREE.Texture()
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-tropical-alpha': tropicalFallbackAlpha
+      }
+    }
+
+    const { createFishAssetMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          baseColorTextureId?: string
+          normalTextureId?: string
+          roughnessTextureId?: string
+          alphaTextureId?: string
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        },
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({
+        color: '#ffffff'
+      }),
+      {
+        primaryColor: new THREE.Color('#ff8844'),
+        secondaryColor: new THREE.Color('#ffee88'),
+        scale: 1,
+        speed: 1,
+        alphaTextureId: 'fish-tropical-alpha'
+      },
+      false
+    )
+
+    expect(material.alphaMap).toBe(tropicalFallbackAlpha)
+    expect(material.transparent).toBe(false)
+    expect(material.alphaTest).toBeCloseTo(0.05)
+  })
+
+  test('preserves authored alpha maps for school fish before consulting variant alpha textures', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const authoredAlpha = new THREE.Texture()
+    const tropicalFallbackAlpha = new THREE.Texture()
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-tropical-alpha': tropicalFallbackAlpha
+      }
+    }
+
+    const { createFishAssetMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          baseColorTextureId?: string
+          normalTextureId?: string
+          roughnessTextureId?: string
+          alphaTextureId?: string
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        },
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        alphaMap: authoredAlpha
+      }),
+      {
+        primaryColor: new THREE.Color('#ff8844'),
+        secondaryColor: new THREE.Color('#ffee88'),
+        scale: 1,
+        speed: 1,
+        alphaTextureId: 'fish-tropical-alpha'
+      },
+      false
+    )
+
+    expect(material.alphaMap).toBe(authoredAlpha)
+    expect(material.transparent).toBe(false)
+    expect(material.alphaTest).toBeCloseTo(0.05)
+    expect(material.roughness).toBeCloseTo(0.38)
+    expect(material.clearcoat).toBeCloseTo(0.64)
+    expect(material.envMapIntensity).toBeCloseTo(0.78)
+  })
+
+  test('keeps hero alpha fallback behavior when authored alpha is absent', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const tropicalFallbackAlpha = new THREE.Texture()
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-tropical-alpha': tropicalFallbackAlpha
+      }
+    }
+
+    const { createFishAssetMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          baseColorTextureId?: string
+          normalTextureId?: string
+          roughnessTextureId?: string
+          alphaTextureId?: string
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        },
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({
+        color: '#ffffff'
+      }),
+      {
+        primaryColor: new THREE.Color('#44eeff'),
+        secondaryColor: new THREE.Color('#ff44aa'),
+        scale: 1,
+        speed: 1,
+        alphaTextureId: 'fish-tropical-alpha'
+      },
+      true
+    )
+
+    expect(material.alphaMap).toBe(tropicalFallbackAlpha)
+    expect(material.transparent).toBe(true)
+    expect(material.alphaTest).toBeCloseTo(0.05)
+    expect(material.roughness).toBeCloseTo(0.24)
+    expect(material.clearcoat).toBeCloseTo(0.84)
+    expect(material.envMapIntensity).toBeCloseTo(0.95)
+  })
+
   test('hero asset materials do not add emissive brightness', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     ;(instance as unknown as {
@@ -593,6 +751,168 @@ describe('DetailedFishSystem asset-backed models', () => {
     expect(Math.abs(colors[1] - colors[2])).toBeLessThan(0.02)
 
     randomSpy.mockRestore()
+  })
+
+  test('keeps instanced school meshes when variant alpha fallback is applied to asset-backed fish', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const fallbackAlpha = new THREE.Texture()
+    const sourceMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: '#ffffff', map: new THREE.Texture() })
+    )
+
+    ;(instance as unknown as {
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        alphaTextureId?: string
+        schoolModelId?: string
+      }>
+      instancedMeshes: THREE.InstancedMesh[]
+      heroFishMeshes: THREE.Object3D[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).variants = [{
+      name: 'Tropical',
+      scale: 1,
+      speed: 1,
+      primaryColor: new THREE.Color('#ff8844'),
+      secondaryColor: new THREE.Color('#ffee88'),
+      alphaTextureId: 'fish-tropical-alpha',
+      schoolModelId: 'fish-tropical-school'
+    }]
+    ;(instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      heroFishMeshes: THREE.Object3D[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).instancedMeshes = []
+    ;(instance as unknown as {
+      heroFishMeshes: THREE.Object3D[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).heroFishMeshes = []
+    ;(instance as unknown as {
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).baseInstanceCounts = []
+    ;(instance as unknown as {
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).group = new THREE.Group()
+    ;(instance as unknown as {
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).fishCount = 2
+    ;(instance as unknown as {
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).currentQuality = 'standard'
+    ;(instance as unknown as {
+      heroAssignments: Map<number, unknown>
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).heroAssignments = new Map()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> } | null>
+      } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).visualAssets = {
+      textures: {
+        'fish-tropical-alpha': fallbackAlpha
+      },
+      models: {
+        'fish-tropical-school': { sourceMesh }
+      }
+    }
+    ;(instance as unknown as {
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createDetailedFishGeometry = vi.fn(() => new THREE.BoxGeometry(1, 1, 1))
+    ;(instance as unknown as {
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createHeroFishMeshes = vi.fn()
+
+    const createDetailedFishMeshes = (DetailedFishSystem.prototype as unknown as {
+      createDetailedFishMeshes: (countsPerVariant?: number[]) => void
+    }).createDetailedFishMeshes.bind(instance)
+
+    createDetailedFishMeshes([2])
+
+    const createdMesh = (instance as unknown as { instancedMeshes: THREE.InstancedMesh[] }).instancedMeshes[0]
+    const material = createdMesh.material as THREE.MeshPhysicalMaterial
+
+    expect(createdMesh).toBeInstanceOf(THREE.InstancedMesh)
+    expect(material.alphaMap).toBe(fallbackAlpha)
+    expect(material.transparent).toBe(false)
+    expect(material.alphaTest).toBeCloseTo(0.05)
   })
 
   test('uses the authored single-mesh hero asset when a source mesh is available', () => {
