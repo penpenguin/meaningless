@@ -27,6 +27,100 @@ type DriftwoodTubeDefinition = {
   barkAmplitude: number
 }
 
+export type SubstrateHardscapeAnchor = {
+  id: string
+  x: number
+  z: number
+  radiusX: number
+  radiusZ: number
+  sinkDepth: number
+  rimHeight: number
+  rimBiasX: number
+  rimBiasZ: number
+}
+
+export type SubstratePlantAnchor = {
+  id: string
+  x: number
+  z: number
+  layer: 'foreground' | 'background' | 'midground'
+  radiusX: number
+  radiusZ: number
+  moundHeight: number
+  scoopDepth: number
+  scoopBiasX: number
+  scoopBiasZ: number
+}
+
+export const plantClusterDefinitions: PlantClusterDefinition[] = [
+  { x: -0.34, z: 0.18, layer: 'foreground', plantType: 'ribbon-seaweed', baseHeight: 2.6, spreadX: 0.9, spreadZ: 0.65, hueBase: 0.3 },
+  { x: -0.08, z: -0.2, layer: 'background', plantType: 'sword-leaf', baseHeight: 4, spreadX: 0.65, spreadZ: 0.55, hueBase: 0.36 },
+  { x: 0.18, z: 0.06, layer: 'midground', plantType: 'fan-leaf', baseHeight: 2.8, spreadX: 0.75, spreadZ: 0.55, hueBase: 0.29 },
+  { x: 0.36, z: -0.16, layer: 'background', plantType: 'ribbon-seaweed', baseHeight: 4.6, spreadX: 0.7, spreadZ: 0.5, hueBase: 0.42 },
+  { x: 0.04, z: 0.24, layer: 'foreground', plantType: 'sword-leaf', baseHeight: 2.5, spreadX: 0.82, spreadZ: 0.7, hueBase: 0.34 },
+  { x: -0.24, z: 0.02, layer: 'midground', plantType: 'fan-leaf', baseHeight: 3.1, spreadX: 0.72, spreadZ: 0.58, hueBase: 0.27 }
+]
+
+export const substrateHardscapeAnchors: SubstrateHardscapeAnchor[] = [
+  {
+    id: 'driftwood-root-flare',
+    x: -0.018,
+    z: -0.052,
+    radiusX: 0.065,
+    radiusZ: 0.06,
+    sinkDepth: 0.09,
+    rimHeight: 0.042,
+    rimBiasX: -0.018,
+    rimBiasZ: 0.03
+  },
+  {
+    id: 'ridge-rock-front',
+    x: 0.04,
+    z: 0.012,
+    radiusX: 0.052,
+    radiusZ: 0.048,
+    sinkDepth: 0.074,
+    rimHeight: 0.052,
+    rimBiasX: -0.008,
+    rimBiasZ: 0.03
+  },
+  {
+    id: 'ridge-rock-hero',
+    x: 0.136,
+    z: -0.032,
+    radiusX: 0.086,
+    radiusZ: 0.068,
+    sinkDepth: 0.074,
+    rimHeight: 0.044,
+    rimBiasX: 0.016,
+    rimBiasZ: 0.022
+  },
+  {
+    id: 'ridge-rock-tail',
+    x: 0.212,
+    z: -0.078,
+    radiusX: 0.07,
+    radiusZ: 0.06,
+    sinkDepth: 0.058,
+    rimHeight: 0.034,
+    rimBiasX: 0.022,
+    rimBiasZ: 0.012
+  }
+]
+
+export const substratePlantAnchors: SubstratePlantAnchor[] = plantClusterDefinitions.map((cluster, index) => ({
+  id: `plant-cluster-${index + 1}`,
+  x: cluster.x,
+  z: cluster.z,
+  layer: cluster.layer,
+  radiusX: cluster.layer === 'background' ? 0.045 : 0.058,
+  radiusZ: cluster.layer === 'background' ? 0.045 : 0.052,
+  moundHeight: cluster.layer === 'background' ? 0.016 : 0.024,
+  scoopDepth: cluster.layer === 'background' ? 0.009 : 0.016,
+  scoopBiasX: cluster.plantType === 'fan-leaf' ? -0.012 : 0.012,
+  scoopBiasZ: cluster.layer === 'foreground' ? 0.02 : 0.012
+}))
+
 export class AquascapingSystem {
   private group: THREE.Group
   private plants: THREE.Group[] = []
@@ -55,18 +149,10 @@ export class AquascapingSystem {
     const seaweedCount = 18
     const size = new THREE.Vector3()
     bounds.getSize(size)
-    const clusters: PlantClusterDefinition[] = [
-      { x: -0.34, z: 0.18, layer: 'foreground', plantType: 'ribbon-seaweed', baseHeight: 2.6, spreadX: 0.9, spreadZ: 0.65, hueBase: 0.3 },
-      { x: -0.08, z: -0.2, layer: 'background', plantType: 'sword-leaf', baseHeight: 4, spreadX: 0.65, spreadZ: 0.55, hueBase: 0.36 },
-      { x: 0.18, z: 0.06, layer: 'midground', plantType: 'fan-leaf', baseHeight: 2.8, spreadX: 0.75, spreadZ: 0.55, hueBase: 0.29 },
-      { x: 0.36, z: -0.16, layer: 'background', plantType: 'ribbon-seaweed', baseHeight: 4.6, spreadX: 0.7, spreadZ: 0.5, hueBase: 0.42 },
-      { x: 0.04, z: 0.24, layer: 'foreground', plantType: 'sword-leaf', baseHeight: 2.5, spreadX: 0.82, spreadZ: 0.7, hueBase: 0.34 },
-      { x: -0.24, z: 0.02, layer: 'midground', plantType: 'fan-leaf', baseHeight: 3.1, spreadX: 0.72, spreadZ: 0.58, hueBase: 0.27 }
-    ]
     
     for (let i = 0; i < seaweedCount; i++) {
       const seaweedGroup = new THREE.Group()
-      const cluster = clusters[i % clusters.length]
+      const cluster = plantClusterDefinitions[i % plantClusterDefinitions.length]
       
       const x = THREE.MathUtils.clamp(
         cluster.x * size.x + (Math.random() - 0.5) * cluster.spreadX,
@@ -1184,12 +1270,11 @@ export class AquascapingSystem {
   private createDriftwoodBurialDetails(bounds: THREE.Box3): void {
     const size = new THREE.Vector3()
     bounds.getSize(size)
-    const center = new THREE.Vector3()
-    bounds.getCenter(center)
+    const driftwoodAnchor = substrateHardscapeAnchors.find((anchor) => anchor.id === 'driftwood-root-flare')
     const basePosition = new THREE.Vector3(
-      center.x + size.x * 0.08,
+      (driftwoodAnchor?.x ?? 0.08) * size.x,
       bounds.min.y + 0.04,
-      center.z - size.z * 0.08
+      (driftwoodAnchor?.z ?? -0.08) * size.z
     )
 
     const burialShadow = new THREE.Mesh(
@@ -1202,7 +1287,7 @@ export class AquascapingSystem {
       })
     )
     burialShadow.rotation.x = -Math.PI / 2
-    burialShadow.position.set(basePosition.x - 0.42, basePosition.y, basePosition.z + 0.18)
+    burialShadow.position.set(basePosition.x - 0.28, basePosition.y, basePosition.z + 0.2)
     burialShadow.userData = {
       role: 'driftwood-burial-shadow'
     }
@@ -1210,12 +1295,12 @@ export class AquascapingSystem {
 
     const moundDefinitions = [
       {
-        offset: new THREE.Vector3(-0.62, 0.12, 0.22),
+        offset: new THREE.Vector3(-0.38, 0.12, 0.2),
         scale: new THREE.Vector3(0.72, 0.16, 0.36),
         color: '#8d7b63'
       },
       {
-        offset: new THREE.Vector3(-0.12, 0.1, 0.08),
+        offset: new THREE.Vector3(0.18, 0.1, 0.12),
         scale: new THREE.Vector3(0.54, 0.12, 0.28),
         color: '#776750'
       }
@@ -1449,8 +1534,7 @@ export class AquascapingSystem {
   private createHardscapeTransitionDetails(bounds: THREE.Box3): void {
     const size = new THREE.Vector3()
     bounds.getSize(size)
-    const center = new THREE.Vector3()
-    bounds.getCenter(center)
+    const ridgeAnchor = substrateHardscapeAnchors.find((anchor) => anchor.id === 'ridge-rock-hero')
 
     const berm = new THREE.Mesh(
       new THREE.SphereGeometry(1.08, 28, 18),
@@ -1464,9 +1548,9 @@ export class AquascapingSystem {
     )
     berm.scale.set(2.2, 0.38, 1.18)
     berm.position.set(
-      center.x + size.x * 0.12,
+      (ridgeAnchor?.x ?? 0.12) * size.x + 0.18,
       bounds.min.y + 0.26,
-      center.z - size.z * 0.04
+      (ridgeAnchor?.z ?? -0.04) * size.z + 0.18
     )
     berm.receiveShadow = true
     berm.userData = {

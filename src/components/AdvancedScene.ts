@@ -4,7 +4,7 @@ import { DetailedFishSystem } from './DetailedFish'
 import type { FishGroup, Theme } from '../types/aquarium'
 import { EnhancedParticleSystem } from './EnhancedParticles'
 import { EnvironmentLoader, createEnvironmentBackdropTexture } from './Environment'
-import { AquascapingSystem } from './Aquascaping'
+import { AquascapingSystem, substrateHardscapeAnchors, substratePlantAnchors } from './Aquascaping'
 import { SpiralDecorations } from './SpiralDecorations'
 import { GodRaysEffect } from './GodRays'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
@@ -28,6 +28,227 @@ type PremiumThemeValues = {
   glassReflectionStrength: number
   surfaceGlowStrength: number
   causticsStrength: number
+}
+
+const substrateGeometrySegments = {
+  topWidth: 96,
+  topDepth: 64,
+  frontWidth: 72,
+  frontHeight: 28
+}
+
+const calculateGaussianFalloff = (
+  x: number,
+  z: number,
+  centerX: number,
+  centerZ: number,
+  radiusX: number,
+  radiusZ: number
+): number => {
+  const safeRadiusX = Math.max(radiusX, 0.001)
+  const safeRadiusZ = Math.max(radiusZ, 0.001)
+  const dx = (x - centerX) / safeRadiusX
+  const dz = (z - centerZ) / safeRadiusZ
+  return Math.exp(-((dx * dx) + (dz * dz)))
+}
+
+const calculateEllipticalDistance = (
+  x: number,
+  z: number,
+  centerX: number,
+  centerZ: number,
+  radiusX: number,
+  radiusZ: number
+): number => {
+  const safeRadiusX = Math.max(radiusX, 0.001)
+  const safeRadiusZ = Math.max(radiusZ, 0.001)
+  const dx = (x - centerX) / safeRadiusX
+  const dz = (z - centerZ) / safeRadiusZ
+  return Math.sqrt((dx * dx) + (dz * dz))
+}
+
+const sampleSubstrateHeight = (
+  x: number,
+  z: number,
+  tankWidth: number,
+  tankDepth: number
+): number => {
+  const halfWidth = tankWidth / 2
+  const halfDepth = tankDepth / 2
+  const normalizedX = halfWidth === 0 ? 0 : x / halfWidth
+  const normalizedZ = halfDepth === 0 ? 0 : z / halfDepth
+  const widthBlend = 1 - THREE.MathUtils.clamp(Math.abs(normalizedX), 0, 1)
+  const depthBlend = 1 - THREE.MathUtils.clamp(Math.abs(normalizedZ), 0, 1)
+  const coreBlend = THREE.MathUtils.smoothstep(Math.min(widthBlend, depthBlend), 0, 1)
+  const backness = THREE.MathUtils.clamp((halfDepth - z) / tankDepth, 0, 1)
+  const frontness = 1 - backness
+  const leftness = THREE.MathUtils.clamp((-normalizedX + 1) / 2, 0, 1)
+  const rightness = 1 - leftness
+
+  const rearBerm =
+    (calculateGaussianFalloff(
+      x,
+      z,
+      tankWidth * 0.16,
+      -tankDepth * 0.22,
+      tankWidth * 0.34,
+      tankDepth * 0.24
+    ) * 0.16) +
+    (calculateGaussianFalloff(
+      x,
+      z,
+      -tankWidth * 0.18,
+      -tankDepth * 0.08,
+      tankWidth * 0.24,
+      tankDepth * 0.3
+    ) * 0.08) +
+    (backness * rightness * widthBlend * 0.05)
+
+  const frontScoop =
+    (calculateGaussianFalloff(
+      x,
+      z,
+      -tankWidth * 0.08,
+      tankDepth * 0.34,
+      tankWidth * 0.28,
+      tankDepth * 0.16
+    ) * -0.14) +
+    (calculateGaussianFalloff(
+      x,
+      z,
+      tankWidth * 0.25,
+      tankDepth * 0.4,
+      tankWidth * 0.16,
+      tankDepth * 0.1
+    ) * -0.055)
+
+  const frontSilhouette =
+    (calculateGaussianFalloff(
+      x,
+      z,
+      -tankWidth * 0.16,
+      tankDepth * 0.46,
+      tankWidth * 0.22,
+      tankDepth * 0.08
+    ) * -0.08) +
+    (calculateGaussianFalloff(
+      x,
+      z,
+      tankWidth * 0.22,
+      tankDepth * 0.48,
+      tankWidth * 0.15,
+      tankDepth * 0.07
+    ) * 0.045) +
+    (Math.sin((x * 0.72) + 0.4) * frontness * 0.018)
+
+  const sideDrift =
+    (calculateGaussianFalloff(
+      x,
+      z,
+      -tankWidth * 0.36,
+      tankDepth * 0.08,
+      tankWidth * 0.14,
+      tankDepth * 0.28
+    ) * 0.075) +
+    (calculateGaussianFalloff(
+      x,
+      z,
+      tankWidth * 0.4,
+      tankDepth * 0.14,
+      tankWidth * 0.12,
+      tankDepth * 0.24
+    ) * -0.03)
+
+  const macroNoise = (
+    (Math.sin((x * 0.46) + (z * 0.18) + 0.9) * 0.052) +
+    (Math.sin((x * 0.18) - (z * 0.63) - 0.6) * 0.038) +
+    (Math.cos((x + (z * 1.3)) * 0.78 + 0.2) * 0.03)
+  ) * (0.42 + (coreBlend * 0.58))
+
+  const microNoise = (
+    (Math.sin((x * 1.85) - (z * 1.1)) * 0.012) +
+    (Math.cos((x * 2.35) + (z * 2.8) + 0.25) * 0.01)
+  ) * (0.2 + (coreBlend * 0.8))
+
+  let hardscapeRelief = 0
+  substrateHardscapeAnchors.forEach((anchor) => {
+    const anchorX = anchor.x * tankWidth
+    const anchorZ = anchor.z * tankDepth
+    const radiusX = anchor.radiusX * tankWidth
+    const radiusZ = anchor.radiusZ * tankDepth
+    const distance = calculateEllipticalDistance(x, z, anchorX, anchorZ, radiusX, radiusZ)
+    const sink = -anchor.sinkDepth * Math.exp(-((distance * distance) * 1.7))
+    const settlingRim = anchor.rimHeight * 1.15 * Math.exp(-(Math.pow(distance - 1.05, 2) * 4.2))
+    const biasedRim = anchor.rimHeight * 0.82 * calculateGaussianFalloff(
+      x,
+      z,
+      anchorX + (anchor.rimBiasX * tankWidth),
+      anchorZ + (anchor.rimBiasZ * tankDepth),
+      radiusX * 1.25,
+      radiusZ * 1.15
+    )
+
+    hardscapeRelief += sink + settlingRim + biasedRim
+  })
+
+  let plantRelief = 0
+  substratePlantAnchors.forEach((anchor) => {
+    const anchorX = anchor.x * tankWidth
+    const anchorZ = anchor.z * tankDepth
+    const radiusX = anchor.radiusX * tankWidth
+    const radiusZ = anchor.radiusZ * tankDepth
+    const layerWeight = anchor.layer === 'background' ? 0.72 : 1
+    const mound = anchor.moundHeight * layerWeight * calculateGaussianFalloff(
+      x,
+      z,
+      anchorX,
+      anchorZ,
+      radiusX,
+      radiusZ
+    )
+    const scoop = -anchor.scoopDepth * layerWeight * calculateGaussianFalloff(
+      x,
+      z,
+      anchorX + (anchor.scoopBiasX * tankWidth),
+      anchorZ + (anchor.scoopBiasZ * tankDepth),
+      radiusX * 0.92,
+      radiusZ * 0.9
+    )
+
+    plantRelief += mound + scoop
+  })
+
+  const edgeSettle =
+    ((1 - widthBlend) * -0.014) +
+    (THREE.MathUtils.clamp(frontness - 0.82, 0, 0.18) * -0.02)
+
+  return THREE.MathUtils.clamp(
+    rearBerm +
+      frontScoop +
+      frontSilhouette +
+      sideDrift +
+      macroNoise +
+      microNoise +
+      hardscapeRelief +
+      plantRelief +
+      edgeSettle,
+    -0.22,
+    0.46
+  )
+}
+
+const sampleFrontSubstrateProfile = (
+  x: number,
+  tankWidth: number,
+  tankDepth: number
+): { crestHeight: number; wallInset: number } => {
+  const crestHeight = sampleSubstrateHeight(x, (tankDepth / 2) - 0.22, tankWidth, tankDepth)
+  const wallInset = 0.038 + (Math.max(crestHeight, 0) * 0.16) + Math.abs(Math.sin((x * 0.42) + 0.2)) * 0.008
+
+  return {
+    crestHeight,
+    wallInset
+  }
 }
 
 const resolvePremiumThemeValues = (theme?: Theme): PremiumThemeValues => {
@@ -874,29 +1095,21 @@ export class AdvancedAquariumScene {
     baseMesh.receiveShadow = true
     this.tank.add(baseMesh)
 
-    const sandGeometry = new THREE.PlaneGeometry(tankWidth, tankDepth, 48, 32)
+    const sandGeometry = new THREE.PlaneGeometry(
+      tankWidth,
+      tankDepth,
+      substrateGeometrySegments.topWidth,
+      substrateGeometrySegments.topDepth
+    )
     sandGeometry.rotateX(-Math.PI / 2)
 
     const positions = sandGeometry.attributes.position.array as Float32Array
-    const halfWidth = tankWidth / 2
-    const halfDepth = tankDepth / 2
 
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i]
       const z = positions[i + 2]
-      const widthBlend = 1 - Math.min(1, Math.abs(x) / halfWidth)
-      const depthBlend = 1 - Math.min(1, Math.abs(z) / halfDepth)
-      const edgeBlend = Math.pow(Math.max(0, Math.min(widthBlend, depthBlend)), 1.4)
-      const depthProgress = THREE.MathUtils.clamp((halfDepth - z) / tankDepth, 0, 1)
-      const moundRise = Math.pow(depthProgress, 1.25) * 0.34
-      const centerShelf = Math.cos((x / halfWidth) * Math.PI * 0.5) * 0.045 * depthProgress
-      const broadRipples = Math.sin(x * 0.55) * Math.cos(z * 0.75) * 0.085
-      const gentleRidges = Math.sin((x + z) * 1.1) * 0.038
-      const fineTexture = Math.sin(x * 2.2) * Math.cos(z * 2.4) * 0.016
-      const frontSettle = (1 - depthProgress) * 0.032
-      const profileBlend = 0.35 + edgeBlend * 0.65
 
-      positions[i + 1] = ((moundRise + centerShelf - frontSettle) * profileBlend) + ((broadRipples + gentleRidges + fineTexture) * edgeBlend)
+      positions[i + 1] = sampleSubstrateHeight(x, z, tankWidth, tankDepth)
     }
 
     sandGeometry.attributes.position.needsUpdate = true
@@ -991,21 +1204,28 @@ export class AdvancedAquariumScene {
 
     const frontHeight = baseHeight + 0.22
     const frontWidth = tankWidth - 0.35
-    const frontGeometry = new THREE.PlaneGeometry(frontWidth, frontHeight, 40, 14)
+    const frontGeometry = new THREE.PlaneGeometry(
+      frontWidth,
+      frontHeight,
+      substrateGeometrySegments.frontWidth,
+      substrateGeometrySegments.frontHeight
+    )
     const frontPositions = frontGeometry.attributes.position.array as Float32Array
-    const frontHalfWidth = frontWidth / 2
 
     for (let i = 0; i < frontPositions.length; i += 3) {
       const x = frontPositions[i]
       const y = frontPositions[i + 1]
-      const widthBlend = 1 - Math.min(1, Math.abs(x) / frontHalfWidth)
       const verticalProgress = (y + (frontHeight / 2)) / frontHeight
-      const compactedCurve = verticalProgress * verticalProgress * 0.08
-      const sedimentBend = Math.sin(x * 0.72) * 0.018 * verticalProgress
-      const crestLift = widthBlend * verticalProgress * 0.04
+      const profile = sampleFrontSubstrateProfile(x, tankWidth, tankDepth)
+      const compactedCurve = Math.pow(verticalProgress, 1.45) * profile.wallInset
+      const faceBreakup = Math.pow(verticalProgress, 1.2) * (
+        (Math.sin((x * 0.9) + 0.2) * 0.01) +
+        (Math.cos((x * 1.6) - 0.45) * 0.008)
+      )
+      const toeSettle = (1 - verticalProgress) * (0.016 + (Math.max(-profile.crestHeight, 0) * 0.04))
 
-      frontPositions[i + 1] = y + crestLift + sedimentBend
-      frontPositions[i + 2] = -compactedCurve
+      frontPositions[i + 1] = y + (Math.pow(verticalProgress, 1.32) * profile.crestHeight * 1.08) + faceBreakup - toeSettle
+      frontPositions[i + 2] = -(compactedCurve + ((1 - verticalProgress) * 0.012))
     }
 
     frontGeometry.attributes.position.needsUpdate = true

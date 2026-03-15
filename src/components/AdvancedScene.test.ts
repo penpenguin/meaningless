@@ -3,6 +3,90 @@ import * as THREE from 'three'
 import { AdvancedAquariumScene } from './AdvancedScene'
 import type { Theme } from '../types/aquarium'
 
+const createSubstrateTestScene = () => {
+  const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+  const internals = instance as unknown as {
+    tank: THREE.Group
+    createSandTexture: () => THREE.CanvasTexture
+    createSandNormalTexture: () => THREE.CanvasTexture
+    createSandRoughnessTexture: () => THREE.CanvasTexture
+  }
+
+  internals.tank = new THREE.Group()
+  internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+  internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+  internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+  const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
+    createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+  }).createSubstrate.bind(instance)
+
+  createSubstrate(14, 14, 10)
+
+  return {
+    tank: internals.tank,
+    sandTop: internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh,
+    sandFront: internals.tank.children.find((child) => child.name === 'tank-substrate-front') as THREE.Mesh
+  }
+}
+
+const getNearestTopHeight = (mesh: THREE.Mesh, targetX: number, targetZ: number): number => {
+  const positions = mesh.geometry.getAttribute('position')
+  let bestDistance = Number.POSITIVE_INFINITY
+  let bestHeight = 0
+
+  for (let i = 0; i < positions.count; i += 1) {
+    const x = positions.getX(i)
+    const y = positions.getY(i)
+    const z = positions.getZ(i)
+    const distance = Math.hypot(x - targetX, z - targetZ)
+
+    if (distance < bestDistance) {
+      bestDistance = distance
+      bestHeight = y
+    }
+  }
+
+  return bestHeight
+}
+
+const getTopFrontEdgeHeights = (mesh: THREE.Mesh): number[] => {
+  const positions = mesh.geometry.getAttribute('position')
+  let maxZ = Number.NEGATIVE_INFINITY
+
+  for (let i = 0; i < positions.count; i += 1) {
+    maxZ = Math.max(maxZ, positions.getZ(i))
+  }
+
+  const heights: number[] = []
+  for (let i = 0; i < positions.count; i += 1) {
+    if (Math.abs(positions.getZ(i) - maxZ) < 0.001) {
+      heights.push(positions.getY(i))
+    }
+  }
+
+  return heights
+}
+
+const getFrontTopEdgeHeights = (mesh: THREE.Mesh): number[] => {
+  const positions = mesh.geometry.getAttribute('position')
+  const columnHeights = new Map<string, number>()
+
+  for (let i = 0; i < positions.count; i += 1) {
+    const xKey = positions.getX(i).toFixed(4)
+    const y = positions.getY(i)
+    const currentHeight = columnHeights.get(xKey)
+
+    if (currentHeight === undefined || y > currentHeight) {
+      columnHeights.set(xKey, y)
+    }
+  }
+
+  return Array.from(columnHeights.values())
+}
+
+const getValueRange = (values: number[]): number => Math.max(...values) - Math.min(...values)
+
 describe('AdvancedAquariumScene disposal', () => {
   it('removes renderer canvas from the DOM', () => {
     const container = document.createElement('div')
@@ -789,6 +873,47 @@ describe('AdvancedAquariumScene substrate', () => {
     expect(sandMaterial?.aoMap).toBe(ao)
     expect(albedo.anisotropy).toBe(8)
     expect(uv2).toBeDefined()
+  })
+
+  it('uses denser top and front subdivisions so silhouette shaping survives in simple quality', () => {
+    const { sandTop, sandFront } = createSubstrateTestScene()
+    const topGeometry = sandTop.geometry as THREE.PlaneGeometry
+    const frontGeometry = sandFront.geometry as THREE.PlaneGeometry
+
+    expect(topGeometry.parameters.widthSegments).toBeGreaterThanOrEqual(80)
+    expect(topGeometry.parameters.heightSegments).toBeGreaterThanOrEqual(56)
+    expect(frontGeometry.parameters.widthSegments).toBeGreaterThanOrEqual(64)
+    expect(frontGeometry.parameters.heightSegments).toBeGreaterThanOrEqual(24)
+  })
+
+  it('breaks the top and front foreground crest into an irregular silhouette instead of a straight edge', () => {
+    const { sandTop, sandFront } = createSubstrateTestScene()
+    const topFrontEdgeHeights = getTopFrontEdgeHeights(sandTop)
+    const frontTopEdgeHeights = getFrontTopEdgeHeights(sandFront)
+
+    expect(getValueRange(topFrontEdgeHeights)).toBeGreaterThan(0.08)
+    expect(getValueRange(frontTopEdgeHeights)).toBeGreaterThan(0.12)
+  })
+
+  it('sculpts a local sink and sand berm around the hero hardscape so it does not read as tabletop placement', () => {
+    const { sandTop } = createSubstrateTestScene()
+    const driftwoodContact = getNearestTopHeight(sandTop, -0.2, -0.45)
+    const driftwoodRing = [
+      getNearestTopHeight(sandTop, -0.72, -0.18),
+      getNearestTopHeight(sandTop, 0.16, -0.12),
+      getNearestTopHeight(sandTop, -0.44, -0.88),
+      getNearestTopHeight(sandTop, 0.08, -0.78)
+    ].reduce((sum, height) => sum + height, 0) / 4
+    const rockContact = getNearestTopHeight(sandTop, 0.56, 0.08)
+    const rockRing = [
+      getNearestTopHeight(sandTop, 0.08, 0.34),
+      getNearestTopHeight(sandTop, 1.02, 0.32),
+      getNearestTopHeight(sandTop, 0.36, -0.38),
+      getNearestTopHeight(sandTop, 1.18, -0.16)
+    ].reduce((sum, height) => sum + height, 0) / 4
+
+    expect(driftwoodRing - driftwoodContact).toBeGreaterThan(0.03)
+    expect(rockRing - rockContact).toBeGreaterThan(0.03)
   })
 })
 
