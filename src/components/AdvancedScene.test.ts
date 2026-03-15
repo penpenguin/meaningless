@@ -10,12 +10,14 @@ const createSubstrateTestScene = () => {
     createSandTexture: () => THREE.CanvasTexture
     createSandNormalTexture: () => THREE.CanvasTexture
     createSandRoughnessTexture: () => THREE.CanvasTexture
+    createSandAoTexture: () => THREE.CanvasTexture
   }
 
   internals.tank = new THREE.Group()
   internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
   internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
   internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+  internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
   const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
     createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -733,12 +735,14 @@ describe('AdvancedAquariumScene substrate', () => {
       createSandTexture: () => THREE.CanvasTexture
       createSandNormalTexture: () => THREE.CanvasTexture
       createSandRoughnessTexture: () => THREE.CanvasTexture
+      createSandAoTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -765,12 +769,14 @@ describe('AdvancedAquariumScene substrate', () => {
       createSandTexture: () => THREE.CanvasTexture
       createSandNormalTexture: () => THREE.CanvasTexture
       createSandRoughnessTexture: () => THREE.CanvasTexture
+      createSandAoTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -794,12 +800,14 @@ describe('AdvancedAquariumScene substrate', () => {
       createSandTexture: () => THREE.CanvasTexture
       createSandNormalTexture: () => THREE.CanvasTexture
       createSandRoughnessTexture: () => THREE.CanvasTexture
+      createSandAoTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -822,12 +830,14 @@ describe('AdvancedAquariumScene substrate', () => {
       createSandTexture: () => THREE.CanvasTexture
       createSandNormalTexture: () => THREE.CanvasTexture
       createSandRoughnessTexture: () => THREE.CanvasTexture
+      createSandAoTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -849,12 +859,14 @@ describe('AdvancedAquariumScene substrate', () => {
       createSandTexture: () => THREE.CanvasTexture
       createSandNormalTexture: () => THREE.CanvasTexture
       createSandRoughnessTexture: () => THREE.CanvasTexture
+      createSandAoTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -880,12 +892,14 @@ describe('AdvancedAquariumScene substrate', () => {
       createSandTexture: () => THREE.CanvasTexture
       createSandNormalTexture: () => THREE.CanvasTexture
       createSandRoughnessTexture: () => THREE.CanvasTexture
+      createSandAoTexture: () => THREE.CanvasTexture
     }
 
     internals.tank = new THREE.Group()
     internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
     internals.createSandRoughnessTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.createSandAoTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
 
     const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
       createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
@@ -956,14 +970,166 @@ describe('AdvancedAquariumScene substrate', () => {
 
     const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh | undefined
     const sandMaterial = sandMesh?.material as THREE.MeshStandardMaterial | undefined
+    const sandFrontMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-front') as THREE.Mesh | undefined
+    const sandFrontMaterial = sandFrontMesh?.material as THREE.MeshStandardMaterial | undefined
     const uv2 = sandMesh?.geometry.getAttribute('uv2')
 
     expect(sandMaterial?.map).toBe(albedo)
     expect(sandMaterial?.normalMap).toBe(normal)
     expect(sandMaterial?.roughnessMap).toBe(roughness)
     expect(sandMaterial?.aoMap).toBe(ao)
+    expect(sandFrontMaterial?.map).toBe(albedo)
+    expect(sandFrontMaterial?.normalMap).toBe(normal)
+    expect(sandFrontMaterial?.roughnessMap).toBe(roughness)
+    expect(sandFrontMaterial?.aoMap).toBe(ao)
     expect(albedo.anisotropy).toBe(8)
     expect(uv2).toBeDefined()
+  })
+
+  it('falls back to procedural substrate maps when authored sand textures are missing', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const fallbackAlbedo = new THREE.Texture()
+    const fallbackNormal = new THREE.Texture()
+    const fallbackRoughness = new THREE.Texture()
+    const fallbackAo = new THREE.Texture()
+    const createSandTexture = vi.fn(() => fallbackAlbedo)
+    const createSandNormalTexture = vi.fn(() => fallbackNormal)
+    const createSandRoughnessTexture = vi.fn(() => fallbackRoughness)
+    const createSandAoTexture = vi.fn(() => fallbackAo)
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, unknown>
+        environment: Record<string, THREE.Texture | null>
+        manifest: { textures: unknown[]; models: unknown[]; environment: unknown[] }
+      } | undefined
+      createSandTexture: () => THREE.Texture
+      createSandNormalTexture: () => THREE.Texture
+      createSandRoughnessTexture: () => THREE.Texture
+      createSandAoTexture: () => THREE.Texture
+      createSubstrateDetailTexture: () => THREE.Texture
+      createSubstrateDetailAlphaTexture: () => THREE.Texture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.visualAssets = {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {
+        'substrate-sand-albedo': null,
+        'substrate-sand-normal': null,
+        'substrate-sand-roughness': null,
+        'substrate-sand-ao': null
+      },
+      models: {},
+      environment: {}
+    }
+    internals.createSandTexture = createSandTexture
+    internals.createSandNormalTexture = createSandNormalTexture
+    internals.createSandRoughnessTexture = createSandRoughnessTexture
+    internals.createSandAoTexture = createSandAoTexture
+    internals.createSubstrateDetailTexture = () => new THREE.Texture()
+    internals.createSubstrateDetailAlphaTexture = () => new THREE.Texture()
+
+    const createSubstrate = (AdvancedAquariumScene.prototype as unknown as {
+      createSubstrate: (tankWidth: number, tankHeight: number, tankDepth: number) => void
+    }).createSubstrate.bind(instance)
+
+    createSubstrate(14, 14, 10)
+
+    const sandMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-top') as THREE.Mesh | undefined
+    const sandFrontMesh = internals.tank.children.find((child) => child.name === 'tank-substrate-front') as THREE.Mesh | undefined
+    const sandMaterial = sandMesh?.material as THREE.MeshStandardMaterial | undefined
+    const sandFrontMaterial = sandFrontMesh?.material as THREE.MeshStandardMaterial | undefined
+
+    expect(createSandTexture).toHaveBeenCalledTimes(1)
+    expect(createSandNormalTexture).toHaveBeenCalledTimes(1)
+    expect(createSandRoughnessTexture).toHaveBeenCalledTimes(1)
+    expect(createSandAoTexture).toHaveBeenCalledTimes(1)
+    expect(sandMaterial?.map).toBe(fallbackAlbedo)
+    expect(sandMaterial?.normalMap).toBe(fallbackNormal)
+    expect(sandMaterial?.roughnessMap).toBe(fallbackRoughness)
+    expect(sandMaterial?.aoMap).toBe(fallbackAo)
+    expect(sandFrontMaterial?.map).toBe(fallbackAlbedo)
+    expect(sandFrontMaterial?.normalMap).toBe(fallbackNormal)
+    expect(sandFrontMaterial?.roughnessMap).toBe(fallbackRoughness)
+    expect(sandFrontMaterial?.aoMap).toBe(fallbackAo)
+  })
+
+  it('keeps substrate detail layers valid in both simple and standard quality', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const substrateDetailMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.58 })
+    )
+    const substrateFrontDetailMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.62 })
+    )
+    substrateDetailMesh.userData.baseOpacity = 0.58
+    substrateFrontDetailMesh.userData.baseOpacity = 0.62
+
+    const internals = instance as unknown as {
+      ensureTankVisualLayers: () => void
+      applyLightingQuality: (quality: 'simple' | 'standard') => void
+      glassPanes: THREE.Mesh[]
+      glassEdgeHighlightMeshes: THREE.Mesh[]
+      wallPanelMeshes: THREE.Mesh[]
+      nearSurfaceLightMeshes: THREE.Mesh[]
+      midwaterLightMeshes: THREE.Mesh[]
+      causticsMeshes: THREE.Mesh[]
+      hardscapeOcclusionMeshes: THREE.Mesh[]
+      waterVolumeMesh: THREE.Mesh | null
+      waterSurfaceMesh: THREE.Mesh | null
+      frontGlassHighlightMesh: THREE.Mesh | null
+      waterSurfaceHighlightMesh: THREE.Mesh | null
+      waterlineFrontMesh: THREE.Mesh | null
+      depthMidgroundMesh: THREE.Mesh | null
+      foregroundShadowMesh: THREE.Mesh | null
+      lightCanopyMesh: THREE.Mesh | null
+      heroRimLightMesh: THREE.Mesh | null
+      heroGroundGlowMesh: THREE.Mesh | null
+      substrateDetailMesh: THREE.Mesh | null
+      substrateFrontDetailMesh: THREE.Mesh | null
+    }
+
+    internals.ensureTankVisualLayers = vi.fn()
+    internals.applyLightingQuality = vi.fn()
+    internals.glassPanes = []
+    internals.glassEdgeHighlightMeshes = []
+    internals.wallPanelMeshes = []
+    internals.nearSurfaceLightMeshes = []
+    internals.midwaterLightMeshes = []
+    internals.causticsMeshes = []
+    internals.hardscapeOcclusionMeshes = []
+    internals.waterVolumeMesh = null
+    internals.waterSurfaceMesh = null
+    internals.frontGlassHighlightMesh = null
+    internals.waterSurfaceHighlightMesh = null
+    internals.waterlineFrontMesh = null
+    internals.depthMidgroundMesh = null
+    internals.foregroundShadowMesh = null
+    internals.lightCanopyMesh = null
+    internals.heroRimLightMesh = null
+    internals.heroGroundGlowMesh = null
+    internals.substrateDetailMesh = substrateDetailMesh
+    internals.substrateFrontDetailMesh = substrateFrontDetailMesh
+
+    const applyVisualQuality = (AdvancedAquariumScene.prototype as unknown as {
+      applyVisualQuality: (quality: 'simple' | 'standard') => void
+    }).applyVisualQuality.bind(instance)
+
+    applyVisualQuality('simple')
+
+    expect(substrateDetailMesh.visible).toBe(true)
+    expect(substrateFrontDetailMesh.visible).toBe(true)
+    expect((substrateDetailMesh.material as THREE.MeshStandardMaterial).opacity).toBeCloseTo(0.58 * 0.52)
+    expect((substrateFrontDetailMesh.material as THREE.MeshStandardMaterial).opacity).toBeCloseTo(0.62 * 0.56)
+
+    applyVisualQuality('standard')
+
+    expect((substrateDetailMesh.material as THREE.MeshStandardMaterial).opacity).toBeCloseTo(0.58)
+    expect((substrateFrontDetailMesh.material as THREE.MeshStandardMaterial).opacity).toBeCloseTo(0.62)
   })
 
   it('uses denser top and front subdivisions so silhouette shaping survives in simple quality', () => {

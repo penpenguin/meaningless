@@ -1356,10 +1356,15 @@ export class AdvancedAquariumScene {
       sandGeometry.setAttribute('uv2', uv.clone())
     }
 
-    const sandTexture = this.getVisualTexture('substrate-sand-albedo') ?? this.createSandTexture()
-    const sandNormalTexture = this.getVisualTexture('substrate-sand-normal') ?? this.createSandNormalTexture()
-    const sandRoughnessTexture = this.getVisualTexture('substrate-sand-roughness') ?? this.createSandRoughnessTexture()
-    const sandAoTexture = this.getVisualTexture('substrate-sand-ao')
+    const authoredSandTexture = this.getVisualTexture('substrate-sand-albedo')
+    const authoredSandNormalTexture = this.getVisualTexture('substrate-sand-normal')
+    const authoredSandRoughnessTexture = this.getVisualTexture('substrate-sand-roughness')
+    const authoredSandAoTexture = this.getVisualTexture('substrate-sand-ao')
+    const sandTexture = authoredSandTexture ?? this.createSandTexture()
+    const sandNormalTexture = authoredSandNormalTexture ?? this.createSandNormalTexture()
+    const sandRoughnessTexture = authoredSandRoughnessTexture ?? this.createSandRoughnessTexture()
+    const sandAoTexture = authoredSandAoTexture ?? this.createSandAoTexture()
+    const usingAuthoredSandAlbedo = authoredSandTexture instanceof THREE.Texture
     sandTexture.repeat.set(
       Math.max(2.4, tankWidth / 2.6),
       Math.max(2, tankDepth / 2.3)
@@ -1379,12 +1384,12 @@ export class AdvancedAquariumScene {
     const sandMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
       normalMap: sandNormalTexture,
-      normalScale: new THREE.Vector2(0.42, 0.42),
+      normalScale: usingAuthoredSandAlbedo ? new THREE.Vector2(0.48, 0.48) : new THREE.Vector2(0.42, 0.42),
       roughnessMap: sandRoughnessTexture,
       aoMap: sandAoTexture,
-      aoMapIntensity: sandAoTexture ? 0.88 : 1,
-      color: 0xD2BB9B,
-      roughness: 0.92,
+      aoMapIntensity: sandAoTexture ? 0.94 : 1,
+      color: usingAuthoredSandAlbedo ? 0xF3E7D6 : 0xD2BB9B,
+      roughness: usingAuthoredSandAlbedo ? 0.88 : 0.92,
       metalness: 0,
       transparent: false,
       side: THREE.DoubleSide
@@ -1472,9 +1477,11 @@ export class AdvancedAquariumScene {
     }
 
     const sandFrontMaterial = sandMaterial.clone()
-    sandFrontMaterial.color = new THREE.Color(0xC8B08E)
-    sandFrontMaterial.normalScale = new THREE.Vector2(0.32, 0.5)
-    sandFrontMaterial.roughness = 0.95
+    sandFrontMaterial.color = new THREE.Color(usingAuthoredSandAlbedo ? 0xE8D6C1 : 0xC8B08E)
+    sandFrontMaterial.normalScale = usingAuthoredSandAlbedo
+      ? new THREE.Vector2(0.38, 0.56)
+      : new THREE.Vector2(0.32, 0.5)
+    sandFrontMaterial.roughness = usingAuthoredSandAlbedo ? 0.91 : 0.95
 
     const sandFrontMesh = new THREE.Mesh(frontGeometry, sandFrontMaterial)
     sandFrontMesh.name = 'tank-substrate-front'
@@ -3167,6 +3174,70 @@ export class AdvancedAquariumScene {
       ctx.arc(x, y, size, 0, Math.PI * 2)
       ctx.fill()
     }
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(4, 4)
+
+    return texture
+  }
+
+  private createSandAoTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+
+    const aoGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+    aoGradient.addColorStop(0, '#d8d8d8')
+    aoGradient.addColorStop(0.45, '#ababab')
+    aoGradient.addColorStop(1, '#767676')
+    ctx.fillStyle = aoGradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalAlpha = 0.26
+    for (let i = 0; i < 24; i++) {
+      const startY = canvas.height * (0.07 + (i * 0.04))
+      ctx.strokeStyle = i % 3 === 0 ? '#5a5a5a' : '#909090'
+      ctx.lineWidth = 8 + (i % 2)
+      ctx.beginPath()
+      ctx.moveTo(-24, startY)
+      ctx.bezierCurveTo(
+        canvas.width * 0.18,
+        startY + 12,
+        canvas.width * 0.74,
+        startY - 10,
+        canvas.width + 24,
+        startY + 8
+      )
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+
+    for (let i = 0; i < 1800; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const size = Math.random() * 1.6 + 0.5
+      const shade = 96 + Math.floor(Math.random() * 72)
+      ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`
+      ctx.beginPath()
+      ctx.arc(x, y, size, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    ctx.globalAlpha = 0.2
+    for (let i = 0; i < 22; i++) {
+      const x = Math.random() * canvas.width
+      const y = Math.random() * canvas.height
+      const width = 16 + Math.random() * 44
+      const height = 7 + Math.random() * 14
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(56, 56, 56, 0.6)' : 'rgba(188, 188, 188, 0.42)'
+      ctx.beginPath()
+      ctx.ellipse(x, y, width, height, Math.random() * Math.PI, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
 
     const texture = new THREE.CanvasTexture(canvas)
     texture.wrapS = THREE.RepeatWrapping

@@ -150,6 +150,35 @@ describe('loadVisualAssets', () => {
     expect(assets.models['plant-fan-cluster']).not.toBeNull()
     expect(assets.models['plant-fan-cluster']?.sourceMesh).toBeNull()
   })
+
+  it('returns null for missing authored substrate textures so scene fallback can substitute procedural maps', async () => {
+    const textureLoader = {
+      loadAsync: vi.fn(async (url: string) => {
+        if (url.includes('substrate-sand-normal.png')) {
+          throw new Error('missing authored normal')
+        }
+        return new THREE.Texture()
+      })
+    }
+
+    const assets = await loadVisualAssets({
+      textures: [
+        { id: 'substrate-sand-albedo', url: '/assets/aquarium/substrate-sand-albedo.png', usageTag: 'rock', lod: 'high' },
+        { id: 'substrate-sand-normal', url: '/assets/aquarium/substrate-sand-normal.png', usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
+        { id: 'substrate-sand-roughness', url: '/assets/aquarium/substrate-sand-roughness.png', usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
+        { id: 'substrate-sand-ao', url: '/assets/aquarium/substrate-sand-ao.png', usageTag: 'rock', lod: 'medium', colorSpace: 'linear' }
+      ],
+      models: [],
+      environment: []
+    }, {
+      textureLoader
+    })
+
+    expect(assets.textures['substrate-sand-albedo']).toBeInstanceOf(THREE.Texture)
+    expect(assets.textures['substrate-sand-normal']).toBeNull()
+    expect(assets.textures['substrate-sand-roughness']).toBeInstanceOf(THREE.Texture)
+    expect(assets.textures['substrate-sand-ao']).toBeInstanceOf(THREE.Texture)
+  })
 })
 
 describe('public aquarium asset urls', () => {
@@ -190,15 +219,35 @@ describe('public aquarium asset urls', () => {
     expect(textureUrls.some((url) => url.endsWith('driftwood-ao.png'))).toBe(true)
   })
 
+  it('uses authored png pbr textures for substrate sand while keeping the stable texture ids', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const textureUrlsById = new Map(manifest.textures.map((entry) => [entry.id, entry.url]))
+
+    expect(textureUrlsById.get('substrate-sand-albedo')).toBe('/assets/aquarium/substrate-sand-albedo.png')
+    expect(textureUrlsById.get('substrate-sand-normal')).toBe('/assets/aquarium/substrate-sand-normal.png')
+    expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/assets/aquarium/substrate-sand-roughness.png')
+    expect(textureUrlsById.get('substrate-sand-ao')).toBe('/assets/aquarium/substrate-sand-ao.png')
+
+    expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('substrate-sand-albedo.svg'))).toBe(false)
+    expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('substrate-sand-normal.svg'))).toBe(false)
+    expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('substrate-sand-roughness.svg'))).toBe(false)
+    expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('substrate-sand-ao.svg'))).toBe(false)
+  })
+
   it('resolves public asset urls through BASE_URL without hardcoding a leading slash', () => {
     expect(resolvePublicAssetUrl('assets/aquarium/fish-neon-school.glb', '/meaningless/')).toBe(
       '/meaningless/assets/aquarium/fish-neon-school.glb'
     )
 
     const manifest = createAquariumAssetManifest('/meaningless/')
+    const textureUrlsById = new Map(manifest.textures.map((entry) => [entry.id, entry.url]))
 
     expect(manifest.textures[0]?.url.startsWith('/meaningless/assets/aquarium/')).toBe(true)
     expect(manifest.models[0]?.url.startsWith('/meaningless/assets/aquarium/')).toBe(true)
     expect(manifest.environment[0]?.url).toBe('/meaningless/assets/aquarium/aquarium-hdri.hdr')
+    expect(textureUrlsById.get('substrate-sand-albedo')).toBe('/meaningless/assets/aquarium/substrate-sand-albedo.png')
+    expect(textureUrlsById.get('substrate-sand-normal')).toBe('/meaningless/assets/aquarium/substrate-sand-normal.png')
+    expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/meaningless/assets/aquarium/substrate-sand-roughness.png')
+    expect(textureUrlsById.get('substrate-sand-ao')).toBe('/meaningless/assets/aquarium/substrate-sand-ao.png')
   })
 })
