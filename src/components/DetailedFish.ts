@@ -77,16 +77,20 @@ export class DetailedFishSystem {
   private tempJitter = new THREE.Vector3()
   private tempNoiseForce = new THREE.Vector3()
   private tempDirection = new THREE.Vector3()
-  private tempTurnNoise = new THREE.Vector3()
   private tempSuddenTurn = new THREE.Vector3()
   private tempCuriosityForce = new THREE.Vector3()
   private tempForward = new THREE.Vector3(-1, 0, 0)
   private tempQuaternion = new THREE.Quaternion()
+  private tempHorizontalDirection = new THREE.Vector3()
+  private tempHorizontalPreviousDirection = new THREE.Vector3()
   private tempCurrentPos = new THREE.Vector3()
   private tempWanderDirection = new THREE.Vector3()
   private tempWanderTarget = new THREE.Vector3()
   private tempDepthForce = new THREE.Vector3()
   private tempBoundsSize = new THREE.Vector3()
+  private smoothedQuaternions: THREE.Quaternion[] = []
+  private previousVelocities: THREE.Vector3[] = []
+  private headingInitialized: boolean[] = []
   private behaviorProfile: BehaviorProfile = { ...DEFAULT_BEHAVIOR_PROFILE }
   private currentQuality: QualityLevel = 'standard'
   private visualAssets: VisualAssetBundle | null
@@ -131,14 +135,13 @@ export class DetailedFishSystem {
       ...('turnBias' in tuning && tuning.turnBias !== undefined ? { turnBias: tuning.turnBias } : {})
     }
 
-    this.boids.params.maxSpeed = this.behaviorProfile.speed
     this.boids.params.cohesion = this.behaviorProfile.cohesion
     this.boids.params.separation = this.behaviorProfile.separation
     this.boids.params.alignment = this.behaviorProfile.alignment
-    this.boids.params.maxForce = 0.004 + (this.behaviorProfile.turnBias * 0.01)
-    this.boids.boids.forEach((boid) => {
-      boid.maxSpeed = this.behaviorProfile.speed
-      boid.maxForce = this.boids.params.maxForce
+    this.boids.setBehaviorTuning({
+      speed: this.behaviorProfile.speed,
+      turnBias: this.behaviorProfile.turnBias,
+      avoidWalls: this.behaviorProfile.avoidWalls
     })
   }
 
@@ -272,6 +275,23 @@ export class DetailedFishSystem {
     this.swimPhases = new Float32Array(this.fishCount)
     this.speedMultipliers = new Float32Array(this.fishCount)
     this.wanderTargets = []
+    this.smoothedQuaternions = Array.from({ length: this.fishCount }, () => new THREE.Quaternion())
+    this.previousVelocities = Array.from({ length: this.fishCount }, () => new THREE.Vector3())
+    this.headingInitialized = Array.from({ length: this.fishCount }, () => false)
+
+    const bounds = this.bounds ?? new THREE.Box3(new THREE.Vector3(-10, -10, -10), new THREE.Vector3(10, 10, 10))
+    const boundsSize = this.tempBoundsSize ?? new THREE.Vector3()
+    bounds.getSize(boundsSize)
+    this.tempBoundsSize = boundsSize
+    const xInset = boundsSize.x * 0.12
+    const yInset = boundsSize.y * 0.22
+    const zInset = boundsSize.z * 0.28
+    const xMin = bounds.min.x + xInset
+    const xMax = bounds.max.x - xInset
+    const yMin = bounds.min.y + yInset
+    const yMax = bounds.max.y - yInset
+    const zMin = bounds.min.z + zInset
+    const zMax = bounds.max.z - zInset
     
     for (let i = 0; i < this.fishCount; i++) {
       // Random offset for animations (0 to 2π)
@@ -283,15 +303,15 @@ export class DetailedFishSystem {
       // Random speed multiplier (0.3 to 0.7) - 非常にゆったり
       this.speedMultipliers[i] = 0.3 + Math.random() * 0.4
       
-      // Random wander target for individual exploration
+      // Keep initial wander targets inside a tank-relative cruising band.
       this.wanderTargets.push(new THREE.Vector3(
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 14,
-        (Math.random() - 0.5) * 16
+        THREE.MathUtils.lerp(xMin, xMax, Math.random()),
+        THREE.MathUtils.lerp(yMin, yMax, Math.random()),
+        THREE.MathUtils.lerp(zMin, zMax, Math.random())
       ))
     }
   }
-  
+
   private updateWanderTargets(elapsedTime: number): void {
     // 魚らしいゆっくりとした目標変更（5-12秒）
     if (elapsedTime - this.lastWanderUpdate > 5 + Math.random() * 7) {
@@ -310,15 +330,43 @@ export class DetailedFishSystem {
           this.tempCurrentPos.set(0, 0, 0)
         }
 
+        const bounds = this.bounds ?? new THREE.Box3(new THREE.Vector3(-10, -10, -10), new THREE.Vector3(10, 10, 10))
+        const boundsSize = this.tempBoundsSize ?? new THREE.Vector3()
+        bounds.getSize(boundsSize)
+        this.tempBoundsSize = boundsSize
+        const lateralDistance = boundsSize.x * (0.16 + Math.random() * 0.18)
+        const verticalDistance = boundsSize.y * (0.03 + Math.random() * 0.06)
+        const depthDistance = boundsSize.z * (0.04 + Math.random() * 0.09)
+
         this.tempWanderDirection.set(
           (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2
+          (Math.random() - 0.5) * 0.7,
+          (Math.random() - 0.5) * 0.5
         ).normalize()
 
         this.tempWanderTarget.copy(this.tempWanderDirection)
-          .multiplyScalar(3 + Math.random() * 5)  // 3-8ユニット先
+          .set(
+            this.tempWanderDirection.x * lateralDistance,
+            this.tempWanderDirection.y * verticalDistance,
+            this.tempWanderDirection.z * depthDistance
+          )
           .add(this.tempCurrentPos)
+
+        this.tempWanderTarget.x = THREE.MathUtils.clamp(
+          this.tempWanderTarget.x,
+          bounds.min.x + boundsSize.x * 0.08,
+          bounds.max.x - boundsSize.x * 0.08
+        )
+        this.tempWanderTarget.y = THREE.MathUtils.clamp(
+          this.tempWanderTarget.y,
+          bounds.min.y + boundsSize.y * 0.14,
+          bounds.max.y - boundsSize.y * 0.14
+        )
+        this.tempWanderTarget.z = THREE.MathUtils.clamp(
+          this.tempWanderTarget.z,
+          bounds.min.z + boundsSize.z * 0.18,
+          bounds.max.z - boundsSize.z * 0.18
+        )
 
         this.wanderTargets[fishIndex].copy(this.tempWanderTarget)
       }
@@ -576,6 +624,30 @@ export class DetailedFishSystem {
     this.boids = new BoidsSystem(this.fishCount, this.bounds)
     this.initializeRandomness()
     this.createDetailedFishMeshes(countsPerVariant)
+  }
+
+  private ensureHeadingState(): void {
+    const count = Number.isFinite(this.fishCount) ? this.fishCount : this.boids?.boids?.length ?? 0
+
+    if (!this.smoothedQuaternions || this.smoothedQuaternions.length !== count) {
+      this.smoothedQuaternions = Array.from({ length: count }, () => new THREE.Quaternion())
+    }
+
+    if (!this.previousVelocities || this.previousVelocities.length !== count) {
+      this.previousVelocities = Array.from({ length: count }, () => new THREE.Vector3())
+    }
+
+    if (!this.headingInitialized || this.headingInitialized.length !== count) {
+      this.headingInitialized = Array.from({ length: count }, () => false)
+    }
+  }
+
+  private shouldTrigger(ratePerSecond: number, deltaTime: number): boolean {
+    if (deltaTime <= 0 || ratePerSecond <= 0) {
+      return false
+    }
+
+    return Math.random() < Math.min(1, ratePerSecond * deltaTime)
   }
 
   private disposeMaterialTextures(material: THREE.Material): void {
@@ -1069,26 +1141,35 @@ export class DetailedFishSystem {
     })
   }
   
-  update(_deltaTime: number, elapsedTime: number): void {
+  update(deltaTime: number, elapsedTime: number): void {
     // Update wander targets periodically
     this.updateWanderTargets(elapsedTime)
     const bounds = this.bounds ?? new THREE.Box3(new THREE.Vector3(-10, -10, -10), new THREE.Vector3(10, 10, 10))
     const behavior = this.behaviorProfile ?? DEFAULT_BEHAVIOR_PROFILE
     const boundsSize = this.tempBoundsSize ?? new THREE.Vector3()
     const depthForce = this.tempDepthForce ?? new THREE.Vector3()
+    const horizontalDirection = this.tempHorizontalDirection ?? new THREE.Vector3()
+    const horizontalPreviousDirection = this.tempHorizontalPreviousDirection ?? new THREE.Vector3()
+    const safeDeltaTime = Math.max(0, deltaTime)
     bounds.getSize(boundsSize)
     this.tempBoundsSize = boundsSize
     this.tempDepthForce = depthForce
+    this.tempHorizontalDirection = horizontalDirection
+    this.tempHorizontalPreviousDirection = horizontalPreviousDirection
+    this.ensureHeadingState()
     const depthRange = boundsSize.y * behavior.depthVariance * 0.35
     const moodWanderStrength = behavior.schoolMood === 'alert'
-      ? 0.004
+      ? 0.95
       : behavior.schoolMood === 'feeding'
-        ? 0.0034
-        : 0.0028
-    const jitterScale = 0.0004 + (behavior.turnBias * 0.0012)
-    const curiosityChance = 0.0005 + (behavior.turnBias * 0.01)
-    const turnNoiseScale = 0.6 + behavior.turnBias
-    const depthForceScale = 0.0015 + (behavior.depthVariance * 0.006)
+        ? 0.82
+        : 0.72
+    const jitterScale = 0.18 + (behavior.turnBias * 0.24)
+    const curiosityRate = 0.03 + (behavior.turnBias * 0.12)
+    const suddenTurnRate = 0.12 + (behavior.turnBias * 0.45)
+    const gentleTurnRate = 0.016 + (behavior.turnBias * 0.09)
+    const turnNoiseScale = 0.12 + (behavior.turnBias * 0.18)
+    const depthForceScale = 0.85 + (behavior.depthVariance * 1.6)
+    const headingFollowRate = 3.5 + (behavior.avoidWalls * 1.8)
     
     // Add strong individual wander behavior to break up schooling
     this.boids.boids.forEach((boid, index) => {
@@ -1096,21 +1177,22 @@ export class DetailedFishSystem {
         // 非常に弱い放浪力で非常にゆったりした動き
         this.tempWanderForce.copy(this.wanderTargets[index]).sub(boid.position)
         if (this.tempWanderForce.lengthSq() > 0) {
-          this.tempWanderForce.normalize().multiplyScalar(moodWanderStrength * this.speedMultipliers[index])
+          const distanceScale = Math.min(1.35, 0.45 + (this.tempWanderForce.length() / Math.max(boundsSize.x, 1)))
+          this.tempWanderForce.normalize().multiplyScalar(moodWanderStrength * this.speedMultipliers[index] * distanceScale)
         }
         
         // 非常に小さなジッターで非常にゆったりした動き
         this.tempJitter.set(
           (Math.random() - 0.5) * jitterScale,
-          (Math.random() - 0.5) * jitterScale,
-          (Math.random() - 0.5) * jitterScale
+          (Math.random() - 0.5) * jitterScale * 0.35,
+          (Math.random() - 0.5) * jitterScale * 0.22
         )
         
         // 非常に小さなノイズ力で非常にゆったりした動き
         this.tempNoiseForce.set(
-          Math.sin(elapsedTime * 0.06 + this.randomOffsets[index]) * jitterScale,
-          Math.sin(elapsedTime * 0.05 + this.randomOffsets[index] * 2) * jitterScale * 0.8,
-          Math.sin(elapsedTime * 0.04 + this.randomOffsets[index] * 3) * jitterScale
+          Math.sin(elapsedTime * 0.35 + this.randomOffsets[index]) * turnNoiseScale,
+          Math.sin(elapsedTime * 0.28 + this.randomOffsets[index] * 2) * turnNoiseScale * 0.28,
+          Math.sin(elapsedTime * 0.24 + this.randomOffsets[index] * 3) * turnNoiseScale * 0.18
         )
 
         const desiredY = bounds.max.y -
@@ -1119,13 +1201,22 @@ export class DetailedFishSystem {
         depthForce.set(0, desiredY - boid.position.y, 0).multiplyScalar(depthForceScale)
         
         // 稀な方向転換を更に減らして直線性を向上
-        if (Math.random() < curiosityChance) {
+        if (this.shouldTrigger(curiosityRate, safeDeltaTime)) {
           this.tempCuriosityForce.set(
-            (Math.random() - 0.5) * (0.01 + behavior.turnBias * 0.04),
-            (Math.random() - 0.5) * (0.008 + behavior.depthVariance * 0.03),
-            (Math.random() - 0.5) * (0.01 + behavior.turnBias * 0.04)
+            (Math.random() - 0.5) * (0.6 + behavior.turnBias * 1.2),
+            (Math.random() - 0.5) * (0.22 + behavior.depthVariance * 0.5),
+            (Math.random() - 0.5) * (0.18 + behavior.turnBias * 0.42)
           )
           boid.acceleration.add(this.tempCuriosityForce)
+        }
+
+        if (this.shouldTrigger(suddenTurnRate, safeDeltaTime)) {
+          this.tempSuddenTurn.set(
+            (Math.random() - 0.5) * (1 + behavior.turnBias * 1.8),
+            (Math.random() - 0.5) * (0.24 + behavior.depthVariance * 0.6),
+            (Math.random() - 0.5) * (0.3 + behavior.turnBias * 0.7)
+          )
+          boid.acceleration.add(this.tempSuddenTurn)
         }
         
         boid.acceleration
@@ -1136,7 +1227,7 @@ export class DetailedFishSystem {
       }
     })
     
-    this.boids.update()
+    this.boids.update(safeDeltaTime)
     
     let boidIndex = 0
     
@@ -1154,61 +1245,58 @@ export class DetailedFishSystem {
         const randomOffset = this.randomOffsets[boidIndex]
         const swimPhase = this.swimPhases[boidIndex]
         const speedMult = this.speedMultipliers[boidIndex]
+        const smoothedQuaternion = this.smoothedQuaternions[boidIndex]
+        const previousVelocity = this.previousVelocities[boidIndex]
         
         this.dummy.position.copy(boid.position)
         
         // 魚を進行方向に正しく向ける（魚の先端が前方向）
         this.tempDirection.copy(boid.velocity)
         if (this.tempDirection.lengthSq() > 0) {
-          // 方向転換にノイズを追加（より自然な魚の動き）
-          this.tempTurnNoise.set(
-            // 水平方向のノイズ（左右の方向転換）
-            (Math.sin(elapsedTime * 0.8 + randomOffset) * 0.15 +
-            Math.sin(elapsedTime * 1.3 + randomOffset * 2) * 0.08) * turnNoiseScale,
-            
-            // 垂直方向のノイズ（上下の方向転換）
-            (Math.sin(elapsedTime * 0.6 + randomOffset + 1) * 0.12 +
-            Math.sin(elapsedTime * 1.1 + randomOffset * 3) * 0.06) * turnNoiseScale,
-            
-            // 奥行き方向のノイズ（前後の方向転換）
-            (Math.sin(elapsedTime * 0.7 + randomOffset + 2) * 0.1 +
-            Math.sin(elapsedTime * 1.2 + randomOffset * 4) * 0.05) * turnNoiseScale
-          )
-          
-          // ランダムな瞬間的方向変化（魚の気まぐれ）
-          if (Math.random() < 0.002 + (behavior.turnBias * 0.02)) {
-            this.tempSuddenTurn.set(
-              (Math.random() - 0.5) * (0.2 + behavior.turnBias * 0.6),
-              (Math.random() - 0.5) * (0.15 + behavior.depthVariance * 0.4),
-              (Math.random() - 0.5) * (0.2 + behavior.turnBias * 0.5)
-            )
-            this.tempTurnNoise.add(this.tempSuddenTurn)
-          }
-          
           this.tempDirection.normalize()
-          this.tempDirection.add(this.tempTurnNoise).normalize()
-          
-          // 魚の先端を進行方向に向ける
-          // 魚ジオメトリは-X方向を向いているので、進行方向との角度を計算
-          // 進行方向への回転を計算
           this.tempQuaternion.setFromUnitVectors(this.tempForward, this.tempDirection)
-          this.dummy.setRotationFromQuaternion(this.tempQuaternion)
+
+          if (!this.headingInitialized[boidIndex]) {
+            smoothedQuaternion.copy(this.tempQuaternion)
+            this.headingInitialized[boidIndex] = true
+          } else {
+            smoothedQuaternion.slerp(this.tempQuaternion, 1 - Math.exp(-headingFollowRate * safeDeltaTime))
+          }
+
+          this.dummy.setRotationFromQuaternion(smoothedQuaternion)
+
+          horizontalDirection.copy(this.tempDirection).setY(0)
+          horizontalPreviousDirection.copy(previousVelocity).setY(0)
+          let yawChange = 0
+          if (horizontalDirection.lengthSq() > 0 && horizontalPreviousDirection.lengthSq() > 0) {
+            horizontalDirection.normalize()
+            horizontalPreviousDirection.normalize()
+            yawChange = Math.atan2(
+              (horizontalPreviousDirection.x * horizontalDirection.z) -
+                (horizontalPreviousDirection.z * horizontalDirection.x),
+              horizontalPreviousDirection.dot(horizontalDirection)
+            )
+          }
+
+          const horizontalSpeed = Math.sqrt(
+            (this.tempDirection.x * this.tempDirection.x) + (this.tempDirection.z * this.tempDirection.z)
+          )
+          const climbAngle = Math.atan2(this.tempDirection.y, Math.max(horizontalSpeed, 0.0001))
+          const bank = THREE.MathUtils.clamp(-yawChange * 1.4, -0.35, 0.35)
+          this.dummy.rotation.x += climbAngle * 0.25
+          this.dummy.rotation.z += bank
+          previousVelocity.copy(boid.velocity)
         }
         
         // 魚らしい優雅な体の揺れ
         const swimFreq = variant.speed * speedMult * (2 + Math.sin(randomOffset) * 1)
-        const wiggle = Math.sin(elapsedTime * swimFreq + swimPhase) * (0.03 + Math.sin(randomOffset * 2) * 0.02)
+        const wiggle = Math.sin(elapsedTime * swimFreq + swimPhase) * (0.02 + Math.sin(randomOffset * 2) * 0.015)
         this.dummy.rotation.z += wiggle
         
         // 尾ひれの自然な推進動作
         const tailFreq = swimFreq * (1.8 + Math.sin(randomOffset * 3) * 0.4)
-        const tailWave = Math.sin(elapsedTime * tailFreq + swimPhase * 1.5) * (0.08 + Math.sin(randomOffset * 4) * 0.04)
+        const tailWave = Math.sin(elapsedTime * tailFreq + swimPhase * 1.5) * (0.05 + Math.sin(randomOffset * 4) * 0.025)
         this.dummy.rotation.y += tailWave
-        
-        // 滑らかな進行方向調整
-        const speed = boid.velocity.length()
-        const pitchIntensity = 0.5 + Math.sin(randomOffset * 5) * 0.3
-        this.dummy.rotation.x += speed * pitchIntensity * 0.8
         
         // 魚らしい浮遊感（ゆっくりとした上下動）
         const floatWave = Math.sin(elapsedTime * 0.8 + randomOffset) * (0.01 + behavior.depthVariance * 0.03) * speedMult
@@ -1237,10 +1325,10 @@ export class DetailedFishSystem {
         }
         
         // 突然の停止・方向転換を減らして直線性を維持
-        if (Math.random() < 0.0002 + (behavior.turnBias * 0.0025)) {
+        if (this.shouldTrigger(gentleTurnRate, safeDeltaTime)) {
           // 温和な方向調整のみ
-          const gentleTurn = (Math.random() - 0.5) * (0.08 + behavior.turnBias * 0.16)
-          this.dummy.rotation.y += gentleTurn
+          const gentleTurn = (Math.random() - 0.5) * (0.03 + behavior.turnBias * 0.06)
+          this.dummy.rotation.z += gentleTurn
         }
         
         this.dummy.updateMatrix()

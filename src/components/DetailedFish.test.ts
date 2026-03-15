@@ -1435,6 +1435,42 @@ describe('DetailedFishSystem asset-backed models', () => {
 })
 
 describe('DetailedFishSystem wander target timing', () => {
+  test('initializeRandomness seeds wander targets relative to the tank bounds', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      fishCount: number
+      bounds: THREE.Box3
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      speedMultipliers: Float32Array
+      wanderTargets: THREE.Vector3[]
+    }
+
+    internals.fishCount = 1
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-6, -4, -3), new THREE.Vector3(6, 4, 3))
+
+    const randomSpy = vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(1)
+
+    const initializeRandomness = (DetailedFishSystem.prototype as unknown as {
+      initializeRandomness: () => void
+    }).initializeRandomness.bind(instance)
+
+    initializeRandomness()
+
+    const target = internals.wanderTargets[0]
+    expect(Math.abs(target.x)).toBeLessThanOrEqual(5.5)
+    expect(Math.abs(target.y)).toBeLessThanOrEqual(2.5)
+    expect(Math.abs(target.z)).toBeLessThanOrEqual(2.2)
+
+    randomSpy.mockRestore()
+  })
+
   test('updates wander targets after 5 seconds when elapsed time is in seconds', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const internals = instance as unknown as {
@@ -1573,7 +1609,7 @@ describe('DetailedFishSystem variant mapping', () => {
     const internals = instance as unknown as {
       instancedMeshes: THREE.InstancedMesh[]
       variants: Array<{ name: string; primaryColor: THREE.Color; secondaryColor: THREE.Color; scale: number; speed: number }>
-      boids: { boids: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; acceleration: THREE.Vector3 }>; update: () => void }
+      boids: { boids: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; acceleration: THREE.Vector3 }>; update: (deltaTime: number) => void }
       wanderTargets: THREE.Vector3[]
       speedMultipliers: Float32Array
       randomOffsets: Float32Array
@@ -1810,9 +1846,86 @@ describe('DetailedFishSystem fish group application', () => {
       }
     }
 
-    expect(internals.boids.params.maxSpeed).toBeCloseTo(0.85, 2)
+    expect(internals.boids.params.maxSpeed).toBeGreaterThan(2.7)
     expect(internals.behaviorProfile.preferredDepth).toBeGreaterThan(0.7)
     expect(internals.behaviorProfile.turnBias).toBeGreaterThan(0.25)
+  })
+
+  test('update passes deltaTime through to boids.update', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boidsUpdate = vi.fn()
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      boids: { boids: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; acceleration: THREE.Vector3 }>; update: (deltaTime: number) => void }
+      wanderTargets: THREE.Vector3[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      dummy: THREE.Object3D
+      tempWanderForce: THREE.Vector3
+      tempJitter: THREE.Vector3
+      tempNoiseForce: THREE.Vector3
+      tempDirection: THREE.Vector3
+      tempTurnNoise: THREE.Vector3
+      tempSuddenTurn: THREE.Vector3
+      tempCuriosityForce: THREE.Vector3
+      tempForward: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      tempCurrentPos: THREE.Vector3
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      tempDepthForce: THREE.Vector3
+      tempBoundsSize: THREE.Vector3
+      bounds: THREE.Box3
+      behaviorProfile: {
+        preferredDepth: number
+        depthVariance: number
+        turnBias: number
+        schoolMood: 'calm'
+        avoidWalls: number
+      }
+    }
+
+    internals.instancedMeshes = []
+    internals.boids = { boids: [], update: boidsUpdate }
+    internals.wanderTargets = []
+    internals.speedMultipliers = new Float32Array()
+    internals.randomOffsets = new Float32Array()
+    internals.swimPhases = new Float32Array()
+    internals.dummy = new THREE.Object3D()
+    internals.tempWanderForce = new THREE.Vector3()
+    internals.tempJitter = new THREE.Vector3()
+    internals.tempNoiseForce = new THREE.Vector3()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempTurnNoise = new THREE.Vector3()
+    internals.tempSuddenTurn = new THREE.Vector3()
+    internals.tempCuriosityForce = new THREE.Vector3()
+    internals.tempForward = new THREE.Vector3(-1, 0, 0)
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.tempCurrentPos = new THREE.Vector3()
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+    internals.tempDepthForce = new THREE.Vector3()
+    internals.tempBoundsSize = new THREE.Vector3()
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    internals.behaviorProfile = {
+      preferredDepth: 0.5,
+      depthVariance: 0.18,
+      turnBias: 0.14,
+      schoolMood: 'calm',
+      avoidWalls: 0.8
+    }
+
+    const stub = instance as unknown as { updateWanderTargets: (elapsedTime: number) => void }
+    stub.updateWanderTargets = () => {}
+
+    const update = (DetailedFishSystem.prototype as unknown as {
+      update: (deltaTime: number, elapsedTime: number) => void
+    }).update.bind(instance)
+
+    update(0.25, 1)
+
+    expect(boidsUpdate).toHaveBeenCalledWith(0.25)
   })
 
   test('update biases fish upward or downward based on the active depth profile', () => {
@@ -1833,7 +1946,7 @@ describe('DetailedFishSystem fish group application', () => {
     const internals = instance as unknown as {
       instancedMeshes: THREE.InstancedMesh[]
       variants: Array<{ name: string; scale: number; speed: number }>
-      boids: { boids: typeof boid[]; update: () => void }
+      boids: { boids: typeof boid[]; update: (deltaTime: number) => void }
       wanderTargets: THREE.Vector3[]
       speedMultipliers: Float32Array
       randomOffsets: Float32Array
@@ -1848,10 +1961,13 @@ describe('DetailedFishSystem fish group application', () => {
       tempCuriosityForce: THREE.Vector3
       tempForward: THREE.Vector3
       tempQuaternion: THREE.Quaternion
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
       tempCurrentPos: THREE.Vector3
       tempWanderDirection: THREE.Vector3
       tempWanderTarget: THREE.Vector3
       tempDepthForce: THREE.Vector3
+      tempBoundsSize: THREE.Vector3
       bounds: THREE.Box3
       behaviorProfile: {
         preferredDepth: number
@@ -1879,10 +1995,13 @@ describe('DetailedFishSystem fish group application', () => {
     internals.tempCuriosityForce = new THREE.Vector3()
     internals.tempForward = new THREE.Vector3(-1, 0, 0)
     internals.tempQuaternion = new THREE.Quaternion()
+    internals.smoothedQuaternions = [new THREE.Quaternion()]
+    internals.previousVelocities = [new THREE.Vector3(1, 0, 0)]
     internals.tempCurrentPos = new THREE.Vector3()
     internals.tempWanderDirection = new THREE.Vector3()
     internals.tempWanderTarget = new THREE.Vector3()
     internals.tempDepthForce = new THREE.Vector3()
+    internals.tempBoundsSize = new THREE.Vector3()
     internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
 
     const stub = instance as unknown as { updateWanderTargets: (elapsedTime: number) => void }
@@ -1916,6 +2035,117 @@ describe('DetailedFishSystem fish group application', () => {
 
     expect(feedingY).toBeGreaterThan(0)
     expect(alertY).toBeLessThan(0)
+
+    randomSpy.mockRestore()
+  })
+
+  test('heading smoothing prevents an oversized single-frame yaw jump', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boid = {
+      position: new THREE.Vector3(0, 0, 0),
+      velocity: new THREE.Vector3(1, 0, 0),
+      acceleration: new THREE.Vector3(),
+      maxSpeed: 4,
+      maxForce: 2
+    }
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+      1
+    )
+
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      variants: Array<{ name: string; scale: number; speed: number }>
+      boids: { boids: typeof boid[]; update: (deltaTime: number) => void }
+      wanderTargets: THREE.Vector3[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      dummy: THREE.Object3D
+      tempWanderForce: THREE.Vector3
+      tempJitter: THREE.Vector3
+      tempNoiseForce: THREE.Vector3
+      tempDirection: THREE.Vector3
+      tempTurnNoise: THREE.Vector3
+      tempSuddenTurn: THREE.Vector3
+      tempCuriosityForce: THREE.Vector3
+      tempForward: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
+      tempCurrentPos: THREE.Vector3
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      tempDepthForce: THREE.Vector3
+      tempBoundsSize: THREE.Vector3
+      bounds: THREE.Box3
+      behaviorProfile: {
+        preferredDepth: number
+        depthVariance: number
+        turnBias: number
+        schoolMood: 'calm'
+        avoidWalls: number
+      }
+    }
+
+    internals.instancedMeshes = [mesh]
+    internals.variants = [{ name: 'Neon', scale: 0.35, speed: 1.2 }]
+    internals.boids = { boids: [boid], update: () => {} }
+    internals.wanderTargets = [new THREE.Vector3(0, 0, 0)]
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0])
+    internals.swimPhases = new Float32Array([0])
+    internals.dummy = new THREE.Object3D()
+    internals.tempWanderForce = new THREE.Vector3()
+    internals.tempJitter = new THREE.Vector3()
+    internals.tempNoiseForce = new THREE.Vector3()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempTurnNoise = new THREE.Vector3()
+    internals.tempSuddenTurn = new THREE.Vector3()
+    internals.tempCuriosityForce = new THREE.Vector3()
+    internals.tempForward = new THREE.Vector3(-1, 0, 0)
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.smoothedQuaternions = [new THREE.Quaternion()]
+    internals.previousVelocities = [new THREE.Vector3(1, 0, 0)]
+    internals.tempCurrentPos = new THREE.Vector3()
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+    internals.tempDepthForce = new THREE.Vector3()
+    internals.tempBoundsSize = new THREE.Vector3()
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    internals.behaviorProfile = {
+      preferredDepth: 0.5,
+      depthVariance: 0.18,
+      turnBias: 0.14,
+      schoolMood: 'calm',
+      avoidWalls: 0.8
+    }
+
+    const stub = instance as unknown as { updateWanderTargets: (elapsedTime: number) => void }
+    stub.updateWanderTargets = () => {}
+
+    const update = (DetailedFishSystem.prototype as unknown as {
+      update: (deltaTime: number, elapsedTime: number) => void
+    }).update.bind(instance)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+    update(1 / 60, 0)
+
+    const beforeMatrix = new THREE.Matrix4()
+    mesh.getMatrixAt(0, beforeMatrix)
+    const beforeQuaternion = new THREE.Quaternion()
+    beforeMatrix.decompose(new THREE.Vector3(), beforeQuaternion, new THREE.Vector3())
+
+    boid.velocity.set(-1, 0, 0)
+    update(1 / 60, 1 / 60)
+
+    const afterMatrix = new THREE.Matrix4()
+    mesh.getMatrixAt(0, afterMatrix)
+    const afterQuaternion = new THREE.Quaternion()
+    afterMatrix.decompose(new THREE.Vector3(), afterQuaternion, new THREE.Vector3())
+
+    expect(beforeQuaternion.angleTo(afterQuaternion)).toBeLessThan(1.2)
 
     randomSpy.mockRestore()
   })
