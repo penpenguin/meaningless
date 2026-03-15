@@ -694,6 +694,7 @@ export class AdvancedAquariumScene {
     this.createDepthLayers(tankWidth, tankHeight, tankDepth)
     this.createSubstrate(tankWidth, tankHeight, tankDepth)
     this.createHeroLightingLayers(tankWidth, tankHeight, tankDepth)
+    this.createUnderwaterLightingBands(tankWidth, tankHeight, tankDepth)
     this.createWaterVolume(tankWidth, tankHeight, tankDepth)
     this.createWaterSurface(tankWidth, tankHeight, tankDepth)
     this.createCausticsLayers(tankWidth, tankHeight, tankDepth)
@@ -908,9 +909,52 @@ export class AdvancedAquariumScene {
     this.lightCanopyMesh = lightCanopy
     this.tank.add(lightCanopy)
 
+    const heroRimLight = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.24, tankHeight * 0.48),
+      new THREE.MeshBasicMaterial({
+        map: this.createHeroRimLightTexture(),
+        color: new THREE.Color('#dff6f3'),
+        transparent: true,
+        opacity: 0.08,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    heroRimLight.name = 'tank-hero-rim-light'
+    heroRimLight.position.set(1.86, 0.42, -tankDepth * 0.18)
+    heroRimLight.rotation.y = -0.24
+    heroRimLight.renderOrder = 2
+    heroRimLight.userData.baseOpacity = 0.08
+    heroRimLight.userData.baseX = 1.86
+    this.heroRimLightMesh = heroRimLight
+    this.tank.add(heroRimLight)
+
+    const heroGroundGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.44, tankDepth * 0.34),
+      new THREE.MeshBasicMaterial({
+        map: this.createHeroGroundGlowTexture(),
+        color: new THREE.Color('#deeed0'),
+        transparent: true,
+        opacity: 0.18,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    heroGroundGlow.name = 'tank-hero-ground-glow'
+    heroGroundGlow.rotation.x = -Math.PI / 2
+    heroGroundGlow.position.set(1.2, -tankHeight / 2 + 0.72, -tankDepth * 0.08)
+    heroGroundGlow.renderOrder = 2
+    heroGroundGlow.userData.baseOpacity = 0.18
+    this.heroGroundGlowMesh = heroGroundGlow
+    this.tank.add(heroGroundGlow)
+  }
+
+  private createUnderwaterLightingBands(tankWidth: number, tankHeight: number, tankDepth: number): void {
     this.nearSurfaceLightMeshes = [
       {
-        name: 'tank-light-near-surface-band-1',
+        name: 'tank-light-near-surface-band-0',
         size: new THREE.Vector2(tankWidth * 0.16, tankHeight * 0.5),
         position: new THREE.Vector3(-2.55, 3.95, -tankDepth * 0.08),
         rotationY: 0.08,
@@ -924,7 +968,7 @@ export class AdvancedAquariumScene {
         phase: 0.2
       },
       {
-        name: 'tank-light-near-surface-band-2',
+        name: 'tank-light-near-surface-band-1',
         size: new THREE.Vector2(tankWidth * 0.18, tankHeight * 0.54),
         position: new THREE.Vector3(0.48, 4.15, -tankDepth * 0.14),
         rotationY: -0.06,
@@ -938,7 +982,7 @@ export class AdvancedAquariumScene {
         phase: 0.9
       },
       {
-        name: 'tank-light-near-surface-band-3',
+        name: 'tank-light-near-surface-band-2',
         size: new THREE.Vector2(tankWidth * 0.14, tankHeight * 0.46),
         position: new THREE.Vector3(2.82, 3.82, -tankDepth * 0.18),
         rotationY: -0.12,
@@ -982,46 +1026,37 @@ export class AdvancedAquariumScene {
       return mesh
     })
 
-    const heroRimLight = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth * 0.24, tankHeight * 0.48),
+    const midwaterLayer = new THREE.Mesh(
+      new THREE.PlaneGeometry(tankWidth * 0.68, tankHeight * 0.54),
       new THREE.MeshBasicMaterial({
-        map: this.createHeroRimLightTexture(),
-        color: new THREE.Color('#dff6f3'),
+        map: this.createMidwaterLightTexture(),
+        color: new THREE.Color('#b8e6e0'),
         transparent: true,
-        opacity: 0.08,
+        opacity: 0.12,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
       })
     )
-    heroRimLight.name = 'tank-hero-rim-light'
-    heroRimLight.position.set(1.86, 0.42, -tankDepth * 0.18)
-    heroRimLight.rotation.y = -0.24
-    heroRimLight.renderOrder = 2
-    heroRimLight.userData.baseOpacity = 0.08
-    heroRimLight.userData.baseX = 1.86
-    this.heroRimLightMesh = heroRimLight
-    this.tank.add(heroRimLight)
-
-    const heroGroundGlow = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth * 0.44, tankDepth * 0.34),
-      new THREE.MeshBasicMaterial({
-        map: this.createHeroGroundGlowTexture(),
-        color: new THREE.Color('#deeed0'),
-        transparent: true,
-        opacity: 0.18,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    )
-    heroGroundGlow.name = 'tank-hero-ground-glow'
-    heroGroundGlow.rotation.x = -Math.PI / 2
-    heroGroundGlow.position.set(1.2, -tankHeight / 2 + 0.72, -tankDepth * 0.08)
-    heroGroundGlow.renderOrder = 2
-    heroGroundGlow.userData.baseOpacity = 0.18
-    this.heroGroundGlowMesh = heroGroundGlow
-    this.tank.add(heroGroundGlow)
+    midwaterLayer.name = 'tank-light-midwater'
+    midwaterLayer.position.set(0.42, 1.12, -tankDepth * 0.16)
+    midwaterLayer.rotation.y = -0.08
+    midwaterLayer.rotation.z = 0.03
+    midwaterLayer.renderOrder = 2
+    midwaterLayer.userData.baseOpacity = 0.12
+    midwaterLayer.userData.baseX = 0.42
+    midwaterLayer.userData.baseY = 1.12
+    midwaterLayer.userData.baseZ = -tankDepth * 0.16
+    midwaterLayer.userData.baseRotationZ = 0.03
+    midwaterLayer.userData.scrollX = 0.0012
+    midwaterLayer.userData.scrollY = 0.0048
+    midwaterLayer.userData.swayX = 0.05
+    midwaterLayer.userData.swayY = 0.04
+    midwaterLayer.userData.swayZ = 0.05
+    midwaterLayer.userData.opacityPulse = 0.04
+    midwaterLayer.userData.phase = 0.5
+    this.midwaterLightMeshes = [midwaterLayer]
+    this.tank.add(midwaterLayer)
   }
 
   private createHardscapeOcclusionLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
@@ -1067,49 +1102,6 @@ export class AdvancedAquariumScene {
       return mesh
     }
 
-    const createMidwaterOcclusion = (
-      name: string,
-      anchor: typeof substrateHardscapeAnchors[number] | undefined,
-      width: number,
-      height: number,
-      opacity: number,
-      offsetX = 0,
-      offsetY = 0,
-      offsetZ = 0,
-      rotationY = 0,
-      rotationZ = 0
-    ): THREE.Mesh | null => {
-      if (!anchor) {
-        return null
-      }
-
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(width, height),
-        new THREE.MeshBasicMaterial({
-          map: this.createHardscapeOcclusionTexture('shaft'),
-          color: new THREE.Color('#0f2129'),
-          transparent: true,
-          opacity,
-          depthWrite: false,
-          blending: THREE.NormalBlending,
-          side: THREE.DoubleSide
-        })
-      )
-      mesh.name = name
-      mesh.position.set(
-        (anchor.x * tankWidth) + offsetX,
-        offsetY,
-        (anchor.z * tankDepth) + offsetZ
-      )
-      mesh.rotation.y = rotationY
-      mesh.rotation.z = rotationZ
-      mesh.renderOrder = 3
-      mesh.userData.baseOpacity = opacity
-      mesh.userData.occlusionLayer = 'shaft'
-      this.tank.add(mesh)
-      return mesh
-    }
-
     const driftwoodOcclusion = createFloorOcclusion(
       'tank-hardscape-occlusion-driftwood',
       driftwoodAnchor,
@@ -1148,37 +1140,10 @@ export class AdvancedAquariumScene {
     backwallOcclusion.userData.occlusionLayer = 'backwall'
     this.tank.add(backwallOcclusion)
 
-    const driftwoodMidwaterOcclusion = createMidwaterOcclusion(
-      'tank-hardscape-occlusion-midwater-driftwood',
-      driftwoodAnchor,
-      tankWidth * 0.19,
-      tankHeight * 0.44,
-      0.15,
-      0.22,
-      0.82,
-      0.2,
-      0.04,
-      -0.08
-    )
-    const ridgeMidwaterOcclusion = createMidwaterOcclusion(
-      'tank-hardscape-occlusion-midwater-ridge',
-      ridgeAnchor,
-      tankWidth * 0.22,
-      tankHeight * 0.48,
-      0.17,
-      0.28,
-      0.76,
-      0.34,
-      -0.08,
-      0.05
-    )
-
     this.hardscapeOcclusionMeshes = [
       driftwoodOcclusion,
       ridgeOcclusion,
-      backwallOcclusion,
-      driftwoodMidwaterOcclusion,
-      ridgeMidwaterOcclusion
+      backwallOcclusion
     ].filter((mesh): mesh is THREE.Mesh => mesh instanceof THREE.Mesh)
   }
 
@@ -2402,7 +2367,6 @@ export class AdvancedAquariumScene {
 
   private createCausticsLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
     const causticsTexture = this.createCausticsTexture()
-    const midwaterTexture = this.createMidwaterLightTexture()
     const floorMaterial = new THREE.MeshBasicMaterial({
       map: causticsTexture,
       color: new THREE.Color('#d3efe2'),
@@ -2433,92 +2397,6 @@ export class AdvancedAquariumScene {
     backCaustics.renderOrder = 2
     backCaustics.userData.baseOpacity = 0.11
     this.tank.add(backCaustics)
-
-    const midwaterConfigs = [
-      {
-        name: 'tank-caustics-midwater-1',
-        width: tankWidth * 0.15,
-        height: tankHeight * 0.62,
-        position: new THREE.Vector3(-2.55, 1.34, -tankDepth * 0.06),
-        rotationY: 0.08,
-        rotationZ: -0.08,
-        opacity: 0.16,
-        scrollX: 0.0026,
-        scrollY: 0.0068,
-        swayX: 0.08,
-        swayY: 0.06,
-        swayZ: 0.12,
-        opacityPulse: 0.06,
-        phase: 0.2
-      },
-      {
-        name: 'tank-caustics-midwater-2',
-        width: tankWidth * 0.17,
-        height: tankHeight * 0.68,
-        position: new THREE.Vector3(0.62, 1.02, -tankDepth * 0.16),
-        rotationY: -0.12,
-        rotationZ: 0.04,
-        opacity: 0.19,
-        scrollX: -0.0018,
-        scrollY: 0.0074,
-        swayX: 0.06,
-        swayY: 0.05,
-        swayZ: 0.08,
-        opacityPulse: 0.05,
-        phase: 0.9
-      },
-      {
-        name: 'tank-caustics-midwater-3',
-        width: tankWidth * 0.14,
-        height: tankHeight * 0.58,
-        position: new THREE.Vector3(2.84, 1.22, -tankDepth * 0.22),
-        rotationY: -0.18,
-        rotationZ: -0.03,
-        opacity: 0.14,
-        scrollX: 0.0012,
-        scrollY: 0.0062,
-        swayX: 0.05,
-        swayY: 0.045,
-        swayZ: 0.06,
-        opacityPulse: 0.045,
-        phase: 1.5
-      }
-    ]
-
-    this.midwaterLightMeshes = midwaterConfigs.map((config, index) => {
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(config.width, config.height),
-        new THREE.MeshBasicMaterial({
-          map: midwaterTexture.clone(),
-          color: new THREE.Color('#a6dfd9'),
-          transparent: true,
-          opacity: config.opacity,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          side: THREE.DoubleSide
-        })
-      )
-      mesh.name = config.name
-      mesh.position.copy(config.position)
-      mesh.rotation.y = config.rotationY
-      mesh.rotation.z = config.rotationZ
-      mesh.renderOrder = 2
-      mesh.userData.baseOpacity = config.opacity
-      mesh.userData.baseX = config.position.x
-      mesh.userData.baseY = config.position.y
-      mesh.userData.baseZ = config.position.z
-      mesh.userData.baseRotationZ = config.rotationZ
-      mesh.userData.scrollX = config.scrollX
-      mesh.userData.scrollY = config.scrollY
-      mesh.userData.swayX = config.swayX
-      mesh.userData.swayY = config.swayY
-      mesh.userData.swayZ = config.swayZ
-      mesh.userData.opacityPulse = config.opacityPulse
-      mesh.userData.phase = config.phase
-      mesh.userData.simpleVisible = index === 1
-      this.tank.add(mesh)
-      return mesh
-    })
 
     this.causticsMeshes = [floorCaustics, backCaustics]
   }
@@ -2798,14 +2676,14 @@ export class AdvancedAquariumScene {
     this.midwaterLightMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (
-        0.08 +
-        (premiumTheme.surfaceGlowStrength * 0.08) +
-        (premiumTheme.causticsStrength * 0.05)
-      ) * (index === 1 ? 1.12 : index === 0 ? 0.94 : 0.82)
+        0.06 +
+        (premiumTheme.surfaceGlowStrength * 0.07) +
+        (premiumTheme.causticsStrength * 0.04)
+      ) * (index === 0 ? 1 : 0.9)
       mesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(
-        new THREE.Color(index === 1 ? '#e7faf6' : '#93d5d2'),
-        index === 1 ? 0.48 : 0.36
+        new THREE.Color('#d4f0ea'),
+        0.4
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
@@ -3825,45 +3703,40 @@ export class AdvancedAquariumScene {
     if (this.lightCanopyMesh) {
       const material = this.lightCanopyMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.lightCanopyMesh.userData.baseOpacity as number | undefined) ?? 0.18
-      this.lightCanopyMesh.visible = isStandard
-      material.opacity = isStandard ? baseOpacity * 1.04 : 0
+      this.lightCanopyMesh.visible = true
+      material.opacity = isStandard ? baseOpacity * 1.04 : baseOpacity * 0.42
       material.needsUpdate = true
     }
 
-    this.nearSurfaceLightMeshes.forEach((mesh, index) => {
+    this.nearSurfaceLightMeshes.forEach((mesh) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? 0.16
-      mesh.visible = isStandard || index < 2
-      material.opacity = isStandard
-        ? baseOpacity
-        : index < 2 ? baseOpacity * 0.84 : 0
+      mesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.62
       material.needsUpdate = true
     })
 
     this.midwaterLightMeshes.forEach((mesh) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? 0.14
-      const simpleVisible = (mesh.userData.simpleVisible as boolean | undefined) ?? false
-      mesh.visible = isStandard || simpleVisible
-      material.opacity = isStandard
-        ? baseOpacity
-        : simpleVisible ? baseOpacity * 0.82 : 0
+      mesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.56
       material.needsUpdate = true
     })
 
     if (this.heroRimLightMesh) {
       const material = this.heroRimLightMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.heroRimLightMesh.userData.baseOpacity as number | undefined) ?? 0.2
-      this.heroRimLightMesh.visible = isStandard
-      material.opacity = isStandard ? baseOpacity : 0
+      this.heroRimLightMesh.visible = true
+      material.opacity = isStandard ? baseOpacity : baseOpacity * 0.4
       material.needsUpdate = true
     }
 
     if (this.heroGroundGlowMesh) {
       const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (this.heroGroundGlowMesh.userData.baseOpacity as number | undefined) ?? 0.16
-      this.heroGroundGlowMesh.visible = isStandard
-      material.opacity = isStandard ? baseOpacity * 0.94 : 0
+      this.heroGroundGlowMesh.visible = true
+      material.opacity = isStandard ? baseOpacity * 0.94 : baseOpacity * 0.5
       material.needsUpdate = true
     }
 

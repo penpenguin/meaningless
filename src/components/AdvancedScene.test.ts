@@ -544,7 +544,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 
-  it('splits underwater lighting into near-surface shafts, midwater caustics shafts, and substrate/backwall depth bands', () => {
+  it('splits underwater lighting into near-surface shafts, a midwater scatter layer, and substrate/backwall depth bands', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
@@ -565,24 +565,30 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const nearSurfaceBands = internals.tank.children.filter((child) => (
       child.name.startsWith('tank-light-near-surface-band-')
     )) as THREE.Mesh[]
-    const midwaterShafts = internals.tank.children.filter((child) => (
-      child.name.startsWith('tank-caustics-midwater-')
-    )) as THREE.Mesh[]
+    const midwaterLayer = internals.tank.children.find((child) => (
+      child.name === 'tank-light-midwater'
+    )) as THREE.Mesh | undefined
     const substrateGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
     const backCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-back') as THREE.Mesh | undefined
 
     expect(nearSurfaceBands).toHaveLength(3)
+    expect(nearSurfaceBands.map((mesh) => mesh.name)).toEqual([
+      'tank-light-near-surface-band-0',
+      'tank-light-near-surface-band-1',
+      'tank-light-near-surface-band-2'
+    ])
     expect(nearSurfaceBands.every((mesh) => mesh.position.y > 3.5)).toBe(true)
-    expect(midwaterShafts).toHaveLength(3)
-    expect(midwaterShafts.every((mesh) => mesh.position.y > -1.5)).toBe(true)
-    expect(midwaterShafts.every((mesh) => mesh.position.y < 3.6)).toBe(true)
-    expect(new Set(midwaterShafts.map((mesh) => mesh.position.x.toFixed(2))).size).toBeGreaterThan(1)
-    expect(new Set(midwaterShafts.map((mesh) => mesh.rotation.z.toFixed(2))).size).toBeGreaterThan(1)
+    expect(midwaterLayer).toBeDefined()
+    expect(midwaterLayer?.position.y).toBeGreaterThan(-1.5)
+    expect(midwaterLayer?.position.y).toBeLessThan(3.6)
+    expect(midwaterLayer?.position.z).toBeGreaterThan(-3.5)
+    expect(midwaterLayer?.position.z).toBeLessThan(0.5)
+    expect((midwaterLayer?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
     expect(substrateGlow?.position.y).toBeLessThan(-6)
     expect(backCaustics?.position.z).toBeLessThan(-4.5)
   })
 
-  it('adds hardscape-linked occlusion pools and midwater cutouts instead of leaving the tank evenly lit', () => {
+  it('adds hardscape-linked occlusion pools and backwall cutouts instead of leaving the tank evenly lit', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
       tank: THREE.Group
@@ -609,28 +615,19 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     const backwallOcclusion = internals.tank.children.find((child) => (
       child.name === 'tank-hardscape-occlusion-backwall'
     )) as THREE.Mesh | undefined
-    const driftwoodMidwaterOcclusion = internals.tank.children.find((child) => (
-      child.name === 'tank-hardscape-occlusion-midwater-driftwood'
-    )) as THREE.Mesh | undefined
-    const ridgeMidwaterOcclusion = internals.tank.children.find((child) => (
-      child.name === 'tank-hardscape-occlusion-midwater-ridge'
-    )) as THREE.Mesh | undefined
-    const midwaterShaft = internals.tank.children.find((child) => (
-      child.name === 'tank-caustics-midwater-2'
+    const midwaterLayer = internals.tank.children.find((child) => (
+      child.name === 'tank-light-midwater'
     )) as THREE.Mesh | undefined
 
     expect(driftwoodOcclusion).toBeDefined()
     expect(ridgeOcclusion).toBeDefined()
     expect(backwallOcclusion).toBeDefined()
-    expect(driftwoodMidwaterOcclusion).toBeDefined()
-    expect(ridgeMidwaterOcclusion).toBeDefined()
-    expect(midwaterShaft).toBeDefined()
+    expect(midwaterLayer).toBeDefined()
     expect(driftwoodOcclusion?.position.x).toBeLessThan(0.2)
     expect(ridgeOcclusion?.position.x).toBeGreaterThan(1.2)
     expect(backwallOcclusion?.position.z).toBeLessThan(-4.6)
-    expect(driftwoodMidwaterOcclusion?.position.y).toBeGreaterThan(-1)
-    expect(ridgeMidwaterOcclusion?.position.y).toBeGreaterThan(-1)
-    expect(driftwoodMidwaterOcclusion?.renderOrder).toBeGreaterThan(midwaterShaft?.renderOrder ?? 0)
+    expect(driftwoodOcclusion?.renderOrder).toBeGreaterThan(midwaterLayer?.renderOrder ?? 0)
+    expect(ridgeOcclusion?.renderOrder).toBeGreaterThan(midwaterLayer?.renderOrder ?? 0)
     expect((driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.NormalBlending)
   })
 
@@ -1283,13 +1280,10 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
     const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const nearSurfaceBand0 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-0') as THREE.Mesh | undefined
     const nearSurfaceBand1 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-1') as THREE.Mesh | undefined
     const nearSurfaceBand2 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-2') as THREE.Mesh | undefined
-    const nearSurfaceBand3 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-3') as THREE.Mesh | undefined
-    const midwaterShafts = internals.tank.children.filter((child) => (
-      child.name.startsWith('tank-caustics-midwater-')
-    )) as THREE.Mesh[]
-    const visibleMidwaterShafts = midwaterShafts.filter((mesh) => mesh.visible)
+    const midwaterLayer = internals.tank.children.find((child) => child.name === 'tank-light-midwater') as THREE.Mesh | undefined
     const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
     const driftwoodOcclusion = internals.tank.children.find((child) => child.name === 'tank-hardscape-occlusion-driftwood') as THREE.Mesh | undefined
@@ -1310,14 +1304,14 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(waterlineFront?.visible).toBe(false)
     expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(false)
-    expect(lightCanopy?.visible).toBe(false)
+    expect(lightCanopy?.visible).toBe(true)
+    expect(nearSurfaceBand0?.visible).toBe(true)
     expect(nearSurfaceBand1?.visible).toBe(true)
     expect(nearSurfaceBand2?.visible).toBe(true)
-    expect(nearSurfaceBand3?.visible).toBe(false)
-    expect(midwaterShafts).toHaveLength(3)
-    expect(visibleMidwaterShafts).toHaveLength(1)
-    expect(heroRimLight?.visible).toBe(false)
-    expect(heroGroundGlow?.visible).toBe(false)
+    expect(midwaterLayer?.visible).toBe(true)
+    expect((midwaterLayer?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0)
+    expect(heroRimLight?.visible).toBe(true)
+    expect(heroGroundGlow?.visible).toBe(true)
     expect(driftwoodOcclusion?.visible).toBe(true)
     expect(ridgeOcclusion?.visible).toBe(true)
     expect(backwallOcclusion?.visible).toBe(true)
@@ -1368,10 +1362,8 @@ describe('AdvancedAquariumScene quality scaling', () => {
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
     const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
-    const nearSurfaceBand3 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-3') as THREE.Mesh | undefined
-    const midwaterShafts = internals.tank.children.filter((child) => (
-      child.name.startsWith('tank-caustics-midwater-')
-    )) as THREE.Mesh[]
+    const nearSurfaceBand2 = internals.tank.children.find((child) => child.name === 'tank-light-near-surface-band-2') as THREE.Mesh | undefined
+    const midwaterLayer = internals.tank.children.find((child) => child.name === 'tank-light-midwater') as THREE.Mesh | undefined
     const heroRimLight = internals.tank.children.find((child) => child.name === 'tank-hero-rim-light') as THREE.Mesh | undefined
     const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
     const backwallOcclusion = internals.tank.children.find((child) => child.name === 'tank-hardscape-occlusion-backwall') as THREE.Mesh | undefined
@@ -1382,9 +1374,8 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(midground?.visible).toBe(true)
     expect(foreground?.visible).toBe(true)
     expect(lightCanopy?.visible).toBe(true)
-    expect(nearSurfaceBand3?.visible).toBe(true)
-    expect(midwaterShafts).toHaveLength(3)
-    expect(midwaterShafts.every((mesh) => mesh.visible)).toBe(true)
+    expect(nearSurfaceBand2?.visible).toBe(true)
+    expect(midwaterLayer?.visible).toBe(true)
     expect(heroRimLight?.visible).toBe(true)
     expect(heroGroundGlow?.visible).toBe(true)
     expect(backwallOcclusion?.visible).toBe(true)
