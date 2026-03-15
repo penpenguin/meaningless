@@ -442,7 +442,7 @@ export class AdvancedAquariumScene {
   private foregroundShadowMesh: THREE.Mesh | null = null
   private lightCanopyMesh: THREE.Mesh | null = null
   private nearSurfaceLightMeshes: THREE.Mesh[] = []
-  private midwaterLightMesh: THREE.Mesh | null = null
+  private midwaterLightMeshes: THREE.Mesh[] = []
   private heroRimLightMesh: THREE.Mesh | null = null
   private heroGroundGlowMesh: THREE.Mesh | null = null
   private substrateDetailMesh: THREE.Mesh | null = null
@@ -982,34 +982,6 @@ export class AdvancedAquariumScene {
       return mesh
     })
 
-    const midwaterLight = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth * 0.58, tankHeight * 0.46),
-      new THREE.MeshBasicMaterial({
-        map: this.createMidwaterLightTexture(),
-        color: new THREE.Color('#8dcfcb'),
-        transparent: true,
-        opacity: 0.16,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    )
-    midwaterLight.name = 'tank-light-midwater'
-    midwaterLight.position.set(0.82, 0.42, -tankDepth * 0.12)
-    midwaterLight.rotation.y = -0.12
-    midwaterLight.renderOrder = 2
-    midwaterLight.userData.baseOpacity = 0.16
-    midwaterLight.userData.baseX = 0.82
-    midwaterLight.userData.baseY = 0.42
-    midwaterLight.userData.scrollX = -0.0014
-    midwaterLight.userData.scrollY = 0.0032
-    midwaterLight.userData.swayX = 0.06
-    midwaterLight.userData.swayY = 0.03
-    midwaterLight.userData.opacityPulse = 0.035
-    midwaterLight.userData.phase = 0.55
-    this.midwaterLightMesh = midwaterLight
-    this.tank.add(midwaterLight)
-
     const heroRimLight = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.24, tankHeight * 0.48),
       new THREE.MeshBasicMaterial({
@@ -1090,6 +1062,50 @@ export class AdvancedAquariumScene {
       )
       mesh.renderOrder = 3
       mesh.userData.baseOpacity = opacity
+      mesh.userData.occlusionLayer = 'floor'
+      this.tank.add(mesh)
+      return mesh
+    }
+
+    const createMidwaterOcclusion = (
+      name: string,
+      anchor: typeof substrateHardscapeAnchors[number] | undefined,
+      width: number,
+      height: number,
+      opacity: number,
+      offsetX = 0,
+      offsetY = 0,
+      offsetZ = 0,
+      rotationY = 0,
+      rotationZ = 0
+    ): THREE.Mesh | null => {
+      if (!anchor) {
+        return null
+      }
+
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({
+          map: this.createHardscapeOcclusionTexture('shaft'),
+          color: new THREE.Color('#0f2129'),
+          transparent: true,
+          opacity,
+          depthWrite: false,
+          blending: THREE.NormalBlending,
+          side: THREE.DoubleSide
+        })
+      )
+      mesh.name = name
+      mesh.position.set(
+        (anchor.x * tankWidth) + offsetX,
+        offsetY,
+        (anchor.z * tankDepth) + offsetZ
+      )
+      mesh.rotation.y = rotationY
+      mesh.rotation.z = rotationZ
+      mesh.renderOrder = 3
+      mesh.userData.baseOpacity = opacity
+      mesh.userData.occlusionLayer = 'shaft'
       this.tank.add(mesh)
       return mesh
     }
@@ -1129,12 +1145,40 @@ export class AdvancedAquariumScene {
     backwallOcclusion.position.set(0.96, -0.1, -tankDepth / 2 + 0.1)
     backwallOcclusion.renderOrder = 3
     backwallOcclusion.userData.baseOpacity = 0.14
+    backwallOcclusion.userData.occlusionLayer = 'backwall'
     this.tank.add(backwallOcclusion)
+
+    const driftwoodMidwaterOcclusion = createMidwaterOcclusion(
+      'tank-hardscape-occlusion-midwater-driftwood',
+      driftwoodAnchor,
+      tankWidth * 0.19,
+      tankHeight * 0.44,
+      0.15,
+      0.22,
+      0.82,
+      0.2,
+      0.04,
+      -0.08
+    )
+    const ridgeMidwaterOcclusion = createMidwaterOcclusion(
+      'tank-hardscape-occlusion-midwater-ridge',
+      ridgeAnchor,
+      tankWidth * 0.22,
+      tankHeight * 0.48,
+      0.17,
+      0.28,
+      0.76,
+      0.34,
+      -0.08,
+      0.05
+    )
 
     this.hardscapeOcclusionMeshes = [
       driftwoodOcclusion,
       ridgeOcclusion,
-      backwallOcclusion
+      backwallOcclusion,
+      driftwoodMidwaterOcclusion,
+      ridgeMidwaterOcclusion
     ].filter((mesh): mesh is THREE.Mesh => mesh instanceof THREE.Mesh)
   }
 
@@ -1514,8 +1558,8 @@ export class AdvancedAquariumScene {
     if (!Array.isArray(this.nearSurfaceLightMeshes)) {
       this.nearSurfaceLightMeshes = []
     }
-    if (!(this.midwaterLightMesh instanceof THREE.Mesh)) {
-      this.midwaterLightMesh = null
+    if (!Array.isArray(this.midwaterLightMeshes)) {
+      this.midwaterLightMeshes = []
     }
     if (!(this.heroRimLightMesh instanceof THREE.Mesh)) {
       this.heroRimLightMesh = null
@@ -1968,14 +2012,19 @@ export class AdvancedAquariumScene {
     canvas.height = 512
     const ctx = canvas.getContext('2d')
     const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(1.1, 1.08)
+    texture.wrapS = THREE.ClampToEdgeWrapping
+    texture.wrapT = THREE.ClampToEdgeWrapping
 
     if (
       !ctx ||
       typeof ctx.createLinearGradient !== 'function' ||
-      typeof ctx.createRadialGradient !== 'function'
+      typeof ctx.createRadialGradient !== 'function' ||
+      typeof ctx.beginPath !== 'function' ||
+      typeof ctx.moveTo !== 'function' ||
+      typeof ctx.bezierCurveTo !== 'function' ||
+      typeof ctx.lineTo !== 'function' ||
+      typeof ctx.closePath !== 'function' ||
+      typeof ctx.fill !== 'function'
     ) {
       return texture
     }
@@ -1983,48 +2032,76 @@ export class AdvancedAquariumScene {
     ctx.fillStyle = 'rgba(255, 255, 255, 0)'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    const lateralBias = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-    lateralBias.addColorStop(0, 'rgba(0, 0, 0, 0)')
-    lateralBias.addColorStop(0.18, 'rgba(144, 214, 211, 0.08)')
-    lateralBias.addColorStop(0.48, 'rgba(110, 198, 194, 0.2)')
-    lateralBias.addColorStop(0.72, 'rgba(40, 89, 101, 0.08)')
-    lateralBias.addColorStop(1, 'rgba(0, 0, 0, 0)')
-    ctx.fillStyle = lateralBias
+    const verticalFalloff = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    verticalFalloff.addColorStop(0, 'rgba(248, 253, 255, 0.82)')
+    verticalFalloff.addColorStop(0.14, 'rgba(208, 243, 240, 0.58)')
+    verticalFalloff.addColorStop(0.4, 'rgba(118, 197, 196, 0.2)')
+    verticalFalloff.addColorStop(0.72, 'rgba(40, 85, 94, 0.06)')
+    verticalFalloff.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = verticalFalloff
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+    ctx.globalCompositeOperation = 'screen'
     ;[
-      { x: 0.38, y: 0.36, radius: 132, alpha: 0.18 },
-      { x: 0.66, y: 0.52, radius: 118, alpha: 0.16 },
-      { x: 0.54, y: 0.72, radius: 92, alpha: 0.1 }
-    ].forEach((glow) => {
-      const radial = ctx.createRadialGradient(
-        canvas.width * glow.x,
-        canvas.height * glow.y,
-        glow.radius * 0.12,
-        canvas.width * glow.x,
-        canvas.height * glow.y,
-        glow.radius
+      { x: 0.42, topWidth: 56, midWidth: 112, bottomWidth: 142, drift: -18, alpha: 0.34 },
+      { x: 0.58, topWidth: 48, midWidth: 98, bottomWidth: 136, drift: 12, alpha: 0.28 }
+    ].forEach((band) => {
+      const centerX = canvas.width * band.x
+      const shaftGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+      shaftGradient.addColorStop(0, `rgba(250, 253, 255, ${band.alpha})`)
+      shaftGradient.addColorStop(0.18, `rgba(194, 239, 233, ${band.alpha * 0.68})`)
+      shaftGradient.addColorStop(0.54, `rgba(93, 176, 180, ${band.alpha * 0.18})`)
+      shaftGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = shaftGradient
+      ctx.beginPath()
+      ctx.moveTo(centerX - band.topWidth, 0)
+      ctx.bezierCurveTo(
+        centerX - band.midWidth,
+        canvas.height * 0.26,
+        centerX - band.bottomWidth + band.drift,
+        canvas.height * 0.72,
+        centerX - (band.bottomWidth * 0.58) + band.drift,
+        canvas.height
       )
-      radial.addColorStop(0, `rgba(219, 251, 248, ${glow.alpha})`)
-      radial.addColorStop(0.54, `rgba(143, 216, 212, ${glow.alpha * 0.5})`)
-      radial.addColorStop(1, 'rgba(255, 255, 255, 0)')
-      ctx.fillStyle = radial
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.lineTo(centerX + (band.bottomWidth * 0.64) + band.drift, canvas.height)
+      ctx.bezierCurveTo(
+        centerX + band.bottomWidth + band.drift,
+        canvas.height * 0.7,
+        centerX + band.midWidth,
+        canvas.height * 0.28,
+        centerX + band.topWidth,
+        0
+      )
+      ctx.closePath()
+      ctx.fill()
     })
 
     ctx.globalCompositeOperation = 'destination-out'
-    const darkLane = ctx.createRadialGradient(
-      canvas.width * 0.2,
-      canvas.height * 0.5,
-      canvas.width * 0.03,
-      canvas.width * 0.2,
-      canvas.height * 0.5,
-      canvas.width * 0.32
-    )
-    darkLane.addColorStop(0, 'rgba(255, 255, 255, 0.28)')
-    darkLane.addColorStop(1, 'rgba(255, 255, 255, 0)')
-    ctx.fillStyle = darkLane
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ;[
+      { x: 0.22, y: 0.52, radius: 86, alpha: 0.34 },
+      { x: 0.7, y: 0.68, radius: 106, alpha: 0.42 },
+      { x: 0.46, y: 0.86, radius: 124, alpha: 0.48 }
+    ].forEach((breakup) => {
+      const erode = ctx.createRadialGradient(
+        canvas.width * breakup.x,
+        canvas.height * breakup.y,
+        breakup.radius * 0.14,
+        canvas.width * breakup.x,
+        canvas.height * breakup.y,
+        breakup.radius
+      )
+      erode.addColorStop(0, `rgba(255, 255, 255, ${breakup.alpha})`)
+      erode.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = erode
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+    })
+
+    const lowerShear = ctx.createLinearGradient(0, canvas.height * 0.52, 0, canvas.height)
+    lowerShear.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    lowerShear.addColorStop(0.5, 'rgba(255, 255, 255, 0.18)')
+    lowerShear.addColorStop(1, 'rgba(255, 255, 255, 0.4)')
+    ctx.fillStyle = lowerShear
+    ctx.fillRect(0, canvas.height * 0.52, canvas.width, canvas.height * 0.48)
     ctx.globalCompositeOperation = 'source-over'
 
     texture.colorSpace = THREE.SRGBColorSpace
@@ -2318,6 +2395,7 @@ export class AdvancedAquariumScene {
 
   private createCausticsLayers(tankWidth: number, tankHeight: number, tankDepth: number): void {
     const causticsTexture = this.createCausticsTexture()
+    const midwaterTexture = this.createMidwaterLightTexture()
     const floorMaterial = new THREE.MeshBasicMaterial({
       map: causticsTexture,
       color: new THREE.Color('#d3efe2'),
@@ -2348,6 +2426,92 @@ export class AdvancedAquariumScene {
     backCaustics.renderOrder = 2
     backCaustics.userData.baseOpacity = 0.11
     this.tank.add(backCaustics)
+
+    const midwaterConfigs = [
+      {
+        name: 'tank-caustics-midwater-1',
+        width: tankWidth * 0.15,
+        height: tankHeight * 0.62,
+        position: new THREE.Vector3(-2.55, 1.34, -tankDepth * 0.06),
+        rotationY: 0.08,
+        rotationZ: -0.08,
+        opacity: 0.16,
+        scrollX: 0.0026,
+        scrollY: 0.0068,
+        swayX: 0.08,
+        swayY: 0.06,
+        swayZ: 0.12,
+        opacityPulse: 0.06,
+        phase: 0.2
+      },
+      {
+        name: 'tank-caustics-midwater-2',
+        width: tankWidth * 0.17,
+        height: tankHeight * 0.68,
+        position: new THREE.Vector3(0.62, 1.02, -tankDepth * 0.16),
+        rotationY: -0.12,
+        rotationZ: 0.04,
+        opacity: 0.19,
+        scrollX: -0.0018,
+        scrollY: 0.0074,
+        swayX: 0.06,
+        swayY: 0.05,
+        swayZ: 0.08,
+        opacityPulse: 0.05,
+        phase: 0.9
+      },
+      {
+        name: 'tank-caustics-midwater-3',
+        width: tankWidth * 0.14,
+        height: tankHeight * 0.58,
+        position: new THREE.Vector3(2.84, 1.22, -tankDepth * 0.22),
+        rotationY: -0.18,
+        rotationZ: -0.03,
+        opacity: 0.14,
+        scrollX: 0.0012,
+        scrollY: 0.0062,
+        swayX: 0.05,
+        swayY: 0.045,
+        swayZ: 0.06,
+        opacityPulse: 0.045,
+        phase: 1.5
+      }
+    ]
+
+    this.midwaterLightMeshes = midwaterConfigs.map((config, index) => {
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(config.width, config.height),
+        new THREE.MeshBasicMaterial({
+          map: midwaterTexture.clone(),
+          color: new THREE.Color('#a6dfd9'),
+          transparent: true,
+          opacity: config.opacity,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      )
+      mesh.name = config.name
+      mesh.position.copy(config.position)
+      mesh.rotation.y = config.rotationY
+      mesh.rotation.z = config.rotationZ
+      mesh.renderOrder = 2
+      mesh.userData.baseOpacity = config.opacity
+      mesh.userData.baseX = config.position.x
+      mesh.userData.baseY = config.position.y
+      mesh.userData.baseZ = config.position.z
+      mesh.userData.baseRotationZ = config.rotationZ
+      mesh.userData.scrollX = config.scrollX
+      mesh.userData.scrollY = config.scrollY
+      mesh.userData.swayX = config.swayX
+      mesh.userData.swayY = config.swayY
+      mesh.userData.swayZ = config.swayZ
+      mesh.userData.opacityPulse = config.opacityPulse
+      mesh.userData.phase = config.phase
+      mesh.userData.simpleVisible = index === 1
+      this.tank.add(mesh)
+      return mesh
+    })
 
     this.causticsMeshes = [floorCaustics, backCaustics]
   }
@@ -2437,7 +2601,7 @@ export class AdvancedAquariumScene {
     return texture
   }
 
-  private createHardscapeOcclusionTexture(layer: 'floor' | 'backwall'): THREE.CanvasTexture {
+  private createHardscapeOcclusionTexture(layer: 'floor' | 'backwall' | 'shaft'): THREE.CanvasTexture {
     const canvas = document.createElement('canvas')
     canvas.width = 512
     canvas.height = 512
@@ -2458,10 +2622,15 @@ export class AdvancedAquariumScene {
           { x: 0.46, y: 0.48, radiusX: 196, radiusY: 128, alpha: 0.52 },
           { x: 0.64, y: 0.38, radiusX: 128, radiusY: 92, alpha: 0.28 }
         ]
-      : [
-          { x: 0.42, y: 0.46, radiusX: 220, radiusY: 184, alpha: 0.38 },
-          { x: 0.64, y: 0.58, radiusX: 124, radiusY: 112, alpha: 0.18 }
-        ]
+      : layer === 'backwall'
+        ? [
+            { x: 0.42, y: 0.46, radiusX: 220, radiusY: 184, alpha: 0.38 },
+            { x: 0.64, y: 0.58, radiusX: 124, radiusY: 112, alpha: 0.18 }
+          ]
+        : [
+            { x: 0.36, y: 0.3, radiusX: 114, radiusY: 164, alpha: 0.44 },
+            { x: 0.68, y: 0.62, radiusX: 132, radiusY: 192, alpha: 0.36 }
+          ]
 
     occlusionPools.forEach((pool) => {
       ctx.save()
@@ -2481,6 +2650,14 @@ export class AdvancedAquariumScene {
       topFade.addColorStop(0, 'rgba(7, 14, 18, 0.22)')
       topFade.addColorStop(0.38, 'rgba(7, 14, 18, 0.08)')
       topFade.addColorStop(1, 'rgba(7, 14, 18, 0)')
+      ctx.fillStyle = topFade
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+    } else if (layer === 'shaft') {
+      const topFade = ctx.createLinearGradient(0, 0, 0, canvas.height)
+      topFade.addColorStop(0, 'rgba(7, 14, 18, 0.04)')
+      topFade.addColorStop(0.3, 'rgba(7, 14, 18, 0.1)')
+      topFade.addColorStop(0.72, 'rgba(7, 14, 18, 0.24)')
+      topFade.addColorStop(1, 'rgba(7, 14, 18, 0.06)')
       ctx.fillStyle = topFade
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
@@ -2611,14 +2788,21 @@ export class AdvancedAquariumScene {
       material.needsUpdate = true
     })
 
-    if (this.midwaterLightMesh) {
-      const material = this.midwaterLightMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.08 + (premiumTheme.surfaceGlowStrength * 0.1) + (premiumTheme.causticsStrength * 0.05)
-      this.midwaterLightMesh.userData.baseOpacity = baseOpacity
-      material.color = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#8ccfc9'), 0.34)
+    this.midwaterLightMeshes.forEach((mesh, index) => {
+      const material = mesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = (
+        0.08 +
+        (premiumTheme.surfaceGlowStrength * 0.08) +
+        (premiumTheme.causticsStrength * 0.05)
+      ) * (index === 1 ? 1.12 : index === 0 ? 0.94 : 0.82)
+      mesh.userData.baseOpacity = baseOpacity
+      material.color = new THREE.Color(theme.waterTint).lerp(
+        new THREE.Color(index === 1 ? '#e7faf6' : '#93d5d2'),
+        index === 1 ? 0.48 : 0.36
+      )
       material.opacity = baseOpacity
       material.needsUpdate = true
-    }
+    })
 
     if (this.heroGroundGlowMesh) {
       const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
@@ -2663,11 +2847,14 @@ export class AdvancedAquariumScene {
       material.needsUpdate = true
     })
 
-    this.hardscapeOcclusionMeshes.forEach((mesh, index) => {
+    this.hardscapeOcclusionMeshes.forEach((mesh) => {
       const material = mesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = index === 2
+      const occlusionLayer = (mesh.userData.occlusionLayer as 'floor' | 'backwall' | 'shaft' | undefined) ?? 'floor'
+      const baseOpacity = occlusionLayer === 'backwall'
         ? 0.1 + (premiumTheme.glassReflectionStrength * 0.08)
-        : 0.14 + (premiumTheme.glassReflectionStrength * 0.12)
+        : occlusionLayer === 'shaft'
+          ? 0.12 + (premiumTheme.glassReflectionStrength * 0.1)
+          : 0.14 + (premiumTheme.glassReflectionStrength * 0.12)
       mesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#07141a'), 0.76)
       material.opacity = baseOpacity
@@ -3183,19 +3370,28 @@ export class AdvancedAquariumScene {
       material.opacity = baseOpacity * (0.94 + Math.sin((elapsedTime * 0.36) + phase) * opacityPulse)
     })
 
-    if (this.midwaterLightMesh) {
-      const material = this.midwaterLightMesh.material as THREE.MeshBasicMaterial
+    this.midwaterLightMeshes.forEach((mesh) => {
+      const material = mesh.material as THREE.MeshBasicMaterial
       if (material.map) {
-        material.map.offset.x = elapsedTime * (((this.midwaterLightMesh.userData.scrollX as number | undefined) ?? -0.0014))
-        material.map.offset.y = elapsedTime * (((this.midwaterLightMesh.userData.scrollY as number | undefined) ?? 0.0032))
+        material.map.offset.x = elapsedTime * (((mesh.userData.scrollX as number | undefined) ?? -0.0016))
+        material.map.offset.y = elapsedTime * (((mesh.userData.scrollY as number | undefined) ?? 0.0068))
       }
-      const baseX = (this.midwaterLightMesh.userData.baseX as number | undefined) ?? 0.82
-      const baseY = (this.midwaterLightMesh.userData.baseY as number | undefined) ?? 0.42
-      const baseOpacity = (this.midwaterLightMesh.userData.baseOpacity as number | undefined) ?? material.opacity
-      this.midwaterLightMesh.position.x = baseX + Math.sin((elapsedTime * 0.12) + 0.55) * 0.06
-      this.midwaterLightMesh.position.y = baseY + Math.sin((elapsedTime * 0.16) + 0.2) * 0.03
-      material.opacity = baseOpacity * (0.97 + Math.sin((elapsedTime * 0.24) + 0.5) * 0.035)
-    }
+      const baseX = (mesh.userData.baseX as number | undefined) ?? mesh.position.x
+      const baseY = (mesh.userData.baseY as number | undefined) ?? mesh.position.y
+      const baseZ = (mesh.userData.baseZ as number | undefined) ?? mesh.position.z
+      const baseRotationZ = (mesh.userData.baseRotationZ as number | undefined) ?? mesh.rotation.z
+      const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? material.opacity
+      const swayX = (mesh.userData.swayX as number | undefined) ?? 0.05
+      const swayY = (mesh.userData.swayY as number | undefined) ?? 0.04
+      const swayZ = (mesh.userData.swayZ as number | undefined) ?? 0.08
+      const phase = (mesh.userData.phase as number | undefined) ?? 0
+      const opacityPulse = (mesh.userData.opacityPulse as number | undefined) ?? 0.04
+      mesh.position.x = baseX + Math.sin((elapsedTime * 0.14) + phase) * swayX
+      mesh.position.y = baseY + Math.sin((elapsedTime * 0.18) + phase) * swayY
+      mesh.position.z = baseZ + Math.sin((elapsedTime * 0.12) + phase) * swayZ
+      mesh.rotation.z = baseRotationZ + Math.sin((elapsedTime * 0.22) + phase) * 0.016
+      material.opacity = baseOpacity * (0.94 + Math.sin((elapsedTime * 0.3) + phase) * opacityPulse)
+    })
 
     if (this.heroRimLightMesh) {
       const material = this.heroRimLightMesh.material as THREE.MeshBasicMaterial
@@ -3255,12 +3451,26 @@ export class AdvancedAquariumScene {
 
     this.hardscapeOcclusionMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
+      const occlusionLayer = (mesh.userData.occlusionLayer as 'floor' | 'backwall' | 'shaft' | undefined) ?? 'floor'
       if (material.map) {
-        material.map.offset.x = elapsedTime * (index === 2 ? 0.0008 : 0.0004)
-        material.map.offset.y = elapsedTime * (index === 2 ? 0.0012 : 0.0006)
+        material.map.offset.x = elapsedTime * (
+          occlusionLayer === 'backwall'
+            ? 0.0008
+            : occlusionLayer === 'shaft'
+              ? 0.0007
+              : 0.0004
+        )
+        material.map.offset.y = elapsedTime * (
+          occlusionLayer === 'backwall'
+            ? 0.0012
+            : occlusionLayer === 'shaft'
+              ? 0.001
+              : 0.0006
+        )
       }
       const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? material.opacity
-      material.opacity = baseOpacity * (0.98 + Math.sin((elapsedTime * 0.18) + (index * 0.6)) * 0.02)
+      const pulse = occlusionLayer === 'shaft' ? 0.03 : 0.02
+      material.opacity = baseOpacity * (0.98 + Math.sin((elapsedTime * 0.18) + (index * 0.6)) * pulse)
     })
   }
 
@@ -3559,13 +3769,16 @@ export class AdvancedAquariumScene {
       material.needsUpdate = true
     })
 
-    if (this.midwaterLightMesh) {
-      const material = this.midwaterLightMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = (this.midwaterLightMesh.userData.baseOpacity as number | undefined) ?? 0.14
-      this.midwaterLightMesh.visible = isStandard
-      material.opacity = isStandard ? baseOpacity : 0
+    this.midwaterLightMeshes.forEach((mesh) => {
+      const material = mesh.material as THREE.MeshBasicMaterial
+      const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? 0.14
+      const simpleVisible = (mesh.userData.simpleVisible as boolean | undefined) ?? false
+      mesh.visible = isStandard || simpleVisible
+      material.opacity = isStandard
+        ? baseOpacity
+        : simpleVisible ? baseOpacity * 0.82 : 0
       material.needsUpdate = true
-    }
+    })
 
     if (this.heroRimLightMesh) {
       const material = this.heroRimLightMesh.material as THREE.MeshBasicMaterial
