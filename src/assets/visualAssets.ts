@@ -224,6 +224,8 @@ export const createAquariumAssetManifest = (
     { id: 'fish-goldfish-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
     { id: 'fish-goldfish-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
     { id: 'fish-goldfish-alpha', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-scale-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-scale-normal.svg', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-scale-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-scale-roughness.svg', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
     { id: 'substrate-sand-albedo', url: resolvePublicAssetUrl('assets/aquarium/substrate-sand-albedo.png', baseUrl), usageTag: 'rock', lod: 'high' },
     { id: 'substrate-sand-normal', url: resolvePublicAssetUrl('assets/aquarium/substrate-sand-normal.png', baseUrl), usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
     { id: 'substrate-sand-roughness', url: resolvePublicAssetUrl('assets/aquarium/substrate-sand-roughness.png', baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },

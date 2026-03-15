@@ -108,8 +108,9 @@ describe('DetailedFishSystem silhouette archetypes', () => {
 })
 
 describe('DetailedFishSystem premium materials', () => {
-  test('uses authored species textures when visual assets are available', () => {
+  test('keeps createFishMaterial on legacy or procedural fallback paths instead of using atlas textures directly', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const tropicalLegacyPattern = new THREE.Texture()
     const tropicalTexture = new THREE.Texture()
     const tropicalNormal = new THREE.Texture()
     const tropicalRoughness = new THREE.Texture()
@@ -119,6 +120,7 @@ describe('DetailedFishSystem premium materials', () => {
       } | null
     }).visualAssets = {
       textures: {
+        'fish-tropical': tropicalLegacyPattern,
         'fish-tropical-basecolor': tropicalTexture,
         'fish-tropical-normal': tropicalNormal,
         'fish-tropical-roughness': tropicalRoughness
@@ -128,6 +130,7 @@ describe('DetailedFishSystem premium materials', () => {
     const { createFishVariants, createFishMaterial } = DetailedFishSystem.prototype as unknown as {
       createFishVariants: () => Array<{
         name: string
+        patternTextureId?: string
         baseColorTextureId?: string
         normalTextureId?: string
         roughnessTextureId?: string
@@ -150,9 +153,11 @@ describe('DetailedFishSystem premium materials', () => {
 
     const material = createFishMaterial.bind(instance)(tropical)
 
-    expect(material.map).toBe(tropicalTexture)
-    expect(material.normalMap).toBe(tropicalNormal)
-    expect(material.roughnessMap).toBe(tropicalRoughness)
+    expect(material.map).toBe(tropicalLegacyPattern)
+    expect(material.map).not.toBe(tropicalTexture)
+    expect(material.normalMap).toBeNull()
+    expect(material.roughnessMap).toBeNull()
+    expect(material.alphaMap).toBeNull()
   })
 
   test('preserves authored base material maps before consulting shared species textures', () => {
@@ -214,6 +219,109 @@ describe('DetailedFishSystem premium materials', () => {
     expect(material.alphaMap).toBe(authoredAlpha)
     expect(material.normalMap).toBe(tropicalFallbackNormal)
     expect(material.roughnessMap).toBe(tropicalFallbackRoughness)
+  })
+
+  test('uses legacy pattern textures only as the final diffuse fallback for asset-backed fish materials', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const legacyPattern = new THREE.Texture()
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-tropical': legacyPattern
+      }
+    }
+
+    const { createFishAssetMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          patternTextureId?: string
+          baseColorTextureId?: string
+          normalTextureId?: string
+          roughnessTextureId?: string
+          alphaTextureId?: string
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        },
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({
+        color: '#ffffff'
+      }),
+      {
+        primaryColor: new THREE.Color('#ff8844'),
+        secondaryColor: new THREE.Color('#ffee88'),
+        scale: 1,
+        speed: 1,
+        patternTextureId: 'fish-tropical',
+        baseColorTextureId: 'fish-tropical-basecolor'
+      },
+      false
+    )
+
+    expect(material.map).toBe(legacyPattern)
+  })
+
+  test('falls back to generic fish-scale maps after species-specific normal and roughness textures are unavailable', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const genericNormal = new THREE.Texture()
+    const genericRoughness = new THREE.Texture()
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-scale-normal': genericNormal,
+        'fish-scale-roughness': genericRoughness
+      }
+    }
+
+    const { createFishAssetMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          patternTextureId?: string
+          baseColorTextureId?: string
+          normalTextureId?: string
+          roughnessTextureId?: string
+          alphaTextureId?: string
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        },
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({
+        color: '#ffffff'
+      }),
+      {
+        primaryColor: new THREE.Color('#ff8844'),
+        secondaryColor: new THREE.Color('#ffee88'),
+        scale: 1,
+        speed: 1,
+        normalTextureId: 'fish-tropical-normal',
+        roughnessTextureId: 'fish-tropical-roughness'
+      },
+      false
+    )
+
+    expect(material.normalMap).toBe(genericNormal)
+    expect(material.roughnessMap).toBe(genericRoughness)
   })
 
   test('uses variant alpha texture fallback for school fish without forcing transparent blending', () => {
@@ -417,6 +525,7 @@ describe('DetailedFishSystem asset-backed models', () => {
     const { createFishVariants } = DetailedFishSystem.prototype as unknown as {
       createFishVariants: () => Array<{
         name: string
+        patternTextureId?: string
         schoolModelId?: string
         heroModelId?: string
       }>
@@ -425,18 +534,22 @@ describe('DetailedFishSystem asset-backed models', () => {
     const variants = createFishVariants.bind(instance)()
 
     expect(variants.find((variant) => variant.name === 'Tropical')).toMatchObject({
+      patternTextureId: 'fish-tropical',
       schoolModelId: 'fish-tropical-school',
       heroModelId: 'fish-tropical-hero'
     })
     expect(variants.find((variant) => variant.name === 'Angelfish')).toMatchObject({
+      patternTextureId: 'fish-angelfish',
       schoolModelId: 'fish-angelfish-school',
       heroModelId: 'fish-angelfish-hero'
     })
     expect(variants.find((variant) => variant.name === 'Neon')).toMatchObject({
+      patternTextureId: 'fish-neon',
       schoolModelId: 'fish-neon-school',
       heroModelId: 'fish-neon-hero'
     })
     expect(variants.find((variant) => variant.name === 'Goldfish')).toMatchObject({
+      patternTextureId: 'fish-goldfish',
       schoolModelId: 'fish-goldfish-school',
       heroModelId: 'fish-goldfish-hero'
     })

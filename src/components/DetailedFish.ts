@@ -12,6 +12,7 @@ interface FishVariant {
   secondaryColor: THREE.Color
   scale: number
   speed: number
+  patternTextureId?: string
   baseColorTextureId?: string
   normalTextureId?: string
   roughnessTextureId?: string
@@ -160,6 +161,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xffd700),
         scale: 0.5,
         speed: 1.0,
+        patternTextureId: 'fish-tropical',
         baseColorTextureId: 'fish-tropical-basecolor',
         normalTextureId: 'fish-tropical-normal',
         roughnessTextureId: 'fish-tropical-roughness',
@@ -186,6 +188,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0x4169e1),
         scale: 0.65,
         speed: 0.8,
+        patternTextureId: 'fish-angelfish',
         baseColorTextureId: 'fish-angelfish-basecolor',
         normalTextureId: 'fish-angelfish-normal',
         roughnessTextureId: 'fish-angelfish-roughness',
@@ -212,6 +215,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff1493),
         scale: 0.35,
         speed: 1.5,
+        patternTextureId: 'fish-neon',
         baseColorTextureId: 'fish-neon-basecolor',
         normalTextureId: 'fish-neon-normal',
         roughnessTextureId: 'fish-neon-roughness',
@@ -238,6 +242,7 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff8c00),
         scale: 0.55,
         speed: 0.9,
+        patternTextureId: 'fish-goldfish',
         baseColorTextureId: 'fish-goldfish-basecolor',
         normalTextureId: 'fish-goldfish-normal',
         roughnessTextureId: 'fish-goldfish-roughness',
@@ -633,12 +638,16 @@ export class DetailedFishSystem {
 
   private getVisualTexture(id?: string): THREE.Texture | null {
     if (!id) return null
-    return this.visualAssets?.textures[id] ?? null
+    return this.visualAssets?.textures?.[id] ?? null
   }
 
   private getVisualModel(id?: string): LoadedModelAsset | null {
     if (!id) return null
     return this.visualAssets?.models[id] ?? null
+  }
+
+  private getGenericFishDetailTexture(kind: 'normal' | 'roughness'): THREE.Texture | null {
+    return this.getVisualTexture(kind === 'normal' ? 'fish-scale-normal' : 'fish-scale-roughness')
   }
 
   private createFishAssetMaterial(
@@ -652,10 +661,19 @@ export class DetailedFishSystem {
       envMapIntensity?: number
       alphaMap?: THREE.Texture | null
     }
-    const resolvedMap = texturedMaterial.map ?? this.getVisualTexture(variant.baseColorTextureId)
+    const resolvedMap =
+      texturedMaterial.map ??
+      this.getVisualTexture(variant.baseColorTextureId) ??
+      this.getVisualTexture(variant.patternTextureId)
     const resolvedAlphaMap = texturedMaterial.alphaMap ?? this.getVisualTexture(variant.alphaTextureId)
-    const resolvedNormalMap = texturedMaterial.normalMap ?? this.getVisualTexture(variant.normalTextureId)
-    const resolvedRoughnessMap = texturedMaterial.roughnessMap ?? this.getVisualTexture(variant.roughnessTextureId)
+    const resolvedNormalMap =
+      texturedMaterial.normalMap ??
+      this.getVisualTexture(variant.normalTextureId) ??
+      this.getGenericFishDetailTexture('normal')
+    const resolvedRoughnessMap =
+      texturedMaterial.roughnessMap ??
+      this.getVisualTexture(variant.roughnessTextureId) ??
+      this.getGenericFishDetailTexture('roughness')
     const resolvedAlphaTest = Math.max(texturedMaterial.alphaTest ?? 0, resolvedAlphaMap ? 0.05 : 0)
     const transparent = hero
       ? texturedMaterial.transparent || !!resolvedAlphaMap
@@ -1005,26 +1023,18 @@ export class DetailedFishSystem {
   }
   
   private createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
-    const assetTexture = this.getVisualTexture(variant.baseColorTextureId)
-    if (assetTexture) {
-      const authoredNormalTexture = this.getVisualTexture(variant.normalTextureId)
-      const authoredRoughnessTexture = this.getVisualTexture(variant.roughnessTextureId)
-      const authoredAlphaTexture = this.getVisualTexture(variant.alphaTextureId)
+    const legacyPatternTexture = this.getVisualTexture(variant.patternTextureId)
+    if (legacyPatternTexture) {
       return new THREE.MeshPhysicalMaterial({
-        map: assetTexture,
-        alphaMap: authoredAlphaTexture,
-        normalMap: authoredNormalTexture,
-        normalScale: new THREE.Vector2(0.3, 0.18),
-        roughnessMap: authoredRoughnessTexture,
+        map: legacyPatternTexture,
         color: 0xffffff,
         metalness: 0.04,
-        roughness: 0.34,
+        roughness: 0.28,
         clearcoat: 0.82,
-        clearcoatRoughness: 0.2,
+        clearcoatRoughness: 0.18,
         reflectivity: 0.9,
         envMapIntensity: 0.7,
-        transparent: !!authoredAlphaTexture,
-        alphaTest: authoredAlphaTexture ? 0.05 : 0,
+        transparent: false,
         side: THREE.FrontSide
       })
     }
