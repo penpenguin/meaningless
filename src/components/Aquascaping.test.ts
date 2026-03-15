@@ -93,6 +93,12 @@ describe('AquascapingSystem composition', () => {
     const roots = driftwood?.children.filter(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-root'
     ) ?? []
+    const brokenStubs = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-broken-stub'
+    ) ?? []
+    const rootFlare = driftwood?.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-root-flare'
+    )
     const epiphytes = driftwood?.children.filter(
       (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'epiphyte-cluster'
     ) ?? []
@@ -104,9 +110,13 @@ describe('AquascapingSystem composition', () => {
 
     expect(driftwood).toBeDefined()
     expect(branches.some((branch) => branch.geometry.type === 'TubeGeometry')).toBe(true)
+    expect(branches.some((branch) => branch.userData.crossSectionAspect > 1.05)).toBe(true)
+    expect(branchlets.some((branchlet) => branchlet.userData.tipRadius < branchlet.userData.baseRadius)).toBe(true)
     expect(branches.every((branch) => branch.castShadow)).toBe(true)
     expect(branchlets.length).toBeGreaterThanOrEqual(2)
     expect(roots.length).toBeGreaterThanOrEqual(3)
+    expect(brokenStubs.length).toBeGreaterThanOrEqual(2)
+    expect(rootFlare).toBeDefined()
     expect(epiphytes.length).toBeGreaterThanOrEqual(2)
     expect(epiphyteLeaves.length).toBeGreaterThan(0)
   })
@@ -188,6 +198,29 @@ describe('AquascapingSystem composition', () => {
     expect(transitionBerm?.position.y).toBeGreaterThan(bounds.min.y)
     expect(transitionPebbles.length).toBeGreaterThanOrEqual(5)
     expect(transitionPebbles.every((pebble) => pebble.castShadow)).toBe(true)
+  })
+
+  it('adds driftwood-specific burial details so the hero wood feels partially settled into the substrate', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const burialShadow = aquascapingGroup.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-burial-shadow'
+    )
+    const detritusMounds = aquascapingGroup.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-detritus-mound'
+    )
+
+    expect(burialShadow).toBeDefined()
+    expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.transparent).toBe(true)
+    expect(detritusMounds.length).toBeGreaterThanOrEqual(2)
   })
 
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
@@ -302,6 +335,7 @@ describe('AquascapingSystem premium materials', () => {
     const driftwoodDiffuse = new THREE.Texture()
     const driftwoodRoughness = new THREE.Texture()
     const driftwoodNormal = new THREE.Texture()
+    const driftwoodAo = new THREE.Texture()
     ;(instance as unknown as {
       visualAssets: {
         textures: Record<string, THREE.Texture | null>
@@ -310,7 +344,8 @@ describe('AquascapingSystem premium materials', () => {
       textures: {
         'driftwood-diffuse': driftwoodDiffuse,
         'driftwood-roughness': driftwoodRoughness,
-        'driftwood-normal': driftwoodNormal
+        'driftwood-normal': driftwoodNormal,
+        'driftwood-ao': driftwoodAo
       }
     }
 
@@ -323,6 +358,7 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.map).toBe(driftwoodDiffuse)
     expect(material.roughnessMap).toBe(driftwoodRoughness)
     expect(material.normalMap).toBe(driftwoodNormal)
+    expect(material.aoMap).toBe(driftwoodAo)
   })
 
   it('uses external rock detail maps when visual assets are available', () => {
@@ -358,14 +394,17 @@ describe('AquascapingSystem premium materials', () => {
     const authoredMap = new THREE.Texture()
     const authoredNormal = new THREE.Texture()
     const authoredRoughness = new THREE.Texture()
+    const authoredAo = new THREE.Texture()
     const sharedDiffuse = new THREE.Texture()
     const sharedNormal = new THREE.Texture()
     const sharedRoughness = new THREE.Texture()
+    const sharedAo = new THREE.Texture()
     const driftwoodAsset = createMaterialAssetScene(new THREE.MeshStandardMaterial({
       color: '#8a715a',
       map: authoredMap,
       normalMap: authoredNormal,
-      roughnessMap: authoredRoughness
+      roughnessMap: authoredRoughness,
+      aoMap: authoredAo
     }))
 
     ;(instance as unknown as {
@@ -377,7 +416,8 @@ describe('AquascapingSystem premium materials', () => {
       textures: {
         'driftwood-diffuse': sharedDiffuse,
         'driftwood-normal': sharedNormal,
-        'driftwood-roughness': sharedRoughness
+        'driftwood-roughness': sharedRoughness,
+        'driftwood-ao': sharedAo
       },
       models: {
         'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null }
@@ -398,8 +438,59 @@ describe('AquascapingSystem premium materials', () => {
     expect(clonedMaterial?.map).toBe(authoredMap)
     expect(clonedMaterial?.normalMap).toBe(authoredNormal)
     expect(clonedMaterial?.roughnessMap).toBe(authoredRoughness)
+    expect(clonedMaterial?.aoMap).toBe(authoredAo)
+    expect(clonedMaterial?.envMapIntensity).toBeLessThanOrEqual(0.16)
     expect(clonedMesh?.castShadow).toBe(true)
     expect(clonedMesh?.receiveShadow).toBe(true)
+  })
+
+  it('supplements missing driftwood maps, adds uv2 for ao, and clamps glossy reflections on cloned hero assets', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const authoredMap = new THREE.Texture()
+    const sharedNormal = new THREE.Texture()
+    const sharedRoughness = new THREE.Texture()
+    const sharedAo = new THREE.Texture()
+    const driftwoodAsset = createMaterialAssetScene(new THREE.MeshStandardMaterial({
+      color: '#7b624f',
+      map: authoredMap,
+      roughness: 0.68,
+      metalness: 0.08,
+      envMapIntensity: 0.92
+    }))
+    ;((driftwoodAsset.children[0] as THREE.Mesh).geometry as THREE.BufferGeometry).deleteAttribute('uv2')
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { scene: THREE.Group; sourceMesh: null } | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'driftwood-normal': sharedNormal,
+        'driftwood-roughness': sharedRoughness,
+        'driftwood-ao': sharedAo
+      },
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null }
+      }
+    }
+
+    const cloneVisualModelGroup = (AquascapingSystem.prototype as unknown as {
+      cloneVisualModelGroup: (id: string, userData: Record<string, unknown>) => THREE.Group | null
+    }).cloneVisualModelGroup.bind(instance)
+
+    const clone = cloneVisualModelGroup('driftwood-hero', { role: 'hero-driftwood' })
+    const clonedMesh = clone?.children[0] as THREE.Mesh | undefined
+    const clonedMaterial = clonedMesh?.material as THREE.MeshStandardMaterial | undefined
+
+    expect(clone).toBeDefined()
+    expect(clonedMaterial?.map).toBe(authoredMap)
+    expect(clonedMaterial?.normalMap).toBe(sharedNormal)
+    expect(clonedMaterial?.roughnessMap).toBe(sharedRoughness)
+    expect(clonedMaterial?.aoMap).toBe(sharedAo)
+    expect(clonedMaterial?.envMapIntensity).toBeLessThanOrEqual(0.16)
+    expect(clonedMaterial?.metalness).toBeLessThanOrEqual(0.03)
+    expect((clonedMesh?.geometry as THREE.BufferGeometry | undefined)?.getAttribute('uv2')).toBeDefined()
   })
 
   it('supplements missing plant maps without replacing the authored base color map', () => {

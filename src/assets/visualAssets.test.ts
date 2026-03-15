@@ -175,6 +175,21 @@ describe('public aquarium asset urls', () => {
     expect(textureUrls.some((url) => url.endsWith('fish-neon-basecolor.png'))).toBe(true)
   })
 
+  it('uses bark png textures for driftwood and exposes ao support for shared fallback maps', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const textureIds = new Set(manifest.textures.map((entry) => entry.id))
+    const textureUrls = manifest.textures.map((entry) => entry.url)
+
+    expect(textureIds.has('driftwood-ao')).toBe(true)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-diffuse.svg'))).toBe(false)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-normal.svg'))).toBe(false)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-roughness.svg'))).toBe(false)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-diffuse.png'))).toBe(true)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-normal.png'))).toBe(true)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-roughness.png'))).toBe(true)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-ao.png'))).toBe(true)
+  })
+
   it('resolves public asset urls through BASE_URL without hardcoding a leading slash', () => {
     expect(resolvePublicAssetUrl('assets/aquarium/fish-neon-school.glb', '/meaningless/')).toBe(
       '/meaningless/assets/aquarium/fish-neon-school.glb'

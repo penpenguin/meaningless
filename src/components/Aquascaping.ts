@@ -15,6 +15,18 @@ type PlantClusterDefinition = {
   hueBase: number
 }
 
+type DriftwoodTubeDefinition = {
+  radius: number
+  points: THREE.Vector3[]
+  tubularSegments: number
+  radialSegments: number
+  ellipseAspect: number
+  tipScale: number
+  flare: number
+  twist: number
+  barkAmplitude: number
+}
+
 export class AquascapingSystem {
   private group: THREE.Group
   private plants: THREE.Group[] = []
@@ -33,6 +45,7 @@ export class AquascapingSystem {
     this.createHeroDriftwood(bounds)
     this.createHeroRockRidge(bounds)
     this.createHeroCanopy(bounds)
+    this.createDriftwoodBurialDetails(bounds)
     this.createHardscapeTransitionDetails(bounds)
     this.createHardscapeShadow(bounds)
     this.createSandDetails(bounds)
@@ -376,6 +389,7 @@ export class AquascapingSystem {
       } else if (mesh.material instanceof THREE.Material) {
         mesh.material = this.createAssetBackedMaterial(id, mesh.material)
       }
+      this.ensureAoUv2(mesh)
       mesh.castShadow = true
       mesh.receiveShadow = true
     })
@@ -429,17 +443,18 @@ export class AquascapingSystem {
       baseMaterial.map = baseMaterial.map ?? this.getVisualTexture('driftwood-diffuse')
       baseMaterial.normalMap = baseMaterial.normalMap ?? this.getVisualTexture('driftwood-normal')
       if (baseMaterial.normalMap) {
-        baseMaterial.normalScale = new THREE.Vector2(0.7, 0.38)
+        baseMaterial.normalScale = new THREE.Vector2(1.14, 0.62)
       }
       baseMaterial.roughnessMap = baseMaterial.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
+      baseMaterial.aoMap = baseMaterial.aoMap ?? this.getVisualTexture('driftwood-ao')
       baseMaterial.color = baseMaterial.color?.clone() ?? new THREE.Color('#6f5641')
       baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
-        ? Math.max(baseMaterial.roughness, 0.82)
-        : 0.96
+        ? Math.max(baseMaterial.roughness, baseMaterial.roughnessMap ? 0.72 : 0.86)
+        : 0.94
       baseMaterial.metalness = typeof baseMaterial.metalness === 'number'
         ? Math.min(baseMaterial.metalness, 0.03)
         : 0.03
-      baseMaterial.envMapIntensity = Math.max(baseMaterial.envMapIntensity ?? 0, 0.12)
+      baseMaterial.envMapIntensity = THREE.MathUtils.clamp(baseMaterial.envMapIntensity ?? 0.08, 0.04, 0.16)
       return baseMaterial
     }
 
@@ -498,11 +513,13 @@ export class AquascapingSystem {
       return new THREE.MeshStandardMaterial({
         map: this.getVisualTexture('driftwood-diffuse'),
         normalMap: this.getVisualTexture('driftwood-normal'),
-        normalScale: new THREE.Vector2(0.7, 0.38),
+        normalScale: new THREE.Vector2(1.14, 0.62),
         roughnessMap: this.getVisualTexture('driftwood-roughness'),
+        aoMap: this.getVisualTexture('driftwood-ao'),
         color: baseMaterial.color?.clone() ?? new THREE.Color('#6f5641'),
-        roughness: 0.96,
-        metalness: 0.03
+        roughness: 0.94,
+        metalness: 0.03,
+        envMapIntensity: 0.08
       })
     }
 
@@ -589,7 +606,7 @@ export class AquascapingSystem {
     }
 
     const branchMaterial = this.createDriftwoodMaterial()
-    const branchDefinitions = [
+    const branchDefinitions: DriftwoodTubeDefinition[] = [
       {
         radius: 0.18,
         points: [
@@ -597,7 +614,14 @@ export class AquascapingSystem {
           new THREE.Vector3(-0.65, 1.55, 0.2),
           new THREE.Vector3(0.85, 2.55, -0.25),
           new THREE.Vector3(2.05, 2.1, -0.7)
-        ]
+        ],
+        tubularSegments: 34,
+        radialSegments: 8,
+        ellipseAspect: 1.28,
+        tipScale: 0.58,
+        flare: 0.42,
+        twist: 0.7,
+        barkAmplitude: 0.1
       },
       {
         radius: 0.1,
@@ -605,7 +629,14 @@ export class AquascapingSystem {
           new THREE.Vector3(-0.2, 1.45, 0.2),
           new THREE.Vector3(0.55, 2.35, 0.65),
           new THREE.Vector3(1.55, 2.85, 0.8)
-        ]
+        ],
+        tubularSegments: 28,
+        radialSegments: 7,
+        ellipseAspect: 1.18,
+        tipScale: 0.48,
+        flare: 0.18,
+        twist: 0.82,
+        barkAmplitude: 0.12
       },
       {
         radius: 0.08,
@@ -613,32 +644,37 @@ export class AquascapingSystem {
           new THREE.Vector3(0.35, 1.35, -0.05),
           new THREE.Vector3(1.15, 2.05, -0.8),
           new THREE.Vector3(1.65, 2.5, -1.2)
-        ]
+        ],
+        tubularSegments: 26,
+        radialSegments: 7,
+        ellipseAspect: 1.22,
+        tipScale: 0.44,
+        flare: 0.2,
+        twist: 1.04,
+        barkAmplitude: 0.12
       }
     ]
 
     branchDefinitions.forEach((definition) => {
-      const curve = new THREE.CatmullRomCurve3(definition.points)
-      const branch = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 28, definition.radius, 8, false),
-        branchMaterial
-      )
-      branch.castShadow = true
-      branch.receiveShadow = true
-      branch.userData = {
-        role: 'driftwood-branch'
-      }
+      const branch = this.createDriftwoodTubeMesh(definition, branchMaterial, 'driftwood-branch')
       driftwoodGroup.add(branch)
     })
 
-    const branchletDefinitions = [
+    const branchletDefinitions: DriftwoodTubeDefinition[] = [
       {
         radius: 0.04,
         points: [
           new THREE.Vector3(0.22, 1.88, 0.34),
           new THREE.Vector3(0.86, 2.36, 0.54),
           new THREE.Vector3(1.24, 2.72, 0.98)
-        ]
+        ],
+        tubularSegments: 22,
+        radialSegments: 6,
+        ellipseAspect: 1.16,
+        tipScale: 0.34,
+        flare: 0.14,
+        twist: 0.92,
+        barkAmplitude: 0.14
       },
       {
         radius: 0.032,
@@ -646,7 +682,14 @@ export class AquascapingSystem {
           new THREE.Vector3(0.62, 1.76, -0.22),
           new THREE.Vector3(1.18, 2.12, -0.58),
           new THREE.Vector3(1.72, 2.26, -1.04)
-        ]
+        ],
+        tubularSegments: 20,
+        radialSegments: 6,
+        ellipseAspect: 1.14,
+        tipScale: 0.3,
+        flare: 0.12,
+        twist: 1.06,
+        barkAmplitude: 0.13
       },
       {
         radius: 0.028,
@@ -654,31 +697,36 @@ export class AquascapingSystem {
           new THREE.Vector3(-0.48, 1.62, 0.12),
           new THREE.Vector3(-0.06, 2.12, 0.22),
           new THREE.Vector3(0.42, 2.54, 0.3)
-        ]
+        ],
+        tubularSegments: 18,
+        radialSegments: 6,
+        ellipseAspect: 1.12,
+        tipScale: 0.28,
+        flare: 0.1,
+        twist: 0.86,
+        barkAmplitude: 0.12
       }
     ]
     branchletDefinitions.forEach((definition) => {
-      const curve = new THREE.CatmullRomCurve3(definition.points)
-      const branchlet = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 20, definition.radius, 6, false),
-        branchMaterial
-      )
-      branchlet.castShadow = true
-      branchlet.receiveShadow = true
-      branchlet.userData = {
-        role: 'driftwood-branchlet'
-      }
+      const branchlet = this.createDriftwoodTubeMesh(definition, branchMaterial, 'driftwood-branchlet')
       driftwoodGroup.add(branchlet)
     })
 
-    const rootDefinitions = [
+    const rootDefinitions: DriftwoodTubeDefinition[] = [
       {
         radius: 0.022,
         points: [
           new THREE.Vector3(-1.32, 0.66, 0.34),
           new THREE.Vector3(-1.18, 0.12, 0.18),
           new THREE.Vector3(-1.06, -0.48, 0.08)
-        ]
+        ],
+        tubularSegments: 18,
+        radialSegments: 5,
+        ellipseAspect: 1.2,
+        tipScale: 0.62,
+        flare: 0.5,
+        twist: 0.48,
+        barkAmplitude: 0.11
       },
       {
         radius: 0.018,
@@ -686,7 +734,14 @@ export class AquascapingSystem {
           new THREE.Vector3(-0.24, 1.02, 0.28),
           new THREE.Vector3(-0.16, 0.32, 0.12),
           new THREE.Vector3(-0.08, -0.4, 0.06)
-        ]
+        ],
+        tubularSegments: 18,
+        radialSegments: 5,
+        ellipseAspect: 1.16,
+        tipScale: 0.58,
+        flare: 0.42,
+        twist: 0.42,
+        barkAmplitude: 0.1
       },
       {
         radius: 0.016,
@@ -694,21 +749,61 @@ export class AquascapingSystem {
           new THREE.Vector3(0.94, 1.24, -0.12),
           new THREE.Vector3(0.98, 0.42, -0.18),
           new THREE.Vector3(1.02, -0.34, -0.24)
-        ]
+        ],
+        tubularSegments: 18,
+        radialSegments: 5,
+        ellipseAspect: 1.14,
+        tipScale: 0.54,
+        flare: 0.4,
+        twist: 0.36,
+        barkAmplitude: 0.1
       }
     ]
     rootDefinitions.forEach((definition) => {
-      const curve = new THREE.CatmullRomCurve3(definition.points)
-      const root = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 18, definition.radius, 5, false),
+      const root = this.createDriftwoodTubeMesh(definition, branchMaterial, 'driftwood-root')
+      driftwoodGroup.add(root)
+    })
+
+    const rootFlare = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 18, 12),
+      branchMaterial
+    )
+    rootFlare.position.set(-1.26, 0.12, 0.26)
+    rootFlare.scale.set(1.5, 0.62, 1.18)
+    rootFlare.rotation.set(-0.18, 0.34, 0.08)
+    rootFlare.castShadow = true
+    rootFlare.receiveShadow = true
+    rootFlare.userData = {
+      role: 'driftwood-root-flare'
+    }
+    driftwoodGroup.add(rootFlare)
+
+    const brokenStubDefinitions = [
+      {
+        position: new THREE.Vector3(-0.18, 1.68, 0.22),
+        rotation: new THREE.Euler(0.56, -0.3, 0.42),
+        scale: new THREE.Vector3(0.12, 0.2, 0.1)
+      },
+      {
+        position: new THREE.Vector3(0.88, 2.06, -0.22),
+        rotation: new THREE.Euler(-0.34, 0.52, -0.2),
+        scale: new THREE.Vector3(0.1, 0.18, 0.08)
+      }
+    ]
+    brokenStubDefinitions.forEach((definition) => {
+      const stub = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.04, 0.34, 7),
         branchMaterial
       )
-      root.castShadow = true
-      root.receiveShadow = true
-      root.userData = {
-        role: 'driftwood-root'
+      stub.position.copy(definition.position)
+      stub.rotation.copy(definition.rotation)
+      stub.scale.copy(definition.scale)
+      stub.castShadow = true
+      stub.receiveShadow = true
+      stub.userData = {
+        role: 'driftwood-broken-stub'
       }
-      driftwoodGroup.add(root)
+      driftwoodGroup.add(stub)
     })
 
     const epiphyteAttachments = [
@@ -979,16 +1074,189 @@ export class AquascapingSystem {
     return cluster
   }
 
+  private createDriftwoodTubeMesh(
+    definition: DriftwoodTubeDefinition,
+    material: THREE.Material,
+    role: 'driftwood-branch' | 'driftwood-branchlet' | 'driftwood-root'
+  ): THREE.Mesh {
+    const curve = new THREE.CatmullRomCurve3(definition.points)
+    const geometry = new THREE.TubeGeometry(
+      curve,
+      definition.tubularSegments,
+      definition.radius,
+      definition.radialSegments,
+      false
+    )
+
+    this.deformDriftwoodTubeGeometry(geometry, curve, definition)
+
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    mesh.userData = {
+      role,
+      crossSectionAspect: definition.ellipseAspect,
+      baseRadius: definition.radius * (1 + definition.flare * 0.35),
+      tipRadius: definition.radius * definition.tipScale
+    }
+    return mesh
+  }
+
+  private deformDriftwoodTubeGeometry(
+    geometry: THREE.TubeGeometry,
+    curve: THREE.CatmullRomCurve3,
+    definition: DriftwoodTubeDefinition
+  ): void {
+    const position = geometry.getAttribute('position')
+    const normals = (geometry as THREE.TubeGeometry & {
+      normals: THREE.Vector3[]
+      binormals: THREE.Vector3[]
+    }).normals
+    const binormals = (geometry as THREE.TubeGeometry & {
+      normals: THREE.Vector3[]
+      binormals: THREE.Vector3[]
+    }).binormals
+    const ringSize = definition.radialSegments + 1
+    const ringCenter = new THREE.Vector3()
+    const radialOffset = new THREE.Vector3()
+    const tangentNormal = new THREE.Vector3()
+    const tangentBinormal = new THREE.Vector3()
+    const nextVertex = new THREE.Vector3()
+
+    for (let i = 0; i <= definition.tubularSegments; i++) {
+      const t = i / definition.tubularSegments
+      ringCenter.copy(curve.getPointAt(t))
+      tangentNormal.copy(normals[i] ?? normals[normals.length - 1] ?? new THREE.Vector3(1, 0, 0))
+      tangentBinormal.copy(binormals[i] ?? binormals[binormals.length - 1] ?? new THREE.Vector3(0, 0, 1))
+      const ringTwist = definition.twist * t + Math.sin(t * 9.5) * 0.08
+      const radiusBase = THREE.MathUtils.lerp(
+        definition.radius * (1 + definition.flare * Math.pow(1 - t, 1.8)),
+        definition.radius * definition.tipScale,
+        Math.pow(t, 0.82)
+      )
+
+      for (let j = 0; j < ringSize; j++) {
+        const index = i * ringSize + j
+        nextVertex.fromBufferAttribute(position, index)
+        radialOffset.copy(nextVertex).sub(ringCenter)
+
+        const normalComponent = radialOffset.dot(tangentNormal)
+        const binormalComponent = radialOffset.dot(tangentBinormal)
+        const angle = Math.atan2(binormalComponent, normalComponent)
+        const barkNoise = (
+          Math.sin(t * 26 + angle * 6.2)
+          + Math.sin(t * 48 - angle * 10.4) * 0.55
+        ) * definition.barkAmplitude
+        const knotBand = Math.max(
+          Math.exp(-Math.pow((t - 0.22) / 0.08, 2)) * 0.12,
+          Math.exp(-Math.pow((t - 0.58) / 0.1, 2)) * 0.16
+        ) * Math.max(0, Math.cos(angle - 0.5))
+        const rotatedAngle = angle + ringTwist
+        const ellipseNormal = Math.cos(rotatedAngle) * definition.ellipseAspect
+        const ellipseBinormal = Math.sin(rotatedAngle) / definition.ellipseAspect
+        const radius = radiusBase * (1 + barkNoise + knotBand)
+
+        nextVertex.copy(ringCenter)
+        nextVertex.addScaledVector(tangentNormal, radius * ellipseNormal)
+        nextVertex.addScaledVector(tangentBinormal, radius * ellipseBinormal)
+        position.setXYZ(index, nextVertex.x, nextVertex.y, nextVertex.z)
+      }
+    }
+
+    position.needsUpdate = true
+    geometry.computeVertexNormals()
+  }
+
   private createDriftwoodMaterial(): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
       map: this.getVisualTexture('driftwood-diffuse'),
       normalMap: this.getVisualTexture('driftwood-normal'),
-      normalScale: new THREE.Vector2(0.7, 0.38),
+      normalScale: new THREE.Vector2(1.14, 0.62),
       color: new THREE.Color('#6f5641'),
       roughnessMap: this.getVisualTexture('driftwood-roughness'),
-      roughness: 0.96,
-      metalness: 0.03
+      aoMap: this.getVisualTexture('driftwood-ao'),
+      roughness: 0.94,
+      metalness: 0.03,
+      envMapIntensity: 0.08
     })
+  }
+
+  private createDriftwoodBurialDetails(bounds: THREE.Box3): void {
+    const size = new THREE.Vector3()
+    bounds.getSize(size)
+    const center = new THREE.Vector3()
+    bounds.getCenter(center)
+    const basePosition = new THREE.Vector3(
+      center.x + size.x * 0.08,
+      bounds.min.y + 0.04,
+      center.z - size.z * 0.08
+    )
+
+    const burialShadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.2, 1.2),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#102026'),
+        transparent: true,
+        opacity: 0.18,
+        depthWrite: false
+      })
+    )
+    burialShadow.rotation.x = -Math.PI / 2
+    burialShadow.position.set(basePosition.x - 0.42, basePosition.y, basePosition.z + 0.18)
+    burialShadow.userData = {
+      role: 'driftwood-burial-shadow'
+    }
+    this.group.add(burialShadow)
+
+    const moundDefinitions = [
+      {
+        offset: new THREE.Vector3(-0.62, 0.12, 0.22),
+        scale: new THREE.Vector3(0.72, 0.16, 0.36),
+        color: '#8d7b63'
+      },
+      {
+        offset: new THREE.Vector3(-0.12, 0.1, 0.08),
+        scale: new THREE.Vector3(0.54, 0.12, 0.28),
+        color: '#776750'
+      }
+    ]
+    moundDefinitions.forEach((definition) => {
+      const mound = new THREE.Mesh(
+        new THREE.SphereGeometry(0.44, 18, 12),
+        new THREE.MeshStandardMaterial({
+          color: new THREE.Color(definition.color),
+          roughness: 0.98,
+          metalness: 0
+        })
+      )
+      mound.position.set(
+        basePosition.x + definition.offset.x,
+        bounds.min.y + definition.offset.y,
+        basePosition.z + definition.offset.z
+      )
+      mound.scale.copy(definition.scale)
+      mound.receiveShadow = true
+      mound.userData = {
+        role: 'driftwood-detritus-mound'
+      }
+      this.group.add(mound)
+    })
+  }
+
+  private ensureAoUv2(mesh: THREE.Mesh): void {
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    const needsAoUv = materials.some(
+      (material) => material instanceof THREE.MeshStandardMaterial && Boolean(material.aoMap)
+    )
+    if (!needsAoUv) return
+
+    const geometry = mesh.geometry
+    const uv = geometry.getAttribute('uv')
+    if (!uv || geometry.getAttribute('uv2')) return
+
+    const nextGeometry = geometry.userData.sharedAsset ? geometry.clone() : geometry
+    nextGeometry.setAttribute('uv2', uv.clone())
+    mesh.geometry = nextGeometry
   }
 
   private createRockMaterial(color: string): THREE.MeshPhysicalMaterial {
