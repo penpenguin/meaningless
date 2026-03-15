@@ -266,7 +266,7 @@ describe('AquascapingSystem composition', () => {
     expect(fanPlant.children.some((leaf) => leaf instanceof THREE.Mesh && leaf.geometry.type === 'ShapeGeometry')).toBe(true)
   })
 
-  it('lets plants and coral branches cast shadows onto the substrate', () => {
+  it('does not add coral cone decorations in the default planted layout', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -281,14 +281,42 @@ describe('AquascapingSystem composition', () => {
       .filter((child) => child instanceof THREE.Group && typeof child.userData.plantType === 'string')
       .flatMap((child) => (child as THREE.Group).children)
       .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
-    const coralBranches = aquascapingGroup.children
-      .filter((child) => child instanceof THREE.Group && child.userData.plantType === undefined)
-      .flatMap((child) => (child as THREE.Group).children)
-      .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.geometry.type === 'ConeGeometry')
+    const freshwaterAccentTypes = new Set(
+      aquascapingGroup.children
+        .filter((child) => child.userData.role === 'freshwater-accent')
+        .map((child) => child.userData.accentType)
+    )
+    const coralBranches = aquascapingGroup.children.flatMap((child) =>
+      child instanceof THREE.Group ? child.children : []
+    ).filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.geometry.type === 'ConeGeometry')
 
     expect(plantMeshes.length).toBeGreaterThan(0)
     expect(plantMeshes.every((mesh) => mesh.castShadow)).toBe(true)
     expect(plantMeshes.every((mesh) => mesh.receiveShadow)).toBe(true)
+    expect(coralBranches).toEqual([])
+    expect(freshwaterAccentTypes.has('crypt-clump')).toBe(true)
+    expect(freshwaterAccentTypes.has('foreground-tuft')).toBe(true)
+    expect(freshwaterAccentTypes.has('background-stem-group')).toBe(true)
+    expect(freshwaterAccentTypes.has('epiphyte')).toBe(true)
+  })
+
+  it('adds coral cone decorations only for the marine layout', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, null, {
+      layoutStyle: 'marine'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const coralBranches = aquascapingGroup.children.flatMap((child) =>
+      child instanceof THREE.Group ? child.children : []
+    ).filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.geometry.type === 'ConeGeometry')
+
     expect(coralBranches.length).toBeGreaterThan(0)
     expect(coralBranches.every((mesh) => mesh.castShadow)).toBe(true)
   })

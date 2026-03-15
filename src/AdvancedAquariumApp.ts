@@ -1,6 +1,7 @@
 import { createGameStore, type GameStore } from './game/createGameStore'
 import { createHydratedGameAppState } from './game/gameSave'
 import { createRenderStateApplier } from './game/createRenderStateApplier'
+import { createAquariumRenderModel } from './game/renderModel'
 import { loadGameSave, resolveBootGameSave, saveGameSave } from './game/storage'
 import { AdvancedAquariumScene } from './components/AdvancedScene'
 import { AudioManager } from './components/AudioManager'
@@ -67,10 +68,12 @@ export class AdvancedAquariumApp {
     const container = document.getElementById('canvas-container')
     if (!container) return
 
+    const initialTheme = createAquariumRenderModel(this.store.getState()).theme
     this.scene = new AdvancedAquariumScene(
       container,
       this.visualAssets ?? undefined,
-      this.store.getState().game.profile.preferences.quality
+      this.store.getState().game.profile.preferences.quality,
+      initialTheme
     )
     this.setupHudOverlay()
     this.setupStoreBinding()

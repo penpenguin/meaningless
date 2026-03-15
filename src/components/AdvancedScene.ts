@@ -542,11 +542,17 @@ export class AdvancedAquariumScene {
     low: 30
   }
   
-  constructor(container: HTMLElement, visualAssets?: VisualAssetBundle, initialQuality: QualityLevel = 'standard') {
+  constructor(
+    container: HTMLElement,
+    visualAssets?: VisualAssetBundle,
+    initialQuality: QualityLevel = 'standard',
+    initialTheme: Theme = defaultTheme
+  ) {
     this.container = container
     this.visualAssets = visualAssets
     this.currentVisualQuality = initialQuality
     this.scene = new THREE.Scene()
+    applyThemeToScene(this.scene, initialTheme)
     this.clock = new THREE.Clock()
     
     this.setupCamera()
@@ -3257,7 +3263,7 @@ export class AdvancedAquariumScene {
   
   private createAquascaping(): void {
     const tankBounds = createOpenWaterBounds(this.getTankDimensions())
-    this.aquascaping = new AquascapingSystem(this.scene, tankBounds, this.visualAssets)
+    this.aquascaping = new AquascapingSystem(this.scene, tankBounds, this.visualAssets, resolveTheme(this.scene))
   }
   
   private createAdvancedFishSystem(): void {

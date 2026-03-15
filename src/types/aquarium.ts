@@ -1,4 +1,5 @@
 export type ViewMode = 'view' | 'edit'
+export type AquascapeLayoutStyle = 'planted' | 'marine'
 
 export type Theme = {
   glassFrameStrength: number
@@ -7,6 +8,7 @@ export type Theme = {
   particleDensity: number
   waveStrength: number
   waveSpeed: number
+  layoutStyle: AquascapeLayoutStyle
   glassTint?: string
   glassReflectionStrength?: number
   surfaceGlowStrength?: number

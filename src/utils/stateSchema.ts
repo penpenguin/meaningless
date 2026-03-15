@@ -10,6 +10,7 @@ export const defaultTheme: Theme = {
   particleDensity: 0.4,
   waveStrength: 0.7,
   waveSpeed: 0.8,
+  layoutStyle: 'planted',
   glassTint: '#c3dde3',
   glassReflectionStrength: 0.32,
   surfaceGlowStrength: 0.45,
@@ -42,6 +43,10 @@ const isString = (value: unknown): value is string => {
   return typeof value === 'string'
 }
 
+const isLayoutStyle = (value: unknown): value is Theme['layoutStyle'] => {
+  return value === 'planted' || value === 'marine'
+}
+
 const isBoolean = (value: unknown): value is boolean => {
   return typeof value === 'boolean'
 }
@@ -54,7 +59,8 @@ const validateTheme = (value: unknown): value is Theme => {
     isNumber(value.fogDensity) &&
     isNumber(value.particleDensity) &&
     isNumber(value.waveStrength) &&
-    isNumber(value.waveSpeed)
+    isNumber(value.waveSpeed) &&
+    isLayoutStyle(value.layoutStyle)
   )
 }
 
@@ -98,6 +104,7 @@ const coerceTheme = (value: unknown): Partial<Theme> | undefined => {
   if (isNumber(value.particleDensity)) theme.particleDensity = value.particleDensity
   if (isNumber(value.waveStrength)) theme.waveStrength = value.waveStrength
   if (isNumber(value.waveSpeed)) theme.waveSpeed = value.waveSpeed
+  if (isLayoutStyle(value.layoutStyle)) theme.layoutStyle = value.layoutStyle
   return Object.keys(theme).length > 0 ? theme : undefined
 }
 
@@ -178,18 +185,11 @@ export const migrateState = (value: unknown): AquariumState => {
   if (!validateState(value)) {
     const payload = value as Record<string, unknown>
     const fishGroups = coerceFishGroups(payload.fishGroups)
-    if (
-      fishGroups &&
-      validateTheme(payload.theme) &&
-      validateSettings(payload.settings)
-    ) {
-      return mergeWithDefaults({
-        theme: payload.theme as Theme,
-        fishGroups,
-        settings: payload.settings as Settings
-      })
-    }
-    return createDefaultState()
+    return mergeWithDefaults({
+      theme: coerceTheme(payload.theme),
+      fishGroups,
+      settings: coerceSettings(payload.settings)
+    })
   }
 
   return mergeWithDefaults(value)

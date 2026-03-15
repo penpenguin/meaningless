@@ -9,7 +9,8 @@ const theme: Theme = {
   particleDensity: 0.2,
   waveStrength: 0.3,
   waveSpeed: 0.4,
-  glassFrameStrength: 0.5
+  glassFrameStrength: 0.5,
+  layoutStyle: 'planted'
 }
 
 describe('applyGradientBackground', () => {

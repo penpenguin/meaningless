@@ -172,7 +172,8 @@ describe('storage hydration on startup', () => {
           fogDensity: 0.4,
           particleDensity: 0.4,
           waveStrength: 0.7,
-          waveSpeed: 0.8
+          waveSpeed: 0.8,
+          layoutStyle: 'planted'
         },
         fishGroups: [{ speciesId: 'clownfish', count: 3 }],
         settings: {
@@ -212,7 +213,8 @@ describe('storage hydration on startup', () => {
         fogDensity: 0.4,
         particleDensity: 0.4,
         waveStrength: 0.7,
-        waveSpeed: 0.8
+        waveSpeed: 0.8,
+        layoutStyle: 'planted'
       },
       fishGroups: [{ speciesId: 'angelfish', count: 2 }]
     }

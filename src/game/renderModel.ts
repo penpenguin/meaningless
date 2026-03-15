@@ -127,6 +127,7 @@ export const createAquariumRenderModel = (state: GameAppState): AquariumRenderMo
       particleDensity: Number((0.24 + (comfort / 250)).toFixed(2)),
       waveStrength: Number((0.42 + (comfort / 280)).toFixed(2)),
       waveSpeed: state.game.profile.preferences.motionEnabled ? 0.72 : 0.24,
+      layoutStyle: 'planted',
       glassTint,
       glassReflectionStrength,
       surfaceGlowStrength,

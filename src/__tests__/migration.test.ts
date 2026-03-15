@@ -50,6 +50,26 @@ describe('migration fallback', () => {
     expect(migrated.settings).toEqual(defaults.settings)
   })
 
+  it('fills layoutStyle with planted when importing legacy theme data', () => {
+    const legacy = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      theme: {
+        glassFrameStrength: 0.2,
+        waterTint: '#ffffff',
+        fogDensity: 0.1,
+        particleDensity: 0.1,
+        waveStrength: 0.1,
+        waveSpeed: 0.1
+      },
+      fishGroups: [{ speciesId: 'neon-tetra', count: 3 }],
+      settings: { soundEnabled: false, motionEnabled: true }
+    }
+
+    const migrated = migrateState(legacy)
+
+    expect(migrated.theme.layoutStyle).toBe('planted')
+  })
+
   it('imports older schema payloads without dropping data', () => {
     const legacy = {
       schemaVersion: 0,

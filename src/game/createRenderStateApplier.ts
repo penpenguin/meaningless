@@ -24,7 +24,8 @@ const isSameTheme = (
     left.fogDensity === right.fogDensity &&
     left.particleDensity === right.particleDensity &&
     left.waveStrength === right.waveStrength &&
-    left.waveSpeed === right.waveSpeed
+    left.waveSpeed === right.waveSpeed &&
+    left.layoutStyle === right.layoutStyle
   )
 }
 

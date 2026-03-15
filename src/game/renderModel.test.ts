@@ -45,6 +45,12 @@ describe('createAquariumRenderModel', () => {
     expect(renderModel.theme.causticsStrength).toBeCloseTo(0.43, 2)
   })
 
+  it('defaults the render theme to the planted layout', () => {
+    const renderModel = createAquariumRenderModel(createStateWithWaterQuality(100))
+
+    expect(renderModel.theme.layoutStyle).toBe('planted')
+  })
+
   it('thickens fog gradually as water quality drops', () => {
     const healthy = createAquariumRenderModel(createStateWithWaterQuality(100))
     const dirty = createAquariumRenderModel(createStateWithWaterQuality(35))

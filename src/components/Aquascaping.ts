@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { LoadedModelAsset, VisualAssetBundle } from '../assets/visualAssets'
+import type { AquascapeLayoutStyle, Theme } from '../types/aquarium'
 
 type PlantLayer = 'foreground' | 'background' | 'midground'
 type PlantType = 'ribbon-seaweed' | 'sword-leaf' | 'fan-leaf'
@@ -13,6 +14,10 @@ type PlantClusterDefinition = {
   spreadX: number
   spreadZ: number
   hueBase: number
+}
+
+type AquascapingOptions = {
+  layoutStyle?: AquascapeLayoutStyle
 }
 
 type DriftwoodTubeDefinition = {
@@ -127,14 +132,25 @@ export class AquascapingSystem {
   private decorations: THREE.Group[] = []
   private time = 0
   private visualAssets: VisualAssetBundle | null
+  private layoutStyle: AquascapeLayoutStyle
   
-  constructor(scene: THREE.Scene, bounds: THREE.Box3, visualAssets: VisualAssetBundle | null = null) {
+  constructor(
+    scene: THREE.Scene,
+    bounds: THREE.Box3,
+    visualAssets: VisualAssetBundle | null = null,
+    themeOrOptions: Theme | AquascapingOptions = { layoutStyle: 'planted' }
+  ) {
     this.group = new THREE.Group()
     this.visualAssets = visualAssets
+    this.layoutStyle = themeOrOptions.layoutStyle ?? 'planted'
     scene.add(this.group)
     
     this.createSeaweed(bounds)
-    this.createCorals(bounds)
+    if (this.layoutStyle === 'marine') {
+      this.createCorals(bounds)
+    } else {
+      this.createFreshwaterAccents(bounds)
+    }
     this.createRocks(bounds)
     this.createHeroDriftwood(bounds)
     this.createHeroRockRidge(bounds)
@@ -199,6 +215,148 @@ export class AquascapingSystem {
       this.plants.push(seaweedGroup)
       this.group.add(seaweedGroup)
     }
+  }
+
+  private createFreshwaterAccents(bounds: THREE.Box3): void {
+    const size = new THREE.Vector3()
+    bounds.getSize(size)
+    const center = new THREE.Vector3()
+    bounds.getCenter(center)
+    const substrateY = bounds.min.y + 0.42
+
+    const accentDefinitions = [
+      {
+        accentType: 'crypt-clump',
+        plantType: 'sword-leaf' as const,
+        layer: 'foreground' as const,
+        position: new THREE.Vector3(center.x - size.x * 0.17, substrateY, center.z + size.z * 0.2),
+        rotationY: -0.18,
+        scale: new THREE.Vector3(0.66, 0.72, 0.66),
+        height: 1.35,
+        hue: 0.23,
+        tint: '#5c6841',
+        blend: 0.34
+      },
+      {
+        accentType: 'foreground-tuft',
+        plantType: 'fan-leaf' as const,
+        layer: 'foreground' as const,
+        position: new THREE.Vector3(center.x + size.x * 0.12, substrateY, center.z + size.z * 0.24),
+        rotationY: 0.16,
+        scale: new THREE.Vector3(0.52, 0.56, 0.52),
+        height: 0.92,
+        hue: 0.28,
+        tint: '#53653a',
+        blend: 0.32
+      },
+      {
+        accentType: 'background-stem-group',
+        plantType: 'ribbon-seaweed' as const,
+        layer: 'background' as const,
+        position: new THREE.Vector3(center.x + size.x * 0.27, substrateY, center.z - size.z * 0.22),
+        rotationY: 0.1,
+        scale: new THREE.Vector3(0.58, 0.84, 0.58),
+        height: 2.35,
+        hue: 0.27,
+        tint: '#677242',
+        blend: 0.38
+      },
+      {
+        accentType: 'background-stem-group',
+        plantType: 'ribbon-seaweed' as const,
+        layer: 'background' as const,
+        position: new THREE.Vector3(center.x - size.x * 0.3, substrateY, center.z - size.z * 0.16),
+        rotationY: -0.24,
+        scale: new THREE.Vector3(0.54, 0.8, 0.54),
+        height: 2.1,
+        hue: 0.21,
+        tint: '#6e6244',
+        blend: 0.42
+      }
+    ]
+
+    accentDefinitions.forEach((definition) => {
+      const accentGroup = new THREE.Group()
+      accentGroup.position.copy(definition.position)
+      accentGroup.rotation.y = definition.rotationY
+      accentGroup.scale.copy(definition.scale)
+      accentGroup.userData = {
+        role: 'freshwater-accent',
+        accentType: definition.accentType,
+        layer: definition.layer,
+        plantType: definition.plantType
+      }
+
+      if (definition.plantType === 'sword-leaf') {
+        this.createSwordLeafPlant(accentGroup, definition.layer, definition.height, definition.hue)
+      } else if (definition.plantType === 'fan-leaf') {
+        this.createFanLeafPlant(accentGroup, definition.layer, definition.height, definition.hue)
+      } else {
+        this.createRibbonSeaweed(accentGroup, definition.layer, definition.height, definition.hue)
+      }
+
+      this.toneAccentGroup(accentGroup, definition.tint, definition.blend)
+      this.plants.push(accentGroup)
+      this.decorations.push(accentGroup)
+      this.group.add(accentGroup)
+    })
+
+    ;[
+      {
+        position: new THREE.Vector3(center.x - size.x * 0.05, bounds.min.y + 1.58, center.z - size.z * 0.08),
+        rotationY: -0.32,
+        scale: new THREE.Vector3(0.66, 0.66, 0.66),
+        hue: 0.22,
+        tint: '#596543',
+        blend: 0.3
+      },
+      {
+        position: new THREE.Vector3(center.x + size.x * 0.08, bounds.min.y + 1.34, center.z - size.z * 0.16),
+        rotationY: 0.24,
+        scale: new THREE.Vector3(0.58, 0.58, 0.58),
+        hue: 0.19,
+        tint: '#665940',
+        blend: 0.36
+      }
+    ].forEach((definition) => {
+      const epiphyteCluster = this.createEpiphyteCluster(definition.hue)
+      epiphyteCluster.position.copy(definition.position)
+      epiphyteCluster.rotation.y = definition.rotationY
+      epiphyteCluster.scale.copy(definition.scale)
+      epiphyteCluster.userData = {
+        role: 'freshwater-accent',
+        accentType: 'epiphyte',
+        layer: 'midground',
+        plantType: 'fan-leaf'
+      }
+
+      this.toneAccentGroup(epiphyteCluster, definition.tint, definition.blend)
+      this.plants.push(epiphyteCluster)
+      this.decorations.push(epiphyteCluster)
+      this.group.add(epiphyteCluster)
+    })
+  }
+
+  private toneAccentGroup(group: THREE.Group, tintHex: string, blend: number): void {
+    const tint = new THREE.Color(tintHex)
+
+    group.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+
+      materials.forEach((material) => {
+        const stylableMaterial = material as THREE.MeshPhysicalMaterial & { clearcoat?: number; roughness?: number }
+        if ('color' in stylableMaterial && stylableMaterial.color instanceof THREE.Color) {
+          stylableMaterial.color.lerp(tint, blend)
+        }
+        if (typeof stylableMaterial.roughness === 'number') {
+          stylableMaterial.roughness = Math.min(1, stylableMaterial.roughness + 0.08)
+        }
+        if (typeof stylableMaterial.clearcoat === 'number') {
+          stylableMaterial.clearcoat = Math.max(0, stylableMaterial.clearcoat - 0.03)
+        }
+      })
+    })
   }
 
   private populatePlantCluster(
@@ -1397,6 +1555,10 @@ export class AquascapingSystem {
     
     for (let i = 0; i < coralCount; i++) {
       const coralGroup = new THREE.Group()
+      coralGroup.userData = {
+        role: 'marine-accent',
+        accentType: 'coral'
+      }
       
       const x = (Math.random() - 0.5) * size.x * 0.6
       const z = (Math.random() - 0.5) * size.z * 0.6

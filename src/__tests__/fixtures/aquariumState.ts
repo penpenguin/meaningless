@@ -6,7 +6,8 @@ export const sampleTheme: Theme = {
   fogDensity: 0.4,
   particleDensity: 0.5,
   waveStrength: 0.7,
-  waveSpeed: 0.8
+  waveSpeed: 0.8,
+  layoutStyle: 'planted'
 }
 
 export const sampleFishGroups: FishGroup[] = [
