@@ -417,6 +417,59 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.map).toBe(rockDiffuse)
     expect(material.roughnessMap).toBe(rockRoughness)
     expect(material.normalMap).toBe(rockNormal)
+    expect(material.clearcoat).toBeLessThanOrEqual(0.03)
+    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThan(0.35)
+  })
+
+  it('preserves authored rock base color and ao maps while only supplementing missing support rock channels', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const authoredMap = new THREE.Texture()
+    const authoredAo = new THREE.Texture()
+    const sharedDiffuse = new THREE.Texture()
+    const sharedNormal = new THREE.Texture()
+    const sharedRoughness = new THREE.Texture()
+    const supportRockAsset = createMaterialAssetScene(new THREE.MeshPhysicalMaterial({
+      color: '#5f5d58',
+      map: authoredMap,
+      aoMap: authoredAo,
+      roughness: 0.66,
+      metalness: 0.12,
+      clearcoat: 0.18,
+      envMapIntensity: 0.48
+    }))
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { scene: THREE.Group; sourceMesh: null } | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'rock-diffuse': sharedDiffuse,
+        'rock-normal': sharedNormal,
+        'rock-roughness': sharedRoughness
+      },
+      models: {
+        'rock-support-a': { scene: supportRockAsset, sourceMesh: null }
+      }
+    }
+
+    const cloneVisualModelGroup = (AquascapingSystem.prototype as unknown as {
+      cloneVisualModelGroup: (id: string, userData: Record<string, unknown>) => THREE.Group | null
+    }).cloneVisualModelGroup.bind(instance)
+
+    const clone = cloneVisualModelGroup('rock-support-a', { role: 'support-rock' })
+    const clonedMesh = clone?.children[0] as THREE.Mesh | undefined
+    const clonedMaterial = clonedMesh?.material as THREE.MeshPhysicalMaterial | undefined
+
+    expect(clone).toBeDefined()
+    expect(clonedMaterial?.map).toBe(authoredMap)
+    expect(clonedMaterial?.normalMap).toBe(sharedNormal)
+    expect(clonedMaterial?.roughnessMap).toBe(sharedRoughness)
+    expect(clonedMaterial?.aoMap).toBe(authoredAo)
+    expect(clonedMaterial?.metalness).toBeLessThanOrEqual(0.04)
+    expect(clonedMaterial?.roughness).toBeGreaterThanOrEqual(0.78)
+    expect(clonedMaterial?.clearcoat).toBeLessThanOrEqual(0.03)
   })
 
   it('preserves authored driftwood materials when the asset already includes the key maps', () => {
@@ -612,6 +665,78 @@ describe('AquascapingSystem premium materials', () => {
 })
 
 describe('AquascapingSystem asset-backed hero scape', () => {
+  it('prefers support rock glbs for the visible foreground support rocks', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const supportRockA = createModelAssetScene('rock-support-a')
+    const supportRockB = createModelAssetScene('rock-support-b')
+    const pebbleCluster = createModelAssetScene('rock-pebble-cluster')
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'rock-support-a': { scene: supportRockA, sourceMesh: null },
+        'rock-support-b': { scene: supportRockB, sourceMesh: null },
+        'rock-pebble-cluster': { scene: pebbleCluster, sourceMesh: null }
+      }
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const supportRocks = aquascapingGroup.children.filter(
+      (child): child is THREE.Group =>
+        child instanceof THREE.Group
+        && child.userData.role === 'support-rock'
+        && typeof child.userData.assetId === 'string'
+    )
+    const supportAssetIds = new Set(supportRocks.map((rock) => rock.userData.assetId))
+
+    expect(supportAssetIds.has('rock-support-a')).toBe(true)
+    expect(supportAssetIds.has('rock-support-b')).toBe(true)
+    expect(supportRocks.some((rock) => rock.position.x < 0)).toBe(true)
+    expect(supportRocks.some((rock) => rock.position.x > 0)).toBe(true)
+    expect(aquascapingGroup.children.some((child) => child.userData.assetId === 'rock-pebble-cluster')).toBe(true)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('falls back to clustered deformed support rocks when authored support assets are missing', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'rock-support-a': null,
+        'rock-support-b': null,
+        'rock-pebble-cluster': null
+      }
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const supportRocks = aquascapingGroup.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'support-rock'
+    )
+
+    expect(supportRocks.length).toBeGreaterThanOrEqual(2)
+    expect(supportRocks.every((rock) => rock.children.filter((child) => child instanceof THREE.Mesh).length >= 2)).toBe(true)
+    expect(supportRocks.some((rock) => rock.position.x < 0)).toBe(true)
+    expect(supportRocks.some((rock) => rock.position.x > 0)).toBe(true)
+
+    getContextSpy.mockRestore()
+  })
+
   it('clones hero asset scenes when premium models are available', () => {
     const getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')

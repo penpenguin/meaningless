@@ -243,7 +243,11 @@ export const createAquariumAssetManifest = (
     { id: 'plant-sword-cluster', url: resolvePublicAssetUrl('assets/aquarium/plant-sword-cluster.glb', baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'plant-fan-cluster', url: resolvePublicAssetUrl('assets/aquarium/plant-fan-cluster.glb', baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'driftwood-hero', url: resolvePublicAssetUrl('assets/aquarium/driftwood-hero.glb', baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl('assets/aquarium/rock-ridge-hero.glb', baseUrl), usageTag: 'rock', lod: 'high' }
+    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl('assets/aquarium/rock-ridge-hero.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-support-a', url: resolvePublicAssetUrl('assets/aquarium/rock-support-a.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-support-b', url: resolvePublicAssetUrl('assets/aquarium/rock-support-b.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-support-c', url: resolvePublicAssetUrl('assets/aquarium/rock-support-c.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-pebble-cluster', url: resolvePublicAssetUrl('assets/aquarium/rock-pebble-cluster.glb', baseUrl), usageTag: 'rock', lod: 'high' }
   ],
   environment: [
     { id: 'aquarium-hdri', url: resolvePublicAssetUrl('assets/aquarium/aquarium-hdri.hdr', baseUrl), usageTag: 'environment', lod: 'high' }

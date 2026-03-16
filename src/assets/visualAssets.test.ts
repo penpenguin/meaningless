@@ -258,6 +258,16 @@ describe('public aquarium asset urls', () => {
     expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('backdrop-depth.svg'))).toBe(false)
   })
 
+  it('registers authored support rock glbs for the asset-backed aquascape support path', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
+
+    expect(modelUrlsById.get('rock-ridge-hero')).toBe('/assets/aquarium/rock-ridge-hero.glb')
+    expect(modelUrlsById.get('rock-support-a')).toBe('/assets/aquarium/rock-support-a.glb')
+    expect(modelUrlsById.get('rock-support-b')).toBe('/assets/aquarium/rock-support-b.glb')
+    expect(modelUrlsById.get('rock-pebble-cluster')).toBe('/assets/aquarium/rock-pebble-cluster.glb')
+  })
+
   it('uses authored png pbr textures for substrate sand while keeping the stable texture ids', () => {
     const manifest = createAquariumAssetManifest('/')
     const textureUrlsById = new Map(manifest.textures.map((entry) => [entry.id, entry.url]))

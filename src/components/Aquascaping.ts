@@ -32,6 +32,20 @@ type DriftwoodTubeDefinition = {
   barkAmplitude: number
 }
 
+type RockClusterShape = 'icosahedron' | 'octahedron' | 'dodecahedron'
+
+type RockClusterPieceDefinition = {
+  geometry: RockClusterShape
+  radius: number
+  detail: number
+  offset: THREE.Vector3
+  rotation: THREE.Euler
+  scale: THREE.Vector3
+  color: string
+  seed: number
+  role: 'support-rock-piece' | 'support-rock-chip' | 'support-rock-pebble'
+}
+
 export type SubstrateHardscapeAnchor = {
   id: string
   x: number
@@ -611,6 +625,20 @@ export class AquascapingSystem {
     return this.visualAssets?.models[id] ?? null
   }
 
+  private cloneFirstAvailableVisualModelGroup(
+    ids: string[],
+    userData: Record<string, unknown>
+  ): THREE.Group | null {
+    for (const id of ids) {
+      const clone = this.cloneVisualModelGroup(id, userData)
+      if (clone) {
+        return clone
+      }
+    }
+
+    return null
+  }
+
   private cloneVisualModelGroup(
     id: string,
     userData: Record<string, unknown>
@@ -688,24 +716,7 @@ export class AquascapingSystem {
     }
 
     if (id.startsWith('rock-')) {
-      baseMaterial.map = baseMaterial.map ?? this.getVisualTexture('rock-diffuse')
-      baseMaterial.normalMap = baseMaterial.normalMap ?? this.getVisualTexture('rock-normal')
-      if (baseMaterial.normalMap) {
-        baseMaterial.normalScale = new THREE.Vector2(0.58, 0.58)
-      }
-      baseMaterial.roughnessMap = baseMaterial.roughnessMap ?? this.getVisualTexture('rock-roughness')
-      baseMaterial.color = baseMaterial.color?.clone() ?? new THREE.Color('#7a7364')
-      baseMaterial.metalness = typeof baseMaterial.metalness === 'number'
-        ? Math.min(baseMaterial.metalness, 0.04)
-        : 0.04
-      baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
-        ? Math.max(baseMaterial.roughness, 0.78)
-        : 0.9
-      baseMaterial.envMapIntensity = Math.max(baseMaterial.envMapIntensity ?? 0, 0.14)
-      if (baseMaterial instanceof THREE.MeshPhysicalMaterial) {
-        baseMaterial.clearcoat = Math.max(baseMaterial.clearcoat ?? 0, 0.04)
-      }
-      return baseMaterial
+      return this.tuneRockMaterial(baseMaterial)
     }
 
     return baseMaterial
@@ -743,16 +754,7 @@ export class AquascapingSystem {
     }
 
     if (id.startsWith('rock-')) {
-      return new THREE.MeshPhysicalMaterial({
-        map: this.getVisualTexture('rock-diffuse'),
-        normalMap: this.getVisualTexture('rock-normal'),
-        normalScale: new THREE.Vector2(0.58, 0.58),
-        roughnessMap: this.getVisualTexture('rock-roughness'),
-        color: baseMaterial.color?.clone() ?? new THREE.Color('#7a7364'),
-        metalness: 0.04,
-        roughness: 0.9,
-        clearcoat: 0.08
-      })
+      return this.createRockReplacementMaterial(material)
     }
 
     return material.clone()
@@ -822,6 +824,77 @@ export class AquascapingSystem {
     driftwoodMaterial.userData = { ...material.userData }
 
     return this.tuneDriftwoodMaterial(driftwoodMaterial)
+  }
+
+  private tuneRockMaterial<T extends THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial>(material: T): T {
+    material.map = material.map ?? this.getVisualTexture('rock-diffuse')
+    material.normalMap = material.normalMap ?? this.getVisualTexture('rock-normal')
+    if (material.normalMap) {
+      material.normalScale = new THREE.Vector2(0.54, 0.54)
+    }
+    material.roughnessMap = material.roughnessMap ?? this.getVisualTexture('rock-roughness')
+
+    const color = material.color?.clone() ?? new THREE.Color('#8a8378')
+    const liftedHsl = { h: 0, s: 0, l: 0 }
+    color.getHSL(liftedHsl)
+    if (liftedHsl.l < 0.38) {
+      color.setHSL(liftedHsl.h, Math.min(0.28, liftedHsl.s * 0.82), 0.38)
+    }
+    material.color = color
+    material.metalness = typeof material.metalness === 'number'
+      ? Math.min(material.metalness, 0.03)
+      : 0.02
+    material.roughness = typeof material.roughness === 'number'
+      ? Math.max(material.roughness, material.roughnessMap ? 0.82 : 0.88)
+      : material.roughnessMap ? 0.86 : 0.92
+    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.06, 0.02, 0.1)
+
+    if (material instanceof THREE.MeshPhysicalMaterial) {
+      material.clearcoat = Math.min(material.clearcoat ?? 0, 0.02)
+      material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.94, 0.94)
+    }
+
+    return material
+  }
+
+  private createRockReplacementMaterial(material: THREE.Material): THREE.MeshPhysicalMaterial {
+    const sourceMaterial = material as THREE.Material & {
+      map?: THREE.Texture | null
+      normalMap?: THREE.Texture | null
+      roughnessMap?: THREE.Texture | null
+      aoMap?: THREE.Texture | null
+      color?: THREE.Color
+      roughness?: number
+      metalness?: number
+      envMapIntensity?: number
+      transparent?: boolean
+      opacity?: number
+      side?: THREE.Side
+      alphaTest?: number
+      depthWrite?: boolean
+    }
+
+    const rockMaterial = new THREE.MeshPhysicalMaterial({
+      map: sourceMaterial.map ?? this.getVisualTexture('rock-diffuse'),
+      normalMap: sourceMaterial.normalMap ?? this.getVisualTexture('rock-normal'),
+      roughnessMap: sourceMaterial.roughnessMap ?? this.getVisualTexture('rock-roughness'),
+      aoMap: sourceMaterial.aoMap ?? null,
+      color: sourceMaterial.color?.clone() ?? new THREE.Color('#8a8378'),
+      roughness: typeof sourceMaterial.roughness === 'number' ? sourceMaterial.roughness : 0.88,
+      metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : 0.02,
+      transparent: sourceMaterial.transparent ?? false,
+      opacity: sourceMaterial.opacity ?? 1,
+      side: sourceMaterial.side ?? THREE.FrontSide,
+      alphaTest: sourceMaterial.alphaTest ?? 0,
+      depthWrite: sourceMaterial.depthWrite ?? true,
+      envMapIntensity: typeof sourceMaterial.envMapIntensity === 'number' ? sourceMaterial.envMapIntensity : 0.06,
+      clearcoat: 0,
+      clearcoatRoughness: 1
+    })
+    rockMaterial.name = material.name
+    rockMaterial.userData = { ...material.userData }
+
+    return this.tuneRockMaterial(rockMaterial)
   }
 
   private createLeafMaterial(
@@ -1536,16 +1609,158 @@ export class AquascapingSystem {
   }
 
   private createRockMaterial(color: string): THREE.MeshPhysicalMaterial {
-    return new THREE.MeshPhysicalMaterial({
-      map: this.getVisualTexture('rock-diffuse'),
-      normalMap: this.getVisualTexture('rock-normal'),
-      normalScale: new THREE.Vector2(0.58, 0.58),
-      roughnessMap: this.getVisualTexture('rock-roughness'),
-      color: new THREE.Color(color),
-      metalness: 0.04,
-      roughness: 0.9,
-      clearcoat: 0.08
+    return this.createRockReplacementMaterial(new THREE.MeshStandardMaterial({
+      color: new THREE.Color(color)
+    }))
+  }
+
+  private createRockClusterMesh(pieceDefinition: RockClusterPieceDefinition): THREE.Mesh {
+    const mesh = new THREE.Mesh(
+      this.createDeformedRockGeometry(
+        pieceDefinition.geometry,
+        pieceDefinition.radius,
+        pieceDefinition.detail,
+        pieceDefinition.seed
+      ),
+      this.createRockMaterial(pieceDefinition.color)
+    )
+    mesh.position.copy(pieceDefinition.offset)
+    mesh.rotation.copy(pieceDefinition.rotation)
+    mesh.scale.copy(pieceDefinition.scale)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    mesh.userData = {
+      role: pieceDefinition.role,
+      clusterSeed: pieceDefinition.seed
+    }
+    return mesh
+  }
+
+  private createDeformedRockGeometry(
+    shape: RockClusterShape,
+    radius: number,
+    detail: number,
+    seed: number
+  ): THREE.BufferGeometry {
+    const geometry = shape === 'icosahedron'
+      ? new THREE.IcosahedronGeometry(radius, detail)
+      : shape === 'octahedron'
+        ? new THREE.OctahedronGeometry(radius, detail)
+        : new THREE.DodecahedronGeometry(radius, detail)
+    const positionAttribute = geometry.getAttribute('position')
+    const vertex = new THREE.Vector3()
+    const normal = new THREE.Vector3()
+    const chipDirection = new THREE.Vector3(
+      Math.sin(seed * 2.1) * 0.74,
+      -0.84 + Math.cos(seed * 1.3) * 0.12,
+      Math.cos(seed * 1.7) * 0.68
+    ).normalize()
+    const shearX = Math.sin(seed * 1.9) * 0.22
+    const shearZ = Math.cos(seed * 2.3) * 0.18
+
+    for (let index = 0; index < positionAttribute.count; index++) {
+      vertex.fromBufferAttribute(positionAttribute, index)
+      normal.copy(vertex).normalize()
+
+      const normalizedX = vertex.x / Math.max(radius, 0.001)
+      const normalizedY = vertex.y / Math.max(radius, 0.001)
+      const normalizedZ = vertex.z / Math.max(radius, 0.001)
+      const layeredNoise = (
+        Math.sin(normalizedX * 4.8 + seed * 1.6) * 0.09
+        + Math.cos(normalizedY * 6.1 - seed * 0.8) * 0.06
+        + Math.sin(normalizedZ * 5.4 + seed * 2.2) * 0.05
+      )
+      const stratum = Math.sin((normalizedX + normalizedZ) * 4.2 + seed * 1.4) * 0.03
+      const chip = Math.max(0, normal.dot(chipDirection) - 0.38) * 0.28
+      const originalY = vertex.y
+
+      vertex.multiplyScalar(1 + layeredNoise + stratum - chip)
+      vertex.x += originalY * shearX
+      vertex.z += originalY * shearZ
+      vertex.y = originalY < 0 ? vertex.y * 0.68 : vertex.y * 0.9
+      if (originalY < radius * -0.28) {
+        vertex.y -= radius * 0.08
+      }
+
+      positionAttribute.setXYZ(index, vertex.x, vertex.y, vertex.z)
+    }
+
+    positionAttribute.needsUpdate = true
+    geometry.computeVertexNormals()
+    return geometry
+  }
+
+  private createFallbackSupportRockGroup(
+    role: 'hero-rock' | 'support-rock',
+    pieceDefinitions: RockClusterPieceDefinition[]
+  ): THREE.Group {
+    const rockGroup = new THREE.Group()
+    rockGroup.userData = {
+      role
+    }
+
+    pieceDefinitions.forEach((pieceDefinition) => {
+      rockGroup.add(this.createRockClusterMesh(pieceDefinition))
     })
+
+    return rockGroup
+  }
+
+  private createFallbackPebbleCluster(seed: number, colors: string[]): THREE.Group {
+    const pebbleGroup = new THREE.Group()
+    pebbleGroup.userData = {
+      role: 'support-rock-scatter'
+    }
+
+    ;[
+      {
+        geometry: 'dodecahedron' as const,
+        radius: 0.22,
+        detail: 1,
+        offset: new THREE.Vector3(0, 0.16, 0),
+        rotation: new THREE.Euler(0.12, -0.18, 0.06),
+        scale: new THREE.Vector3(1.18, 0.64, 0.92),
+        color: colors[0] ?? '#867d70',
+        seed: seed + 0.1
+      },
+      {
+        geometry: 'icosahedron' as const,
+        radius: 0.16,
+        detail: 1,
+        offset: new THREE.Vector3(0.26, 0.08, -0.08),
+        rotation: new THREE.Euler(-0.08, 0.3, -0.12),
+        scale: new THREE.Vector3(0.92, 0.54, 0.84),
+        color: colors[1] ?? '#968c7d',
+        seed: seed + 0.5
+      },
+      {
+        geometry: 'octahedron' as const,
+        radius: 0.12,
+        detail: 1,
+        offset: new THREE.Vector3(-0.22, 0.06, 0.12),
+        rotation: new THREE.Euler(0.1, -0.24, 0.08),
+        scale: new THREE.Vector3(0.86, 0.48, 0.78),
+        color: colors[2] ?? '#756c60',
+        seed: seed + 0.9
+      },
+      {
+        geometry: 'dodecahedron' as const,
+        radius: 0.1,
+        detail: 1,
+        offset: new THREE.Vector3(0.08, 0.03, 0.18),
+        rotation: new THREE.Euler(0.06, 0.18, 0.04),
+        scale: new THREE.Vector3(0.78, 0.42, 0.72),
+        color: colors[0] ?? '#867d70',
+        seed: seed + 1.4
+      }
+    ].forEach((definition) => {
+      pebbleGroup.add(this.createRockClusterMesh({
+        ...definition,
+        role: 'support-rock-pebble'
+      }))
+    })
+
+    return pebbleGroup
   }
   
   private createCorals(bounds: THREE.Box3): void {
@@ -1611,83 +1826,197 @@ export class AquascapingSystem {
   }
   
   private createRocks(bounds: THREE.Box3): void {
-    const rockCount = 12
     const size = new THREE.Vector3()
     bounds.getSize(size)
-    const anchors = [
-      { x: 0.18, z: -0.06, role: 'hero-rock', scale: 1.24, geometry: 'dodecahedron' },
-      { x: -0.14, z: 0.18, role: 'support-rock', scale: 0.94, geometry: 'icosahedron' },
-      { x: 0.34, z: 0.12, role: 'support-rock', scale: 0.76, geometry: 'octahedron' }
-    ] as const
-    
-    for (let i = 0; i < rockCount; i++) {
-      const anchor = anchors[i % anchors.length]
-      const rockScale = i === 0 ? anchor.scale : 0.32 + Math.random() * 0.62
-      
-      const geometry = anchor.geometry === 'icosahedron'
-        ? new THREE.IcosahedronGeometry(rockScale, 0)
-        : anchor.geometry === 'octahedron'
-          ? new THREE.OctahedronGeometry(rockScale * 0.92, 0)
-          : new THREE.DodecahedronGeometry(rockScale)
-      
-      // Deform the geometry for natural look
-      const positionAttribute = geometry.getAttribute('position')
-      for (let j = 0; j < positionAttribute.count; j++) {
-        const vertex = new THREE.Vector3()
-        vertex.fromBufferAttribute(positionAttribute, j)
-        
-        const noise = (Math.random() - 0.5) * (i === 0 ? 0.18 : 0.3)
-        vertex.multiplyScalar(1 + noise)
-        
-        positionAttribute.setXYZ(j, vertex.x, vertex.y, vertex.z)
+    const center = new THREE.Vector3()
+    bounds.getCenter(center)
+    const surfaceY = bounds.min.y + 0.42
+
+    const rockPlacements = [
+      {
+        role: 'hero-rock' as const,
+        assetIds: ['rock-support-c', 'rock-support-a'],
+        position: new THREE.Vector3(center.x - size.x * 0.05, surfaceY - 0.08, center.z + size.z * 0.07),
+        rotation: new THREE.Euler(-0.08, -0.26, 0.04),
+        scale: new THREE.Vector3(0.82, 0.76, 0.84),
+        pieceDefinitions: [
+          {
+            geometry: 'dodecahedron' as const,
+            radius: 0.7,
+            detail: 1,
+            offset: new THREE.Vector3(0, 0.5, 0),
+            rotation: new THREE.Euler(0.12, -0.2, 0.1),
+            scale: new THREE.Vector3(1.26, 0.72, 1.02),
+            color: '#8e8679',
+            seed: 0.4,
+            role: 'support-rock-piece' as const
+          },
+          {
+            geometry: 'icosahedron' as const,
+            radius: 0.32,
+            detail: 1,
+            offset: new THREE.Vector3(0.44, 0.18, -0.18),
+            rotation: new THREE.Euler(-0.08, 0.32, -0.06),
+            scale: new THREE.Vector3(0.92, 0.56, 0.84),
+            color: '#9b907d',
+            seed: 1.1,
+            role: 'support-rock-chip' as const
+          },
+          {
+            geometry: 'octahedron' as const,
+            radius: 0.22,
+            detail: 1,
+            offset: new THREE.Vector3(-0.38, 0.14, 0.2),
+            rotation: new THREE.Euler(0.1, -0.28, 0.08),
+            scale: new THREE.Vector3(0.88, 0.52, 0.78),
+            color: '#72695e',
+            seed: 1.6,
+            role: 'support-rock-chip' as const
+          }
+        ],
+        pebblePosition: new THREE.Vector3(center.x - size.x * 0.14, surfaceY - 0.1, center.z + size.z * 0.16),
+        pebbleRotation: new THREE.Euler(0.04, 0.28, -0.02),
+        pebbleScale: new THREE.Vector3(0.56, 0.56, 0.56),
+        pebbleSeed: 2.4,
+        pebbleColors: ['#877d6c', '#9a907c', '#72685d']
+      },
+      {
+        role: 'support-rock' as const,
+        assetIds: ['rock-support-a'],
+        position: new THREE.Vector3(center.x - size.x * 0.35, surfaceY - 0.12, center.z + size.z * 0.2),
+        rotation: new THREE.Euler(0.02, 0.54, -0.06),
+        scale: new THREE.Vector3(0.98, 0.82, 0.9),
+        pieceDefinitions: [
+          {
+            geometry: 'icosahedron' as const,
+            radius: 0.84,
+            detail: 1,
+            offset: new THREE.Vector3(0, 0.56, 0),
+            rotation: new THREE.Euler(0.08, 0.22, -0.04),
+            scale: new THREE.Vector3(1.34, 0.7, 0.96),
+            color: '#8b8275',
+            seed: 3.1,
+            role: 'support-rock-piece' as const
+          },
+          {
+            geometry: 'dodecahedron' as const,
+            radius: 0.46,
+            detail: 1,
+            offset: new THREE.Vector3(0.58, 0.2, -0.16),
+            rotation: new THREE.Euler(-0.06, 0.3, -0.1),
+            scale: new THREE.Vector3(0.98, 0.58, 0.88),
+            color: '#a09482',
+            seed: 3.7,
+            role: 'support-rock-chip' as const
+          },
+          {
+            geometry: 'octahedron' as const,
+            radius: 0.28,
+            detail: 1,
+            offset: new THREE.Vector3(-0.56, 0.14, 0.22),
+            rotation: new THREE.Euler(0.12, -0.32, 0.08),
+            scale: new THREE.Vector3(0.94, 0.5, 0.82),
+            color: '#7a7166',
+            seed: 4.2,
+            role: 'support-rock-chip' as const
+          },
+          {
+            geometry: 'icosahedron' as const,
+            radius: 0.18,
+            detail: 1,
+            offset: new THREE.Vector3(0.22, 0.1, 0.34),
+            rotation: new THREE.Euler(0.04, 0.18, -0.04),
+            scale: new THREE.Vector3(0.82, 0.44, 0.74),
+            color: '#958a79',
+            seed: 4.8,
+            role: 'support-rock-chip' as const
+          }
+        ],
+        pebblePosition: new THREE.Vector3(center.x - size.x * 0.24, surfaceY - 0.14, center.z + size.z * 0.09),
+        pebbleRotation: new THREE.Euler(0.04, -0.12, 0.02),
+        pebbleScale: new THREE.Vector3(0.64, 0.64, 0.64),
+        pebbleSeed: 5.4,
+        pebbleColors: ['#8d8170', '#a19583', '#70675d']
+      },
+      {
+        role: 'support-rock' as const,
+        assetIds: ['rock-support-b'],
+        position: new THREE.Vector3(center.x + size.x * 0.39, surfaceY - 0.12, center.z + size.z * 0.14),
+        rotation: new THREE.Euler(-0.06, -0.48, 0.1),
+        scale: new THREE.Vector3(0.94, 0.8, 1),
+        pieceDefinitions: [
+          {
+            geometry: 'dodecahedron' as const,
+            radius: 0.76,
+            detail: 1,
+            offset: new THREE.Vector3(0, 0.52, 0),
+            rotation: new THREE.Euler(-0.1, -0.24, 0.06),
+            scale: new THREE.Vector3(1.22, 0.68, 1.08),
+            color: '#918777',
+            seed: 6.1,
+            role: 'support-rock-piece' as const
+          },
+          {
+            geometry: 'icosahedron' as const,
+            radius: 0.38,
+            detail: 1,
+            offset: new THREE.Vector3(-0.54, 0.18, -0.18),
+            rotation: new THREE.Euler(0.06, -0.3, 0.12),
+            scale: new THREE.Vector3(0.96, 0.54, 0.86),
+            color: '#786e63',
+            seed: 6.6,
+            role: 'support-rock-chip' as const
+          },
+          {
+            geometry: 'octahedron' as const,
+            radius: 0.26,
+            detail: 1,
+            offset: new THREE.Vector3(0.52, 0.12, 0.26),
+            rotation: new THREE.Euler(0.12, 0.28, -0.08),
+            scale: new THREE.Vector3(0.88, 0.48, 0.78),
+            color: '#a19684',
+            seed: 7.1,
+            role: 'support-rock-chip' as const
+          },
+          {
+            geometry: 'dodecahedron' as const,
+            radius: 0.16,
+            detail: 1,
+            offset: new THREE.Vector3(-0.12, 0.08, 0.34),
+            rotation: new THREE.Euler(-0.04, 0.2, -0.06),
+            scale: new THREE.Vector3(0.82, 0.4, 0.7),
+            color: '#8a7f70',
+            seed: 7.7,
+            role: 'support-rock-chip' as const
+          }
+        ],
+        pebblePosition: new THREE.Vector3(center.x + size.x * 0.28, surfaceY - 0.14, center.z + size.z * 0.24),
+        pebbleRotation: new THREE.Euler(-0.02, 0.2, 0.04),
+        pebbleScale: new THREE.Vector3(0.6, 0.6, 0.6),
+        pebbleSeed: 8.4,
+        pebbleColors: ['#938775', '#7b7166', '#a49886']
       }
-      geometry.computeVertexNormals()
-      
-      const material = this.createRockMaterial(
-        new THREE.Color().setHSL(
-          0.1 + Math.random() * 0.1,
-          0.2 + Math.random() * 0.3,
-          0.2 + Math.random() * 0.3
-        ).getStyle()
-      )
-      
-      const rock = new THREE.Mesh(geometry, material)
-      
-      const x = i === 0
-        ? anchor.x * size.x
-        : THREE.MathUtils.clamp(
-            anchor.x * size.x + (Math.random() - 0.5) * 1.2,
-            bounds.min.x + 0.45,
-            bounds.max.x - 0.45
-          )
-      const z = i === 0
-        ? anchor.z * size.z
-        : THREE.MathUtils.clamp(
-            anchor.z * size.z + (Math.random() - 0.5) * 0.9,
-            bounds.min.z + 0.4,
-            bounds.max.z - 0.4
-          )
-      const y = bounds.min.y + 0.42 + rockScale * (i === 0 ? 0.22 : 0.1)  // 砂層の上に配置
-      
-      rock.position.set(x, y, z)
-      rock.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      )
-      if (i === 0) {
-        rock.scale.set(1.2, 0.86, 1.35)
-      }
-      
-      rock.castShadow = true
-      rock.receiveShadow = true
-      rock.userData = {
-        role: i === 0 ? 'hero-rock' : anchor.role
-      }
-      
-      this.decorations.push(new THREE.Group().add(rock))
-      this.group.add(rock)
-    }
+    ]
+
+    rockPlacements.forEach((placement) => {
+      const rockGroup = this.cloneFirstAvailableVisualModelGroup(placement.assetIds, {
+        role: placement.role
+      }) ?? this.createFallbackSupportRockGroup(placement.role, placement.pieceDefinitions)
+      rockGroup.position.copy(placement.position)
+      rockGroup.rotation.copy(placement.rotation)
+      rockGroup.scale.copy(placement.scale)
+      this.decorations.push(rockGroup)
+      this.group.add(rockGroup)
+
+      const pebbleCluster = this.cloneFirstAvailableVisualModelGroup(['rock-pebble-cluster'], {
+        role: 'support-rock-scatter'
+      }) ?? this.createFallbackPebbleCluster(placement.pebbleSeed, placement.pebbleColors)
+      pebbleCluster.position.copy(placement.pebblePosition)
+      pebbleCluster.rotation.copy(placement.pebbleRotation)
+      pebbleCluster.scale.copy(placement.pebbleScale)
+      this.decorations.push(pebbleCluster)
+      this.group.add(pebbleCluster)
+    })
   }
 
   private createHardscapeShadow(bounds: THREE.Box3): void {
