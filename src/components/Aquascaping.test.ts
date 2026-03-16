@@ -620,6 +620,35 @@ describe('AquascapingSystem premium materials', () => {
     expect(clonedMaterial?.color.getHSL({ h: 0, s: 0, l: 0 }).l ?? 0).toBeGreaterThanOrEqual(0.4)
   })
 
+  it('lifts hero ridge rock albedo away from black crush without changing its matte response', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+
+    const createAssetBackedMaterial = (AquascapingSystem.prototype as unknown as {
+      createAssetBackedMaterial: (
+        id: string,
+        material: THREE.Material,
+        userData?: Record<string, unknown>
+      ) => THREE.Material
+    }).createAssetBackedMaterial.bind(instance)
+
+    const material = createAssetBackedMaterial(
+      'rock-ridge-hero',
+      new THREE.MeshPhysicalMaterial({
+        color: '#1d1815',
+        roughness: 0.7,
+        metalness: 0.08,
+        envMapIntensity: 0.4,
+        clearcoat: 0.16
+      }),
+      { role: 'hero-rock-ridge' }
+    ) as THREE.MeshPhysicalMaterial
+
+    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.41)
+    expect(material.roughness).toBeGreaterThanOrEqual(0.82)
+    expect(material.metalness).toBeLessThanOrEqual(0.03)
+    expect(material.clearcoat).toBeLessThanOrEqual(0.02)
+  })
+
   it('preserves authored driftwood materials when the asset already includes the key maps', () => {
     const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
     const authoredMap = new THREE.Texture()
@@ -675,6 +704,35 @@ describe('AquascapingSystem premium materials', () => {
     expect(clonedMesh?.receiveShadow).toBe(true)
   })
 
+  it('lifts dark driftwood albedo floors so bark detail does not collapse into black', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+
+    const createAssetBackedMaterial = (AquascapingSystem.prototype as unknown as {
+      createAssetBackedMaterial: (
+        id: string,
+        material: THREE.Material,
+        userData?: Record<string, unknown>
+      ) => THREE.Material
+    }).createAssetBackedMaterial.bind(instance)
+
+    const material = createAssetBackedMaterial(
+      'driftwood-hero',
+      new THREE.MeshPhysicalMaterial({
+        color: '#241913',
+        roughness: 0.88,
+        metalness: 0.1,
+        envMapIntensity: 0.52,
+        clearcoat: 0.2
+      }),
+      { role: 'hero-driftwood' }
+    ) as THREE.MeshPhysicalMaterial
+
+    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.15)
+    expect(material.roughness).toBeGreaterThanOrEqual(0.9)
+    expect(material.metalness).toBeLessThanOrEqual(0.03)
+    expect(material.clearcoat).toBeLessThanOrEqual(0.03)
+  })
+
   it('supplements missing driftwood maps, adds uv2 for ao, and clamps glossy reflections on cloned hero assets', () => {
     const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
     const authoredMap = new THREE.Texture()
@@ -724,7 +782,7 @@ describe('AquascapingSystem premium materials', () => {
     expect((clonedMesh?.geometry as THREE.BufferGeometry | undefined)?.getAttribute('uv2')).toBeDefined()
   })
 
-  it('preserves authored driftwood base color textures when non-pbr authored materials need replacement', () => {
+  it('preserves authored driftwood base color textures while still lifting replacement materials away from black crush', () => {
     const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
     const authoredMap = new THREE.Texture()
     const sharedDiffuse = new THREE.Texture()
@@ -758,7 +816,7 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.normalMap).toBe(sharedNormal)
     expect(material.roughnessMap).toBe(sharedRoughness)
     expect(material.aoMap).toBe(sharedAo)
-    expect(material.color.getHexString()).toBe('7b624f')
+    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.15)
     expect(material.envMapIntensity).toBeLessThanOrEqual(0.14)
     expect(material.roughness).toBeGreaterThanOrEqual(0.9)
     expect(material.metalness).toBeLessThanOrEqual(0.03)

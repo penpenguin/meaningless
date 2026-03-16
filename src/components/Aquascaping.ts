@@ -1147,7 +1147,17 @@ export class AquascapingSystem {
     material.roughnessMap = material.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
     material.aoMap = material.aoMap ?? this.getVisualTexture('driftwood-ao')
     material.aoMapIntensity = material.aoMap ? Math.max(material.aoMapIntensity ?? 0.94, 0.94) : 0
-    material.color = material.color?.clone() ?? new THREE.Color('#6f5641')
+    const driftwoodColor = material.color?.clone() ?? new THREE.Color('#6f5641')
+    const driftwoodHsl = { h: 0, s: 0, l: 0 }
+    driftwoodColor.getHSL(driftwoodHsl)
+    if (driftwoodHsl.l < 0.15) {
+      driftwoodColor.setHSL(
+        driftwoodHsl.h,
+        THREE.MathUtils.clamp(driftwoodHsl.s * 0.92 + 0.02, 0.16, 0.34),
+        0.15
+      )
+    }
+    material.color = driftwoodColor
     material.roughness = typeof material.roughness === 'number'
       ? Math.max(material.roughness, material.roughnessMap ? 0.9 : 0.94)
       : material.roughnessMap ? 0.92 : 0.96
@@ -1221,14 +1231,22 @@ export class AquascapingSystem {
       || role === 'support-rock-chip'
       || role === 'support-rock-pebble'
       || role === 'support-rock-scatter'
-    const lightnessFloor = isSupportRock ? 0.42 : 0.38
+    const isHeroRidge = role === 'hero-rock-ridge'
+      || role === 'ridge-rock'
+      || role === 'ridge-slate'
+      || role === 'ridge-rubble'
+    const lightnessFloor = isSupportRock ? 0.42 : isHeroRidge ? 0.41 : 0.38
     const color = material.color?.clone() ?? new THREE.Color('#8a8378')
     const liftedHsl = { h: 0, s: 0, l: 0 }
     color.getHSL(liftedHsl)
     if (liftedHsl.l < lightnessFloor) {
       color.setHSL(
         liftedHsl.h,
-        THREE.MathUtils.clamp(liftedHsl.s * 0.92 + (isSupportRock ? 0.04 : 0.02), 0.12, isSupportRock ? 0.34 : 0.28),
+        THREE.MathUtils.clamp(
+          liftedHsl.s * 0.92 + (isSupportRock ? 0.04 : isHeroRidge ? 0.03 : 0.02),
+          0.12,
+          isSupportRock ? 0.34 : isHeroRidge ? 0.32 : 0.28
+        ),
         lightnessFloor
       )
     }
@@ -1636,7 +1654,7 @@ export class AquascapingSystem {
     ridgeRockDefinitions.forEach((definition) => {
       const rock = new THREE.Mesh(
         definition.geometry,
-        this.createRockMaterial(definition.color)
+        this.createRockMaterial(definition.color, { role: 'hero-rock-ridge' })
       )
       rock.position.copy(definition.position)
       rock.rotation.copy(definition.rotation)
@@ -1672,7 +1690,7 @@ export class AquascapingSystem {
     ridgeSlateDefinitions.forEach((definition) => {
       const slate = new THREE.Mesh(
         new THREE.BoxGeometry(0.84, 0.16, 0.34),
-        this.createRockMaterial(definition.color)
+        this.createRockMaterial(definition.color, { role: 'hero-rock-ridge' })
       )
       slate.position.copy(definition.position)
       slate.rotation.copy(definition.rotation)
@@ -1698,7 +1716,7 @@ export class AquascapingSystem {
         : new THREE.IcosahedronGeometry(definition.scale, 0)
       const rubble = new THREE.Mesh(
         rubbleGeometry,
-        this.createRockMaterial(definition.color)
+        this.createRockMaterial(definition.color, { role: 'hero-rock-ridge' })
       )
       rubble.position.copy(definition.position)
       rubble.rotation.set(

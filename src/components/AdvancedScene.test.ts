@@ -1064,6 +1064,39 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(getDepthRatio(heroRimLight!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(-0.17)
     expect((heroRimLight?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
+
+  it('adds a front-lower hero fill panel so the central hardscape can lift out of black crush locally', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: CreateSubstrateFn
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    setTankDimensions(instance, EXPANDED_TANK_DIMENSIONS)
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const heroFrontFill = internals.tank.children.find((child) => (
+      child.name === 'tank-hero-front-fill'
+    )) as THREE.Mesh | undefined
+
+    expect(heroFrontFill).toBeDefined()
+    expect(getWidthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.045)
+    expect(getWidthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.09)
+    expect(getBottomClearanceRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.11)
+    expect(getBottomClearanceRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.16)
+    expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.08)
+    expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.18)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
+  })
 })
 
 describe('AdvancedAquariumScene lighting', () => {
@@ -1808,6 +1841,70 @@ describe('AdvancedAquariumScene quality scaling', () => {
     expect(internals.renderer.toneMappingExposure).toBeGreaterThan(simpleExposure)
     expect(internals.hemiLight.intensity).toBeGreaterThan(simpleHemi)
     expect(internals.rimLight.intensity).toBeGreaterThan(simpleRim)
+  })
+
+  it('keeps the existing exposure curve while retaining a weaker hero-local hardscape fill on simple quality', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: CreateSubstrateFn
+      createBackdropTexture: () => THREE.CanvasTexture
+      renderer: {
+        toneMappingExposure: number
+        setPixelRatio: (value: number) => void
+        setSize: (width: number, height: number) => void
+        shadowMap: { enabled: boolean; type: number }
+      }
+      composer: { setSize: (width: number, height: number) => void }
+      godRaysEffect: { resize: (width: number, height: number) => void } | null
+      fishSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      particleSystem: { setQuality: (quality: 'simple' | 'standard') => void } | null
+      primaryShadowLight: { shadow: { mapSize: { width: number; height: number } } } | null
+      getViewportSize: () => { width: number; height: number }
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.renderer = {
+      toneMappingExposure: 1.2,
+      setPixelRatio: vi.fn(),
+      setSize: vi.fn(),
+      shadowMap: { enabled: true, type: THREE.PCFSoftShadowMap }
+    }
+    internals.composer = { setSize: vi.fn() }
+    internals.godRaysEffect = null
+    internals.fishSystem = null
+    internals.particleSystem = null
+    internals.primaryShadowLight = { shadow: { mapSize: { width: 4096, height: 4096 } } }
+    internals.getViewportSize = () => ({ width: 1600, height: 900 })
+    setTankDimensions(instance, EXPANDED_TANK_DIMENSIONS)
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+    const setWaterQuality = (AdvancedAquariumScene.prototype as unknown as {
+      setWaterQuality: (quality: 'simple' | 'standard') => void
+    }).setWaterQuality.bind(instance)
+
+    createAdvancedTank()
+    setWaterQuality('simple')
+
+    const heroFrontFill = internals.tank.children.find((child) => (
+      child.name === 'tank-hero-front-fill'
+    )) as THREE.Mesh | undefined
+    const simpleOpacity = (heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
+
+    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.27, 5)
+    expect(heroFrontFill?.visible).toBe(true)
+    expect(simpleOpacity).toBeGreaterThan(0)
+
+    setWaterQuality('standard')
+
+    const standardOpacity = (heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
+
+    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.36, 5)
+    expect(standardOpacity).toBeGreaterThan(simpleOpacity)
   })
 
   it('keeps shadows and core texture layers on simple quality', () => {
