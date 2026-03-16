@@ -177,12 +177,12 @@ describe('AquascapingSystem composition', () => {
     const foregroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'foreground')
 
     expect(backgroundClusters.length).toBeGreaterThanOrEqual(3)
-    expect(backgroundClusters.some((cluster) => cluster.x <= -0.22 && cluster.z <= -0.14)).toBe(true)
-    expect(backgroundClusters.some((cluster) => Math.abs(cluster.x) <= 0.12 && cluster.z <= -0.2)).toBe(true)
-    expect(backgroundClusters.some((cluster) => cluster.x >= 0.22 && cluster.z <= -0.14)).toBe(true)
-    expect(backgroundClusters.every((cluster) => cluster.baseHeight >= 4.8)).toBe(true)
-    expect(midgroundClusters.every((cluster) => cluster.baseHeight >= 3.2)).toBe(true)
-    expect(foregroundClusters.every((cluster) => cluster.baseHeight <= 2.8)).toBe(true)
+    expect(backgroundClusters.some((cluster) => cluster.massRole === 'left-rear' && cluster.x <= -0.24 && cluster.z <= -0.2)).toBe(true)
+    expect(backgroundClusters.some((cluster) => cluster.massRole === 'driftwood-backfill' && Math.abs(cluster.x) <= 0.08 && cluster.z <= -0.22)).toBe(true)
+    expect(backgroundClusters.some((cluster) => cluster.massRole === 'right-rear' && cluster.x >= 0.26 && cluster.z <= -0.18)).toBe(true)
+    expect(backgroundClusters.every((cluster) => cluster.baseHeight >= 6.2)).toBe(true)
+    expect(midgroundClusters.every((cluster) => cluster.baseHeight >= 3.8)).toBe(true)
+    expect(foregroundClusters.every((cluster) => cluster.baseHeight <= 2)).toBe(true)
   })
 
   it('builds denser foliage clusters so planted masses stay readable edge-on', () => {
@@ -226,9 +226,39 @@ describe('AquascapingSystem composition', () => {
     createSwordLeafPlant(swordGroup, 'background', 5.3, 0.24)
     createFanLeafPlant(fanGroup, 'midground', 3.4, 0.22)
 
-    expect(ribbonGroup.children).toHaveLength(6)
-    expect(swordGroup.children).toHaveLength(7)
-    expect(fanGroup.children).toHaveLength(7)
+    const ribbonDepthLanes = new Set(ribbonGroup.children.map((child) => child.userData.depthLane))
+    const swordDepthLanes = new Set(swordGroup.children.map((child) => child.userData.depthLane))
+    const fanDepthLanes = new Set(fanGroup.children.map((child) => child.userData.depthLane))
+
+    expect(ribbonGroup.children).toHaveLength(12)
+    expect(swordGroup.children).toHaveLength(13)
+    expect(fanGroup.children).toHaveLength(11)
+    expect(ribbonDepthLanes.size).toBeGreaterThanOrEqual(4)
+    expect(swordDepthLanes.size).toBeGreaterThanOrEqual(4)
+    expect(fanDepthLanes.size).toBeGreaterThanOrEqual(4)
+  })
+
+  it('replaces the planted blanket with a bounded set of planted masses', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const plantedMasses = aquascapingGroup.children.filter(
+      (child) => child instanceof THREE.Group && child.userData.role === 'planted-mass'
+    ) as THREE.Group[]
+    const massRoles = new Set(plantedMasses.map((mass) => mass.userData.massRole))
+
+    expect(plantedMasses.length).toBeGreaterThanOrEqual(8)
+    expect(plantedMasses.length).toBeLessThanOrEqual(12)
+    expect(massRoles.has('left-rear')).toBe(true)
+    expect(massRoles.has('driftwood-backfill')).toBe(true)
+    expect(massRoles.has('right-rear')).toBe(true)
   })
 
   it('adds a soft hardscape shadow to ground the hero scape on the substrate', () => {
@@ -371,7 +401,8 @@ describe('AquascapingSystem composition', () => {
     expect(coralBranches).toEqual([])
     expect(freshwaterAccentTypes.has('crypt-clump')).toBe(true)
     expect(freshwaterAccentTypes.has('foreground-tuft')).toBe(true)
-    expect(freshwaterAccentTypes.has('background-stem-group')).toBe(true)
+    expect(freshwaterAccentTypes.has('wall-tuft')).toBe(true)
+    expect(freshwaterAccentTypes.has('background-stem-group')).toBe(false)
     expect(freshwaterAccentTypes.has('epiphyte')).toBe(true)
   })
 
@@ -917,6 +948,9 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     const heroCanopyAssets = aquascapingGroup.children.filter(
       (child) => child.userData.role === 'hero-canopy' && typeof child.userData.assetId === 'string'
     )
+    const plantedMassAssets = aquascapingGroup.children.filter(
+      (child) => child.userData.role === 'planted-mass' && typeof child.userData.assetId === 'string'
+    )
 
     expect(heroDriftwood).toBeDefined()
     expect(heroDriftwood).not.toBe(driftwoodAsset)
@@ -925,6 +959,9 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     expect(heroRockRidge.userData.assetId).toBe('rock-ridge-hero')
     expect(heroCanopyAssets.length).toBeGreaterThanOrEqual(2)
     expect(heroCanopyAssets.some((child) => child.userData.assetId === 'plant-sword-cluster')).toBe(true)
+    expect(plantedMassAssets.length).toBeGreaterThanOrEqual(3)
+    expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-sword-cluster')).toBe(true)
+    expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-fan-cluster')).toBe(true)
 
     getContextSpy.mockRestore()
   })
