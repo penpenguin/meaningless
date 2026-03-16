@@ -698,6 +698,56 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(foreground?.position.z).toBeLessThan(4.2)
   })
 
+  it('softens backdrop, depth, and caustics layers with feathered masks', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const overlayTexture = new THREE.Texture()
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: CreateSubstrateFn
+      createBackdropTexture: () => THREE.CanvasTexture
+      visualAssets: { textures: Record<string, THREE.Texture | null> } | undefined
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.visualAssets = {
+      textures: {
+        'backdrop-depth': overlayTexture
+      }
+    }
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const backdrop = internals.tank.children.find((child) => child.name === 'tank-backdrop') as THREE.Mesh | undefined
+    const overlay = internals.tank.children.find((child) => child.name === 'tank-backdrop-overlay') as THREE.Mesh | undefined
+    const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
+    const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
+    const floorCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
+    const backCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-back') as THREE.Mesh | undefined
+
+    const backdropMaterial = backdrop?.material as THREE.MeshBasicMaterial | undefined
+    const overlayMaterial = overlay?.material as THREE.MeshBasicMaterial | undefined
+    const midgroundMaterial = midground?.material as THREE.MeshBasicMaterial | undefined
+    const foregroundMaterial = foreground?.material as THREE.MeshBasicMaterial | undefined
+    const floorCausticsMaterial = floorCaustics?.material as THREE.MeshBasicMaterial | undefined
+    const backCausticsMaterial = backCaustics?.material as THREE.MeshBasicMaterial | undefined
+
+    expect(backdropMaterial?.alphaMap).toBeInstanceOf(THREE.Texture)
+    expect(overlayMaterial?.alphaMap).toBeInstanceOf(THREE.Texture)
+    expect(overlayMaterial?.opacity).toBeLessThan(0.35)
+    expect(midgroundMaterial?.alphaMap).toBeInstanceOf(THREE.Texture)
+    expect(midgroundMaterial?.opacity).toBeLessThan(0.24)
+    expect(foregroundMaterial?.alphaMap).toBeInstanceOf(THREE.Texture)
+    expect(foregroundMaterial?.opacity).toBeLessThan(0.075)
+    expect(floorCausticsMaterial?.opacity).toBeLessThan(0.082)
+    expect(backCausticsMaterial?.opacity).toBeLessThan(0.058)
+  })
+
   it('keeps backdrop and depth-layer anchors tank-relative when the tank dimensions change', () => {
     const createTankLayers = (dimensions: AquariumTankDimensions) => {
       const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
@@ -2364,5 +2414,116 @@ describe('AdvancedAquariumScene backdrop textures', () => {
     expect(stats.radialGradientCalls).toBeGreaterThan(6)
     expect(stats.fillCalls).toBeGreaterThan(6)
     expect(stats.strokeCalls).toBe(0)
+  })
+})
+
+describe('AdvancedAquariumScene depth mask textures', () => {
+  let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
+
+  afterEach(() => {
+    getContextSpy?.mockRestore()
+    getContextSpy = null
+  })
+
+  it('builds the midground texture from diffuse blooms and a destination-in feather mask', () => {
+    const stats = {
+      radialGradientCalls: 0,
+      fillCalls: 0,
+      destinationInAssignments: 0
+    }
+
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = { addColorStop: vi.fn() }
+        let compositeOperation = 'source-over'
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => {
+            stats.radialGradientCalls += 1
+            return { addColorStop: vi.fn() }
+          },
+          fillRect: () => {
+            stats.fillCalls += 1
+          },
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          bezierCurveTo: vi.fn(),
+          fill: () => {
+            stats.fillCalls += 1
+          },
+          fillStyle: '',
+          strokeStyle: '',
+          get globalCompositeOperation() {
+            return compositeOperation
+          },
+          set globalCompositeOperation(value: string) {
+            if (value === 'destination-in') {
+              stats.destinationInAssignments += 1
+            }
+            compositeOperation = value
+          }
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const createDepthMidgroundTexture = (AdvancedAquariumScene.prototype as unknown as {
+      createDepthMidgroundTexture: () => THREE.CanvasTexture
+    }).createDepthMidgroundTexture.bind(instance)
+
+    createDepthMidgroundTexture()
+
+    expect(stats.radialGradientCalls).toBeGreaterThan(2)
+    expect(stats.fillCalls).toBeGreaterThan(6)
+    expect(stats.destinationInAssignments).toBeGreaterThan(0)
+  })
+
+  it('builds the foreground shadow texture with softer blooms and a destination-in edge fade', () => {
+    const stats = {
+      radialGradientCalls: 0,
+      fillCalls: 0,
+      destinationInAssignments: 0
+    }
+
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = { addColorStop: vi.fn() }
+        let compositeOperation = 'source-over'
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => {
+            stats.radialGradientCalls += 1
+            return { addColorStop: vi.fn() }
+          },
+          fillRect: () => {
+            stats.fillCalls += 1
+          },
+          fillStyle: '',
+          strokeStyle: '',
+          get globalCompositeOperation() {
+            return compositeOperation
+          },
+          set globalCompositeOperation(value: string) {
+            if (value === 'destination-in') {
+              stats.destinationInAssignments += 1
+            }
+            compositeOperation = value
+          }
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const createForegroundShadowTexture = (AdvancedAquariumScene.prototype as unknown as {
+      createForegroundShadowTexture: () => THREE.CanvasTexture
+    }).createForegroundShadowTexture.bind(instance)
+
+    createForegroundShadowTexture()
+
+    expect(stats.radialGradientCalls).toBeGreaterThan(2)
+    expect(stats.fillCalls).toBeGreaterThan(4)
+    expect(stats.destinationInAssignments).toBeGreaterThan(0)
   })
 })

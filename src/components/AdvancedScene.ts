@@ -766,8 +766,9 @@ export class AdvancedAquariumScene {
     const backdropGeometry = new THREE.PlaneGeometry(tankWidth * 0.92, tankHeight * 0.74)
     const backdropMaterial = new THREE.MeshBasicMaterial({
       map: this.createBackdropTexture(),
+      alphaMap: this.createFeatherMaskTexture('backdrop'),
       transparent: true,
-      opacity: 0.82,
+      opacity: 0.78,
       depthWrite: false
     })
     const backdropMesh = new THREE.Mesh(backdropGeometry, backdropMaterial)
@@ -781,8 +782,9 @@ export class AdvancedAquariumScene {
     if (backdropOverlayTexture) {
       const backdropOverlayMaterial = new THREE.MeshBasicMaterial({
         map: backdropOverlayTexture,
+        alphaMap: this.createFeatherMaskTexture('overlay'),
         transparent: true,
-        opacity: 0.44,
+        opacity: 0.32,
         depthWrite: false,
         blending: THREE.AdditiveBlending
       })
@@ -809,6 +811,124 @@ export class AdvancedAquariumScene {
 
   private getVisualTexture(id: string): THREE.Texture | null {
     return this.visualAssets?.textures[id] ?? null
+  }
+
+  private createFeatherMaskTexture(
+    layer: 'backdrop' | 'overlay' | 'midground' | 'foreground'
+  ): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.ClampToEdgeWrapping
+    texture.wrapT = THREE.ClampToEdgeWrapping
+
+    if (
+      !ctx ||
+      typeof ctx.createLinearGradient !== 'function' ||
+      typeof ctx.createRadialGradient !== 'function' ||
+      typeof ctx.fillRect !== 'function'
+    ) {
+      return texture
+    }
+
+    const config = layer === 'backdrop'
+      ? {
+          pools: [
+            { x: 0.48, y: 0.48, radius: 0.44, alpha: 0.98 },
+            { x: 0.28, y: 0.36, radius: 0.22, alpha: 0.5 },
+            { x: 0.74, y: 0.34, radius: 0.24, alpha: 0.44 },
+            { x: 0.58, y: 0.72, radius: 0.28, alpha: 0.38 }
+          ],
+          edgeFade: { top: 0.18, bottom: 0.16, left: 0.14, right: 0.16 },
+          diagonalFade: 0.62
+        }
+      : layer === 'overlay'
+        ? {
+            pools: [
+              { x: 0.5, y: 0.46, radius: 0.38, alpha: 0.92 },
+              { x: 0.32, y: 0.3, radius: 0.18, alpha: 0.44 },
+              { x: 0.68, y: 0.28, radius: 0.2, alpha: 0.38 },
+              { x: 0.54, y: 0.72, radius: 0.22, alpha: 0.3 }
+            ],
+            edgeFade: { top: 0.21, bottom: 0.18, left: 0.18, right: 0.2 },
+            diagonalFade: 0.56
+          }
+        : layer === 'midground'
+          ? {
+              pools: [
+                { x: 0.52, y: 0.52, radius: 0.34, alpha: 0.96 },
+                { x: 0.28, y: 0.44, radius: 0.2, alpha: 0.52 },
+                { x: 0.7, y: 0.36, radius: 0.16, alpha: 0.46 },
+                { x: 0.62, y: 0.7, radius: 0.22, alpha: 0.36 }
+              ],
+              edgeFade: { top: 0.24, bottom: 0.22, left: 0.2, right: 0.24 },
+              diagonalFade: 0.48
+            }
+          : {
+              pools: [
+                { x: 0.46, y: 0.22, radius: 0.32, alpha: 0.88 },
+                { x: 0.24, y: 0.26, radius: 0.18, alpha: 0.42 },
+                { x: 0.76, y: 0.28, radius: 0.18, alpha: 0.4 },
+                { x: 0.54, y: 0.48, radius: 0.18, alpha: 0.24 }
+              ],
+              edgeFade: { top: 0.16, bottom: 0.34, left: 0.18, right: 0.18 },
+              diagonalFade: 0.42
+            }
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    config.pools.forEach((pool) => {
+      const radius = canvas.width * pool.radius
+      const centerX = canvas.width * pool.x
+      const centerY = canvas.height * pool.y
+      const gradient = ctx.createRadialGradient(
+        centerX - (radius * 0.16),
+        centerY - (radius * 0.12),
+        radius * 0.12,
+        centerX,
+        centerY,
+        radius
+      )
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${pool.alpha})`)
+      gradient.addColorStop(0.56, `rgba(255, 255, 255, ${pool.alpha * 0.78})`)
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = gradient
+      ctx.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2)
+    })
+
+    ctx.globalCompositeOperation = 'destination-in'
+
+    const verticalFade = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    verticalFade.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    verticalFade.addColorStop(config.edgeFade.top, 'rgba(255, 255, 255, 0.7)')
+    verticalFade.addColorStop(0.52, 'rgba(255, 255, 255, 0.98)')
+    verticalFade.addColorStop(1 - config.edgeFade.bottom, 'rgba(255, 255, 255, 0.76)')
+    verticalFade.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = verticalFade
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const horizontalFade = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    horizontalFade.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    horizontalFade.addColorStop(config.edgeFade.left, 'rgba(255, 255, 255, 0.74)')
+    horizontalFade.addColorStop(0.5, 'rgba(255, 255, 255, 1)')
+    horizontalFade.addColorStop(1 - config.edgeFade.right, 'rgba(255, 255, 255, 0.72)')
+    horizontalFade.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = horizontalFade
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const diagonalFade = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+    diagonalFade.addColorStop(0, 'rgba(255, 255, 255, 0.3)')
+    diagonalFade.addColorStop(config.diagonalFade, 'rgba(255, 255, 255, 0.98)')
+    diagonalFade.addColorStop(1, 'rgba(255, 255, 255, 0.42)')
+    ctx.fillStyle = diagonalFade
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalCompositeOperation = 'source-over'
+    texture.needsUpdate = true
+    return texture
   }
 
   private createBackdropTexture(): THREE.CanvasTexture {
@@ -840,6 +960,20 @@ export class AdvancedAquariumScene {
     haze.addColorStop(0.45, 'rgba(100, 175, 187, 0.08)')
     haze.addColorStop(1, 'rgba(8, 28, 34, 0)')
     ctx.fillStyle = haze
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const sideHaze = ctx.createRadialGradient(
+      canvas.width * 0.24,
+      canvas.height * 0.44,
+      canvas.width * 0.04,
+      canvas.width * 0.24,
+      canvas.height * 0.44,
+      canvas.width * 0.34
+    )
+    sideHaze.addColorStop(0, 'rgba(182, 230, 238, 0.14)')
+    sideHaze.addColorStop(0.52, 'rgba(88, 146, 158, 0.08)')
+    sideHaze.addColorStop(1, 'rgba(8, 28, 34, 0)')
+    ctx.fillStyle = sideHaze
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     ctx.lineWidth = 18
@@ -879,6 +1013,15 @@ export class AdvancedAquariumScene {
     mask.addColorStop(0.72, 'rgba(255, 255, 255, 0.74)')
     mask.addColorStop(1, 'rgba(255, 255, 255, 0)')
     ctx.fillStyle = mask
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const horizontalMask = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    horizontalMask.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    horizontalMask.addColorStop(0.16, 'rgba(255, 255, 255, 0.76)')
+    horizontalMask.addColorStop(0.5, 'rgba(255, 255, 255, 1)')
+    horizontalMask.addColorStop(0.84, 'rgba(255, 255, 255, 0.72)')
+    horizontalMask.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = horizontalMask
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.globalCompositeOperation = 'source-over'
 
@@ -960,9 +1103,10 @@ export class AdvancedAquariumScene {
       new THREE.PlaneGeometry(tankWidth * 0.78, tankHeight * 0.54),
       new THREE.MeshBasicMaterial({
         map: this.createDepthMidgroundTexture(),
+        alphaMap: this.createFeatherMaskTexture('midground'),
         color: new THREE.Color('#3f7880'),
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.24,
         depthWrite: false,
         side: THREE.DoubleSide
       })
@@ -972,7 +1116,7 @@ export class AdvancedAquariumScene {
       resolveTankRelativePosition(dimensions, AQUARIUM_DEPTH_LAYER_ANCHORS.midground)
     )
     midground.renderOrder = 1
-    midground.userData.baseOpacity = 0.28
+    midground.userData.baseOpacity = 0.24
     this.depthMidgroundMesh = midground
     this.tank.add(midground)
 
@@ -980,9 +1124,10 @@ export class AdvancedAquariumScene {
       new THREE.PlaneGeometry(tankWidth * 0.92, tankHeight * 0.74),
       new THREE.MeshBasicMaterial({
         map: this.createForegroundShadowTexture(),
+        alphaMap: this.createFeatherMaskTexture('foreground'),
         color: new THREE.Color('#07212a'),
         transparent: true,
-        opacity: 0.11,
+        opacity: 0.08,
         depthWrite: false,
         side: THREE.DoubleSide
       })
@@ -992,7 +1137,7 @@ export class AdvancedAquariumScene {
       resolveTankRelativePosition(dimensions, AQUARIUM_DEPTH_LAYER_ANCHORS.foregroundShadow)
     )
     foregroundShadow.renderOrder = 4
-    foregroundShadow.userData.baseOpacity = 0.11
+    foregroundShadow.userData.baseOpacity = 0.08
     this.foregroundShadowMesh = foregroundShadow
     this.tank.add(foregroundShadow)
   }
@@ -1281,7 +1426,8 @@ export class AdvancedAquariumScene {
       typeof ctx.beginPath !== 'function' ||
       typeof ctx.moveTo !== 'function' ||
       typeof ctx.bezierCurveTo !== 'function' ||
-      typeof ctx.fill !== 'function'
+      typeof ctx.fill !== 'function' ||
+      typeof ctx.fillRect !== 'function'
     ) {
       return texture
     }
@@ -1293,6 +1439,37 @@ export class AdvancedAquariumScene {
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+    const hazeColumns = [
+      { x: 0.24, y: 0.36, radius: 104, alpha: 0.16 },
+      { x: 0.58, y: 0.26, radius: 92, alpha: 0.13 },
+      { x: 0.74, y: 0.46, radius: 118, alpha: 0.12 }
+    ]
+
+    ctx.globalCompositeOperation = 'screen'
+    hazeColumns.forEach((column) => {
+      const centerX = canvas.width * column.x
+      const centerY = canvas.height * column.y
+      const glow = ctx.createRadialGradient(
+        centerX - 18,
+        centerY - 24,
+        10,
+        centerX,
+        centerY,
+        column.radius
+      )
+      glow.addColorStop(0, `rgba(218, 247, 252, ${column.alpha})`)
+      glow.addColorStop(0.6, `rgba(132, 197, 207, ${column.alpha * 0.48})`)
+      glow.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = glow
+      ctx.fillRect(
+        centerX - column.radius,
+        centerY - column.radius,
+        column.radius * 2,
+        column.radius * 2
+      )
+    })
+
+    ctx.fillStyle = 'rgba(18, 60, 66, 0.36)'
     for (const plant of [
       { x: 0.16, width: 0.11, height: 0.38, sway: -0.04 },
       { x: 0.39, width: 0.12, height: 0.48, sway: 0.03 },
@@ -1338,6 +1515,40 @@ export class AdvancedAquariumScene {
     ctx.fillStyle = haze
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+    const lowerBloom = ctx.createRadialGradient(
+      canvas.width * 0.42,
+      canvas.height * 0.68,
+      canvas.width * 0.03,
+      canvas.width * 0.42,
+      canvas.height * 0.68,
+      canvas.width * 0.34
+    )
+    lowerBloom.addColorStop(0, 'rgba(148, 212, 219, 0.12)')
+    lowerBloom.addColorStop(0.62, 'rgba(84, 140, 148, 0.05)')
+    lowerBloom.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = lowerBloom
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalCompositeOperation = 'destination-in'
+    const verticalMask = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    verticalMask.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    verticalMask.addColorStop(0.24, 'rgba(255, 255, 255, 0.7)')
+    verticalMask.addColorStop(0.52, 'rgba(255, 255, 255, 0.96)')
+    verticalMask.addColorStop(0.78, 'rgba(255, 255, 255, 0.76)')
+    verticalMask.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = verticalMask
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const horizontalMask = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    horizontalMask.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    horizontalMask.addColorStop(0.22, 'rgba(255, 255, 255, 0.72)')
+    horizontalMask.addColorStop(0.6, 'rgba(255, 255, 255, 0.98)')
+    horizontalMask.addColorStop(0.78, 'rgba(255, 255, 255, 0.68)')
+    horizontalMask.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = horizontalMask
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.globalCompositeOperation = 'source-over'
+
     texture.colorSpace = THREE.SRGBColorSpace
     return texture
   }
@@ -1352,15 +1563,16 @@ export class AdvancedAquariumScene {
     if (
       !ctx ||
       typeof ctx.createLinearGradient !== 'function' ||
-      typeof ctx.createRadialGradient !== 'function'
+      typeof ctx.createRadialGradient !== 'function' ||
+      typeof ctx.fillRect !== 'function'
     ) {
       return texture
     }
 
     const topShade = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    topShade.addColorStop(0, 'rgba(4, 17, 24, 0.24)')
-    topShade.addColorStop(0.18, 'rgba(6, 26, 34, 0.1)')
-    topShade.addColorStop(0.56, 'rgba(6, 26, 34, 0.03)')
+    topShade.addColorStop(0, 'rgba(4, 17, 24, 0.18)')
+    topShade.addColorStop(0.18, 'rgba(6, 26, 34, 0.08)')
+    topShade.addColorStop(0.56, 'rgba(6, 26, 34, 0.02)')
     topShade.addColorStop(1, 'rgba(4, 17, 24, 0)')
     ctx.fillStyle = topShade
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -1373,8 +1585,8 @@ export class AdvancedAquariumScene {
       canvas.height * 0.18,
       canvas.width * 0.36
     )
-    canopy.addColorStop(0, 'rgba(6, 26, 34, 0.18)')
-    canopy.addColorStop(0.72, 'rgba(6, 26, 34, 0.06)')
+    canopy.addColorStop(0, 'rgba(6, 26, 34, 0.12)')
+    canopy.addColorStop(0.72, 'rgba(6, 26, 34, 0.04)')
     canopy.addColorStop(1, 'rgba(6, 26, 34, 0)')
     ctx.fillStyle = canopy
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -1387,11 +1599,45 @@ export class AdvancedAquariumScene {
       canvas.height * 0.28,
       canvas.width * 0.28
     )
-    rightShadow.addColorStop(0, 'rgba(8, 29, 37, 0.14)')
-    rightShadow.addColorStop(0.68, 'rgba(8, 29, 37, 0.04)')
+    rightShadow.addColorStop(0, 'rgba(8, 29, 37, 0.1)')
+    rightShadow.addColorStop(0.68, 'rgba(8, 29, 37, 0.03)')
     rightShadow.addColorStop(1, 'rgba(8, 29, 37, 0)')
     ctx.fillStyle = rightShadow
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const leftShadow = ctx.createRadialGradient(
+      canvas.width * 0.18,
+      canvas.height * 0.3,
+      canvas.width * 0.04,
+      canvas.width * 0.18,
+      canvas.height * 0.3,
+      canvas.width * 0.22
+    )
+    leftShadow.addColorStop(0, 'rgba(9, 32, 40, 0.08)')
+    leftShadow.addColorStop(0.7, 'rgba(9, 32, 40, 0.02)')
+    leftShadow.addColorStop(1, 'rgba(9, 32, 40, 0)')
+    ctx.fillStyle = leftShadow
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.globalCompositeOperation = 'destination-in'
+    const verticalMask = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    verticalMask.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    verticalMask.addColorStop(0.16, 'rgba(255, 255, 255, 0.82)')
+    verticalMask.addColorStop(0.42, 'rgba(255, 255, 255, 0.68)')
+    verticalMask.addColorStop(0.68, 'rgba(255, 255, 255, 0.26)')
+    verticalMask.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = verticalMask
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const horizontalMask = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    horizontalMask.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    horizontalMask.addColorStop(0.18, 'rgba(255, 255, 255, 0.62)')
+    horizontalMask.addColorStop(0.5, 'rgba(255, 255, 255, 0.94)')
+    horizontalMask.addColorStop(0.82, 'rgba(255, 255, 255, 0.58)')
+    horizontalMask.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = horizontalMask
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.globalCompositeOperation = 'source-over'
 
     texture.colorSpace = THREE.SRGBColorSpace
     return texture
@@ -2501,9 +2747,9 @@ export class AdvancedAquariumScene {
     const causticsTexture = this.createCausticsTexture()
     const floorMaterial = new THREE.MeshBasicMaterial({
       map: causticsTexture,
-      color: new THREE.Color('#d3efe2'),
+      color: new THREE.Color('#c6dfd8'),
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.11,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide
@@ -2517,17 +2763,21 @@ export class AdvancedAquariumScene {
     floorCaustics.rotation.x = -Math.PI / 2
     floorCaustics.position.y = -tankHeight / 2 + 0.58
     floorCaustics.renderOrder = 2
-    floorCaustics.userData.baseOpacity = 0.14
+    floorCaustics.userData.baseOpacity = 0.11
     this.tank.add(floorCaustics)
+
+    const backMaterial = floorMaterial.clone()
+    backMaterial.color = new THREE.Color('#bcd5d0')
+    backMaterial.opacity = 0.08
 
     const backCaustics = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.9, tankHeight * 0.65),
-      floorMaterial.clone()
+      backMaterial
     )
     backCaustics.name = 'tank-caustics-back'
     backCaustics.position.set(tankWidth * 0.08, -tankHeight * 0.06, -tankDepth / 2 + 0.12)
     backCaustics.renderOrder = 2
-    backCaustics.userData.baseOpacity = 0.11
+    backCaustics.userData.baseOpacity = 0.08
     this.tank.add(backCaustics)
 
     this.causticsMeshes = [floorCaustics, backCaustics]
@@ -2557,16 +2807,16 @@ export class AdvancedAquariumScene {
     ctx.globalCompositeOperation = 'screen'
 
     const clusters = [
-      { x: 0.16, y: 0.2, radius: 64, alpha: 0.32 },
-      { x: 0.36, y: 0.14, radius: 52, alpha: 0.24 },
-      { x: 0.6, y: 0.24, radius: 72, alpha: 0.34 },
-      { x: 0.82, y: 0.16, radius: 48, alpha: 0.2 },
-      { x: 0.26, y: 0.44, radius: 78, alpha: 0.3 },
-      { x: 0.52, y: 0.38, radius: 62, alpha: 0.24 },
-      { x: 0.72, y: 0.48, radius: 88, alpha: 0.36 },
-      { x: 0.2, y: 0.74, radius: 70, alpha: 0.26 },
-      { x: 0.46, y: 0.8, radius: 58, alpha: 0.18 },
-      { x: 0.72, y: 0.68, radius: 80, alpha: 0.3 }
+      { x: 0.16, y: 0.2, radius: 64, alpha: 0.24 },
+      { x: 0.36, y: 0.14, radius: 52, alpha: 0.18 },
+      { x: 0.6, y: 0.24, radius: 72, alpha: 0.25 },
+      { x: 0.82, y: 0.16, radius: 48, alpha: 0.15 },
+      { x: 0.26, y: 0.44, radius: 78, alpha: 0.22 },
+      { x: 0.52, y: 0.38, radius: 62, alpha: 0.18 },
+      { x: 0.72, y: 0.48, radius: 88, alpha: 0.26 },
+      { x: 0.2, y: 0.74, radius: 70, alpha: 0.19 },
+      { x: 0.46, y: 0.8, radius: 58, alpha: 0.13 },
+      { x: 0.72, y: 0.68, radius: 80, alpha: 0.22 }
     ]
 
     for (const cluster of clusters) {
@@ -2581,9 +2831,9 @@ export class AdvancedAquariumScene {
         centerY,
         outerRadius
       )
-      outerGradient.addColorStop(0, `rgba(244, 252, 251, ${cluster.alpha})`)
-      outerGradient.addColorStop(0.35, `rgba(188, 233, 226, ${cluster.alpha * 0.58})`)
-      outerGradient.addColorStop(0.72, `rgba(103, 190, 191, ${cluster.alpha * 0.18})`)
+      outerGradient.addColorStop(0, `rgba(224, 241, 237, ${cluster.alpha})`)
+      outerGradient.addColorStop(0.35, `rgba(170, 221, 216, ${cluster.alpha * 0.54})`)
+      outerGradient.addColorStop(0.72, `rgba(96, 178, 182, ${cluster.alpha * 0.16})`)
       outerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = outerGradient
       ctx.fillRect(
@@ -2602,8 +2852,8 @@ export class AdvancedAquariumScene {
         centerY - outerRadius * 0.08,
         coreRadius
       )
-      coreGradient.addColorStop(0, `rgba(244, 252, 251, ${cluster.alpha * 0.74})`)
-      coreGradient.addColorStop(0.55, `rgba(176, 224, 218, ${cluster.alpha * 0.32})`)
+      coreGradient.addColorStop(0, `rgba(232, 240, 236, ${cluster.alpha * 0.62})`)
+      coreGradient.addColorStop(0.55, `rgba(167, 212, 207, ${cluster.alpha * 0.28})`)
       coreGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = coreGradient
       ctx.fillRect(
@@ -2766,7 +3016,7 @@ export class AdvancedAquariumScene {
     if (this.depthMidgroundMesh) {
       const material = this.depthMidgroundMesh.material as THREE.MeshBasicMaterial
       const depthTint = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#d9f5fb'), 0.22)
-      const baseOpacity = 0.18 + (premiumTheme.surfaceGlowStrength * 0.2)
+      const baseOpacity = 0.15 + (premiumTheme.surfaceGlowStrength * 0.12)
       this.depthMidgroundMesh.userData.baseOpacity = baseOpacity
       material.color = depthTint
       material.opacity = baseOpacity
@@ -2776,7 +3026,7 @@ export class AdvancedAquariumScene {
     if (this.foregroundShadowMesh) {
       const material = this.foregroundShadowMesh.material as THREE.MeshBasicMaterial
       const shadowTint = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#04151b'), 0.62)
-      const baseOpacity = 0.05 + (premiumTheme.glassReflectionStrength * 0.09)
+      const baseOpacity = 0.035 + (premiumTheme.glassReflectionStrength * 0.08)
       this.foregroundShadowMesh.userData.baseOpacity = baseOpacity
       material.color = shadowTint
       material.opacity = baseOpacity
@@ -2854,11 +3104,11 @@ export class AdvancedAquariumScene {
 
     this.causticsMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = premiumTheme.causticsStrength * (index === 0 ? 0.34 : 0.22)
+      const baseOpacity = premiumTheme.causticsStrength * (index === 0 ? 0.26 : 0.17)
       mesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(
-        new THREE.Color(index === 0 ? '#e6f8eb' : '#cbe8e0'),
-        index === 0 ? 0.48 : 0.28
+        new THREE.Color(index === 0 ? '#ddebe2' : '#c7dad3'),
+        index === 0 ? 0.36 : 0.22
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
