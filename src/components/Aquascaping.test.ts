@@ -44,6 +44,21 @@ const createMaterialAssetScene = (material: THREE.Material): THREE.Group => {
   return group
 }
 
+const getWorldBounds = (object: THREE.Object3D): THREE.Box3 => {
+  object.updateWorldMatrix(true, true)
+  return new THREE.Box3().setFromObject(object)
+}
+
+const countMeshes = (object: THREE.Object3D): number => {
+  let meshCount = 0
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      meshCount += 1
+    }
+  })
+  return meshCount
+}
+
 describe('AquascapingSystem composition', () => {
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
 
@@ -530,7 +545,7 @@ describe('AquascapingSystem premium materials', () => {
     const sharedNormal = new THREE.Texture()
     const sharedRoughness = new THREE.Texture()
     const supportRockAsset = createMaterialAssetScene(new THREE.MeshPhysicalMaterial({
-      color: '#5f5d58',
+      color: '#211d19',
       map: authoredMap,
       aoMap: authoredAo,
       roughness: 0.66,
@@ -571,6 +586,7 @@ describe('AquascapingSystem premium materials', () => {
     expect(clonedMaterial?.metalness).toBeLessThanOrEqual(0.04)
     expect(clonedMaterial?.roughness).toBeGreaterThanOrEqual(0.78)
     expect(clonedMaterial?.clearcoat).toBeLessThanOrEqual(0.03)
+    expect(clonedMaterial?.color.getHSL({ h: 0, s: 0, l: 0 }).l ?? 0).toBeGreaterThanOrEqual(0.4)
   })
 
   it('preserves authored driftwood materials when the asset already includes the key maps', () => {
@@ -770,7 +786,7 @@ describe('AquascapingSystem premium materials', () => {
 })
 
 describe('AquascapingSystem asset-backed hero scape', () => {
-  it('prefers support rock glbs for the visible foreground support rocks', () => {
+  it('builds left and right support rock clusters from authored support glbs', () => {
     const getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -779,6 +795,7 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     const bounds = createOpenWaterBounds()
     const supportRockA = createModelAssetScene('rock-support-a')
     const supportRockB = createModelAssetScene('rock-support-b')
+    const supportRockC = createModelAssetScene('rock-support-c')
     const pebbleCluster = createModelAssetScene('rock-pebble-cluster')
 
     new AquascapingSystem(scene, bounds, {
@@ -788,24 +805,48 @@ describe('AquascapingSystem asset-backed hero scape', () => {
       models: {
         'rock-support-a': { scene: supportRockA, sourceMesh: null },
         'rock-support-b': { scene: supportRockB, sourceMesh: null },
+        'rock-support-c': { scene: supportRockC, sourceMesh: null },
         'rock-pebble-cluster': { scene: pebbleCluster, sourceMesh: null }
       }
     })
 
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
-    const supportRocks = aquascapingGroup.children.filter(
+    const supportClusters = aquascapingGroup.children.filter(
       (child): child is THREE.Group =>
         child instanceof THREE.Group
-        && child.userData.role === 'support-rock'
-        && typeof child.userData.assetId === 'string'
+        && child.userData.role === 'support-rock-cluster'
     )
-    const supportAssetIds = new Set(supportRocks.map((rock) => rock.userData.assetId))
+    const leftCluster = supportClusters.find((cluster) => cluster.position.x < 0)
+    const rightCluster = supportClusters.find((cluster) => cluster.position.x > 0)
+    const surfaceY = bounds.min.y + 0.42
+    const leftPrimary = leftCluster?.children.find((child) => child.userData.role === 'support-rock')
+    const rightPrimary = rightCluster?.children.find((child) => child.userData.role === 'support-rock')
 
-    expect(supportAssetIds.has('rock-support-a')).toBe(true)
-    expect(supportAssetIds.has('rock-support-b')).toBe(true)
-    expect(supportRocks.some((rock) => rock.position.x < 0)).toBe(true)
-    expect(supportRocks.some((rock) => rock.position.x > 0)).toBe(true)
-    expect(aquascapingGroup.children.some((child) => child.userData.assetId === 'rock-pebble-cluster')).toBe(true)
+    expect(supportClusters).toHaveLength(2)
+    expect(leftCluster).toBeDefined()
+    expect(rightCluster).toBeDefined()
+    expect(leftCluster?.position.z ?? 0).toBeGreaterThan(0.9)
+    expect(rightCluster?.position.z ?? 0).toBeGreaterThan(0.9)
+    expect(leftCluster?.children.length ?? 0).toBeGreaterThanOrEqual(3)
+    expect(rightCluster?.children.length ?? 0).toBeGreaterThanOrEqual(3)
+    expect(leftCluster?.children.some((child) => child.userData.assetId === 'rock-pebble-cluster')).toBe(true)
+    expect(rightCluster?.children.some((child) => child.userData.assetId === 'rock-pebble-cluster')).toBe(true)
+
+    const leftAssetIds = new Set(leftCluster?.children.map((child) => child.userData.assetId).filter(Boolean) as string[])
+    const rightAssetIds = new Set(rightCluster?.children.map((child) => child.userData.assetId).filter(Boolean) as string[])
+
+    expect(leftAssetIds.has('rock-support-a') || leftAssetIds.has('rock-support-b')).toBe(true)
+    expect(rightAssetIds.has('rock-support-b') || rightAssetIds.has('rock-support-c')).toBe(true)
+
+    const leftBounds = leftPrimary ? getWorldBounds(leftPrimary) : null
+    const rightBounds = rightPrimary ? getWorldBounds(rightPrimary) : null
+    const leftBurialRatio = leftBounds ? (surfaceY - leftBounds.min.y) / Math.max(leftBounds.max.y - leftBounds.min.y, 0.001) : 0
+    const rightBurialRatio = rightBounds ? (surfaceY - rightBounds.min.y) / Math.max(rightBounds.max.y - rightBounds.min.y, 0.001) : 0
+
+    expect(leftBurialRatio).toBeGreaterThanOrEqual(0.06)
+    expect(leftBurialRatio).toBeLessThanOrEqual(0.16)
+    expect(rightBurialRatio).toBeGreaterThanOrEqual(0.06)
+    expect(rightBurialRatio).toBeLessThanOrEqual(0.16)
 
     getContextSpy.mockRestore()
   })
@@ -825,19 +866,23 @@ describe('AquascapingSystem asset-backed hero scape', () => {
       models: {
         'rock-support-a': null,
         'rock-support-b': null,
+        'rock-support-c': null,
         'rock-pebble-cluster': null
       }
     })
 
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
-    const supportRocks = aquascapingGroup.children.filter(
-      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'support-rock'
+    const supportClusters = aquascapingGroup.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'support-rock-cluster'
     )
+    const clusterMeshCounts = supportClusters.map((cluster) => countMeshes(cluster))
 
-    expect(supportRocks.length).toBeGreaterThanOrEqual(2)
-    expect(supportRocks.every((rock) => rock.children.filter((child) => child instanceof THREE.Mesh).length >= 2)).toBe(true)
-    expect(supportRocks.some((rock) => rock.position.x < 0)).toBe(true)
-    expect(supportRocks.some((rock) => rock.position.x > 0)).toBe(true)
+    expect(supportClusters).toHaveLength(2)
+    expect(supportClusters.every((cluster) => cluster.children.length >= 3)).toBe(true)
+    expect(supportClusters.every((cluster) => cluster.children.some((child) => child.userData.role === 'support-rock-scatter'))).toBe(true)
+    expect(clusterMeshCounts.every((count) => count >= 4)).toBe(true)
+    expect(supportClusters.some((cluster) => cluster.position.x < 0)).toBe(true)
+    expect(supportClusters.some((cluster) => cluster.position.x > 0)).toBe(true)
 
     getContextSpy.mockRestore()
   })

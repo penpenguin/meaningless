@@ -265,6 +265,7 @@ describe('public aquarium asset urls', () => {
     expect(modelUrlsById.get('rock-ridge-hero')).toBe('/assets/aquarium/rock-ridge-hero.glb')
     expect(modelUrlsById.get('rock-support-a')).toBe('/assets/aquarium/rock-support-a.glb')
     expect(modelUrlsById.get('rock-support-b')).toBe('/assets/aquarium/rock-support-b.glb')
+    expect(modelUrlsById.get('rock-support-c')).toBe('/assets/aquarium/rock-support-c.glb')
     expect(modelUrlsById.get('rock-pebble-cluster')).toBe('/assets/aquarium/rock-pebble-cluster.glb')
   })
 

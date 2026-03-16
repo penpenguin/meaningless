@@ -47,6 +47,26 @@ type RockClusterPieceDefinition = {
   role: 'support-rock-piece' | 'support-rock-chip' | 'support-rock-pebble'
 }
 
+type SupportRockClusterElementRole = 'support-rock' | 'support-rock-chip' | 'support-rock-scatter'
+
+type SupportRockClusterElementDefinition = {
+  role: SupportRockClusterElementRole
+  assetIds: string[]
+  offset: THREE.Vector3
+  rotation: THREE.Euler
+  scale: THREE.Vector3
+  burialRatio: number
+  fallbackPieceDefinitions?: RockClusterPieceDefinition[]
+  fallbackPebbleSeed?: number
+  fallbackPebbleColors?: string[]
+}
+
+type SupportRockClusterDefinition = {
+  side: 'left' | 'right'
+  position: THREE.Vector3
+  elements: SupportRockClusterElementDefinition[]
+}
+
 export type SubstrateHardscapeAnchor = {
   id: string
   x: number
@@ -832,7 +852,7 @@ export class AquascapingSystem {
     }
 
     if (id.startsWith('rock-')) {
-      return this.tuneRockMaterial(baseMaterial)
+      return this.tuneRockMaterial(baseMaterial, userData)
     }
 
     return baseMaterial
@@ -879,7 +899,7 @@ export class AquascapingSystem {
     }
 
     if (id.startsWith('rock-')) {
-      return this.createRockReplacementMaterial(material)
+      return this.createRockReplacementMaterial(material, userData)
     }
 
     return material.clone()
@@ -951,7 +971,10 @@ export class AquascapingSystem {
     return this.tuneDriftwoodMaterial(driftwoodMaterial)
   }
 
-  private tuneRockMaterial<T extends THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial>(material: T): T {
+  private tuneRockMaterial<T extends THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial>(
+    material: T,
+    userData: Record<string, unknown> = {}
+  ): T {
     material.map = material.map ?? this.getVisualTexture('rock-diffuse')
     material.normalMap = material.normalMap ?? this.getVisualTexture('rock-normal')
     if (material.normalMap) {
@@ -959,11 +982,22 @@ export class AquascapingSystem {
     }
     material.roughnessMap = material.roughnessMap ?? this.getVisualTexture('rock-roughness')
 
+    const role = userData.role
+    const isSupportRock = role === 'support-rock'
+      || role === 'support-rock-piece'
+      || role === 'support-rock-chip'
+      || role === 'support-rock-pebble'
+      || role === 'support-rock-scatter'
+    const lightnessFloor = isSupportRock ? 0.42 : 0.38
     const color = material.color?.clone() ?? new THREE.Color('#8a8378')
     const liftedHsl = { h: 0, s: 0, l: 0 }
     color.getHSL(liftedHsl)
-    if (liftedHsl.l < 0.38) {
-      color.setHSL(liftedHsl.h, Math.min(0.28, liftedHsl.s * 0.82), 0.38)
+    if (liftedHsl.l < lightnessFloor) {
+      color.setHSL(
+        liftedHsl.h,
+        THREE.MathUtils.clamp(liftedHsl.s * 0.92 + (isSupportRock ? 0.04 : 0.02), 0.12, isSupportRock ? 0.34 : 0.28),
+        lightnessFloor
+      )
     }
     material.color = color
     material.metalness = typeof material.metalness === 'number'
@@ -982,7 +1016,10 @@ export class AquascapingSystem {
     return material
   }
 
-  private createRockReplacementMaterial(material: THREE.Material): THREE.MeshPhysicalMaterial {
+  private createRockReplacementMaterial(
+    material: THREE.Material,
+    userData: Record<string, unknown> = {}
+  ): THREE.MeshPhysicalMaterial {
     const sourceMaterial = material as THREE.Material & {
       map?: THREE.Texture | null
       normalMap?: THREE.Texture | null
@@ -1019,7 +1056,7 @@ export class AquascapingSystem {
     rockMaterial.name = material.name
     rockMaterial.userData = { ...material.userData }
 
-    return this.tuneRockMaterial(rockMaterial)
+    return this.tuneRockMaterial(rockMaterial, userData)
   }
 
   private createLeafMaterial(
@@ -1755,10 +1792,10 @@ export class AquascapingSystem {
     mesh.geometry = nextGeometry
   }
 
-  private createRockMaterial(color: string): THREE.MeshPhysicalMaterial {
+  private createRockMaterial(color: string, userData: Record<string, unknown> = {}): THREE.MeshPhysicalMaterial {
     return this.createRockReplacementMaterial(new THREE.MeshStandardMaterial({
       color: new THREE.Color(color)
-    }))
+    }), userData)
   }
 
   private createRockClusterMesh(pieceDefinition: RockClusterPieceDefinition): THREE.Mesh {
@@ -1769,7 +1806,7 @@ export class AquascapingSystem {
         pieceDefinition.detail,
         pieceDefinition.seed
       ),
-      this.createRockMaterial(pieceDefinition.color)
+      this.createRockMaterial(pieceDefinition.color, { role: pieceDefinition.role })
     )
     mesh.position.copy(pieceDefinition.offset)
     mesh.rotation.copy(pieceDefinition.rotation)
@@ -1838,7 +1875,7 @@ export class AquascapingSystem {
   }
 
   private createFallbackSupportRockGroup(
-    role: 'hero-rock' | 'support-rock',
+    role: 'hero-rock' | 'support-rock' | 'support-rock-chip',
     pieceDefinitions: RockClusterPieceDefinition[]
   ): THREE.Group {
     const rockGroup = new THREE.Group()
@@ -1851,6 +1888,49 @@ export class AquascapingSystem {
     })
 
     return rockGroup
+  }
+
+  private sinkObjectIntoSubstrate(
+    object: THREE.Object3D,
+    surfaceY: number,
+    burialRatio: number
+  ): void {
+    object.updateWorldMatrix(true, true)
+    const bounds = new THREE.Box3().setFromObject(object)
+    const height = Math.max(bounds.max.y - bounds.min.y, 0.001)
+    const targetBottomY = surfaceY - height * burialRatio
+    object.position.y += targetBottomY - bounds.min.y
+  }
+
+  private createSupportRockCluster(
+    definition: SupportRockClusterDefinition,
+    surfaceY: number
+  ): THREE.Group {
+    const clusterGroup = new THREE.Group()
+    clusterGroup.position.copy(definition.position)
+    clusterGroup.userData = {
+      role: 'support-rock-cluster',
+      side: definition.side
+    }
+
+    definition.elements.forEach((element) => {
+      const clusterElement = element.role === 'support-rock-scatter'
+        ? this.cloneFirstAvailableVisualModelGroup(element.assetIds, { role: element.role })
+          ?? this.createFallbackPebbleCluster(
+            element.fallbackPebbleSeed ?? 0,
+            element.fallbackPebbleColors ?? ['#867d70', '#968c7d', '#756c60']
+          )
+        : this.cloneFirstAvailableVisualModelGroup(element.assetIds, { role: element.role })
+          ?? this.createFallbackSupportRockGroup(element.role, element.fallbackPieceDefinitions ?? [])
+
+      clusterElement.position.set(element.offset.x, 0, element.offset.z)
+      clusterElement.rotation.copy(element.rotation)
+      clusterElement.scale.copy(element.scale)
+      clusterGroup.add(clusterElement)
+      this.sinkObjectIntoSubstrate(clusterElement, surfaceY, element.burialRatio)
+    })
+
+    return clusterGroup
   }
 
   private createFallbackPebbleCluster(seed: number, colors: string[]): THREE.Group {
@@ -1979,190 +2059,239 @@ export class AquascapingSystem {
     bounds.getCenter(center)
     const surfaceY = bounds.min.y + 0.42
 
-    const rockPlacements = [
+    const heroRockPlacement = {
+      role: 'hero-rock' as const,
+      assetIds: ['rock-support-c', 'rock-support-a'],
+      position: new THREE.Vector3(center.x - size.x * 0.05, surfaceY - 0.08, center.z + size.z * 0.07),
+      rotation: new THREE.Euler(-0.08, -0.26, 0.04),
+      scale: new THREE.Vector3(0.82, 0.76, 0.84),
+      pieceDefinitions: [
+        {
+          geometry: 'dodecahedron' as const,
+          radius: 0.7,
+          detail: 1,
+          offset: new THREE.Vector3(0, 0.5, 0),
+          rotation: new THREE.Euler(0.12, -0.2, 0.1),
+          scale: new THREE.Vector3(1.26, 0.72, 1.02),
+          color: '#8e8679',
+          seed: 0.4,
+          role: 'support-rock-piece' as const
+        },
+        {
+          geometry: 'icosahedron' as const,
+          radius: 0.32,
+          detail: 1,
+          offset: new THREE.Vector3(0.44, 0.18, -0.18),
+          rotation: new THREE.Euler(-0.08, 0.32, -0.06),
+          scale: new THREE.Vector3(0.92, 0.56, 0.84),
+          color: '#9b907d',
+          seed: 1.1,
+          role: 'support-rock-chip' as const
+        },
+        {
+          geometry: 'octahedron' as const,
+          radius: 0.22,
+          detail: 1,
+          offset: new THREE.Vector3(-0.38, 0.14, 0.2),
+          rotation: new THREE.Euler(0.1, -0.28, 0.08),
+          scale: new THREE.Vector3(0.88, 0.52, 0.78),
+          color: '#72695e',
+          seed: 1.6,
+          role: 'support-rock-chip' as const
+        }
+      ],
+      pebblePosition: new THREE.Vector3(center.x - size.x * 0.14, surfaceY - 0.1, center.z + size.z * 0.16),
+      pebbleRotation: new THREE.Euler(0.04, 0.28, -0.02),
+      pebbleScale: new THREE.Vector3(0.56, 0.56, 0.56),
+      pebbleSeed: 2.4,
+      pebbleColors: ['#877d6c', '#9a907c', '#72685d']
+    }
+
+    const heroRock = this.cloneFirstAvailableVisualModelGroup(heroRockPlacement.assetIds, {
+      role: heroRockPlacement.role
+    }) ?? this.createFallbackSupportRockGroup(heroRockPlacement.role, heroRockPlacement.pieceDefinitions)
+    heroRock.position.copy(heroRockPlacement.position)
+    heroRock.rotation.copy(heroRockPlacement.rotation)
+    heroRock.scale.copy(heroRockPlacement.scale)
+    this.decorations.push(heroRock)
+    this.group.add(heroRock)
+
+    const heroPebbleCluster = this.cloneFirstAvailableVisualModelGroup(['rock-pebble-cluster'], {
+      role: 'support-rock-scatter'
+    }) ?? this.createFallbackPebbleCluster(heroRockPlacement.pebbleSeed, heroRockPlacement.pebbleColors)
+    heroPebbleCluster.position.copy(heroRockPlacement.pebblePosition)
+    heroPebbleCluster.rotation.copy(heroRockPlacement.pebbleRotation)
+    heroPebbleCluster.scale.copy(heroRockPlacement.pebbleScale)
+    this.decorations.push(heroPebbleCluster)
+    this.group.add(heroPebbleCluster)
+
+    const supportClusterPlacements: SupportRockClusterDefinition[] = [
       {
-        role: 'hero-rock' as const,
-        assetIds: ['rock-support-c', 'rock-support-a'],
-        position: new THREE.Vector3(center.x - size.x * 0.05, surfaceY - 0.08, center.z + size.z * 0.07),
-        rotation: new THREE.Euler(-0.08, -0.26, 0.04),
-        scale: new THREE.Vector3(0.82, 0.76, 0.84),
-        pieceDefinitions: [
+        side: 'left',
+        position: new THREE.Vector3(center.x - size.x * 0.36, surfaceY, center.z + size.z * 0.21),
+        elements: [
           {
-            geometry: 'dodecahedron' as const,
-            radius: 0.7,
-            detail: 1,
-            offset: new THREE.Vector3(0, 0.5, 0),
-            rotation: new THREE.Euler(0.12, -0.2, 0.1),
-            scale: new THREE.Vector3(1.26, 0.72, 1.02),
-            color: '#8e8679',
-            seed: 0.4,
-            role: 'support-rock-piece' as const
+            role: 'support-rock',
+            assetIds: ['rock-support-a', 'rock-support-b'],
+            offset: new THREE.Vector3(0, 0, 0.08),
+            rotation: new THREE.Euler(0.04, 0.56, -0.06),
+            scale: new THREE.Vector3(0.9, 0.82, 0.88),
+            burialRatio: 0.1,
+            fallbackPieceDefinitions: [
+              {
+                geometry: 'icosahedron',
+                radius: 0.8,
+                detail: 1,
+                offset: new THREE.Vector3(0, 0.5, 0),
+                rotation: new THREE.Euler(0.08, 0.24, -0.06),
+                scale: new THREE.Vector3(1.28, 0.72, 0.94),
+                color: '#887e70',
+                seed: 3.1,
+                role: 'support-rock-piece'
+              },
+              {
+                geometry: 'dodecahedron',
+                radius: 0.28,
+                detail: 1,
+                offset: new THREE.Vector3(0.42, 0.14, -0.18),
+                rotation: new THREE.Euler(-0.06, 0.28, -0.1),
+                scale: new THREE.Vector3(0.92, 0.52, 0.8),
+                color: '#9b8f7c',
+                seed: 3.6,
+                role: 'support-rock-chip'
+              }
+            ]
           },
           {
-            geometry: 'icosahedron' as const,
-            radius: 0.32,
-            detail: 1,
-            offset: new THREE.Vector3(0.44, 0.18, -0.18),
-            rotation: new THREE.Euler(-0.08, 0.32, -0.06),
-            scale: new THREE.Vector3(0.92, 0.56, 0.84),
-            color: '#9b907d',
-            seed: 1.1,
-            role: 'support-rock-chip' as const
+            role: 'support-rock-chip',
+            assetIds: ['rock-support-b'],
+            offset: new THREE.Vector3(0.86, 0, -0.18),
+            rotation: new THREE.Euler(-0.1, 0.18, -0.14),
+            scale: new THREE.Vector3(0.52, 0.46, 0.5),
+            burialRatio: 0.08,
+            fallbackPieceDefinitions: [
+              {
+                geometry: 'dodecahedron',
+                radius: 0.34,
+                detail: 1,
+                offset: new THREE.Vector3(0, 0.22, 0),
+                rotation: new THREE.Euler(0.04, 0.18, -0.08),
+                scale: new THREE.Vector3(1.04, 0.58, 0.88),
+                color: '#7c7367',
+                seed: 4.1,
+                role: 'support-rock-chip'
+              },
+              {
+                geometry: 'octahedron',
+                radius: 0.18,
+                detail: 1,
+                offset: new THREE.Vector3(-0.24, 0.08, 0.18),
+                rotation: new THREE.Euler(0.12, -0.24, 0.06),
+                scale: new THREE.Vector3(0.86, 0.44, 0.74),
+                color: '#9c907c',
+                seed: 4.6,
+                role: 'support-rock-pebble'
+              }
+            ]
           },
           {
-            geometry: 'octahedron' as const,
-            radius: 0.22,
-            detail: 1,
-            offset: new THREE.Vector3(-0.38, 0.14, 0.2),
-            rotation: new THREE.Euler(0.1, -0.28, 0.08),
-            scale: new THREE.Vector3(0.88, 0.52, 0.78),
-            color: '#72695e',
-            seed: 1.6,
-            role: 'support-rock-chip' as const
+            role: 'support-rock-scatter',
+            assetIds: ['rock-pebble-cluster'],
+            offset: new THREE.Vector3(-0.34, 0, 0.42),
+            rotation: new THREE.Euler(0.02, -0.18, 0.02),
+            scale: new THREE.Vector3(0.58, 0.52, 0.54),
+            burialRatio: 0.11,
+            fallbackPebbleSeed: 5.2,
+            fallbackPebbleColors: ['#8a7e6c', '#a0937f', '#70675d']
           }
-        ],
-        pebblePosition: new THREE.Vector3(center.x - size.x * 0.14, surfaceY - 0.1, center.z + size.z * 0.16),
-        pebbleRotation: new THREE.Euler(0.04, 0.28, -0.02),
-        pebbleScale: new THREE.Vector3(0.56, 0.56, 0.56),
-        pebbleSeed: 2.4,
-        pebbleColors: ['#877d6c', '#9a907c', '#72685d']
+        ]
       },
       {
-        role: 'support-rock' as const,
-        assetIds: ['rock-support-a'],
-        position: new THREE.Vector3(center.x - size.x * 0.35, surfaceY - 0.12, center.z + size.z * 0.2),
-        rotation: new THREE.Euler(0.02, 0.54, -0.06),
-        scale: new THREE.Vector3(0.98, 0.82, 0.9),
-        pieceDefinitions: [
+        side: 'right',
+        position: new THREE.Vector3(center.x + size.x * 0.38, surfaceY, center.z + size.z * 0.18),
+        elements: [
           {
-            geometry: 'icosahedron' as const,
-            radius: 0.84,
-            detail: 1,
-            offset: new THREE.Vector3(0, 0.56, 0),
-            rotation: new THREE.Euler(0.08, 0.22, -0.04),
-            scale: new THREE.Vector3(1.34, 0.7, 0.96),
-            color: '#8b8275',
-            seed: 3.1,
-            role: 'support-rock-piece' as const
+            role: 'support-rock',
+            assetIds: ['rock-support-b', 'rock-support-c'],
+            offset: new THREE.Vector3(0.04, 0, 0.02),
+            rotation: new THREE.Euler(-0.08, -0.46, 0.08),
+            scale: new THREE.Vector3(0.88, 0.8, 0.92),
+            burialRatio: 0.09,
+            fallbackPieceDefinitions: [
+              {
+                geometry: 'dodecahedron',
+                radius: 0.74,
+                detail: 1,
+                offset: new THREE.Vector3(0, 0.48, 0),
+                rotation: new THREE.Euler(-0.1, -0.22, 0.06),
+                scale: new THREE.Vector3(1.2, 0.68, 1.04),
+                color: '#8f8474',
+                seed: 6.1,
+                role: 'support-rock-piece'
+              },
+              {
+                geometry: 'icosahedron',
+                radius: 0.24,
+                detail: 1,
+                offset: new THREE.Vector3(-0.36, 0.14, -0.12),
+                rotation: new THREE.Euler(0.06, -0.28, 0.12),
+                scale: new THREE.Vector3(0.9, 0.5, 0.78),
+                color: '#766c61',
+                seed: 6.5,
+                role: 'support-rock-chip'
+              }
+            ]
           },
           {
-            geometry: 'dodecahedron' as const,
-            radius: 0.46,
-            detail: 1,
-            offset: new THREE.Vector3(0.58, 0.2, -0.16),
-            rotation: new THREE.Euler(-0.06, 0.3, -0.1),
-            scale: new THREE.Vector3(0.98, 0.58, 0.88),
-            color: '#a09482',
-            seed: 3.7,
-            role: 'support-rock-chip' as const
+            role: 'support-rock-chip',
+            assetIds: ['rock-support-c'],
+            offset: new THREE.Vector3(-0.82, 0, -0.16),
+            rotation: new THREE.Euler(0.06, -0.24, 0.14),
+            scale: new THREE.Vector3(0.54, 0.44, 0.5),
+            burialRatio: 0.07,
+            fallbackPieceDefinitions: [
+              {
+                geometry: 'icosahedron',
+                radius: 0.32,
+                detail: 1,
+                offset: new THREE.Vector3(0, 0.2, 0),
+                rotation: new THREE.Euler(-0.08, -0.18, 0.1),
+                scale: new THREE.Vector3(1, 0.56, 0.84),
+                color: '#9d917d',
+                seed: 7.1,
+                role: 'support-rock-chip'
+              },
+              {
+                geometry: 'octahedron',
+                radius: 0.16,
+                detail: 1,
+                offset: new THREE.Vector3(0.22, 0.08, 0.14),
+                rotation: new THREE.Euler(0.1, 0.22, -0.06),
+                scale: new THREE.Vector3(0.82, 0.42, 0.7),
+                color: '#867b6d',
+                seed: 7.6,
+                role: 'support-rock-pebble'
+              }
+            ]
           },
           {
-            geometry: 'octahedron' as const,
-            radius: 0.28,
-            detail: 1,
-            offset: new THREE.Vector3(-0.56, 0.14, 0.22),
-            rotation: new THREE.Euler(0.12, -0.32, 0.08),
-            scale: new THREE.Vector3(0.94, 0.5, 0.82),
-            color: '#7a7166',
-            seed: 4.2,
-            role: 'support-rock-chip' as const
-          },
-          {
-            geometry: 'icosahedron' as const,
-            radius: 0.18,
-            detail: 1,
-            offset: new THREE.Vector3(0.22, 0.1, 0.34),
-            rotation: new THREE.Euler(0.04, 0.18, -0.04),
-            scale: new THREE.Vector3(0.82, 0.44, 0.74),
-            color: '#958a79',
-            seed: 4.8,
-            role: 'support-rock-chip' as const
+            role: 'support-rock-scatter',
+            assetIds: ['rock-pebble-cluster'],
+            offset: new THREE.Vector3(0.46, 0, 0.38),
+            rotation: new THREE.Euler(-0.04, 0.2, 0.04),
+            scale: new THREE.Vector3(0.56, 0.5, 0.54),
+            burialRatio: 0.12,
+            fallbackPebbleSeed: 8.1,
+            fallbackPebbleColors: ['#938674', '#7c7165', '#a19684']
           }
-        ],
-        pebblePosition: new THREE.Vector3(center.x - size.x * 0.24, surfaceY - 0.14, center.z + size.z * 0.09),
-        pebbleRotation: new THREE.Euler(0.04, -0.12, 0.02),
-        pebbleScale: new THREE.Vector3(0.64, 0.64, 0.64),
-        pebbleSeed: 5.4,
-        pebbleColors: ['#8d8170', '#a19583', '#70675d']
-      },
-      {
-        role: 'support-rock' as const,
-        assetIds: ['rock-support-b'],
-        position: new THREE.Vector3(center.x + size.x * 0.39, surfaceY - 0.12, center.z + size.z * 0.14),
-        rotation: new THREE.Euler(-0.06, -0.48, 0.1),
-        scale: new THREE.Vector3(0.94, 0.8, 1),
-        pieceDefinitions: [
-          {
-            geometry: 'dodecahedron' as const,
-            radius: 0.76,
-            detail: 1,
-            offset: new THREE.Vector3(0, 0.52, 0),
-            rotation: new THREE.Euler(-0.1, -0.24, 0.06),
-            scale: new THREE.Vector3(1.22, 0.68, 1.08),
-            color: '#918777',
-            seed: 6.1,
-            role: 'support-rock-piece' as const
-          },
-          {
-            geometry: 'icosahedron' as const,
-            radius: 0.38,
-            detail: 1,
-            offset: new THREE.Vector3(-0.54, 0.18, -0.18),
-            rotation: new THREE.Euler(0.06, -0.3, 0.12),
-            scale: new THREE.Vector3(0.96, 0.54, 0.86),
-            color: '#786e63',
-            seed: 6.6,
-            role: 'support-rock-chip' as const
-          },
-          {
-            geometry: 'octahedron' as const,
-            radius: 0.26,
-            detail: 1,
-            offset: new THREE.Vector3(0.52, 0.12, 0.26),
-            rotation: new THREE.Euler(0.12, 0.28, -0.08),
-            scale: new THREE.Vector3(0.88, 0.48, 0.78),
-            color: '#a19684',
-            seed: 7.1,
-            role: 'support-rock-chip' as const
-          },
-          {
-            geometry: 'dodecahedron' as const,
-            radius: 0.16,
-            detail: 1,
-            offset: new THREE.Vector3(-0.12, 0.08, 0.34),
-            rotation: new THREE.Euler(-0.04, 0.2, -0.06),
-            scale: new THREE.Vector3(0.82, 0.4, 0.7),
-            color: '#8a7f70',
-            seed: 7.7,
-            role: 'support-rock-chip' as const
-          }
-        ],
-        pebblePosition: new THREE.Vector3(center.x + size.x * 0.28, surfaceY - 0.14, center.z + size.z * 0.24),
-        pebbleRotation: new THREE.Euler(-0.02, 0.2, 0.04),
-        pebbleScale: new THREE.Vector3(0.6, 0.6, 0.6),
-        pebbleSeed: 8.4,
-        pebbleColors: ['#938775', '#7b7166', '#a49886']
+        ]
       }
     ]
 
-    rockPlacements.forEach((placement) => {
-      const rockGroup = this.cloneFirstAvailableVisualModelGroup(placement.assetIds, {
-        role: placement.role
-      }) ?? this.createFallbackSupportRockGroup(placement.role, placement.pieceDefinitions)
-      rockGroup.position.copy(placement.position)
-      rockGroup.rotation.copy(placement.rotation)
-      rockGroup.scale.copy(placement.scale)
-      this.decorations.push(rockGroup)
-      this.group.add(rockGroup)
-
-      const pebbleCluster = this.cloneFirstAvailableVisualModelGroup(['rock-pebble-cluster'], {
-        role: 'support-rock-scatter'
-      }) ?? this.createFallbackPebbleCluster(placement.pebbleSeed, placement.pebbleColors)
-      pebbleCluster.position.copy(placement.pebblePosition)
-      pebbleCluster.rotation.copy(placement.pebbleRotation)
-      pebbleCluster.scale.copy(placement.pebbleScale)
-      this.decorations.push(pebbleCluster)
-      this.group.add(pebbleCluster)
+    supportClusterPlacements.forEach((placement) => {
+      const cluster = this.createSupportRockCluster(placement, surfaceY)
+      this.decorations.push(cluster)
+      this.group.add(cluster)
     })
   }
 
