@@ -4,6 +4,7 @@ import type { AquascapeLayoutStyle, Theme } from '../types/aquarium'
 
 type PlantLayer = 'foreground' | 'background' | 'midground'
 type PlantType = 'ribbon-seaweed' | 'sword-leaf' | 'fan-leaf'
+type PlantRenderRole = 'hero' | 'repeated'
 
 type PlantClusterDefinition = {
   x: number
@@ -72,12 +73,14 @@ export type SubstratePlantAnchor = {
 }
 
 export const plantClusterDefinitions: PlantClusterDefinition[] = [
-  { x: -0.34, z: 0.18, layer: 'foreground', plantType: 'ribbon-seaweed', baseHeight: 2.6, spreadX: 0.9, spreadZ: 0.65, hueBase: 0.3 },
-  { x: -0.08, z: -0.2, layer: 'background', plantType: 'sword-leaf', baseHeight: 4, spreadX: 0.65, spreadZ: 0.55, hueBase: 0.36 },
-  { x: 0.18, z: 0.06, layer: 'midground', plantType: 'fan-leaf', baseHeight: 2.8, spreadX: 0.75, spreadZ: 0.55, hueBase: 0.29 },
-  { x: 0.36, z: -0.16, layer: 'background', plantType: 'ribbon-seaweed', baseHeight: 4.6, spreadX: 0.7, spreadZ: 0.5, hueBase: 0.42 },
-  { x: 0.04, z: 0.24, layer: 'foreground', plantType: 'sword-leaf', baseHeight: 2.5, spreadX: 0.82, spreadZ: 0.7, hueBase: 0.34 },
-  { x: -0.24, z: 0.02, layer: 'midground', plantType: 'fan-leaf', baseHeight: 3.1, spreadX: 0.72, spreadZ: 0.58, hueBase: 0.27 }
+  { x: -0.34, z: 0.2, layer: 'foreground', plantType: 'fan-leaf', baseHeight: 2.45, spreadX: 0.72, spreadZ: 0.52, hueBase: 0.24 },
+  { x: -0.3, z: -0.18, layer: 'background', plantType: 'sword-leaf', baseHeight: 5.2, spreadX: 0.66, spreadZ: 0.44, hueBase: 0.22 },
+  { x: -0.18, z: -0.02, layer: 'midground', plantType: 'fan-leaf', baseHeight: 3.35, spreadX: 0.68, spreadZ: 0.5, hueBase: 0.25 },
+  { x: 0.02, z: -0.24, layer: 'background', plantType: 'fan-leaf', baseHeight: 5.05, spreadX: 0.58, spreadZ: 0.42, hueBase: 0.31 },
+  { x: 0.08, z: 0.24, layer: 'foreground', plantType: 'sword-leaf', baseHeight: 2.55, spreadX: 0.7, spreadZ: 0.54, hueBase: 0.3 },
+  { x: 0.24, z: -0.02, layer: 'midground', plantType: 'ribbon-seaweed', baseHeight: 3.25, spreadX: 0.68, spreadZ: 0.48, hueBase: 0.28 },
+  { x: 0.32, z: -0.16, layer: 'background', plantType: 'fan-leaf', baseHeight: 5.6, spreadX: 0.62, spreadZ: 0.46, hueBase: 0.37 },
+  { x: -0.08, z: -0.12, layer: 'background', plantType: 'ribbon-seaweed', baseHeight: 4.9, spreadX: 0.6, spreadZ: 0.42, hueBase: 0.18 }
 ]
 
 export const substrateHardscapeAnchors: SubstrateHardscapeAnchor[] = [
@@ -132,12 +135,12 @@ export const substratePlantAnchors: SubstratePlantAnchor[] = plantClusterDefinit
   x: cluster.x,
   z: cluster.z,
   layer: cluster.layer,
-  radiusX: cluster.layer === 'background' ? 0.045 : 0.058,
-  radiusZ: cluster.layer === 'background' ? 0.045 : 0.052,
-  moundHeight: cluster.layer === 'background' ? 0.016 : 0.024,
-  scoopDepth: cluster.layer === 'background' ? 0.009 : 0.016,
-  scoopBiasX: cluster.plantType === 'fan-leaf' ? -0.012 : 0.012,
-  scoopBiasZ: cluster.layer === 'foreground' ? 0.02 : 0.012
+  radiusX: cluster.layer === 'background' ? 0.056 : cluster.layer === 'midground' ? 0.062 : 0.06,
+  radiusZ: cluster.layer === 'background' ? 0.052 : cluster.layer === 'midground' ? 0.056 : 0.054,
+  moundHeight: cluster.layer === 'background' ? 0.02 : 0.026,
+  scoopDepth: cluster.layer === 'background' ? 0.01 : 0.017,
+  scoopBiasX: cluster.plantType === 'fan-leaf' ? -0.014 : 0.014,
+  scoopBiasZ: cluster.layer === 'foreground' ? 0.024 : 0.014
 }))
 
 export class AquascapingSystem {
@@ -176,7 +179,7 @@ export class AquascapingSystem {
   }
   
   private createSeaweed(bounds: THREE.Box3): void {
-    const seaweedCount = 18
+    const seaweedCount = 24
     const size = new THREE.Vector3()
     bounds.getSize(size)
     
@@ -202,26 +205,32 @@ export class AquascapingSystem {
         plantType: cluster.plantType
       }
       
-      const height = cluster.baseHeight + Math.random() * (cluster.layer === 'background' ? 1.4 : 1.1)
-      const hue = cluster.hueBase + Math.random() * 0.06
+      const height = cluster.baseHeight + Math.random() * (
+        cluster.layer === 'background'
+          ? 1.6
+          : cluster.layer === 'midground'
+            ? 1.2
+            : 0.68
+      )
+      const hue = cluster.hueBase + Math.random() * 0.04
 
       this.populatePlantCluster(seaweedGroup, cluster, height, hue)
 
       if (cluster.plantType === 'ribbon-seaweed' && cluster.layer === 'background') {
-        seaweedGroup.scale.set(0.82, 1.08, 0.82)
+        seaweedGroup.scale.set(0.92, 1.18, 0.94)
       } else if (cluster.plantType === 'ribbon-seaweed' && cluster.layer === 'foreground') {
-        seaweedGroup.scale.set(1.08, 0.94, 1.08)
+        seaweedGroup.scale.set(1.14, 0.96, 1.14)
       } else if (cluster.plantType === 'sword-leaf') {
         seaweedGroup.scale.set(
-          cluster.layer === 'foreground' ? 1.04 : 0.9,
-          cluster.layer === 'background' ? 1.1 : 0.96,
-          cluster.layer === 'foreground' ? 1.04 : 0.92
+          cluster.layer === 'foreground' ? 1.1 : 0.98,
+          cluster.layer === 'background' ? 1.18 : cluster.layer === 'midground' ? 1.04 : 0.98,
+          cluster.layer === 'foreground' ? 1.08 : 0.96
         )
       } else {
         seaweedGroup.scale.set(
-          cluster.layer === 'foreground' ? 1.12 : 0.94,
-          cluster.layer === 'background' ? 1.04 : 0.92,
-          cluster.layer === 'foreground' ? 1.12 : 0.94
+          cluster.layer === 'foreground' ? 1.16 : 1,
+          cluster.layer === 'background' ? 1.12 : 0.98,
+          cluster.layer === 'foreground' ? 1.14 : 0.98
         )
       }
       seaweedGroup.rotation.y = (Math.random() - 0.5) * 0.45
@@ -243,49 +252,61 @@ export class AquascapingSystem {
         accentType: 'crypt-clump',
         plantType: 'sword-leaf' as const,
         layer: 'foreground' as const,
-        position: new THREE.Vector3(center.x - size.x * 0.17, substrateY, center.z + size.z * 0.2),
-        rotationY: -0.18,
-        scale: new THREE.Vector3(0.66, 0.72, 0.66),
-        height: 1.35,
-        hue: 0.23,
-        tint: '#5c6841',
-        blend: 0.34
+        position: new THREE.Vector3(center.x - size.x * 0.19, substrateY, center.z + size.z * 0.22),
+        rotationY: -0.2,
+        scale: new THREE.Vector3(0.82, 0.78, 0.82),
+        height: 1.48,
+        hue: 0.21,
+        tint: '#4f5e3b',
+        blend: 0.38
       },
       {
         accentType: 'foreground-tuft',
         plantType: 'fan-leaf' as const,
         layer: 'foreground' as const,
-        position: new THREE.Vector3(center.x + size.x * 0.12, substrateY, center.z + size.z * 0.24),
-        rotationY: 0.16,
-        scale: new THREE.Vector3(0.52, 0.56, 0.52),
-        height: 0.92,
-        hue: 0.28,
-        tint: '#53653a',
-        blend: 0.32
+        position: new THREE.Vector3(center.x + size.x * 0.13, substrateY, center.z + size.z * 0.25),
+        rotationY: 0.14,
+        scale: new THREE.Vector3(0.68, 0.64, 0.68),
+        height: 1.08,
+        hue: 0.26,
+        tint: '#4d6039',
+        blend: 0.36
       },
       {
         accentType: 'background-stem-group',
         plantType: 'ribbon-seaweed' as const,
         layer: 'background' as const,
-        position: new THREE.Vector3(center.x + size.x * 0.27, substrateY, center.z - size.z * 0.22),
-        rotationY: 0.1,
-        scale: new THREE.Vector3(0.58, 0.84, 0.58),
-        height: 2.35,
-        hue: 0.27,
-        tint: '#677242',
-        blend: 0.38
-      },
-      {
-        accentType: 'background-stem-group',
-        plantType: 'ribbon-seaweed' as const,
-        layer: 'background' as const,
-        position: new THREE.Vector3(center.x - size.x * 0.3, substrateY, center.z - size.z * 0.16),
-        rotationY: -0.24,
-        scale: new THREE.Vector3(0.54, 0.8, 0.54),
-        height: 2.1,
-        hue: 0.21,
-        tint: '#6e6244',
+        position: new THREE.Vector3(center.x + size.x * 0.28, substrateY, center.z - size.z * 0.23),
+        rotationY: 0.12,
+        scale: new THREE.Vector3(0.66, 1.02, 0.64),
+        height: 2.86,
+        hue: 0.24,
+        tint: '#556640',
         blend: 0.42
+      },
+      {
+        accentType: 'background-stem-group',
+        plantType: 'ribbon-seaweed' as const,
+        layer: 'background' as const,
+        position: new THREE.Vector3(center.x - size.x * 0.31, substrateY, center.z - size.z * 0.18),
+        rotationY: -0.26,
+        scale: new THREE.Vector3(0.62, 0.98, 0.6),
+        height: 2.72,
+        hue: 0.18,
+        tint: '#655842',
+        blend: 0.46
+      },
+      {
+        accentType: 'foreground-tuft',
+        plantType: 'fan-leaf' as const,
+        layer: 'foreground' as const,
+        position: new THREE.Vector3(center.x - size.x * 0.02, substrateY, center.z + size.z * 0.18),
+        rotationY: -0.08,
+        scale: new THREE.Vector3(0.56, 0.58, 0.56),
+        height: 0.96,
+        hue: 0.23,
+        tint: '#55663c',
+        blend: 0.34
       }
     ]
 
@@ -398,7 +419,7 @@ export class AquascapingSystem {
     height: number,
     hue: number
   ): void {
-    const frondCount = layer === 'background' ? 4 : layer === 'midground' ? 5 : 6
+    const frondCount = layer === 'background' ? 6 : 7
     const material = this.createSeaweedMaterial(hue, layer)
 
     for (let j = 0; j < frondCount; j++) {
@@ -408,15 +429,16 @@ export class AquascapingSystem {
       const geometry = this.createSeaweedFrondGeometry(frondWidth, frondHeight, bend)
       const frond = new THREE.Mesh(geometry, material)
       const spread = j - (frondCount - 1) / 2
+      const depthLane = (j % 2 === 0 ? -1 : 1) * (0.04 + Math.random() * 0.04)
       
       frond.position.set(
-        spread * 0.08 + (Math.random() - 0.5) * 0.05,
+        spread * 0.075 + (Math.random() - 0.5) * 0.04,
         frondHeight / 2,
-        (Math.random() - 0.5) * 0.08
+        depthLane + (Math.random() - 0.5) * 0.03
       )
-      frond.rotation.y = spread * 0.22 + (Math.random() - 0.5) * 0.35
-      frond.rotation.z = -0.12 + spread * 0.05 + (Math.random() - 0.5) * 0.12
-      frond.rotation.x = (Math.random() - 0.5) * 0.08
+      frond.rotation.y = spread * 0.28 + depthLane * 0.9 + (Math.random() - 0.5) * 0.18
+      frond.rotation.z = -0.14 + spread * 0.06 + (Math.random() - 0.5) * 0.1
+      frond.rotation.x = depthLane * 0.18 + (Math.random() - 0.5) * 0.04
       frond.castShadow = true
       frond.receiveShadow = true
       frond.userData = {
@@ -436,7 +458,7 @@ export class AquascapingSystem {
     height: number,
     hue: number
   ): void {
-    const leafCount = layer === 'background' ? 5 : 6
+    const leafCount = layer === 'background' ? 7 : 8
     const material = this.createLeafMaterial(hue, layer, 'sword-leaf')
 
     for (let j = 0; j < leafCount; j++) {
@@ -446,15 +468,17 @@ export class AquascapingSystem {
       const geometry = this.createSwordLeafGeometry(leafWidth, leafHeight, bend)
       const leaf = new THREE.Mesh(geometry, material)
       const spread = j - (leafCount - 1) / 2
+      const pairSign = spread === 0 ? 0 : Math.sign(spread)
+      const depthLane = pairSign * (0.05 + Math.random() * 0.04)
 
       leaf.position.set(
-        spread * 0.07 + (Math.random() - 0.5) * 0.04,
+        spread * 0.064 + pairSign * 0.012 + (Math.random() - 0.5) * 0.03,
         0,
-        (Math.random() - 0.5) * 0.07
+        depthLane + (Math.random() - 0.5) * 0.025
       )
-      leaf.rotation.y = spread * 0.28 + (Math.random() - 0.5) * 0.24
-      leaf.rotation.z = -0.06 + spread * 0.035 + (Math.random() - 0.5) * 0.08
-      leaf.rotation.x = (Math.random() - 0.5) * 0.05
+      leaf.rotation.y = spread * 0.22 + depthLane * 1.45 + (Math.random() - 0.5) * 0.16
+      leaf.rotation.z = -0.09 + spread * 0.03 + (Math.random() - 0.5) * 0.06
+      leaf.rotation.x = depthLane * 0.12 + (Math.random() - 0.5) * 0.04
       leaf.castShadow = true
       leaf.receiveShadow = true
       leaf.userData = {
@@ -474,7 +498,7 @@ export class AquascapingSystem {
     height: number,
     hue: number
   ): void {
-    const leafCount = layer === 'background' ? 4 : 5
+    const leafCount = layer === 'background' ? 6 : 7
     const material = this.createLeafMaterial(hue, layer, 'fan-leaf')
 
     for (let j = 0; j < leafCount; j++) {
@@ -484,15 +508,17 @@ export class AquascapingSystem {
       const geometry = this.createFanLeafGeometry(leafWidth, leafHeight, bend)
       const leaf = new THREE.Mesh(geometry, material)
       const spread = j - (leafCount - 1) / 2
+      const pairSign = spread === 0 ? 0 : Math.sign(spread)
+      const depthLane = pairSign * (0.05 + Math.random() * 0.03)
 
       leaf.position.set(
-        spread * 0.05 + (Math.random() - 0.5) * 0.03,
+        spread * 0.045 + pairSign * 0.012 + (Math.random() - 0.5) * 0.025,
         0,
-        spread * 0.03 + (Math.random() - 0.5) * 0.05
+        depthLane + spread * 0.018 + (Math.random() - 0.5) * 0.03
       )
-      leaf.rotation.y = spread * 0.34 + (Math.random() - 0.5) * 0.28
-      leaf.rotation.z = -0.18 + (Math.random() - 0.5) * 0.12
-      leaf.rotation.x = spread * 0.05 + (Math.random() - 0.5) * 0.04
+      leaf.rotation.y = spread * 0.28 + depthLane * 1.7 + (Math.random() - 0.5) * 0.14
+      leaf.rotation.z = -0.22 + pairSign * 0.03 + (Math.random() - 0.5) * 0.08
+      leaf.rotation.x = spread * 0.04 + depthLane * 0.14 + (Math.random() - 0.5) * 0.03
       leaf.castShadow = true
       leaf.receiveShadow = true
       leaf.userData = {
@@ -593,6 +619,7 @@ export class AquascapingSystem {
     const seaweedTexture = this.createSeaweedTexture(hue)
     const normalMap = this.createSeaweedNormalMap()
     const roughnessMap = this.createSeaweedRoughnessMap()
+    const profile = this.getPlantMaterialProfile(layer, 'ribbon-seaweed')
     
     const material = new THREE.MeshPhysicalMaterial({
       map: seaweedTexture,
@@ -601,19 +628,95 @@ export class AquascapingSystem {
       roughnessMap,
       color: new THREE.Color('#ffffff'),
       metalness: 0,
-      roughness: layer === 'background' ? 0.84 : 0.72,
-      transmission: layer === 'background' ? 0.04 : 0.08,
-      thickness: 0.02,
-      transparent: true,
-      opacity: layer === 'background' ? 0.8 : 0.92,
-      alphaTest: 0.28,
+      roughness: profile.roughness,
+      transmission: profile.transmission,
+      thickness: profile.thickness,
+      transparent: profile.transparent,
+      opacity: profile.opacity,
+      alphaTest: profile.alphaTest,
       side: THREE.DoubleSide,
-      envMapIntensity: 0.18,
-      clearcoat: 0.04,
-      clearcoatRoughness: 0.9
+      envMapIntensity: profile.envMapIntensity,
+      clearcoat: profile.clearcoat,
+      clearcoatRoughness: profile.clearcoatRoughness
     })
     material.shadowSide = THREE.DoubleSide
     return material
+  }
+
+  private getPlantMaterialProfile(
+    layer: PlantLayer,
+    plantType: PlantType,
+    role: PlantRenderRole = 'repeated'
+  ): {
+    roughness: number
+    transmission: number
+    thickness: number
+    transparent: boolean
+    opacity: number
+    alphaTest: number
+    envMapIntensity: number
+    clearcoat: number
+    clearcoatRoughness: number
+  } {
+    const alphaTestBase = plantType === 'ribbon-seaweed' ? 0.34 : plantType === 'fan-leaf' ? 0.2 : 0.16
+    const alphaTest = layer === 'background'
+      ? alphaTestBase + 0.04
+      : role === 'hero'
+        ? Math.max(0.12, alphaTestBase - 0.02)
+        : alphaTestBase
+
+    if (plantType === 'ribbon-seaweed') {
+      return {
+        roughness: layer === 'background' ? 0.88 : 0.82,
+        transmission: 0,
+        thickness: 0.008,
+        transparent: false,
+        opacity: 1,
+        alphaTest,
+        envMapIntensity: 0.06,
+        clearcoat: 0.02,
+        clearcoatRoughness: 0.94
+      }
+    }
+
+    return {
+      roughness: plantType === 'fan-leaf'
+        ? layer === 'background' ? 0.78 : 0.72
+        : layer === 'background' ? 0.84 : 0.78,
+      transmission: role === 'hero' ? (layer === 'background' ? 0.012 : 0.01) : 0,
+      thickness: role === 'hero'
+        ? plantType === 'fan-leaf' ? 0.02 : 0.016
+        : 0.01,
+      transparent: false,
+      opacity: 1,
+      alphaTest,
+      envMapIntensity: role === 'hero' ? 0.1 : 0.06,
+      clearcoat: role === 'hero'
+        ? plantType === 'fan-leaf' ? 0.05 : 0.035
+        : 0.02,
+      clearcoatRoughness: role === 'hero' ? 0.88 : 0.94
+    }
+  }
+
+  private getPlantTint(
+    layer: PlantLayer,
+    plantType: PlantType,
+    role: PlantRenderRole = 'repeated'
+  ): THREE.Color {
+    const hueOffset = plantType === 'fan-leaf' ? -0.01 : plantType === 'ribbon-seaweed' ? -0.025 : -0.015
+    const hue = layer === 'background' ? 0.26 + hueOffset : layer === 'midground' ? 0.29 + hueOffset : 0.31 + hueOffset
+    const saturation = plantType === 'fan-leaf' ? 0.3 : plantType === 'ribbon-seaweed' ? 0.42 : 0.28
+    const lightness = layer === 'background'
+      ? role === 'hero' ? 0.3 : 0.25
+      : layer === 'midground'
+        ? role === 'hero' ? 0.34 : 0.3
+        : role === 'hero' ? 0.36 : 0.32
+
+    return new THREE.Color().setHSL(hue, saturation, lightness)
+  }
+
+  private getPlantRenderRole(userData: Record<string, unknown> = {}): PlantRenderRole {
+    return userData.role === 'hero-canopy' ? 'hero' : 'repeated'
   }
 
   private getVisualTexture(id: string): THREE.Texture | null {
@@ -657,9 +760,9 @@ export class AquascapingSystem {
       const mesh = object as THREE.Mesh
       if (!(mesh instanceof THREE.Mesh)) return
       if (Array.isArray(mesh.material)) {
-        mesh.material = mesh.material.map((material) => this.createAssetBackedMaterial(id, material))
+        mesh.material = mesh.material.map((material) => this.createAssetBackedMaterial(id, material, clone.userData))
       } else if (mesh.material instanceof THREE.Material) {
-        mesh.material = this.createAssetBackedMaterial(id, mesh.material)
+        mesh.material = this.createAssetBackedMaterial(id, mesh.material, clone.userData)
       }
       this.ensureAoUv2(mesh)
       mesh.castShadow = true
@@ -669,9 +772,13 @@ export class AquascapingSystem {
     return clone
   }
 
-  private createAssetBackedMaterial(id: string, material: THREE.Material): THREE.Material {
+  private createAssetBackedMaterial(
+    id: string,
+    material: THREE.Material,
+    userData: Record<string, unknown> = {}
+  ): THREE.Material {
     if (!(material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshPhysicalMaterial)) {
-      return this.createReplacementAssetMaterial(id, material)
+      return this.createReplacementAssetMaterial(id, material, userData)
     }
 
     const baseMaterial = material.clone() as THREE.MeshStandardMaterial & THREE.MeshPhysicalMaterial & {
@@ -684,28 +791,37 @@ export class AquascapingSystem {
     }
 
     if (id.startsWith('plant-')) {
+      const layer = (userData.layer as PlantLayer | undefined) ?? 'background'
+      const plantType = (userData.plantType as PlantType | undefined) ?? 'sword-leaf'
+      const role = this.getPlantRenderRole(userData)
+      const profile = this.getPlantMaterialProfile(layer, plantType, role)
       baseMaterial.map = baseMaterial.map ?? this.getVisualTexture('leaf-diffuse')
       baseMaterial.alphaMap = baseMaterial.alphaMap ?? this.getVisualTexture('leaf-alpha')
       baseMaterial.normalMap = baseMaterial.normalMap ?? this.getVisualTexture('leaf-normal')
       if (baseMaterial.normalMap) {
-        baseMaterial.normalScale = new THREE.Vector2(0.36, 0.36)
+        baseMaterial.normalScale = new THREE.Vector2(0.34, 0.34)
       }
       baseMaterial.roughnessMap = baseMaterial.roughnessMap ?? this.getVisualTexture('leaf-roughness')
-      baseMaterial.color = baseMaterial.color?.clone() ?? new THREE.Color('#4d8150')
+      baseMaterial.color = (baseMaterial.color?.clone() ?? new THREE.Color('#4d8150'))
+        .multiply(this.getPlantTint(layer, plantType, role))
       baseMaterial.metalness = 0
       baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
-        ? Math.min(0.78, Math.max(baseMaterial.roughness, 0.48))
-        : 0.66
-      baseMaterial.transparent = baseMaterial.transparent || Boolean(baseMaterial.alphaMap)
-      baseMaterial.opacity = Math.min(baseMaterial.opacity ?? 0.92, 0.96)
-      baseMaterial.alphaTest = Math.max(baseMaterial.alphaTest ?? 0, baseMaterial.alphaMap ? 0.04 : 0)
+        ? Math.max(baseMaterial.roughness, profile.roughness)
+        : profile.roughness
+      baseMaterial.transparent = false
+      baseMaterial.opacity = profile.opacity
+      baseMaterial.alphaTest = Math.max(baseMaterial.alphaTest ?? 0, baseMaterial.alphaMap ? profile.alphaTest : 0)
       baseMaterial.side = THREE.DoubleSide
-      baseMaterial.envMapIntensity = Math.max(baseMaterial.envMapIntensity ?? 0, 0.16)
+      baseMaterial.envMapIntensity = Math.min(baseMaterial.envMapIntensity ?? profile.envMapIntensity, profile.envMapIntensity)
       if (baseMaterial instanceof THREE.MeshPhysicalMaterial) {
-        baseMaterial.transmission = Math.max(baseMaterial.transmission ?? 0, 0.02)
-        baseMaterial.thickness = Math.max(baseMaterial.thickness ?? 0, 0.02)
-        baseMaterial.clearcoat = Math.max(baseMaterial.clearcoat ?? 0, 0.04)
-        baseMaterial.clearcoatRoughness = baseMaterial.clearcoatRoughness ?? 0.78
+        baseMaterial.transmission = role === 'hero'
+          ? Math.min(Math.max(baseMaterial.transmission ?? 0, profile.transmission), 0.015)
+          : 0
+        baseMaterial.thickness = role === 'hero'
+          ? Math.max(baseMaterial.thickness ?? 0, profile.thickness)
+          : profile.thickness
+        baseMaterial.clearcoat = Math.min(baseMaterial.clearcoat ?? profile.clearcoat, profile.clearcoat)
+        baseMaterial.clearcoatRoughness = Math.max(baseMaterial.clearcoatRoughness ?? profile.clearcoatRoughness, profile.clearcoatRoughness)
       }
       baseMaterial.shadowSide = THREE.DoubleSide
       return baseMaterial
@@ -722,28 +838,37 @@ export class AquascapingSystem {
     return baseMaterial
   }
 
-  private createReplacementAssetMaterial(id: string, material: THREE.Material): THREE.Material {
+  private createReplacementAssetMaterial(
+    id: string,
+    material: THREE.Material,
+    userData: Record<string, unknown> = {}
+  ): THREE.Material {
     const baseMaterial = material as THREE.MeshStandardMaterial
 
     if (id.startsWith('plant-')) {
+      const layer = (userData.layer as PlantLayer | undefined) ?? 'background'
+      const plantType = (userData.plantType as PlantType | undefined) ?? 'sword-leaf'
+      const role = this.getPlantRenderRole(userData)
+      const profile = this.getPlantMaterialProfile(layer, plantType, role)
       const plantMaterial = new THREE.MeshPhysicalMaterial({
         map: this.getVisualTexture('leaf-diffuse'),
         alphaMap: this.getVisualTexture('leaf-alpha'),
         normalMap: this.getVisualTexture('leaf-normal'),
-        normalScale: new THREE.Vector2(0.36, 0.36),
+        normalScale: new THREE.Vector2(0.34, 0.34),
         roughnessMap: this.getVisualTexture('leaf-roughness'),
-        color: baseMaterial.color?.clone() ?? new THREE.Color('#4d8150'),
+        color: (baseMaterial.color?.clone() ?? new THREE.Color('#4d8150'))
+          .multiply(this.getPlantTint(layer, plantType, role)),
         metalness: 0,
-        roughness: 0.66,
-        transmission: 0.06,
-        thickness: 0.04,
-        transparent: true,
-        opacity: 0.92,
-        alphaTest: 0.06,
+        roughness: profile.roughness,
+        transmission: profile.transmission,
+        thickness: profile.thickness,
+        transparent: profile.transparent,
+        opacity: profile.opacity,
+        alphaTest: profile.alphaTest,
         side: THREE.DoubleSide,
-        envMapIntensity: 0.16,
-        clearcoat: 0.08,
-        clearcoatRoughness: 0.78
+        envMapIntensity: profile.envMapIntensity,
+        clearcoat: profile.clearcoat,
+        clearcoatRoughness: profile.clearcoatRoughness
       })
       plantMaterial.shadowSide = THREE.DoubleSide
       return plantMaterial
@@ -900,12 +1025,17 @@ export class AquascapingSystem {
   private createLeafMaterial(
     hue: number,
     layer: PlantLayer,
-    plantType: Exclude<PlantType, 'ribbon-seaweed'>
+    plantType: Exclude<PlantType, 'ribbon-seaweed'>,
+    role: PlantRenderRole = 'repeated'
   ): THREE.MeshPhysicalMaterial {
-    const color = new THREE.Color().setHSL(
-      hue,
-      plantType === 'fan-leaf' ? 0.44 : 0.38,
-      layer === 'background' ? 0.28 : plantType === 'fan-leaf' ? 0.4 : 0.35
+    const profile = this.getPlantMaterialProfile(layer, plantType, role)
+    const color = this.getPlantTint(layer, plantType, role).lerp(
+      new THREE.Color().setHSL(
+        hue,
+        plantType === 'fan-leaf' ? 0.3 : 0.26,
+        layer === 'background' ? 0.24 : plantType === 'fan-leaf' ? 0.32 : 0.28
+      ),
+      role === 'hero' ? 0.34 : 0.22
     )
 
     const material = new THREE.MeshPhysicalMaterial({
@@ -919,16 +1049,16 @@ export class AquascapingSystem {
       roughnessMap: this.getVisualTexture('leaf-roughness'),
       color,
       metalness: 0,
-      roughness: plantType === 'fan-leaf' ? 0.54 : 0.68,
-      transmission: layer === 'background' ? 0.03 : 0.06,
-      thickness: plantType === 'fan-leaf' ? 0.05 : 0.03,
-      transparent: true,
-      opacity: layer === 'background' ? 0.82 : 0.9,
-      alphaTest: plantType === 'fan-leaf' ? 0.08 : 0.04,
+      roughness: profile.roughness,
+      transmission: profile.transmission,
+      thickness: profile.thickness,
+      transparent: profile.transparent,
+      opacity: profile.opacity,
+      alphaTest: profile.alphaTest,
       side: THREE.DoubleSide,
-      envMapIntensity: 0.16,
-      clearcoat: plantType === 'fan-leaf' ? 0.12 : 0.06,
-      clearcoatRoughness: 0.76
+      envMapIntensity: profile.envMapIntensity,
+      clearcoat: profile.clearcoat,
+      clearcoatRoughness: profile.clearcoatRoughness
     })
     material.shadowSide = THREE.DoubleSide
     return material
@@ -1326,32 +1456,49 @@ export class AquascapingSystem {
 
     const canopyDefinitions = [
       {
-        position: new THREE.Vector3(center.x - size.x * 0.04, bounds.min.y + 0.42, center.z - size.z * 0.18),
-        rotationY: -0.18,
-        scale: new THREE.Vector3(0.92, 1.18, 0.92),
+        position: new THREE.Vector3(center.x - size.x * 0.24, bounds.min.y + 0.42, center.z - size.z * 0.22),
+        rotationY: -0.26,
+        scale: new THREE.Vector3(1.02, 1.5, 1),
         assetId: 'plant-sword-cluster',
         plantType: 'sword-leaf' as const,
-        height: 6.2,
-        hue: 0.35
+        height: 7.8,
+        hue: 0.24
       },
       {
-        position: new THREE.Vector3(center.x + size.x * 0.2, bounds.min.y + 0.42, center.z - size.z * 0.12),
-        rotationY: 0.24,
-        scale: new THREE.Vector3(0.82, 1.28, 0.82),
+        position: new THREE.Vector3(center.x - size.x * 0.08, bounds.min.y + 0.42, center.z - size.z * 0.18),
+        rotationY: -0.12,
+        scale: new THREE.Vector3(0.84, 1.34, 0.82),
+        assetId: 'plant-sword-cluster',
+        plantType: 'sword-leaf' as const,
+        height: 6.4,
+        hue: 0.21
+      },
+      {
+        position: new THREE.Vector3(center.x + size.x * 0.02, bounds.min.y + 0.42, center.z - size.z * 0.28),
+        rotationY: 0.08,
+        scale: new THREE.Vector3(0.94, 1.42, 0.9),
         assetId: 'plant-fan-cluster',
         plantType: 'fan-leaf' as const,
-        fallbackPlantType: 'ribbon-seaweed' as const,
-        height: 6.8,
-        hue: 0.42
+        height: 7.1,
+        hue: 0.3
       },
       {
-        position: new THREE.Vector3(center.x + size.x * 0.06, bounds.min.y + 0.42, center.z - size.z * 0.24),
-        rotationY: -0.36,
-        scale: new THREE.Vector3(0.86, 1.1, 0.86),
+        position: new THREE.Vector3(center.x + size.x * 0.24, bounds.min.y + 0.42, center.z - size.z * 0.2),
+        rotationY: 0.28,
+        scale: new THREE.Vector3(1, 1.48, 0.96),
+        assetId: 'plant-fan-cluster',
+        plantType: 'fan-leaf' as const,
+        height: 7.6,
+        hue: 0.37
+      },
+      {
+        position: new THREE.Vector3(center.x + size.x * 0.14, bounds.min.y + 0.42, center.z - size.z * 0.12),
+        rotationY: 0.2,
+        scale: new THREE.Vector3(0.8, 1.24, 0.78),
         assetId: 'plant-sword-cluster',
         plantType: 'sword-leaf' as const,
-        height: 5.7,
-        hue: 0.31
+        height: 5.9,
+        hue: 0.28
       }
     ]
     canopyDefinitions.forEach((definition) => {
@@ -1376,13 +1523,13 @@ export class AquascapingSystem {
       canopyGroup.userData = {
         role: 'hero-canopy',
         layer: 'background',
-        plantType: definition.fallbackPlantType ?? definition.plantType
+        plantType: definition.plantType
       }
 
-      if ((definition.fallbackPlantType ?? definition.plantType) === 'sword-leaf') {
+      if (definition.plantType === 'sword-leaf') {
         this.createSwordLeafPlant(canopyGroup, 'background', definition.height, definition.hue)
       } else {
-        this.createRibbonSeaweed(canopyGroup, 'background', definition.height, definition.hue)
+        this.createFanLeafPlant(canopyGroup, 'background', definition.height, definition.hue)
       }
 
       this.plants.push(canopyGroup)
@@ -1396,7 +1543,7 @@ export class AquascapingSystem {
       role: 'epiphyte-cluster'
     }
 
-    const leafMaterial = this.createLeafMaterial(hue, 'midground', 'fan-leaf')
+    const leafMaterial = this.createLeafMaterial(hue, 'midground', 'fan-leaf', 'hero')
     const leafCount = 5
 
     for (let i = 0; i < leafCount; i++) {

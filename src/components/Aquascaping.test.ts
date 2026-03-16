@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
-import { AquascapingSystem } from './Aquascaping'
+import { AquascapingSystem, plantClusterDefinitions } from './Aquascaping'
 import { createOpenWaterBounds } from './sceneBounds'
 
 const createMockCanvasContext = (): CanvasRenderingContext2D => {
@@ -151,9 +151,69 @@ describe('AquascapingSystem composition', () => {
     expect(ridgeRocks.length).toBeGreaterThanOrEqual(3)
     expect(ridgeSlates.length).toBeGreaterThanOrEqual(2)
     expect(ridgeRubble.length).toBeGreaterThanOrEqual(4)
-    expect(canopyPlants.length).toBeGreaterThanOrEqual(2)
+    expect(canopyPlants.length).toBeGreaterThanOrEqual(4)
     expect(canopyTypes.has('sword-leaf')).toBe(true)
-    expect(canopyTypes.has('ribbon-seaweed')).toBe(true)
+    expect(canopyTypes.has('fan-leaf')).toBe(true)
+  })
+
+  it('defines tall planted masses for the left rear, center rear, and right rear of the default layout', () => {
+    const backgroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'background')
+    const midgroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'midground')
+    const foregroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'foreground')
+
+    expect(backgroundClusters.length).toBeGreaterThanOrEqual(3)
+    expect(backgroundClusters.some((cluster) => cluster.x <= -0.22 && cluster.z <= -0.14)).toBe(true)
+    expect(backgroundClusters.some((cluster) => Math.abs(cluster.x) <= 0.12 && cluster.z <= -0.2)).toBe(true)
+    expect(backgroundClusters.some((cluster) => cluster.x >= 0.22 && cluster.z <= -0.14)).toBe(true)
+    expect(backgroundClusters.every((cluster) => cluster.baseHeight >= 4.8)).toBe(true)
+    expect(midgroundClusters.every((cluster) => cluster.baseHeight >= 3.2)).toBe(true)
+    expect(foregroundClusters.every((cluster) => cluster.baseHeight <= 2.8)).toBe(true)
+  })
+
+  it('builds denser foliage clusters so planted masses stay readable edge-on', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    ;(instance as unknown as { visualAssets: null }).visualAssets = null
+
+    const createRibbonSeaweed = (AquascapingSystem.prototype as unknown as {
+      createRibbonSeaweed: (
+        seaweedGroup: THREE.Group,
+        layer: 'foreground' | 'background' | 'midground',
+        height: number,
+        hue: number
+      ) => void
+    }).createRibbonSeaweed.bind(instance)
+    const createSwordLeafPlant = (AquascapingSystem.prototype as unknown as {
+      createSwordLeafPlant: (
+        seaweedGroup: THREE.Group,
+        layer: 'foreground' | 'background' | 'midground',
+        height: number,
+        hue: number
+      ) => void
+    }).createSwordLeafPlant.bind(instance)
+    const createFanLeafPlant = (AquascapingSystem.prototype as unknown as {
+      createFanLeafPlant: (
+        seaweedGroup: THREE.Group,
+        layer: 'foreground' | 'background' | 'midground',
+        height: number,
+        hue: number
+      ) => void
+    }).createFanLeafPlant.bind(instance)
+
+    const ribbonGroup = new THREE.Group()
+    const swordGroup = new THREE.Group()
+    const fanGroup = new THREE.Group()
+
+    createRibbonSeaweed(ribbonGroup, 'background', 5.8, 0.28)
+    createSwordLeafPlant(swordGroup, 'background', 5.3, 0.24)
+    createFanLeafPlant(fanGroup, 'midground', 3.4, 0.22)
+
+    expect(ribbonGroup.children).toHaveLength(6)
+    expect(swordGroup.children).toHaveLength(7)
+    expect(fanGroup.children).toHaveLength(7)
   })
 
   it('adds a soft hardscape shadow to ground the hero scape on the substrate', () => {
@@ -356,6 +416,47 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.alphaMap).toBe(leafAlpha)
     expect(material.normalMap).toBe(leafNormal)
     expect(material.roughnessMap).toBe(leafRoughness)
+  })
+
+  it('prefers alpha cutout over translucent foliage for repeated plants', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = null
+
+    const createLeafMaterial = (AquascapingSystem.prototype as unknown as {
+      createLeafMaterial: (
+        hue: number,
+        layer: 'foreground' | 'background' | 'midground',
+        plantType: 'sword-leaf' | 'fan-leaf'
+      ) => THREE.MeshPhysicalMaterial
+    }).createLeafMaterial.bind(instance)
+    const createSeaweedMaterial = (AquascapingSystem.prototype as unknown as {
+      createSeaweedMaterial: (
+        hue: number,
+        layer: 'foreground' | 'background' | 'midground'
+      ) => THREE.MeshPhysicalMaterial
+    }).createSeaweedMaterial.bind(instance)
+
+    const backgroundLeaf = createLeafMaterial(0.26, 'background', 'sword-leaf')
+    const backgroundRibbon = createSeaweedMaterial(0.3, 'background')
+
+    expect(backgroundLeaf.transparent).toBe(false)
+    expect(backgroundLeaf.opacity).toBe(1)
+    expect(backgroundLeaf.alphaTest).toBeGreaterThanOrEqual(0.16)
+    expect(backgroundLeaf.transmission).toBe(0)
+    expect(backgroundRibbon.transparent).toBe(false)
+    expect(backgroundRibbon.opacity).toBe(1)
+    expect(backgroundRibbon.alphaTest).toBeGreaterThanOrEqual(0.34)
+    expect(backgroundRibbon.transmission).toBe(0)
+
+    getContextSpy.mockRestore()
   })
 
   it('uses external wood textures for driftwood when visual assets are available', () => {
@@ -661,6 +762,10 @@ describe('AquascapingSystem premium materials', () => {
     expect(clonedMaterial?.alphaMap).toBe(sharedAlpha)
     expect(clonedMaterial?.normalMap).toBe(sharedNormal)
     expect(clonedMaterial?.roughnessMap).toBe(sharedRoughness)
+    expect(clonedMaterial?.transparent).toBe(false)
+    expect(clonedMaterial?.opacity).toBe(1)
+    expect(clonedMaterial?.alphaTest).toBeGreaterThanOrEqual(0.12)
+    expect(clonedMaterial?.transmission ?? 0).toBeLessThanOrEqual(0.015)
   })
 })
 
