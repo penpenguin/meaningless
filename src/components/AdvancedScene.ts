@@ -55,6 +55,8 @@ const substrateGeometrySegments = {
   frontHeight: 28
 }
 
+const SURFACE_CAUSTIC_PHASE_FAMILY = 'surface-caustic'
+
 const tankRelativeLightingAnchors = {
   lightCanopy: {
     x: 0.04,
@@ -78,25 +80,35 @@ const tankRelativeLightingAnchors = {
   },
   nearSurfaceBands: [
     {
-      x: -0.205,
-      topClearance: 0.198,
-      z: -0.1
+      x: -0.312,
+      topClearance: 0.202,
+      z: -0.06
     },
     {
-      x: 0.032,
-      topClearance: 0.214,
-      z: -0.15
+      x: -0.162,
+      topClearance: 0.194,
+      z: -0.11
     },
     {
-      x: 0.217,
-      topClearance: 0.189,
-      z: -0.2
+      x: 0.018,
+      topClearance: 0.212,
+      z: -0.152
+    },
+    {
+      x: 0.182,
+      topClearance: 0.192,
+      z: -0.198
+    },
+    {
+      x: 0.314,
+      topClearance: 0.205,
+      z: -0.244
     }
   ] satisfies TankRelativeAnchor[],
   midwater: {
-    x: 0.052,
-    y: 0.084,
-    z: -0.178
+    x: 0.028,
+    y: 0.082,
+    z: -0.172
   }
 } satisfies Record<string, TankRelativeAnchor | TankRelativeAnchor[]>
 
@@ -1246,51 +1258,106 @@ export class AdvancedAquariumScene {
     this.nearSurfaceLightMeshes = [
       {
         name: 'tank-light-near-surface-band-0',
-        size: new THREE.Vector2(tankWidth * 0.16, tankHeight * 0.5),
+        size: new THREE.Vector2(tankWidth * 0.26, tankHeight * 0.56),
         anchor: tankRelativeLightingAnchors.nearSurfaceBands[0],
-        rotationY: 0.08,
-        rotationZ: -0.04,
-        opacity: 0.18,
-        scrollX: 0.0038,
-        scrollY: 0.0105,
-        swayX: 0.08,
-        swayY: 0.04,
-        opacityPulse: 0.05,
-        phase: 0.2
+        rotationY: 0.12,
+        rotationZ: -0.05,
+        opacity: 0.14,
+        scrollX: 0.0028,
+        scrollY: 0.0078,
+        swayX: 0.1,
+        swayY: 0.045,
+        opacityPulse: 0.04,
+        phase: 0.18,
+        mapRepeatX: 1.18,
+        mapRepeatY: 1.02,
+        mapWarpX: 0.024,
+        mapWarpY: 0.016,
+        mapRotation: 0.038
       },
       {
         name: 'tank-light-near-surface-band-1',
-        size: new THREE.Vector2(tankWidth * 0.18, tankHeight * 0.54),
+        size: new THREE.Vector2(tankWidth * 0.24, tankHeight * 0.58),
         anchor: tankRelativeLightingAnchors.nearSurfaceBands[1],
-        rotationY: -0.06,
-        rotationZ: 0.03,
-        opacity: 0.2,
-        scrollX: -0.0028,
-        scrollY: 0.0094,
-        swayX: 0.06,
+        rotationY: -0.04,
+        rotationZ: 0.018,
+        opacity: 0.15,
+        scrollX: -0.0021,
+        scrollY: 0.0072,
+        swayX: 0.082,
         swayY: 0.05,
-        opacityPulse: 0.06,
-        phase: 0.9
+        opacityPulse: 0.05,
+        phase: 0.72,
+        mapRepeatX: 1.12,
+        mapRepeatY: 1.04,
+        mapWarpX: 0.022,
+        mapWarpY: 0.015,
+        mapRotation: 0.032
       },
       {
         name: 'tank-light-near-surface-band-2',
-        size: new THREE.Vector2(tankWidth * 0.14, tankHeight * 0.46),
+        size: new THREE.Vector2(tankWidth * 0.3, tankHeight * 0.62),
         anchor: tankRelativeLightingAnchors.nearSurfaceBands[2],
-        rotationY: -0.12,
-        rotationZ: -0.02,
-        opacity: 0.14,
-        scrollX: 0.0022,
-        scrollY: 0.0086,
-        swayX: 0.05,
-        swayY: 0.035,
+        rotationY: -0.09,
+        rotationZ: -0.016,
+        opacity: 0.16,
+        scrollX: 0.0014,
+        scrollY: 0.0068,
+        swayX: 0.072,
+        swayY: 0.052,
         opacityPulse: 0.05,
-        phase: 1.6
+        phase: 1.24,
+        mapRepeatX: 1.24,
+        mapRepeatY: 1.06,
+        mapWarpX: 0.026,
+        mapWarpY: 0.017,
+        mapRotation: 0.036
+      },
+      {
+        name: 'tank-light-near-surface-band-3',
+        size: new THREE.Vector2(tankWidth * 0.24, tankHeight * 0.57),
+        anchor: tankRelativeLightingAnchors.nearSurfaceBands[3],
+        rotationY: -0.08,
+        rotationZ: 0.024,
+        opacity: 0.15,
+        scrollX: -0.0018,
+        scrollY: 0.0076,
+        swayX: 0.088,
+        swayY: 0.046,
+        opacityPulse: 0.045,
+        phase: 1.84,
+        mapRepeatX: 1.14,
+        mapRepeatY: 1.03,
+        mapWarpX: 0.023,
+        mapWarpY: 0.015,
+        mapRotation: 0.03
+      },
+      {
+        name: 'tank-light-near-surface-band-4',
+        size: new THREE.Vector2(tankWidth * 0.25, tankHeight * 0.55),
+        anchor: tankRelativeLightingAnchors.nearSurfaceBands[4],
+        rotationY: -0.14,
+        rotationZ: -0.02,
+        opacity: 0.13,
+        scrollX: 0.0025,
+        scrollY: 0.0074,
+        swayX: 0.102,
+        swayY: 0.044,
+        opacityPulse: 0.04,
+        phase: 2.36,
+        mapRepeatX: 1.16,
+        mapRepeatY: 1.01,
+        mapWarpX: 0.024,
+        mapWarpY: 0.014,
+        mapRotation: 0.04
       }
     ].map((config) => {
+      const texture = this.createNearSurfaceLightTexture()
+      texture.repeat.set(config.mapRepeatX, config.mapRepeatY)
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(config.size.x, config.size.y),
         new THREE.MeshBasicMaterial({
-          map: this.createNearSurfaceLightTexture(),
+          map: texture,
           color: new THREE.Color('#bdebe3'),
           transparent: true,
           opacity: config.opacity,
@@ -1314,42 +1381,102 @@ export class AdvancedAquariumScene {
       mesh.userData.swayY = config.swayY
       mesh.userData.opacityPulse = config.opacityPulse
       mesh.userData.phase = config.phase
+      mesh.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
+      mesh.userData.mapRepeatX = config.mapRepeatX
+      mesh.userData.mapRepeatY = config.mapRepeatY
+      mesh.userData.mapWarpX = config.mapWarpX
+      mesh.userData.mapWarpY = config.mapWarpY
+      mesh.userData.mapRotation = config.mapRotation
       this.tank.add(mesh)
       return mesh
     })
 
-    const midwaterLayer = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth * 0.68, tankHeight * 0.54),
-      new THREE.MeshBasicMaterial({
-        map: this.createMidwaterLightTexture(),
-        color: new THREE.Color('#b8e6e0'),
-        transparent: true,
-        opacity: 0.12,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    )
     const midwaterPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.midwater)
-    midwaterLayer.name = 'tank-light-midwater'
-    midwaterLayer.position.copy(midwaterPosition)
-    midwaterLayer.rotation.y = -0.08
-    midwaterLayer.rotation.z = 0.03
-    midwaterLayer.renderOrder = 2
-    midwaterLayer.userData.baseOpacity = 0.12
-    midwaterLayer.userData.baseX = midwaterPosition.x
-    midwaterLayer.userData.baseY = midwaterPosition.y
-    midwaterLayer.userData.baseZ = midwaterPosition.z
-    midwaterLayer.userData.baseRotationZ = 0.03
-    midwaterLayer.userData.scrollX = 0.0012
-    midwaterLayer.userData.scrollY = 0.0048
-    midwaterLayer.userData.swayX = 0.05
-    midwaterLayer.userData.swayY = 0.04
-    midwaterLayer.userData.swayZ = 0.05
-    midwaterLayer.userData.opacityPulse = 0.04
-    midwaterLayer.userData.phase = 0.5
-    this.midwaterLightMeshes = [midwaterLayer]
-    this.tank.add(midwaterLayer)
+    this.midwaterLightMeshes = [
+      {
+        name: 'tank-light-midwater-fill',
+        size: new THREE.Vector2(tankWidth * 0.88, tankHeight * 0.62),
+        position: midwaterPosition.clone(),
+        rotationY: -0.06,
+        rotationZ: 0.028,
+        opacity: 0.09,
+        scrollX: 0.0011,
+        scrollY: 0.0038,
+        swayX: 0.055,
+        swayY: 0.042,
+        swayZ: 0.045,
+        opacityPulse: 0.035,
+        phase: 0.44,
+        mapRepeatX: 1.08,
+        mapRepeatY: 1.02,
+        mapWarpX: 0.015,
+        mapWarpY: 0.012,
+        mapRotation: 0.02,
+        variant: 'fill' as const
+      },
+      {
+        name: 'tank-light-midwater-breakup',
+        size: new THREE.Vector2(tankWidth * 0.54, tankHeight * 0.56),
+        position: midwaterPosition.clone().add(new THREE.Vector3(-tankWidth * 0.014, -tankHeight * 0.018, tankWidth * 0.008)),
+        rotationY: -0.1,
+        rotationZ: -0.014,
+        opacity: 0.12,
+        scrollX: -0.0008,
+        scrollY: 0.0049,
+        swayX: 0.042,
+        swayY: 0.048,
+        swayZ: 0.054,
+        opacityPulse: 0.042,
+        phase: 1.02,
+        mapRepeatX: 1.16,
+        mapRepeatY: 1.08,
+        mapWarpX: 0.019,
+        mapWarpY: 0.014,
+        mapRotation: 0.028,
+        variant: 'breakup' as const
+      }
+    ].map((config) => {
+      const texture = this.createMidwaterLightTexture(config.variant)
+      texture.repeat.set(config.mapRepeatX, config.mapRepeatY)
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(config.size.x, config.size.y),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          color: new THREE.Color('#b8e6e0'),
+          transparent: true,
+          opacity: config.opacity,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      )
+      mesh.name = config.name
+      mesh.position.copy(config.position)
+      mesh.rotation.y = config.rotationY
+      mesh.rotation.z = config.rotationZ
+      mesh.renderOrder = 2
+      mesh.userData.baseOpacity = config.opacity
+      mesh.userData.baseX = config.position.x
+      mesh.userData.baseY = config.position.y
+      mesh.userData.baseZ = config.position.z
+      mesh.userData.baseRotationZ = config.rotationZ
+      mesh.userData.scrollX = config.scrollX
+      mesh.userData.scrollY = config.scrollY
+      mesh.userData.swayX = config.swayX
+      mesh.userData.swayY = config.swayY
+      mesh.userData.swayZ = config.swayZ
+      mesh.userData.opacityPulse = config.opacityPulse
+      mesh.userData.phase = config.phase
+      mesh.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
+      mesh.userData.mapRepeatX = config.mapRepeatX
+      mesh.userData.mapRepeatY = config.mapRepeatY
+      mesh.userData.mapWarpX = config.mapWarpX
+      mesh.userData.mapWarpY = config.mapWarpY
+      mesh.userData.mapRotation = config.mapRotation
+      mesh.userData.midwaterLayer = config.variant
+      this.tank.add(mesh)
+      return mesh
+    })
   }
 
   private createHardscapeOcclusionLayers(dimensions: AquariumTankDimensions): void {
@@ -2306,8 +2433,9 @@ export class AdvancedAquariumScene {
     canvas.height = 512
     const ctx = canvas.getContext('2d')
     const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.ClampToEdgeWrapping
-    texture.wrapT = THREE.ClampToEdgeWrapping
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1.14, 1.04)
 
     if (
       !ctx ||
@@ -2315,6 +2443,7 @@ export class AdvancedAquariumScene {
       typeof ctx.createRadialGradient !== 'function' ||
       typeof ctx.beginPath !== 'function' ||
       typeof ctx.moveTo !== 'function' ||
+      typeof ctx.bezierCurveTo !== 'function' ||
       typeof ctx.lineTo !== 'function' ||
       typeof ctx.closePath !== 'function' ||
       typeof ctx.fill !== 'function'
@@ -2324,53 +2453,84 @@ export class AdvancedAquariumScene {
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0)'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.globalCompositeOperation = 'screen'
+    const surfaceFalloff = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    surfaceFalloff.addColorStop(0, 'rgba(244, 252, 255, 0.22)')
+    surfaceFalloff.addColorStop(0.18, 'rgba(196, 236, 233, 0.16)')
+    surfaceFalloff.addColorStop(0.46, 'rgba(92, 172, 176, 0.06)')
+    surfaceFalloff.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = surfaceFalloff
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+    ctx.globalCompositeOperation = 'screen'
     ;[
-      { x: 0.2, topWidth: 30, bottomWidth: 132, alpha: 0.34, drift: -18 },
-      { x: 0.48, topWidth: 26, bottomWidth: 126, alpha: 0.4, drift: 14 },
-      { x: 0.76, topWidth: 22, bottomWidth: 108, alpha: 0.28, drift: -10 }
-    ].forEach((shaft) => {
-      const centerX = canvas.width * shaft.x
+      { x: 0.08, topWidth: 84, midWidth: 140, bottomWidth: 178, drift: -20, alpha: 0.16 },
+      { x: 0.26, topWidth: 76, midWidth: 128, bottomWidth: 166, drift: 10, alpha: 0.18 },
+      { x: 0.48, topWidth: 94, midWidth: 150, bottomWidth: 190, drift: -8, alpha: 0.22 },
+      { x: 0.7, topWidth: 74, midWidth: 132, bottomWidth: 170, drift: 18, alpha: 0.17 },
+      { x: 0.9, topWidth: 70, midWidth: 122, bottomWidth: 160, drift: -12, alpha: 0.15 }
+    ].forEach((sheet) => {
+      const centerX = canvas.width * sheet.x
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-      gradient.addColorStop(0, `rgba(244, 252, 255, ${shaft.alpha})`)
-      gradient.addColorStop(0.18, `rgba(158, 231, 224, ${shaft.alpha * 0.68})`)
-      gradient.addColorStop(0.48, `rgba(92, 176, 177, ${shaft.alpha * 0.24})`)
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+      gradient.addColorStop(0, `rgba(250, 253, 255, ${sheet.alpha})`)
+      gradient.addColorStop(0.18, `rgba(198, 240, 234, ${sheet.alpha * 0.78})`)
+      gradient.addColorStop(0.52, `rgba(110, 191, 191, ${sheet.alpha * 0.28})`)
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = gradient
       ctx.beginPath()
-      ctx.moveTo(centerX - shaft.topWidth, 0)
-      ctx.lineTo(centerX + shaft.topWidth, 0)
-      ctx.lineTo(centerX + shaft.bottomWidth + shaft.drift, canvas.height)
-      ctx.lineTo(centerX - (shaft.bottomWidth * 0.72) + shaft.drift, canvas.height)
+      ctx.moveTo(centerX - sheet.topWidth, 0)
+      ctx.bezierCurveTo(
+        centerX - sheet.midWidth,
+        canvas.height * 0.2,
+        centerX - sheet.bottomWidth + sheet.drift,
+        canvas.height * 0.66,
+        centerX - (sheet.bottomWidth * 0.72) + sheet.drift,
+        canvas.height
+      )
+      ctx.lineTo(centerX + (sheet.bottomWidth * 0.8) + sheet.drift, canvas.height)
+      ctx.bezierCurveTo(
+        centerX + sheet.bottomWidth + sheet.drift,
+        canvas.height * 0.64,
+        centerX + sheet.midWidth,
+        canvas.height * 0.22,
+        centerX + sheet.topWidth,
+        0
+      )
       ctx.closePath()
       ctx.fill()
+    })
 
-      const breakup = ctx.createRadialGradient(
-        centerX + shaft.drift,
-        canvas.height * 0.72,
-        12,
-        centerX + shaft.drift,
-        canvas.height * 0.72,
-        shaft.bottomWidth * 0.9
+    ;[
+      { x: 0.18, y: 0.18, radius: 94, alpha: 0.13 },
+      { x: 0.42, y: 0.24, radius: 116, alpha: 0.16 },
+      { x: 0.64, y: 0.16, radius: 88, alpha: 0.14 },
+      { x: 0.84, y: 0.22, radius: 92, alpha: 0.12 }
+    ].forEach((bloom) => {
+      const gradient = ctx.createRadialGradient(
+        canvas.width * bloom.x,
+        canvas.height * bloom.y,
+        bloom.radius * 0.1,
+        canvas.width * bloom.x,
+        canvas.height * bloom.y,
+        bloom.radius
       )
-      breakup.addColorStop(0, 'rgba(255, 255, 255, 0.04)')
-      breakup.addColorStop(0.42, 'rgba(108, 195, 190, 0.14)')
-      breakup.addColorStop(1, 'rgba(255, 255, 255, 0)')
-      ctx.fillStyle = breakup
+      gradient.addColorStop(0, `rgba(251, 254, 255, ${bloom.alpha})`)
+      gradient.addColorStop(0.42, `rgba(188, 237, 231, ${bloom.alpha * 0.48})`)
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = gradient
       ctx.fillRect(
-        centerX - shaft.bottomWidth,
-        canvas.height * 0.46,
-        shaft.bottomWidth * 2,
-        canvas.height * 0.54
+        (canvas.width * bloom.x) - bloom.radius,
+        (canvas.height * bloom.y) - bloom.radius,
+        bloom.radius * 2,
+        bloom.radius * 2
       )
     })
 
     ctx.globalCompositeOperation = 'destination-out'
     ;[
-      { x: 0.3, y: 0.64, radius: 72, alpha: 0.3 },
-      { x: 0.58, y: 0.78, radius: 84, alpha: 0.34 },
-      { x: 0.8, y: 0.58, radius: 62, alpha: 0.22 }
+      { x: 0.16, y: 0.42, radius: 82, alpha: 0.14 },
+      { x: 0.34, y: 0.62, radius: 92, alpha: 0.18 },
+      { x: 0.58, y: 0.74, radius: 104, alpha: 0.2 },
+      { x: 0.82, y: 0.54, radius: 84, alpha: 0.16 }
     ].forEach((breakup) => {
       const erode = ctx.createRadialGradient(
         canvas.width * breakup.x,
@@ -2391,14 +2551,15 @@ export class AdvancedAquariumScene {
     return texture
   }
 
-  private createMidwaterLightTexture(): THREE.CanvasTexture {
+  private createMidwaterLightTexture(variant: 'fill' | 'breakup'): THREE.CanvasTexture {
     const canvas = document.createElement('canvas')
     canvas.width = 512
     canvas.height = 512
     const ctx = canvas.getContext('2d')
     const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.ClampToEdgeWrapping
-    texture.wrapT = THREE.ClampToEdgeWrapping
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1.08, variant === 'fill' ? 1.02 : 1.08)
 
     if (
       !ctx ||
@@ -2418,54 +2579,90 @@ export class AdvancedAquariumScene {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     const verticalFalloff = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    verticalFalloff.addColorStop(0, 'rgba(248, 253, 255, 0.82)')
-    verticalFalloff.addColorStop(0.14, 'rgba(208, 243, 240, 0.58)')
-    verticalFalloff.addColorStop(0.4, 'rgba(118, 197, 196, 0.2)')
-    verticalFalloff.addColorStop(0.72, 'rgba(40, 85, 94, 0.06)')
-    verticalFalloff.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    if (variant === 'fill') {
+      verticalFalloff.addColorStop(0, 'rgba(246, 252, 255, 0.48)')
+      verticalFalloff.addColorStop(0.16, 'rgba(204, 240, 235, 0.34)')
+      verticalFalloff.addColorStop(0.46, 'rgba(112, 192, 194, 0.12)')
+      verticalFalloff.addColorStop(0.76, 'rgba(40, 85, 94, 0.04)')
+      verticalFalloff.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    } else {
+      verticalFalloff.addColorStop(0, 'rgba(248, 253, 255, 0.28)')
+      verticalFalloff.addColorStop(0.18, 'rgba(212, 244, 238, 0.2)')
+      verticalFalloff.addColorStop(0.44, 'rgba(120, 199, 198, 0.08)')
+      verticalFalloff.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    }
     ctx.fillStyle = verticalFalloff
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     ctx.globalCompositeOperation = 'screen'
-    ;[
-      { x: 0.42, topWidth: 56, midWidth: 112, bottomWidth: 142, drift: -18, alpha: 0.34 },
-      { x: 0.58, topWidth: 48, midWidth: 98, bottomWidth: 136, drift: 12, alpha: 0.28 }
-    ].forEach((band) => {
-      const centerX = canvas.width * band.x
-      const shaftGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-      shaftGradient.addColorStop(0, `rgba(250, 253, 255, ${band.alpha})`)
-      shaftGradient.addColorStop(0.18, `rgba(194, 239, 233, ${band.alpha * 0.68})`)
-      shaftGradient.addColorStop(0.54, `rgba(93, 176, 180, ${band.alpha * 0.18})`)
-      shaftGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
-      ctx.fillStyle = shaftGradient
-      ctx.beginPath()
-      ctx.moveTo(centerX - band.topWidth, 0)
-      ctx.bezierCurveTo(
-        centerX - band.midWidth,
-        canvas.height * 0.26,
-        centerX - band.bottomWidth + band.drift,
-        canvas.height * 0.72,
-        centerX - (band.bottomWidth * 0.58) + band.drift,
-        canvas.height
-      )
-      ctx.lineTo(centerX + (band.bottomWidth * 0.64) + band.drift, canvas.height)
-      ctx.bezierCurveTo(
-        centerX + band.bottomWidth + band.drift,
-        canvas.height * 0.7,
-        centerX + band.midWidth,
-        canvas.height * 0.28,
-        centerX + band.topWidth,
-        0
-      )
-      ctx.closePath()
-      ctx.fill()
-    })
+    if (variant === 'fill') {
+      [
+        { x: 0.18, y: 0.26, radius: 112, alpha: 0.14 },
+        { x: 0.42, y: 0.22, radius: 126, alpha: 0.18 },
+        { x: 0.68, y: 0.32, radius: 118, alpha: 0.16 },
+        { x: 0.86, y: 0.24, radius: 96, alpha: 0.12 }
+      ].forEach((wash) => {
+        const glow = ctx.createRadialGradient(
+          canvas.width * wash.x,
+          canvas.height * wash.y,
+          wash.radius * 0.1,
+          canvas.width * wash.x,
+          canvas.height * wash.y,
+          wash.radius
+        )
+        glow.addColorStop(0, `rgba(248, 252, 255, ${wash.alpha})`)
+        glow.addColorStop(0.5, `rgba(184, 232, 226, ${wash.alpha * 0.46})`)
+        glow.addColorStop(1, 'rgba(255, 255, 255, 0)')
+        ctx.fillStyle = glow
+        ctx.fillRect(
+          (canvas.width * wash.x) - wash.radius,
+          (canvas.height * wash.y) - wash.radius,
+          wash.radius * 2,
+          wash.radius * 2
+        )
+      })
+    } else {
+      [
+        { x: 0.34, topWidth: 46, midWidth: 90, bottomWidth: 128, drift: -18, alpha: 0.24 },
+        { x: 0.58, topWidth: 40, midWidth: 82, bottomWidth: 120, drift: 12, alpha: 0.22 },
+        { x: 0.76, topWidth: 34, midWidth: 74, bottomWidth: 104, drift: -8, alpha: 0.18 }
+      ].forEach((band) => {
+        const centerX = canvas.width * band.x
+        const shaftGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+        shaftGradient.addColorStop(0, `rgba(250, 253, 255, ${band.alpha})`)
+        shaftGradient.addColorStop(0.18, `rgba(194, 239, 233, ${band.alpha * 0.72})`)
+        shaftGradient.addColorStop(0.54, `rgba(93, 176, 180, ${band.alpha * 0.16})`)
+        shaftGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+        ctx.fillStyle = shaftGradient
+        ctx.beginPath()
+        ctx.moveTo(centerX - band.topWidth, 0)
+        ctx.bezierCurveTo(
+          centerX - band.midWidth,
+          canvas.height * 0.26,
+          centerX - band.bottomWidth + band.drift,
+          canvas.height * 0.72,
+          centerX - (band.bottomWidth * 0.58) + band.drift,
+          canvas.height
+        )
+        ctx.lineTo(centerX + (band.bottomWidth * 0.64) + band.drift, canvas.height)
+        ctx.bezierCurveTo(
+          centerX + band.bottomWidth + band.drift,
+          canvas.height * 0.7,
+          centerX + band.midWidth,
+          canvas.height * 0.28,
+          centerX + band.topWidth,
+          0
+        )
+        ctx.closePath()
+        ctx.fill()
+      })
+    }
 
     ctx.globalCompositeOperation = 'destination-out'
     ;[
-      { x: 0.22, y: 0.52, radius: 86, alpha: 0.34 },
-      { x: 0.7, y: 0.68, radius: 106, alpha: 0.42 },
-      { x: 0.46, y: 0.86, radius: 124, alpha: 0.48 }
+      { x: 0.18, y: 0.5, radius: 88, alpha: variant === 'fill' ? 0.18 : 0.26 },
+      { x: 0.52, y: 0.68, radius: 116, alpha: variant === 'fill' ? 0.22 : 0.32 },
+      { x: 0.78, y: 0.82, radius: 104, alpha: variant === 'fill' ? 0.2 : 0.28 }
     ].forEach((breakup) => {
       const erode = ctx.createRadialGradient(
         canvas.width * breakup.x,
@@ -2481,12 +2678,14 @@ export class AdvancedAquariumScene {
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     })
 
-    const lowerShear = ctx.createLinearGradient(0, canvas.height * 0.52, 0, canvas.height)
-    lowerShear.addColorStop(0, 'rgba(255, 255, 255, 0)')
-    lowerShear.addColorStop(0.5, 'rgba(255, 255, 255, 0.18)')
-    lowerShear.addColorStop(1, 'rgba(255, 255, 255, 0.4)')
-    ctx.fillStyle = lowerShear
-    ctx.fillRect(0, canvas.height * 0.52, canvas.width, canvas.height * 0.48)
+    if (variant === 'breakup') {
+      const lowerShear = ctx.createLinearGradient(0, canvas.height * 0.48, 0, canvas.height)
+      lowerShear.addColorStop(0, 'rgba(255, 255, 255, 0)')
+      lowerShear.addColorStop(0.54, 'rgba(255, 255, 255, 0.14)')
+      lowerShear.addColorStop(1, 'rgba(255, 255, 255, 0.28)')
+      ctx.fillStyle = lowerShear
+      ctx.fillRect(0, canvas.height * 0.48, canvas.width, canvas.height * 0.52)
+    }
     ctx.globalCompositeOperation = 'source-over'
 
     texture.colorSpace = THREE.SRGBColorSpace
@@ -2843,9 +3042,8 @@ export class AdvancedAquariumScene {
   private createCausticsLayers(dimensions: AquariumTankDimensions): void {
     const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
 
-    const causticsTexture = this.createCausticsTexture()
     const floorMaterial = new THREE.MeshBasicMaterial({
-      map: causticsTexture,
+      map: this.createCausticsTexture(),
       color: new THREE.Color('#c6dfd8'),
       transparent: true,
       opacity: 0.11,
@@ -2863,20 +3061,35 @@ export class AdvancedAquariumScene {
     floorCaustics.position.y = -tankHeight / 2 + 0.58
     floorCaustics.renderOrder = 2
     floorCaustics.userData.baseOpacity = 0.11
+    floorCaustics.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
+    floorCaustics.userData.phaseOffset = 0.22
+    floorCaustics.userData.mapRepeatX = 1.42
+    floorCaustics.userData.mapRepeatY = 1.16
+    floorCaustics.userData.mapWarpX = 0.018
+    floorCaustics.userData.mapWarpY = 0.013
+    floorCaustics.userData.mapRotation = 0.016
     this.tank.add(floorCaustics)
 
     const backMaterial = floorMaterial.clone()
+    backMaterial.map = this.createCausticsTexture()
     backMaterial.color = new THREE.Color('#bcd5d0')
     backMaterial.opacity = 0.08
 
     const backCaustics = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth * 0.9, tankHeight * 0.65),
+      new THREE.PlaneGeometry(tankWidth * 1.02, tankHeight * 0.72),
       backMaterial
     )
     backCaustics.name = 'tank-caustics-back'
     backCaustics.position.set(tankWidth * 0.08, -tankHeight * 0.06, -tankDepth / 2 + 0.12)
     backCaustics.renderOrder = 2
     backCaustics.userData.baseOpacity = 0.08
+    backCaustics.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
+    backCaustics.userData.phaseOffset = 0.54
+    backCaustics.userData.mapRepeatX = 1.18
+    backCaustics.userData.mapRepeatY = 1.08
+    backCaustics.userData.mapWarpX = 0.014
+    backCaustics.userData.mapWarpY = 0.01
+    backCaustics.userData.mapRotation = 0.012
     this.tank.add(backCaustics)
 
     this.causticsMeshes = [floorCaustics, backCaustics]
@@ -2891,7 +3104,7 @@ export class AdvancedAquariumScene {
     const texture = new THREE.CanvasTexture(canvas)
     texture.wrapS = THREE.RepeatWrapping
     texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(2, 1.7)
+    texture.repeat.set(1.26, 1.08)
 
     if (
       !ctx ||
@@ -2906,16 +3119,16 @@ export class AdvancedAquariumScene {
     ctx.globalCompositeOperation = 'screen'
 
     const clusters = [
-      { x: 0.16, y: 0.2, radius: 64, alpha: 0.24 },
-      { x: 0.36, y: 0.14, radius: 52, alpha: 0.18 },
-      { x: 0.6, y: 0.24, radius: 72, alpha: 0.25 },
-      { x: 0.82, y: 0.16, radius: 48, alpha: 0.15 },
-      { x: 0.26, y: 0.44, radius: 78, alpha: 0.22 },
-      { x: 0.52, y: 0.38, radius: 62, alpha: 0.18 },
-      { x: 0.72, y: 0.48, radius: 88, alpha: 0.26 },
-      { x: 0.2, y: 0.74, radius: 70, alpha: 0.19 },
-      { x: 0.46, y: 0.8, radius: 58, alpha: 0.13 },
-      { x: 0.72, y: 0.68, radius: 80, alpha: 0.22 }
+      { x: 0.12, y: 0.18, radius: 94, alpha: 0.15 },
+      { x: 0.32, y: 0.16, radius: 78, alpha: 0.12 },
+      { x: 0.56, y: 0.22, radius: 108, alpha: 0.16 },
+      { x: 0.84, y: 0.18, radius: 86, alpha: 0.11 },
+      { x: 0.22, y: 0.46, radius: 112, alpha: 0.14 },
+      { x: 0.5, y: 0.38, radius: 92, alpha: 0.12 },
+      { x: 0.78, y: 0.48, radius: 124, alpha: 0.15 },
+      { x: 0.18, y: 0.78, radius: 96, alpha: 0.12 },
+      { x: 0.48, y: 0.82, radius: 88, alpha: 0.1 },
+      { x: 0.76, y: 0.72, radius: 116, alpha: 0.14 }
     ]
 
     for (const cluster of clusters) {
@@ -3143,12 +3356,12 @@ export class AdvancedAquariumScene {
 
     this.nearSurfaceLightMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = (0.09 + (premiumTheme.surfaceGlowStrength * 0.11) + (premiumTheme.causticsStrength * 0.04))
-        * (index === 1 ? 1.08 : index === 2 ? 0.76 : 0.92)
+      const baseOpacity = (0.08 + (premiumTheme.surfaceGlowStrength * 0.085) + (premiumTheme.causticsStrength * 0.03))
+        * (index === 2 ? 1.06 : index === 0 || index === 4 ? 0.86 : 0.94)
       mesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(
-        new THREE.Color(index === 1 ? '#effcf7' : '#c9efe5'),
-        0.48
+        new THREE.Color(index === 2 ? '#e7f7f2' : '#c6ebe2'),
+        0.42
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
@@ -3157,14 +3370,14 @@ export class AdvancedAquariumScene {
     this.midwaterLightMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (
-        0.06 +
-        (premiumTheme.surfaceGlowStrength * 0.07) +
-        (premiumTheme.causticsStrength * 0.04)
-      ) * (index === 0 ? 1 : 0.9)
+        0.05 +
+        (premiumTheme.surfaceGlowStrength * 0.05) +
+        (premiumTheme.causticsStrength * 0.03)
+      ) * (index === 0 ? 1 : 1.14)
       mesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(
-        new THREE.Color('#d4f0ea'),
-        0.4
+        new THREE.Color(index === 0 ? '#c7e7e1' : '#d9f3ec'),
+        index === 0 ? 0.34 : 0.4
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
@@ -3212,11 +3425,11 @@ export class AdvancedAquariumScene {
 
     this.causticsMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = premiumTheme.causticsStrength * (index === 0 ? 0.26 : 0.17)
+      const baseOpacity = premiumTheme.causticsStrength * (index === 0 ? 0.22 : 0.15)
       mesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(
-        new THREE.Color(index === 0 ? '#ddebe2' : '#c7dad3'),
-        index === 0 ? 0.36 : 0.22
+        new THREE.Color(index === 0 ? '#d4e7de' : '#bfd9d1'),
+        index === 0 ? 0.28 : 0.2
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
@@ -3730,13 +3943,17 @@ export class AdvancedAquariumScene {
   }
 
   private updateTankWaterMotion(elapsedTime: number): void {
+    const surfacePhase = elapsedTime * 0.18
+    const refractionPhase = elapsedTime * 0.24
+    const refractedShearPhase = elapsedTime * 0.13
+
     if (this.waterSurfaceMesh) {
       const material = this.waterSurfaceMesh.material as THREE.MeshPhysicalMaterial
       if (material.map) {
         material.map.offset.x = elapsedTime * 0.01
         material.map.offset.y = elapsedTime * 0.014
       }
-      this.waterSurfaceMesh.rotation.z = Math.sin(elapsedTime * 0.18) * 0.012
+      this.waterSurfaceMesh.rotation.z = Math.sin(surfacePhase) * 0.012
     }
 
     if (this.waterSurfaceHighlightMesh) {
@@ -3745,7 +3962,7 @@ export class AdvancedAquariumScene {
         material.map.offset.x = elapsedTime * 0.012
         material.map.offset.y = elapsedTime * 0.018
       }
-      this.waterSurfaceHighlightMesh.rotation.z = Math.sin(elapsedTime * 0.18) * 0.012
+      this.waterSurfaceHighlightMesh.rotation.z = Math.sin(surfacePhase) * 0.012
     }
 
     if (this.frontGlassHighlightMesh) {
@@ -3797,8 +4014,26 @@ export class AdvancedAquariumScene {
     this.nearSurfaceLightMeshes.forEach((mesh) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       if (material.map) {
-        material.map.offset.x = elapsedTime * (((mesh.userData.scrollX as number | undefined) ?? 0.003))
-        material.map.offset.y = elapsedTime * (((mesh.userData.scrollY as number | undefined) ?? 0.009))
+        const phase = (mesh.userData.phase as number | undefined) ?? 0
+        const mapRepeatX = (mesh.userData.mapRepeatX as number | undefined) ?? 1.12
+        const mapRepeatY = (mesh.userData.mapRepeatY as number | undefined) ?? 1.04
+        const mapWarpX = (mesh.userData.mapWarpX as number | undefined) ?? 0.02
+        const mapWarpY = (mesh.userData.mapWarpY as number | undefined) ?? 0.015
+        const mapRotation = (mesh.userData.mapRotation as number | undefined) ?? 0.03
+        material.map.offset.x = (
+          elapsedTime * (((mesh.userData.scrollX as number | undefined) ?? 0.003)) +
+          Math.sin(refractionPhase + phase) * mapWarpX
+        )
+        material.map.offset.y = (
+          elapsedTime * (((mesh.userData.scrollY as number | undefined) ?? 0.009)) +
+          Math.cos((surfacePhase * 1.22) + phase) * mapWarpY
+        )
+        material.map.repeat.set(
+          mapRepeatX + Math.sin((refractedShearPhase * 1.18) + phase) * 0.05,
+          mapRepeatY + Math.cos((refractionPhase * 1.1) + phase) * 0.04
+        )
+        material.map.center.set(0.5, 0.5)
+        material.map.rotation = Math.sin((surfacePhase * 0.92) + phase) * mapRotation
       }
       const baseX = (mesh.userData.baseX as number | undefined) ?? mesh.position.x
       const baseY = (mesh.userData.baseY as number | undefined) ?? mesh.position.y
@@ -3807,16 +4042,34 @@ export class AdvancedAquariumScene {
       const phase = (mesh.userData.phase as number | undefined) ?? 0
       const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? material.opacity
       const opacityPulse = (mesh.userData.opacityPulse as number | undefined) ?? 0.05
-      mesh.position.x = baseX + Math.sin((elapsedTime * 0.22) + phase) * swayX
-      mesh.position.y = baseY + Math.sin((elapsedTime * 0.28) + phase) * swayY
-      material.opacity = baseOpacity * (0.94 + Math.sin((elapsedTime * 0.36) + phase) * opacityPulse)
+      mesh.position.x = baseX + Math.sin((surfacePhase * 1.18) + phase) * swayX
+      mesh.position.y = baseY + Math.sin((refractionPhase * 1.22) + phase) * swayY
+      material.opacity = baseOpacity * (0.95 + Math.sin((surfacePhase * 1.34) + phase) * opacityPulse)
     })
 
     this.midwaterLightMeshes.forEach((mesh) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       if (material.map) {
-        material.map.offset.x = elapsedTime * (((mesh.userData.scrollX as number | undefined) ?? -0.0016))
-        material.map.offset.y = elapsedTime * (((mesh.userData.scrollY as number | undefined) ?? 0.0068))
+        const phase = (mesh.userData.phase as number | undefined) ?? 0
+        const mapRepeatX = (mesh.userData.mapRepeatX as number | undefined) ?? 1.08
+        const mapRepeatY = (mesh.userData.mapRepeatY as number | undefined) ?? 1.04
+        const mapWarpX = (mesh.userData.mapWarpX as number | undefined) ?? 0.014
+        const mapWarpY = (mesh.userData.mapWarpY as number | undefined) ?? 0.012
+        const mapRotation = (mesh.userData.mapRotation as number | undefined) ?? 0.02
+        material.map.offset.x = (
+          elapsedTime * (((mesh.userData.scrollX as number | undefined) ?? -0.0016)) +
+          Math.sin((refractedShearPhase * 0.92) + phase) * mapWarpX
+        )
+        material.map.offset.y = (
+          elapsedTime * (((mesh.userData.scrollY as number | undefined) ?? 0.0068)) +
+          Math.cos((surfacePhase * 0.88) + phase) * mapWarpY
+        )
+        material.map.repeat.set(
+          mapRepeatX + Math.sin((refractedShearPhase * 0.8) + phase) * 0.035,
+          mapRepeatY + Math.cos((refractionPhase * 0.72) + phase) * 0.028
+        )
+        material.map.center.set(0.5, 0.5)
+        material.map.rotation = Math.sin((surfacePhase * 0.68) + phase) * mapRotation
       }
       const baseX = (mesh.userData.baseX as number | undefined) ?? mesh.position.x
       const baseY = (mesh.userData.baseY as number | undefined) ?? mesh.position.y
@@ -3828,11 +4081,11 @@ export class AdvancedAquariumScene {
       const swayZ = (mesh.userData.swayZ as number | undefined) ?? 0.08
       const phase = (mesh.userData.phase as number | undefined) ?? 0
       const opacityPulse = (mesh.userData.opacityPulse as number | undefined) ?? 0.04
-      mesh.position.x = baseX + Math.sin((elapsedTime * 0.14) + phase) * swayX
-      mesh.position.y = baseY + Math.sin((elapsedTime * 0.18) + phase) * swayY
-      mesh.position.z = baseZ + Math.sin((elapsedTime * 0.12) + phase) * swayZ
-      mesh.rotation.z = baseRotationZ + Math.sin((elapsedTime * 0.22) + phase) * 0.016
-      material.opacity = baseOpacity * (0.94 + Math.sin((elapsedTime * 0.3) + phase) * opacityPulse)
+      mesh.position.x = baseX + Math.sin((surfacePhase * 0.72) + phase) * swayX
+      mesh.position.y = baseY + Math.sin((refractionPhase * 0.82) + phase) * swayY
+      mesh.position.z = baseZ + Math.sin((refractedShearPhase * 0.94) + phase) * swayZ
+      mesh.rotation.z = baseRotationZ + Math.sin((surfacePhase * 0.86) + phase) * 0.02
+      material.opacity = baseOpacity * (0.95 + Math.sin((refractionPhase * 0.98) + phase) * opacityPulse)
     })
 
     if (this.heroRimLightMesh) {
@@ -3898,11 +4151,30 @@ export class AdvancedAquariumScene {
     this.causticsMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       if (material.map) {
-        material.map.offset.x = elapsedTime * (index === 0 ? 0.0045 : -0.0024)
-        material.map.offset.y = elapsedTime * (index === 0 ? 0.0094 : 0.0056)
+        const phaseOffset = (mesh.userData.phaseOffset as number | undefined) ?? (index * 0.32)
+        const mapRepeatX = (mesh.userData.mapRepeatX as number | undefined) ?? 1.24
+        const mapRepeatY = (mesh.userData.mapRepeatY as number | undefined) ?? 1.08
+        const mapWarpX = (mesh.userData.mapWarpX as number | undefined) ?? 0.015
+        const mapWarpY = (mesh.userData.mapWarpY as number | undefined) ?? 0.011
+        const mapRotation = (mesh.userData.mapRotation as number | undefined) ?? 0.012
+        material.map.offset.x = (
+          elapsedTime * (index === 0 ? 0.0038 : -0.0018) +
+          Math.sin((surfacePhase * 0.94) + phaseOffset) * mapWarpX
+        )
+        material.map.offset.y = (
+          elapsedTime * (index === 0 ? 0.0068 : 0.0042) +
+          Math.cos((refractionPhase * 0.88) + phaseOffset) * mapWarpY
+        )
+        material.map.repeat.set(
+          mapRepeatX + Math.sin((refractedShearPhase * 0.76) + phaseOffset) * 0.03,
+          mapRepeatY + Math.cos((surfacePhase * 0.68) + phaseOffset) * 0.025
+        )
+        material.map.center.set(0.5, 0.5)
+        material.map.rotation = Math.sin((surfacePhase * 0.62) + phaseOffset) * mapRotation
       }
       const baseOpacity = (mesh.userData.baseOpacity as number | undefined) ?? material.opacity
-      material.opacity = baseOpacity * (0.96 + Math.sin((elapsedTime * 0.26) + (index * 0.7)) * 0.04)
+      const phaseOffset = (mesh.userData.phaseOffset as number | undefined) ?? (index * 0.32)
+      material.opacity = baseOpacity * (0.97 + Math.sin((refractionPhase * 0.96) + phaseOffset) * 0.035)
     })
 
     this.hardscapeOcclusionMeshes.forEach((mesh, index) => {
