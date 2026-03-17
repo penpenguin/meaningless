@@ -171,16 +171,82 @@ describe('AquascapingSystem composition', () => {
     expect(canopyTypes.has('fan-leaf')).toBe(true)
   })
 
+  it('uses hero canopy assets as visible left, center, and right background masses', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = new THREE.Vector3()
+    const center = new THREE.Vector3()
+    bounds.getSize(size)
+    bounds.getCenter(center)
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const canopyPlants = aquascapingGroup.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-canopy'
+    )
+
+    expect(canopyPlants.length).toBeGreaterThanOrEqual(5)
+    expect(
+      canopyPlants.some((plant) =>
+        plant.position.x <= center.x - size.x * 0.16
+        && plant.position.z <= center.z - size.z * 0.14
+        && plant.scale.y >= 2.1
+        && plant.scale.x >= 1.05
+      )
+    ).toBe(true)
+    expect(
+      canopyPlants.some((plant) =>
+        Math.abs(plant.position.x - center.x) <= size.x * 0.08
+        && plant.position.z <= center.z - size.z * 0.22
+        && plant.scale.y >= 2
+        && plant.scale.x >= 1.12
+      )
+    ).toBe(true)
+    expect(
+      canopyPlants.some((plant) =>
+        plant.position.x >= center.x + size.x * 0.18
+        && plant.position.z <= center.z - size.z * 0.14
+        && plant.scale.y >= 2
+        && plant.scale.x >= 0.95
+      )
+    ).toBe(true)
+  })
+
   it('defines tall planted masses for the left rear, center rear, and right rear of the default layout', () => {
     const backgroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'background')
     const midgroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'midground')
     const foregroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'foreground')
+    const leftRear = plantClusterDefinitions.find((cluster) => cluster.massRole === 'left-rear')
+    const driftwoodBackfill = plantClusterDefinitions.find((cluster) => cluster.massRole === 'driftwood-backfill')
+    const rightRear = plantClusterDefinitions.find((cluster) => cluster.massRole === 'right-rear')
+    const midRightBackfill = plantClusterDefinitions.find((cluster) => cluster.massRole === 'mid-right-backfill')
 
     expect(backgroundClusters.length).toBeGreaterThanOrEqual(3)
     expect(backgroundClusters.some((cluster) => cluster.massRole === 'left-rear' && cluster.x <= -0.24 && cluster.z <= -0.2)).toBe(true)
     expect(backgroundClusters.some((cluster) => cluster.massRole === 'driftwood-backfill' && Math.abs(cluster.x) <= 0.08 && cluster.z <= -0.22)).toBe(true)
     expect(backgroundClusters.some((cluster) => cluster.massRole === 'right-rear' && cluster.x >= 0.26 && cluster.z <= -0.18)).toBe(true)
-    expect(backgroundClusters.every((cluster) => cluster.baseHeight >= 6.2)).toBe(true)
+    expect(backgroundClusters.every((cluster) => cluster.plantType !== 'ribbon-seaweed')).toBe(true)
+    expect(leftRear?.baseHeight).toBeGreaterThanOrEqual(9.5)
+    expect(leftRear?.spreadX).toBeGreaterThanOrEqual(0.32)
+    expect(leftRear?.spreadZ).toBeGreaterThanOrEqual(0.22)
+    expect(leftRear?.scale.x).toBeGreaterThanOrEqual(1.3)
+    expect(leftRear?.scale.y).toBeGreaterThanOrEqual(2.5)
+    expect(driftwoodBackfill?.baseHeight).toBeGreaterThanOrEqual(7.9)
+    expect(driftwoodBackfill?.spreadX).toBeGreaterThanOrEqual(0.28)
+    expect(driftwoodBackfill?.spreadZ).toBeGreaterThanOrEqual(0.22)
+    expect(driftwoodBackfill?.scale.x).toBeGreaterThanOrEqual(1.2)
+    expect(driftwoodBackfill?.scale.y).toBeGreaterThanOrEqual(2.1)
+    expect(rightRear?.baseHeight).toBeGreaterThanOrEqual(9.4)
+    expect(rightRear?.spreadX).toBeGreaterThanOrEqual(0.24)
+    expect(rightRear?.spreadZ).toBeGreaterThanOrEqual(0.18)
+    expect(rightRear?.scale.x).toBeGreaterThanOrEqual(1)
+    expect(rightRear?.scale.y).toBeGreaterThanOrEqual(2.3)
+    expect(midRightBackfill?.plantType).not.toBe('ribbon-seaweed')
     expect(midgroundClusters.every((cluster) => cluster.baseHeight >= 3.8)).toBe(true)
     expect(foregroundClusters.every((cluster) => cluster.baseHeight <= 2)).toBe(true)
   })
@@ -224,18 +290,22 @@ describe('AquascapingSystem composition', () => {
 
     createRibbonSeaweed(ribbonGroup, 'background', 5.8, 0.28)
     createSwordLeafPlant(swordGroup, 'background', 5.3, 0.24)
-    createFanLeafPlant(fanGroup, 'midground', 3.4, 0.22)
+    createFanLeafPlant(fanGroup, 'background', 5.1, 0.22)
 
     const ribbonDepthLanes = new Set(ribbonGroup.children.map((child) => child.userData.depthLane))
     const swordDepthLanes = new Set(swordGroup.children.map((child) => child.userData.depthLane))
     const fanDepthLanes = new Set(fanGroup.children.map((child) => child.userData.depthLane))
+    const swordRotations = swordGroup.children.map((child) => child.rotation.y)
+    const fanRotations = fanGroup.children.map((child) => child.rotation.y)
 
     expect(ribbonGroup.children).toHaveLength(12)
-    expect(swordGroup.children).toHaveLength(13)
-    expect(fanGroup.children).toHaveLength(11)
+    expect(swordGroup.children.length).toBeGreaterThanOrEqual(16)
+    expect(fanGroup.children.length).toBeGreaterThanOrEqual(14)
     expect(ribbonDepthLanes.size).toBeGreaterThanOrEqual(4)
-    expect(swordDepthLanes.size).toBeGreaterThanOrEqual(4)
-    expect(fanDepthLanes.size).toBeGreaterThanOrEqual(4)
+    expect(swordDepthLanes.size).toBeGreaterThanOrEqual(5)
+    expect(fanDepthLanes.size).toBeGreaterThanOrEqual(5)
+    expect(Math.max(...swordRotations) - Math.min(...swordRotations)).toBeGreaterThan(2.4)
+    expect(Math.max(...fanRotations) - Math.min(...fanRotations)).toBeGreaterThan(2.2)
   })
 
   it('replaces the planted blanket with a bounded set of planted masses', () => {
@@ -259,6 +329,44 @@ describe('AquascapingSystem composition', () => {
     expect(massRoles.has('left-rear')).toBe(true)
     expect(massRoles.has('driftwood-backfill')).toBe(true)
     expect(massRoles.has('right-rear')).toBe(true)
+  })
+
+  it('layers procedural foliage into authored planted masses so background assets read as dense walls', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const bounds = createOpenWaterBounds()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { scene: THREE.Group; sourceMesh: null } | null>
+      } | null
+      group: THREE.Group
+      plants: THREE.Group[]
+    }).visualAssets = {
+      textures: {},
+      models: {
+        'plant-sword-cluster': { scene: createModelAssetScene('plant-sword-cluster'), sourceMesh: null },
+        'plant-fan-cluster': { scene: createModelAssetScene('plant-fan-cluster'), sourceMesh: null }
+      }
+    }
+    ;(instance as unknown as { group: THREE.Group }).group = new THREE.Group()
+    ;(instance as unknown as { plants: THREE.Group[] }).plants = []
+
+    const createPlantedMasses = (AquascapingSystem.prototype as unknown as {
+      createPlantedMasses: (bounds: THREE.Box3) => void
+    }).createPlantedMasses.bind(instance)
+
+    createPlantedMasses(bounds)
+
+    const plantedMassGroup = ((instance as unknown as { group: THREE.Group }).group.children.find(
+      (child) => child instanceof THREE.Group && child.userData.massRole === 'left-rear'
+    )) as THREE.Group | undefined
+
+    expect(plantedMassGroup).toBeDefined()
+    expect(countMeshes(plantedMassGroup!)).toBeGreaterThan(10)
   })
 
   it('adds a soft hardscape shadow to ground the hero scape on the substrate', () => {
@@ -336,7 +444,9 @@ describe('AquascapingSystem composition', () => {
     const scene = new THREE.Scene()
     const bounds = createOpenWaterBounds()
 
-    new AquascapingSystem(scene, bounds)
+    new AquascapingSystem(scene, bounds, null, {
+      layoutStyle: 'marine'
+    })
 
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
     const ribbonPlant = aquascapingGroup.children.find((child) => child.userData.plantType === 'ribbon-seaweed') as THREE.Group
@@ -347,7 +457,7 @@ describe('AquascapingSystem composition', () => {
     expect(fronds.some((frond) => frond.geometry.type === 'CylinderGeometry')).toBe(false)
   })
 
-  it('mixes multiple plant archetypes into the aquascape', () => {
+  it('mixes sword and fan foliage into the planted aquascape', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -364,11 +474,33 @@ describe('AquascapingSystem composition', () => {
     const fanPlant = aquascapingGroup.children.find((child) => child.userData.plantType === 'fan-leaf') as THREE.Group
     const uniquePlantTypes = new Set(plantTypes)
 
-    expect(uniquePlantTypes.has('ribbon-seaweed')).toBe(true)
     expect(uniquePlantTypes.has('sword-leaf')).toBe(true)
     expect(uniquePlantTypes.has('fan-leaf')).toBe(true)
-    expect(uniquePlantTypes.size).toBeGreaterThanOrEqual(3)
+    expect(uniquePlantTypes.has('ribbon-seaweed')).toBe(false)
+    expect(uniquePlantTypes.size).toBeGreaterThanOrEqual(2)
     expect(fanPlant.children.some((leaf) => leaf instanceof THREE.Mesh && leaf.geometry.type === 'ShapeGeometry')).toBe(true)
+  })
+
+  it('keeps ribbon seaweed as a minor planted accent instead of a background mass', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds)
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const plantedMasses = aquascapingGroup.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'planted-mass'
+    )
+    const ribbonMasses = plantedMasses.filter((plant) => plant.userData.plantType === 'ribbon-seaweed')
+    const backgroundMasses = plantedMasses.filter((plant) => plant.userData.layer === 'background')
+
+    expect(ribbonMasses).toEqual([])
+    expect(backgroundMasses.some((plant) => plant.userData.plantType === 'sword-leaf')).toBe(true)
+    expect(backgroundMasses.some((plant) => plant.userData.plantType === 'fan-leaf')).toBe(true)
   })
 
   it('does not add coral cone decorations in the default planted layout', () => {
@@ -464,7 +596,7 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.roughnessMap).toBe(leafRoughness)
   })
 
-  it('prefers alpha cutout over translucent foliage for repeated plants', () => {
+  it('keeps repeated foliage opaque while reserving alpha cutouts for ribbon plants', () => {
     const getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -495,7 +627,7 @@ describe('AquascapingSystem premium materials', () => {
 
     expect(backgroundLeaf.transparent).toBe(false)
     expect(backgroundLeaf.opacity).toBe(1)
-    expect(backgroundLeaf.alphaTest).toBeGreaterThanOrEqual(0.16)
+    expect(backgroundLeaf.alphaTest).toBe(0)
     expect(backgroundLeaf.transmission).toBe(0)
     expect(backgroundRibbon.transparent).toBe(false)
     expect(backgroundRibbon.opacity).toBe(1)
@@ -503,6 +635,91 @@ describe('AquascapingSystem premium materials', () => {
     expect(backgroundRibbon.transmission).toBe(0)
 
     getContextSpy.mockRestore()
+  })
+
+  it('lifts background planted foliage tint so masses read as green instead of black', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+
+    const getPlantTint = (AquascapingSystem.prototype as unknown as {
+      getPlantTint: (
+        layer: 'foreground' | 'background' | 'midground',
+        plantType: 'ribbon-seaweed' | 'sword-leaf' | 'fan-leaf',
+        role?: 'repeated' | 'hero'
+      ) => THREE.Color
+    }).getPlantTint.bind(instance)
+
+    const backgroundSword = getPlantTint('background', 'sword-leaf')
+    const backgroundFan = getPlantTint('background', 'fan-leaf')
+    const backgroundRibbon = getPlantTint('background', 'ribbon-seaweed')
+
+    expect(backgroundSword.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.37)
+    expect(backgroundFan.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.37)
+    expect(backgroundRibbon.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.36)
+  })
+
+  it('renders background broad-leaf foliage as solid tinted shapes instead of narrow alpha cutouts', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const leafDiffuse = new THREE.Texture()
+    const leafAlpha = new THREE.Texture()
+    const leafNormal = new THREE.Texture()
+    const leafRoughness = new THREE.Texture()
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'leaf-diffuse': leafDiffuse,
+        'leaf-alpha': leafAlpha,
+        'leaf-normal': leafNormal,
+        'leaf-roughness': leafRoughness
+      }
+    }
+
+    const createLeafMaterial = (AquascapingSystem.prototype as unknown as {
+      createLeafMaterial: (
+        hue: number,
+        layer: 'foreground' | 'background' | 'midground',
+        plantType: 'sword-leaf' | 'fan-leaf'
+      ) => THREE.MeshPhysicalMaterial
+    }).createLeafMaterial.bind(instance)
+
+    const backgroundLeaf = createLeafMaterial(0.24, 'background', 'fan-leaf')
+
+    expect(backgroundLeaf.map).toBeNull()
+    expect(backgroundLeaf.alphaMap).toBeNull()
+    expect(backgroundLeaf.alphaTest).toBe(0)
+  })
+
+  it('lifts authored plant assets away from black crush while keeping a green mass tint', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+
+    const createAssetBackedMaterial = (AquascapingSystem.prototype as unknown as {
+      createAssetBackedMaterial: (
+        id: string,
+        material: THREE.Material,
+        userData?: Record<string, unknown>
+      ) => THREE.Material
+    }).createAssetBackedMaterial.bind(instance)
+
+    const material = createAssetBackedMaterial(
+      'plant-sword-cluster',
+      new THREE.MeshPhysicalMaterial({
+        color: '#1a2118',
+        roughness: 0.74,
+        metalness: 0.06,
+        envMapIntensity: 0.36
+      }),
+      {
+        role: 'hero-canopy',
+        layer: 'background',
+        plantType: 'sword-leaf'
+      }
+    ) as THREE.MeshPhysicalMaterial
+    const lightness = material.color.getHSL({ h: 0, s: 0, l: 0 }).l
+
+    expect(lightness).toBeGreaterThanOrEqual(0.34)
+    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).s).toBeGreaterThan(0.16)
   })
 
   it('uses external wood textures for driftwood when visual assets are available', () => {
