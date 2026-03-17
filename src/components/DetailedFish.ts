@@ -12,6 +12,12 @@ interface FishVariant {
   secondaryColor: THREE.Color
   scale: number
   speed: number
+  locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser'
+  modelForwardAxis?: {
+    procedural: [number, number, number]
+    school: [number, number, number]
+    hero: [number, number, number]
+  }
   patternTextureId?: string
   baseColorTextureId?: string
   normalTextureId?: string
@@ -31,6 +37,27 @@ interface FishVariant {
     pectoralLength?: number
     topFullness?: number
     bellyFullness?: number
+  }
+}
+
+type FishRenderPath = 'procedural' | 'school' | 'hero'
+
+type LocomotionProfile = {
+  cruiseSpeed: number
+  yawResponsiveness: number
+  bankAmount: number
+  tailBeatFreq: number
+  bodyWiggleAmount: number
+  curiosityRate: number
+  depthBobAmount: number
+  boundaryArcRadius: number
+  cruiseBias: number
+  turnNoise: number
+  suddenTurnRate: number
+  steeringWeights: {
+    alignment: number
+    cohesion: number
+    separation: number
   }
 }
 
@@ -58,6 +85,83 @@ const DEFAULT_BEHAVIOR_PROFILE: BehaviorProfile = {
   turnBias: 0.14
 }
 
+const DEFAULT_FORWARD_AXIS: [number, number, number] = [1, 0, 0]
+
+const LOCOMOTION_PROFILES: Record<NonNullable<FishVariant['locomotionProfileId']>, LocomotionProfile> = {
+  'calm-cruiser': {
+    cruiseSpeed: 0.96,
+    yawResponsiveness: 0.82,
+    bankAmount: 0.34,
+    tailBeatFreq: 1.45,
+    bodyWiggleAmount: 0.28,
+    curiosityRate: 0.72,
+    depthBobAmount: 0.3,
+    boundaryArcRadius: 0.78,
+    cruiseBias: 0.78,
+    turnNoise: 0.14,
+    suddenTurnRate: 0.008,
+    steeringWeights: {
+      alignment: 0.94,
+      cohesion: 1.02,
+      separation: 0.96
+    }
+  },
+  'disk-glider': {
+    cruiseSpeed: 0.86,
+    yawResponsiveness: 0.68,
+    bankAmount: 0.48,
+    tailBeatFreq: 1.05,
+    bodyWiggleAmount: 0.24,
+    curiosityRate: 0.54,
+    depthBobAmount: 0.22,
+    boundaryArcRadius: 1.02,
+    cruiseBias: 0.64,
+    turnNoise: 0.08,
+    suddenTurnRate: 0.005,
+    steeringWeights: {
+      alignment: 0.88,
+      cohesion: 1.08,
+      separation: 0.92
+    }
+  },
+  'slender-darter': {
+    cruiseSpeed: 1.22,
+    yawResponsiveness: 1.18,
+    bankAmount: 0.58,
+    tailBeatFreq: 2.35,
+    bodyWiggleAmount: 0.18,
+    curiosityRate: 1.08,
+    depthBobAmount: 0.18,
+    boundaryArcRadius: 0.42,
+    cruiseBias: 0.94,
+    turnNoise: 0.22,
+    suddenTurnRate: 0.018,
+    steeringWeights: {
+      alignment: 1.12,
+      cohesion: 0.84,
+      separation: 1.08
+    }
+  },
+  'goldfish-wobble': {
+    cruiseSpeed: 0.9,
+    yawResponsiveness: 0.74,
+    bankAmount: 0.38,
+    tailBeatFreq: 1.64,
+    bodyWiggleAmount: 0.46,
+    curiosityRate: 0.82,
+    depthBobAmount: 0.4,
+    boundaryArcRadius: 0.9,
+    cruiseBias: 0.7,
+    turnNoise: 0.18,
+    suddenTurnRate: 0.012,
+    steeringWeights: {
+      alignment: 0.9,
+      cohesion: 0.98,
+      separation: 0.9
+    }
+  }
+}
+
 export class DetailedFishSystem {
   private group: THREE.Group
   private instancedMeshes: THREE.InstancedMesh[] = []
@@ -79,7 +183,7 @@ export class DetailedFishSystem {
   private tempDirection = new THREE.Vector3()
   private tempSuddenTurn = new THREE.Vector3()
   private tempCuriosityForce = new THREE.Vector3()
-  private tempForward = new THREE.Vector3(-1, 0, 0)
+  private tempForwardAxis = new THREE.Vector3(1, 0, 0)
   private tempQuaternion = new THREE.Quaternion()
   private tempHorizontalDirection = new THREE.Vector3()
   private tempHorizontalPreviousDirection = new THREE.Vector3()
@@ -94,8 +198,11 @@ export class DetailedFishSystem {
   private behaviorProfile: BehaviorProfile = { ...DEFAULT_BEHAVIOR_PROFILE }
   private currentQuality: QualityLevel = 'standard'
   private visualAssets: VisualAssetBundle | null
+  private boidVariantIndices: number[] = []
   private heroAssignments = new Map<number, {
     object: THREE.Object3D
+    body: THREE.Object3D
+    tail: THREE.Object3D | null
     lateralOffset: number
     verticalOffset: number
     depthOffset: number
@@ -114,11 +221,14 @@ export class DetailedFishSystem {
     
     this.variants = this.createFishVariants()
     this.boids = new BoidsSystem(this.fishCount, bounds)
+    const initialCounts = this.resolveVariantCounts()
+    this.boidVariantIndices = this.buildBoidVariantIndices(initialCounts)
     
     // Initialize randomness arrays
     this.initializeRandomness()
     
-    this.createDetailedFishMeshes()
+    this.createDetailedFishMeshes(initialCounts)
+    this.applyVariantLocomotionTuning()
   }
 
   applyTuning(tuning: Partial<Tuning>): void {
@@ -143,6 +253,7 @@ export class DetailedFishSystem {
       turnBias: this.behaviorProfile.turnBias,
       avoidWalls: this.behaviorProfile.avoidWalls
     })
+    this.applyVariantLocomotionTuning()
   }
 
   setFishGroups(groups: FishGroup[]): void {
@@ -164,6 +275,12 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xffd700),
         scale: 0.5,
         speed: 1.0,
+        locomotionProfileId: 'calm-cruiser',
+        modelForwardAxis: {
+          procedural: [1, 0, 0],
+          school: [1, 0, 0],
+          hero: [1, 0, 0]
+        },
         patternTextureId: 'fish-tropical',
         baseColorTextureId: 'fish-tropical-basecolor',
         normalTextureId: 'fish-tropical-normal',
@@ -191,6 +308,12 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0x4169e1),
         scale: 0.65,
         speed: 0.8,
+        locomotionProfileId: 'disk-glider',
+        modelForwardAxis: {
+          procedural: [1, 0, 0],
+          school: [1, 0, 0],
+          hero: [1, 0, 0]
+        },
         patternTextureId: 'fish-angelfish',
         baseColorTextureId: 'fish-angelfish-basecolor',
         normalTextureId: 'fish-angelfish-normal',
@@ -218,6 +341,12 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff1493),
         scale: 0.35,
         speed: 1.5,
+        locomotionProfileId: 'slender-darter',
+        modelForwardAxis: {
+          procedural: [1, 0, 0],
+          school: [1, 0, 0],
+          hero: [1, 0, 0]
+        },
         patternTextureId: 'fish-neon',
         baseColorTextureId: 'fish-neon-basecolor',
         normalTextureId: 'fish-neon-normal',
@@ -245,6 +374,12 @@ export class DetailedFishSystem {
         secondaryColor: new THREE.Color(0xff8c00),
         scale: 0.55,
         speed: 0.9,
+        locomotionProfileId: 'goldfish-wobble',
+        modelForwardAxis: {
+          procedural: [1, 0, 0],
+          school: [1, 0, 0],
+          hero: [1, 0, 0]
+        },
         patternTextureId: 'fish-goldfish',
         baseColorTextureId: 'fish-goldfish-basecolor',
         normalTextureId: 'fish-goldfish-normal',
@@ -267,6 +402,83 @@ export class DetailedFishSystem {
         }
       }
     ]
+  }
+
+  private resolveVariantCounts(countsPerVariant?: number[]): number[] {
+    const fallbackCounts = this.variants.map((_variant, index) => {
+      const fishPerVariant = Math.ceil(this.fishCount / this.variants.length)
+      return Math.max(0, Math.min(fishPerVariant, this.fishCount - index * fishPerVariant))
+    })
+
+    return countsPerVariant ?? fallbackCounts
+  }
+
+  private buildBoidVariantIndices(countsPerVariant: number[]): number[] {
+    return countsPerVariant.flatMap((count, variantIndex) => Array.from({ length: Math.max(0, count ?? 0) }, () => variantIndex))
+  }
+
+  private getBoidVariantIndex(index: number): number {
+    const variantIndices = this.boidVariantIndices ?? []
+    const variantCount = this.variants?.length ?? 0
+
+    if (variantIndices[index] !== undefined) {
+      return variantIndices[index]
+    }
+
+    if (variantCount <= 0) {
+      return 0
+    }
+
+    return Math.min(index, variantCount - 1)
+  }
+
+  private getLocomotionProfile(variant: FishVariant): LocomotionProfile {
+    return LOCOMOTION_PROFILES[variant.locomotionProfileId ?? 'calm-cruiser']
+  }
+
+  private getModelForwardAxis(variant: FishVariant, renderPath: FishRenderPath): THREE.Vector3 {
+    const axis = variant.modelForwardAxis?.[renderPath] ?? DEFAULT_FORWARD_AXIS
+    const forwardAxis = this.tempForwardAxis ?? new THREE.Vector3()
+    this.tempForwardAxis = forwardAxis
+    return forwardAxis.set(axis[0], axis[1], axis[2]).normalize()
+  }
+
+  private resolveHeadingQuaternion(
+    variant: FishVariant,
+    renderPath: FishRenderPath,
+    direction: THREE.Vector3
+  ): THREE.Quaternion {
+    const headingQuaternion = this.tempQuaternion ?? new THREE.Quaternion()
+    this.tempQuaternion = headingQuaternion
+    if (direction.lengthSq() === 0) {
+      return headingQuaternion.identity()
+    }
+
+    return headingQuaternion.setFromUnitVectors(
+      this.getModelForwardAxis(variant, renderPath),
+      direction.clone().normalize()
+    )
+  }
+
+  private applyVariantLocomotionTuning(): void {
+    if (!this.boids || typeof (this.boids as unknown as { setBoidTuning?: unknown }).setBoidTuning !== 'function') {
+      return
+    }
+
+    this.boids.boids.forEach((_boid, index) => {
+      const variant = this.variants[this.getBoidVariantIndex(index)] ?? this.variants[0]
+      if (!variant) return
+
+      const profile = this.getLocomotionProfile(variant)
+      this.boids.setBoidTuning(index, {
+        cruiseSpeed: profile.cruiseSpeed,
+        yawResponsiveness: profile.yawResponsiveness,
+        cruiseBias: profile.cruiseBias,
+        turnNoise: profile.turnNoise,
+        boundaryArcRadius: profile.boundaryArcRadius,
+        steeringWeights: profile.steeringWeights
+      })
+    })
   }
   
   private initializeRandomness(): void {
@@ -294,14 +506,19 @@ export class DetailedFishSystem {
     const zMax = bounds.max.z - zInset
     
     for (let i = 0; i < this.fishCount; i++) {
+      const variant = this.variants?.[this.getBoidVariantIndex(i)] ?? this.variants?.[0]
+      const profile = variant ? this.getLocomotionProfile(variant) : LOCOMOTION_PROFILES['calm-cruiser']
+
       // Random offset for animations (0 to 2π)
       this.randomOffsets[i] = Math.random() * Math.PI * 2
       
       // Random swim phase for different timing
       this.swimPhases[i] = Math.random() * Math.PI * 2
       
-      // Random speed multiplier (0.3 to 0.7) - 非常にゆったり
-      this.speedMultipliers[i] = 0.3 + Math.random() * 0.4
+      // Variant-aware cadence spread keeps schools from sharing one rhythm.
+      const minSpeed = THREE.MathUtils.clamp(0.84 + ((profile.cruiseSpeed - 1) * 0.12), 0.76, 0.98)
+      const maxSpeed = THREE.MathUtils.clamp(minSpeed + 0.18 + (profile.turnNoise * 0.12), minSpeed + 0.12, 1.22)
+      this.speedMultipliers[i] = THREE.MathUtils.lerp(minSpeed, maxSpeed, Math.random())
       
       // Keep initial wander targets inside a tank-relative cruising band.
       this.wanderTargets.push(new THREE.Vector3(
@@ -374,11 +591,8 @@ export class DetailedFishSystem {
   }
   
   private createDetailedFishMeshes(countsPerVariant?: number[]): void {
-    const fallbackCounts = this.variants.map((_variant, index) => {
-      const fishPerVariant = Math.ceil(this.fishCount / this.variants.length)
-      return Math.max(0, Math.min(fishPerVariant, this.fishCount - index * fishPerVariant))
-    })
-    const counts = countsPerVariant ?? fallbackCounts
+    const counts = this.resolveVariantCounts(countsPerVariant)
+    this.boidVariantIndices = this.buildBoidVariantIndices(counts)
 
     this.variants.forEach((variant, variantIndex) => {
       const actualCount = counts[variantIndex] ?? 0
@@ -397,6 +611,7 @@ export class DetailedFishSystem {
         actualCount
       )
       instancedMesh.userData.variantIndex = variantIndex
+      instancedMesh.userData.renderPath = sourceMesh ? 'school' : 'procedural'
       instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
       instancedMesh.castShadow = true
       instancedMesh.receiveShadow = true
@@ -491,6 +706,8 @@ export class DetailedFishSystem {
         const isSlenderVariant = variant.name === 'Neon'
         this.heroAssignments.set(candidate.boidIndex, {
           object: heroObject,
+          body: (heroObject.userData.motionNodes as { body?: THREE.Object3D } | undefined)?.body ?? heroObject,
+          tail: (heroObject.userData.motionNodes as { tail?: THREE.Object3D | null } | undefined)?.tail ?? null,
           lateralOffset: placement.lateralOffset,
           verticalOffset: placement.verticalOffset,
           depthOffset: placement.depthOffset,
@@ -513,7 +730,7 @@ export class DetailedFishSystem {
       )
       heroMesh.castShadow = true
       heroMesh.receiveShadow = true
-      return heroMesh
+      return this.wrapHeroMotionObject(heroMesh, variant)
     }
 
     if (heroAsset?.scene) {
@@ -533,7 +750,7 @@ export class DetailedFishSystem {
         mesh.receiveShadow = true
       })
 
-      return heroGroup
+      return this.wrapHeroMotionObject(heroGroup, variant)
     }
 
     const heroMaterial = this.createFishMaterial(variant).clone()
@@ -545,7 +762,51 @@ export class DetailedFishSystem {
     const heroMesh = new THREE.Mesh(this.createDetailedFishGeometry(variant), heroMaterial)
     heroMesh.castShadow = true
     heroMesh.receiveShadow = true
-    return heroMesh
+    return this.wrapHeroMotionObject(heroMesh, variant)
+  }
+
+  private wrapHeroMotionObject(body: THREE.Object3D, variant: FishVariant): THREE.Group {
+    const root = new THREE.Group()
+    root.add(body)
+    const tail = this.findHeroTailTarget(body, variant)
+    root.userData.motionNodes = {
+      body,
+      tail,
+      bodyRotation: body.rotation.clone(),
+      tailRotation: tail?.rotation.clone() ?? null
+    }
+    return root
+  }
+
+  private findHeroTailTarget(root: THREE.Object3D, variant: FishVariant): THREE.Object3D | null {
+    let namedTail: THREE.Object3D | null = null
+    const forwardAxis = new THREE.Vector3(
+      ...(variant.modelForwardAxis?.hero ?? DEFAULT_FORWARD_AXIS)
+    ).normalize()
+    let fallbackTail: THREE.Object3D | null = null
+    let fallbackTailAftness = Number.NEGATIVE_INFINITY
+
+    root.traverse((object) => {
+      if (object === root) return
+
+      const lowerName = object.name.toLowerCase()
+      if (!namedTail && /tail|caudal|rear/.test(lowerName)) {
+        namedTail = object
+      }
+
+      const aftness = -object.position.dot(forwardAxis)
+      if (aftness > fallbackTailAftness) {
+        fallbackTail = object
+        fallbackTailAftness = aftness
+      }
+    })
+
+    if (namedTail) return namedTail
+    if (fallbackTail && fallbackTailAftness > 0.2) {
+      return fallbackTail
+    }
+
+    return null
   }
 
   private createHeroFishMaterial(
@@ -622,6 +883,7 @@ export class DetailedFishSystem {
 
     this.fishCount = Math.max(0, totalCount)
     this.boids = new BoidsSystem(this.fishCount, this.bounds)
+    this.boidVariantIndices = this.buildBoidVariantIndices(countsPerVariant)
     this.initializeRandomness()
     this.createDetailedFishMeshes(countsPerVariant)
   }
@@ -1142,7 +1404,6 @@ export class DetailedFishSystem {
   }
   
   update(deltaTime: number, elapsedTime: number): void {
-    // Update wander targets periodically
     this.updateWanderTargets(elapsedTime)
     const bounds = this.bounds ?? new THREE.Box3(new THREE.Vector3(-10, -10, -10), new THREE.Vector3(10, 10, 10))
     const behavior = this.behaviorProfile ?? DEFAULT_BEHAVIOR_PROFILE
@@ -1157,110 +1418,113 @@ export class DetailedFishSystem {
     this.tempHorizontalDirection = horizontalDirection
     this.tempHorizontalPreviousDirection = horizontalPreviousDirection
     this.ensureHeadingState()
-    const depthRange = boundsSize.y * behavior.depthVariance * 0.35
-    const moodWanderStrength = behavior.schoolMood === 'alert'
-      ? 0.95
-      : behavior.schoolMood === 'feeding'
-        ? 0.82
-        : 0.72
-    const jitterScale = 0.18 + (behavior.turnBias * 0.24)
-    const curiosityRate = 0.03 + (behavior.turnBias * 0.12)
-    const suddenTurnRate = 0.12 + (behavior.turnBias * 0.45)
-    const gentleTurnRate = 0.016 + (behavior.turnBias * 0.09)
-    const turnNoiseScale = 0.12 + (behavior.turnBias * 0.18)
-    const depthForceScale = 0.85 + (behavior.depthVariance * 1.6)
-    const headingFollowRate = 3.5 + (behavior.avoidWalls * 1.8)
-    
-    // Add strong individual wander behavior to break up schooling
+
     this.boids.boids.forEach((boid, index) => {
-      if (index < this.wanderTargets.length) {
-        // 非常に弱い放浪力で非常にゆったりした動き
-        this.tempWanderForce.copy(this.wanderTargets[index]).sub(boid.position)
-        if (this.tempWanderForce.lengthSq() > 0) {
-          const distanceScale = Math.min(1.35, 0.45 + (this.tempWanderForce.length() / Math.max(boundsSize.x, 1)))
-          this.tempWanderForce.normalize().multiplyScalar(moodWanderStrength * this.speedMultipliers[index] * distanceScale)
-        }
-        
-        // 非常に小さなジッターで非常にゆったりした動き
-        this.tempJitter.set(
-          (Math.random() - 0.5) * jitterScale,
-          (Math.random() - 0.5) * jitterScale * 0.35,
-          (Math.random() - 0.5) * jitterScale * 0.22
-        )
-        
-        // 非常に小さなノイズ力で非常にゆったりした動き
-        this.tempNoiseForce.set(
-          Math.sin(elapsedTime * 0.35 + this.randomOffsets[index]) * turnNoiseScale,
-          Math.sin(elapsedTime * 0.28 + this.randomOffsets[index] * 2) * turnNoiseScale * 0.28,
-          Math.sin(elapsedTime * 0.24 + this.randomOffsets[index] * 3) * turnNoiseScale * 0.18
-        )
+      if (index >= this.wanderTargets.length) return
 
-        const desiredY = bounds.max.y -
-          (behavior.preferredDepth * boundsSize.y) +
-          (Math.sin(elapsedTime * (0.45 + behavior.turnBias) + this.randomOffsets[index]) * depthRange)
-        depthForce.set(0, desiredY - boid.position.y, 0).multiplyScalar(depthForceScale)
-        
-        // 稀な方向転換を更に減らして直線性を向上
-        if (this.shouldTrigger(curiosityRate, safeDeltaTime)) {
-          this.tempCuriosityForce.set(
-            (Math.random() - 0.5) * (0.6 + behavior.turnBias * 1.2),
-            (Math.random() - 0.5) * (0.22 + behavior.depthVariance * 0.5),
-            (Math.random() - 0.5) * (0.18 + behavior.turnBias * 0.42)
-          )
-          boid.acceleration.add(this.tempCuriosityForce)
-        }
+      const variant = this.variants[this.getBoidVariantIndex(index)] ?? this.variants[0]
+      if (!variant) return
 
-        if (this.shouldTrigger(suddenTurnRate, safeDeltaTime)) {
-          this.tempSuddenTurn.set(
-            (Math.random() - 0.5) * (1 + behavior.turnBias * 1.8),
-            (Math.random() - 0.5) * (0.24 + behavior.depthVariance * 0.6),
-            (Math.random() - 0.5) * (0.3 + behavior.turnBias * 0.7)
-          )
-          boid.acceleration.add(this.tempSuddenTurn)
-        }
-        
-        boid.acceleration
-          .add(this.tempWanderForce)
-          .add(this.tempJitter)
-          .add(this.tempNoiseForce)
-          .add(depthForce)
+      const locomotion = this.getLocomotionProfile(variant)
+      const moodCruiseStrength = behavior.schoolMood === 'alert'
+        ? 1.04
+        : behavior.schoolMood === 'feeding'
+          ? 0.94
+          : 0.88
+      const wanderStrength = (0.18 + locomotion.curiosityRate * 0.16) * moodCruiseStrength
+      const jitterScale = locomotion.turnNoise * (0.035 + behavior.turnBias * 0.04)
+      const curiosityRate = locomotion.curiosityRate * (0.014 + behavior.turnBias * 0.028)
+      const suddenTurnRate = locomotion.suddenTurnRate * (0.7 + behavior.turnBias * 0.4)
+      const turnNoiseScale = locomotion.turnNoise * (0.05 + behavior.turnBias * 0.06)
+      const depthRange = boundsSize.y * (0.08 + behavior.depthVariance * 0.18 + locomotion.depthBobAmount * 0.04)
+      const depthForceScale = 0.45 + behavior.depthVariance * 0.9 + locomotion.depthBobAmount * 0.5
+
+      this.tempWanderForce.copy(this.wanderTargets[index]).sub(boid.position)
+      if (this.tempWanderForce.lengthSq() > 0) {
+        const distanceScale = Math.min(1.22, 0.5 + (this.tempWanderForce.length() / Math.max(boundsSize.x, 1)))
+        this.tempWanderForce.normalize().multiplyScalar(wanderStrength * this.speedMultipliers[index] * distanceScale)
       }
+
+      this.tempJitter.set(
+        (Math.random() - 0.5) * jitterScale,
+        (Math.random() - 0.5) * jitterScale * 0.28,
+        (Math.random() - 0.5) * jitterScale * 0.18
+      )
+
+      this.tempNoiseForce.set(
+        Math.sin(elapsedTime * (0.18 + locomotion.tailBeatFreq * 0.16) + this.randomOffsets[index]) * turnNoiseScale,
+        Math.sin(elapsedTime * (0.14 + locomotion.depthBobAmount * 0.5) + this.randomOffsets[index] * 1.6) * turnNoiseScale * 0.28,
+        Math.sin(elapsedTime * (0.12 + locomotion.boundaryArcRadius * 0.26) + this.randomOffsets[index] * 2.4) * turnNoiseScale * 0.22
+      )
+
+      const desiredY = bounds.max.y -
+        (behavior.preferredDepth * boundsSize.y) +
+        (Math.sin(elapsedTime * (0.3 + locomotion.depthBobAmount) + this.randomOffsets[index]) * depthRange)
+      depthForce.set(0, desiredY - boid.position.y, 0).multiplyScalar(depthForceScale)
+
+      if (this.shouldTrigger(curiosityRate, safeDeltaTime)) {
+        this.tempCuriosityForce.set(
+          (Math.random() - 0.5) * (0.24 + locomotion.curiosityRate * 0.22),
+          (Math.random() - 0.5) * (0.1 + locomotion.depthBobAmount * 0.16),
+          (Math.random() - 0.5) * (0.1 + locomotion.turnNoise * 0.18)
+        )
+        boid.acceleration.add(this.tempCuriosityForce)
+      }
+
+      if (this.shouldTrigger(suddenTurnRate, safeDeltaTime)) {
+        this.tempSuddenTurn.set(
+          (Math.random() - 0.5) * (0.16 + locomotion.yawResponsiveness * 0.18),
+          (Math.random() - 0.5) * (0.08 + locomotion.depthBobAmount * 0.12),
+          (Math.random() - 0.5) * (0.08 + locomotion.turnNoise * 0.14)
+        )
+        boid.acceleration.add(this.tempSuddenTurn)
+      }
+
+      boid.acceleration
+        .add(this.tempWanderForce)
+        .add(this.tempJitter)
+        .add(this.tempNoiseForce)
+        .add(depthForce)
     })
-    
+
     this.boids.update(safeDeltaTime)
-    
+
     let boidIndex = 0
-    
+
     this.instancedMeshes.forEach((mesh, meshIndex) => {
       const heroAssignments = this.heroAssignments ?? new Map()
       const variantIndex =
         typeof mesh.userData.variantIndex === 'number' ? mesh.userData.variantIndex : meshIndex
       const variant = this.variants[variantIndex] ?? this.variants[meshIndex]
+      if (!variant) return
+
+      const renderPath = mesh.userData.renderPath === 'school' ? 'school' : 'procedural'
+      const locomotion = this.getLocomotionProfile(variant)
+      const headingFollowRate = 2.4 + locomotion.yawResponsiveness * 2.2 + behavior.avoidWalls * 1.1
       const instanceCount = mesh.count
-      
+
       for (let i = 0; i < instanceCount && boidIndex < this.boids.boids.length; i++, boidIndex++) {
         const boid = this.boids.boids[boidIndex]
-        
-        // Individual randomness factors
-        const randomOffset = this.randomOffsets[boidIndex]
-        const swimPhase = this.swimPhases[boidIndex]
-        const speedMult = this.speedMultipliers[boidIndex]
+        const randomOffset = this.randomOffsets[boidIndex] ?? 0
+        const swimPhase = this.swimPhases[boidIndex] ?? 0
+        const speedMult = this.speedMultipliers[boidIndex] ?? 1
         const smoothedQuaternion = this.smoothedQuaternions[boidIndex]
         const previousVelocity = this.previousVelocities[boidIndex]
-        
+
         this.dummy.position.copy(boid.position)
-        
-        // 魚を進行方向に正しく向ける（魚の先端が前方向）
         this.tempDirection.copy(boid.velocity)
+
+        let climbAngle = 0
+        let bank = 0
         if (this.tempDirection.lengthSq() > 0) {
           this.tempDirection.normalize()
-          this.tempQuaternion.setFromUnitVectors(this.tempForward, this.tempDirection)
+          const targetQuaternion = this.resolveHeadingQuaternion(variant, renderPath, this.tempDirection)
 
           if (!this.headingInitialized[boidIndex]) {
-            smoothedQuaternion.copy(this.tempQuaternion)
+            smoothedQuaternion.copy(targetQuaternion)
             this.headingInitialized[boidIndex] = true
           } else {
-            smoothedQuaternion.slerp(this.tempQuaternion, 1 - Math.exp(-headingFollowRate * safeDeltaTime))
+            smoothedQuaternion.slerp(targetQuaternion, 1 - Math.exp(-headingFollowRate * safeDeltaTime))
           }
 
           this.dummy.setRotationFromQuaternion(smoothedQuaternion)
@@ -1281,34 +1545,36 @@ export class DetailedFishSystem {
           const horizontalSpeed = Math.sqrt(
             (this.tempDirection.x * this.tempDirection.x) + (this.tempDirection.z * this.tempDirection.z)
           )
-          const climbAngle = Math.atan2(this.tempDirection.y, Math.max(horizontalSpeed, 0.0001))
-          const bank = THREE.MathUtils.clamp(-yawChange * 1.4, -0.35, 0.35)
-          this.dummy.rotation.x += climbAngle * 0.25
+          climbAngle = Math.atan2(this.tempDirection.y, Math.max(horizontalSpeed, 0.0001))
+          bank = THREE.MathUtils.clamp(
+            -yawChange * (0.55 + locomotion.bankAmount * 0.75),
+            -locomotion.bankAmount,
+            locomotion.bankAmount
+          )
+          this.dummy.rotation.x += climbAngle * (0.18 + locomotion.yawResponsiveness * 0.06)
           this.dummy.rotation.z += bank
           previousVelocity.copy(boid.velocity)
         }
-        
-        // 魚らしい優雅な体の揺れ
-        const swimFreq = variant.speed * speedMult * (2 + Math.sin(randomOffset) * 1)
-        const wiggle = Math.sin(elapsedTime * swimFreq + swimPhase) * (0.02 + Math.sin(randomOffset * 2) * 0.015)
-        this.dummy.rotation.z += wiggle
-        
-        // 尾ひれの自然な推進動作
-        const tailFreq = swimFreq * (1.8 + Math.sin(randomOffset * 3) * 0.4)
-        const tailWave = Math.sin(elapsedTime * tailFreq + swimPhase * 1.5) * (0.05 + Math.sin(randomOffset * 4) * 0.025)
-        this.dummy.rotation.y += tailWave
-        
-        // 魚らしい浮遊感（ゆっくりとした上下動）
-        const floatWave = Math.sin(elapsedTime * 0.8 + randomOffset) * (0.01 + behavior.depthVariance * 0.03) * speedMult
+
+        const swimFreq = locomotion.tailBeatFreq * speedMult * (0.92 + Math.sin(randomOffset) * 0.18)
+        const bodySway = Math.sin(elapsedTime * swimFreq + swimPhase) * locomotion.bodyWiggleAmount * 0.07
+        const microPitch = Math.sin(elapsedTime * (swimFreq * 0.52) + swimPhase * 0.7) * locomotion.bodyWiggleAmount * 0.02
+        const tailWave = Math.sin(elapsedTime * (swimFreq * 1.35) + swimPhase * 1.35) * locomotion.bodyWiggleAmount * 0.24
+        this.dummy.rotation.z += bodySway
+        this.dummy.rotation.x += microPitch
+
+        const floatWave = Math.sin(elapsedTime * (0.52 + locomotion.depthBobAmount * 0.38) + randomOffset) *
+          (0.004 + behavior.depthVariance * 0.008 + locomotion.depthBobAmount * 0.006) *
+          speedMult
         this.dummy.position.y += floatWave
-        
-        // 微細な横揺れ
-        const sideDrift = Math.sin(elapsedTime * 0.6 + randomOffset * 2) * 0.008 * speedMult
+
+        const sideDrift = Math.sin(elapsedTime * (0.36 + locomotion.turnNoise * 0.24) + randomOffset * 2) *
+          locomotion.bodyWiggleAmount *
+          0.0025
         this.dummy.position.x += sideDrift
-        
-        // 自然な呼吸のようなサイズ変化
-        const breathingSpeed = 0.4 + Math.sin(randomOffset * 6) * 0.2
-        const breathing = Math.sin(elapsedTime * breathingSpeed + swimPhase) * 0.015 + 1.0
+
+        const breathingSpeed = 0.32 + locomotion.tailBeatFreq * 0.06 + Math.sin(randomOffset * 4) * 0.08
+        const breathing = Math.sin(elapsedTime * breathingSpeed + swimPhase) * 0.012 + 1.0
         const scale = variant.scale * breathing * (0.98 + Math.sin(randomOffset * 7) * 0.04)
         this.dummy.scale.set(scale, scale, scale)
 
@@ -1318,25 +1584,57 @@ export class DetailedFishSystem {
           heroAssignment.object.position.x += heroAssignment.lateralOffset
           heroAssignment.object.position.y += heroAssignment.verticalOffset
           heroAssignment.object.position.z += heroAssignment.depthOffset
-          heroAssignment.object.rotation.copy(this.dummy.rotation)
+          if (this.tempDirection.lengthSq() > 0) {
+            const heroQuaternion = this.resolveHeadingQuaternion(variant, 'hero', this.tempDirection)
+            heroAssignment.object.quaternion.copy(heroQuaternion)
+            heroAssignment.object.rotation.x += climbAngle * (0.18 + locomotion.yawResponsiveness * 0.06)
+            heroAssignment.object.rotation.z += bank
+          } else {
+            heroAssignment.object.quaternion.copy(this.dummy.quaternion)
+          }
+          this.applyHeroLocalMotion(heroAssignment.object, bodySway, microPitch, tailWave)
           heroAssignment.object.scale.setScalar(scale * heroAssignment.scaleMultiplier)
           heroAssignment.object.updateMatrixWorld()
           this.dummy.scale.setScalar(0.0001)
         }
-        
-        // 突然の停止・方向転換を減らして直線性を維持
-        if (this.shouldTrigger(gentleTurnRate, safeDeltaTime)) {
-          // 温和な方向調整のみ
-          const gentleTurn = (Math.random() - 0.5) * (0.03 + behavior.turnBias * 0.06)
-          this.dummy.rotation.z += gentleTurn
-        }
-        
+
         this.dummy.updateMatrix()
         mesh.setMatrixAt(i, this.dummy.matrix)
       }
-      
+
       mesh.instanceMatrix.needsUpdate = true
     })
+  }
+
+  private applyHeroLocalMotion(
+    heroObject: THREE.Object3D,
+    bodySway: number,
+    bodyPitch: number,
+    tailWave: number
+  ): void {
+    const motionNodes = heroObject.userData.motionNodes as {
+      body?: THREE.Object3D
+      tail?: THREE.Object3D | null
+      bodyRotation?: THREE.Euler
+      tailRotation?: THREE.Euler | null
+    } | undefined
+    const body = motionNodes?.body
+    if (!body) return
+
+    body.rotation.copy(motionNodes?.bodyRotation ?? new THREE.Euler())
+
+    const tail = motionNodes?.tail ?? null
+    if (tail) {
+      tail.rotation.copy(motionNodes?.tailRotation ?? new THREE.Euler())
+      body.rotation.z += bodySway * 0.55
+      body.rotation.x += bodyPitch * 0.85
+      tail.rotation.y += tailWave
+      tail.rotation.z += bodySway * 0.4
+      return
+    }
+
+    body.rotation.z += (bodySway * 0.7) + (tailWave * 0.12)
+    body.rotation.x += bodyPitch
   }
 
   getVisibleFishCount(): number {

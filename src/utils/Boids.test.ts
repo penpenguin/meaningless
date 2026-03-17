@@ -9,6 +9,8 @@ type BoundaryParams = {
   alignment: number
   cohesion: number
   separation: number
+  lateralCruiseBias?: number
+  cruiseWeight?: number
   boundaryMargin?: number
   boundaryLookAhead?: number
   boundaryWeight?: number
@@ -137,5 +139,88 @@ describe('BoidsSystem boundary steering', () => {
     expect(lowFps.boids[0].velocity.angleTo(highFps.boids[0].velocity)).toBeLessThan(0.35)
 
     randomSpy.mockRestore()
+  })
+
+  test('per-boid tuning supports faster slender cruisers and wider disk boundary arcs', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-12, -4, -4), new THREE.Vector3(12, 4, 4))
+    const system = new BoidsSystem(2, bounds)
+
+    const setBoidTuning = (system as unknown as {
+      setBoidTuning?: (
+        index: number,
+        tuning: {
+          cruiseSpeed?: number
+          cruiseBias?: number
+          boundaryArcRadius?: number
+          turnNoise?: number
+        }
+      ) => void
+    }).setBoidTuning?.bind(system)
+    const resolveBoidRuntimeParams = (BoidsSystem.prototype as unknown as {
+      resolveBoidRuntimeParams: (index: number) => {
+        maxSpeed: number
+        lateralCruiseBias: number
+        boundaryArcRadius: number
+      }
+    }).resolveBoidRuntimeParams.bind(system)
+
+    setBoidTuning?.(0, {
+      cruiseSpeed: 1.22,
+      cruiseBias: 0.9,
+      boundaryArcRadius: 0.28,
+      turnNoise: 0.18
+    })
+    setBoidTuning?.(1, {
+      cruiseSpeed: 0.76,
+      cruiseBias: 0.58,
+      boundaryArcRadius: 0.94,
+      turnNoise: 0.06
+    })
+
+    const slender = resolveBoidRuntimeParams(0)
+    const disk = resolveBoidRuntimeParams(1)
+
+    expect(slender.maxSpeed).toBeGreaterThan(disk.maxSpeed)
+    expect(slender.lateralCruiseBias).toBeGreaterThan(disk.lateralCruiseBias)
+    expect(disk.boundaryArcRadius).toBeGreaterThan(slender.boundaryArcRadius)
+  })
+
+  test('larger boundaryArcRadius bends boundary steering into a wider return arc', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-10, -4, -4), new THREE.Vector3(10, 4, 4))
+    const system = new BoidsSystem(2, bounds)
+    system.boids[0].position.set(8.6, 0, 0)
+    system.boids[0].velocity.set(1.6, 0, 0.02)
+    system.boids[0].maxSpeed = 2
+    system.boids[0].maxForce = 0.5
+    system.boids[1].position.copy(system.boids[0].position)
+    system.boids[1].velocity.copy(system.boids[0].velocity)
+    system.boids[1].maxSpeed = 2
+    system.boids[1].maxForce = 0.5
+
+    const setBoidTuning = (system as unknown as {
+      setBoidTuning?: (
+        index: number,
+        tuning: {
+          boundaryArcRadius?: number
+        }
+      ) => void
+    }).setBoidTuning?.bind(system)
+    setBoidTuning?.(0, { boundaryArcRadius: 0.22 })
+    setBoidTuning?.(1, { boundaryArcRadius: 0.98 })
+
+    const narrowForce = (
+      BoidsSystem.prototype as unknown as {
+        boundaries: (boid: Boid, index: number) => THREE.Vector3
+      }
+    ).boundaries.call(system, system.boids[0], 0)
+    const wideForce = (
+      BoidsSystem.prototype as unknown as {
+        boundaries: (boid: Boid, index: number) => THREE.Vector3
+      }
+    ).boundaries.call(system, system.boids[1], 1)
+
+    expect(Math.abs(wideForce.z)).toBeGreaterThan(Math.abs(narrowForce.z))
+    expect(wideForce.x).toBeLessThan(0)
+    expect(narrowForce.x).toBeLessThan(0)
   })
 })

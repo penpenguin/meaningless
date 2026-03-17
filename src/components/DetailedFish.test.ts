@@ -4,23 +4,30 @@ import { DetailedFishSystem } from './DetailedFish'
 
 const createHeroSingleMeshScene = (): THREE.Group => {
   const scene = new THREE.Group()
-  scene.add(new THREE.Mesh(
+  const body = new THREE.Mesh(
     new THREE.ConeGeometry(0.4, 1.4, 8),
     new THREE.MeshStandardMaterial({ color: '#ffffff', map: new THREE.Texture() })
-  ))
+  )
+  body.name = 'HeroBody'
+  scene.add(body)
   return scene
 }
 
 const createHeroMultiMeshScene = (): THREE.Group => {
   const scene = new THREE.Group()
-  scene.add(new THREE.Mesh(
+  const body = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.28, 0.9, 4, 8),
     new THREE.MeshStandardMaterial({ color: '#ffffff', map: new THREE.Texture() })
-  ))
-  scene.add(new THREE.Mesh(
+  )
+  body.name = 'BodyCore'
+  scene.add(body)
+  const tail = new THREE.Mesh(
     new THREE.PlaneGeometry(0.6, 0.4),
     new THREE.MeshStandardMaterial({ color: '#ffccdd', transparent: true })
-  ))
+  )
+  tail.name = 'TailFin'
+  tail.position.x = -0.72
+  scene.add(tail)
   return scene
 }
 
@@ -104,6 +111,74 @@ describe('DetailedFishSystem silhouette archetypes', () => {
 
     expect(angelfishAspect).toBeGreaterThan(tropicalAspect * 1.25)
     expect(neonAspect).toBeLessThan(tropicalAspect * 0.85)
+  })
+})
+
+describe('DetailedFishSystem locomotion profiles', () => {
+  test('createFishVariants maps archetypes to locomotion profiles and per-path forward axes', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        locomotionProfileId?: string
+        modelForwardAxis?: {
+          procedural: [number, number, number]
+          school: [number, number, number]
+          hero: [number, number, number]
+        }
+      }>
+    }
+
+    const variants = createFishVariants.bind(instance)()
+    const tropical = variants.find((variant) => variant.name === 'Tropical')
+    const angelfish = variants.find((variant) => variant.name === 'Angelfish')
+    const neon = variants.find((variant) => variant.name === 'Neon')
+    const goldfish = variants.find((variant) => variant.name === 'Goldfish')
+
+    expect(tropical?.locomotionProfileId).toBe('calm-cruiser')
+    expect(angelfish?.locomotionProfileId).toBe('disk-glider')
+    expect(neon?.locomotionProfileId).toBe('slender-darter')
+    expect(goldfish?.locomotionProfileId).toBe('goldfish-wobble')
+
+    expect(tropical?.modelForwardAxis).toEqual({
+      procedural: [1, 0, 0],
+      school: [1, 0, 0],
+      hero: [1, 0, 0]
+    })
+  })
+
+  test('resolveHeadingQuaternion aligns the configured render-path forward axis with velocity', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { resolveHeadingQuaternion } = DetailedFishSystem.prototype as unknown as {
+      resolveHeadingQuaternion: (
+        variant: {
+          modelForwardAxis?: {
+            procedural: [number, number, number]
+            school: [number, number, number]
+            hero: [number, number, number]
+          }
+        },
+        renderPath: 'procedural' | 'school' | 'hero',
+        direction: THREE.Vector3
+      ) => THREE.Quaternion
+    }
+
+    const variant = {
+      modelForwardAxis: {
+        procedural: [1, 0, 0] as [number, number, number],
+        school: [0, 0, 1] as [number, number, number],
+        hero: [-1, 0, 0] as [number, number, number]
+      }
+    }
+
+    const quaternion = resolveHeadingQuaternion.bind(instance)(
+      variant,
+      'school',
+      new THREE.Vector3(1, 0, 0)
+    )
+    const alignedForward = new THREE.Vector3(...variant.modelForwardAxis.school).applyQuaternion(quaternion).normalize()
+
+    expect(alignedForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
   })
 })
 
@@ -1242,9 +1317,12 @@ describe('DetailedFishSystem asset-backed models', () => {
 
     const heroObject = (instance as unknown as { heroFishMeshes: THREE.Object3D[] }).heroFishMeshes[0]
 
-    expect(heroObject).toBeInstanceOf(THREE.Mesh)
-    expect((heroObject as THREE.Mesh).geometry).toBe(sourceMesh.geometry)
-    expect(((heroObject as THREE.Mesh).material as THREE.MeshPhysicalMaterial).map).toBe(sourceMesh.material.map)
+    expect(heroObject).toBeInstanceOf(THREE.Group)
+    const motionNodes = heroObject.userData.motionNodes as { body?: THREE.Object3D; tail?: THREE.Object3D | null } | undefined
+    expect(motionNodes?.body).toBeInstanceOf(THREE.Mesh)
+    expect(motionNodes?.tail ?? null).toBeNull()
+    expect((motionNodes?.body as THREE.Mesh).geometry).toBe(sourceMesh.geometry)
+    expect((((motionNodes?.body as THREE.Mesh).material) as THREE.MeshPhysicalMaterial).map).toBe(sourceMesh.material.map)
   })
 
   test('uses the authored multi-mesh hero scene when the hero asset has no single source mesh', () => {
@@ -1335,8 +1413,9 @@ describe('DetailedFishSystem asset-backed models', () => {
 
     expect(heroObject).toBeInstanceOf(THREE.Group)
     expect(heroObject).not.toBe(heroScene)
-    expect(heroObject.children).toHaveLength(heroScene.children.length)
-    expect(heroObject.children.every((child) => child instanceof THREE.Mesh)).toBe(true)
+    const motionNodes = heroObject.userData.motionNodes as { body?: THREE.Object3D; tail?: THREE.Object3D | null } | undefined
+    expect(motionNodes?.body).toBeInstanceOf(THREE.Group)
+    expect(motionNodes?.tail?.name).toBe('TailFin')
   })
 
   test('falls back to the procedural hero fish when the hero asset is missing', () => {
@@ -1426,9 +1505,11 @@ describe('DetailedFishSystem asset-backed models', () => {
 
     const heroObject = (instance as unknown as { heroFishMeshes: THREE.Object3D[] }).heroFishMeshes[0]
 
-    expect(heroObject).toBeInstanceOf(THREE.Mesh)
-    expect((heroObject as THREE.Mesh).geometry).toBe(fallbackGeometry)
-    expect((heroObject as THREE.Mesh).material).toBeInstanceOf(THREE.MeshPhysicalMaterial)
+    expect(heroObject).toBeInstanceOf(THREE.Group)
+    const motionNodes = heroObject.userData.motionNodes as { body?: THREE.Object3D; tail?: THREE.Object3D | null } | undefined
+    expect(motionNodes?.body).toBeInstanceOf(THREE.Mesh)
+    expect((motionNodes?.body as THREE.Mesh).geometry).toBe(fallbackGeometry)
+    expect((motionNodes?.body as THREE.Mesh).material).toBeInstanceOf(THREE.MeshPhysicalMaterial)
     expect(geometrySpy).toHaveBeenCalledTimes(1)
     expect(materialSpy).toHaveBeenCalledTimes(1)
   })
@@ -2156,6 +2237,272 @@ describe('DetailedFishSystem fish group application', () => {
     afterMatrix.decompose(new THREE.Vector3(), afterQuaternion, new THREE.Vector3())
 
     expect(beforeQuaternion.angleTo(afterQuaternion)).toBeLessThan(1.2)
+
+    randomSpy.mockRestore()
+  })
+
+  test('update uses the configured forward axis instead of the legacy hard-coded axis', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boid = {
+      position: new THREE.Vector3(0, 0, 0),
+      velocity: new THREE.Vector3(1, 0, 0),
+      acceleration: new THREE.Vector3(),
+      maxSpeed: 4,
+      maxForce: 2
+    }
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+      1
+    )
+
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        modelForwardAxis?: {
+          procedural: [number, number, number]
+          school: [number, number, number]
+          hero: [number, number, number]
+        }
+        locomotionProfileId?: string
+      }>
+      boids: { boids: typeof boid[]; update: (deltaTime: number) => void }
+      boidVariantIndices: number[]
+      wanderTargets: THREE.Vector3[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      dummy: THREE.Object3D
+      tempWanderForce: THREE.Vector3
+      tempJitter: THREE.Vector3
+      tempNoiseForce: THREE.Vector3
+      tempDirection: THREE.Vector3
+      tempSuddenTurn: THREE.Vector3
+      tempCuriosityForce: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
+      headingInitialized: boolean[]
+      tempCurrentPos: THREE.Vector3
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      tempDepthForce: THREE.Vector3
+      tempBoundsSize: THREE.Vector3
+      tempHorizontalDirection: THREE.Vector3
+      tempHorizontalPreviousDirection: THREE.Vector3
+      bounds: THREE.Box3
+      heroAssignments: Map<number, unknown>
+      behaviorProfile: {
+        preferredDepth: number
+        depthVariance: number
+        turnBias: number
+        schoolMood: 'calm'
+        avoidWalls: number
+      }
+    }
+
+    internals.instancedMeshes = [mesh]
+    internals.variants = [{
+      name: 'Neon',
+      scale: 0.35,
+      speed: 1.2,
+      modelForwardAxis: {
+        procedural: [1, 0, 0],
+        school: [1, 0, 0],
+        hero: [1, 0, 0]
+      },
+      locomotionProfileId: 'slender-darter'
+    }]
+    internals.boids = { boids: [boid], update: () => {} }
+    internals.boidVariantIndices = [0]
+    internals.wanderTargets = [new THREE.Vector3(0, 0, 0)]
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0])
+    internals.swimPhases = new Float32Array([0])
+    internals.dummy = new THREE.Object3D()
+    internals.tempWanderForce = new THREE.Vector3()
+    internals.tempJitter = new THREE.Vector3()
+    internals.tempNoiseForce = new THREE.Vector3()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempSuddenTurn = new THREE.Vector3()
+    internals.tempCuriosityForce = new THREE.Vector3()
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.smoothedQuaternions = [new THREE.Quaternion()]
+    internals.previousVelocities = [new THREE.Vector3(1, 0, 0)]
+    internals.headingInitialized = [true]
+    internals.tempCurrentPos = new THREE.Vector3()
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+    internals.tempDepthForce = new THREE.Vector3()
+    internals.tempBoundsSize = new THREE.Vector3()
+    internals.tempHorizontalDirection = new THREE.Vector3()
+    internals.tempHorizontalPreviousDirection = new THREE.Vector3()
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    internals.heroAssignments = new Map()
+    internals.behaviorProfile = {
+      preferredDepth: 0.5,
+      depthVariance: 0.18,
+      turnBias: 0.14,
+      schoolMood: 'calm',
+      avoidWalls: 0.8
+    }
+
+    const stub = instance as unknown as { updateWanderTargets: (elapsedTime: number) => void }
+    stub.updateWanderTargets = () => {}
+
+    const update = (DetailedFishSystem.prototype as unknown as {
+      update: (deltaTime: number, elapsedTime: number) => void
+    }).update.bind(instance)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+    update(1 / 60, 0)
+
+    const matrix = new THREE.Matrix4()
+    mesh.getMatrixAt(0, matrix)
+    const quaternion = new THREE.Quaternion()
+    matrix.decompose(new THREE.Vector3(), quaternion, new THREE.Vector3())
+    const forward = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion).normalize()
+
+    expect(forward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(0.12)
+
+    randomSpy.mockRestore()
+  })
+
+  test('update keeps root yaw stable when velocity is steady', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boid = {
+      position: new THREE.Vector3(0, 0, 0),
+      velocity: new THREE.Vector3(-1, 0, 0),
+      acceleration: new THREE.Vector3(),
+      maxSpeed: 4,
+      maxForce: 2
+    }
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+      1
+    )
+
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        modelForwardAxis?: {
+          procedural: [number, number, number]
+          school: [number, number, number]
+          hero: [number, number, number]
+        }
+        locomotionProfileId?: string
+      }>
+      boids: { boids: typeof boid[]; update: (deltaTime: number) => void }
+      boidVariantIndices: number[]
+      wanderTargets: THREE.Vector3[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      dummy: THREE.Object3D
+      tempWanderForce: THREE.Vector3
+      tempJitter: THREE.Vector3
+      tempNoiseForce: THREE.Vector3
+      tempDirection: THREE.Vector3
+      tempSuddenTurn: THREE.Vector3
+      tempCuriosityForce: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
+      headingInitialized: boolean[]
+      tempCurrentPos: THREE.Vector3
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      tempDepthForce: THREE.Vector3
+      tempBoundsSize: THREE.Vector3
+      tempHorizontalDirection: THREE.Vector3
+      tempHorizontalPreviousDirection: THREE.Vector3
+      bounds: THREE.Box3
+      heroAssignments: Map<number, unknown>
+      behaviorProfile: {
+        preferredDepth: number
+        depthVariance: number
+        turnBias: number
+        schoolMood: 'calm'
+        avoidWalls: number
+      }
+    }
+
+    internals.instancedMeshes = [mesh]
+    internals.variants = [{
+      name: 'Goldfish',
+      scale: 0.55,
+      speed: 0.9,
+      modelForwardAxis: {
+        procedural: [-1, 0, 0],
+        school: [-1, 0, 0],
+        hero: [-1, 0, 0]
+      },
+      locomotionProfileId: 'goldfish-wobble'
+    }]
+    internals.boids = { boids: [boid], update: () => {} }
+    internals.boidVariantIndices = [0]
+    internals.wanderTargets = [new THREE.Vector3(0, 0, 0)]
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0.35])
+    internals.swimPhases = new Float32Array([0.8])
+    internals.dummy = new THREE.Object3D()
+    internals.tempWanderForce = new THREE.Vector3()
+    internals.tempJitter = new THREE.Vector3()
+    internals.tempNoiseForce = new THREE.Vector3()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempSuddenTurn = new THREE.Vector3()
+    internals.tempCuriosityForce = new THREE.Vector3()
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.smoothedQuaternions = [new THREE.Quaternion()]
+    internals.previousVelocities = [new THREE.Vector3(-1, 0, 0)]
+    internals.headingInitialized = [true]
+    internals.tempCurrentPos = new THREE.Vector3()
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+    internals.tempDepthForce = new THREE.Vector3()
+    internals.tempBoundsSize = new THREE.Vector3()
+    internals.tempHorizontalDirection = new THREE.Vector3()
+    internals.tempHorizontalPreviousDirection = new THREE.Vector3()
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    internals.heroAssignments = new Map()
+    internals.behaviorProfile = {
+      preferredDepth: 0.5,
+      depthVariance: 0.18,
+      turnBias: 0.14,
+      schoolMood: 'calm',
+      avoidWalls: 0.8
+    }
+
+    const stub = instance as unknown as { updateWanderTargets: (elapsedTime: number) => void }
+    stub.updateWanderTargets = () => {}
+
+    const update = (DetailedFishSystem.prototype as unknown as {
+      update: (deltaTime: number, elapsedTime: number) => void
+    }).update.bind(instance)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+    update(1 / 60, 0)
+    const firstMatrix = new THREE.Matrix4()
+    mesh.getMatrixAt(0, firstMatrix)
+    const firstQuaternion = new THREE.Quaternion()
+    firstMatrix.decompose(new THREE.Vector3(), firstQuaternion, new THREE.Vector3())
+    const firstForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(firstQuaternion).normalize()
+
+    update(1 / 60, 0.9)
+    const secondMatrix = new THREE.Matrix4()
+    mesh.getMatrixAt(0, secondMatrix)
+    const secondQuaternion = new THREE.Quaternion()
+    secondMatrix.decompose(new THREE.Vector3(), secondQuaternion, new THREE.Vector3())
+    const secondForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(secondQuaternion).normalize()
+
+    expect(firstForward.angleTo(secondForward)).toBeLessThan(0.01)
 
     randomSpy.mockRestore()
   })

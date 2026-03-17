@@ -20,10 +20,34 @@ interface BoidParams {
   cruiseWeight: number
 }
 
+type SteeringWeightTuning = {
+  alignment?: number
+  cohesion?: number
+  separation?: number
+}
+
 export interface BoidsBehaviorTuning {
   speed: number
   turnBias: number
   avoidWalls: number
+  cruiseBias?: number
+  turnNoise?: number
+  boundaryArcRadius?: number
+  yawResponsiveness?: number
+}
+
+type BoidTuning = {
+  cruiseSpeed?: number
+  yawResponsiveness?: number
+  cruiseBias?: number
+  turnNoise?: number
+  boundaryArcRadius?: number
+  steeringWeights?: SteeringWeightTuning
+}
+
+type RuntimeBoidParams = BoidParams & {
+  boundaryArcRadius: number
+  turnNoise: number
 }
 
 export class Boid {
@@ -99,10 +123,15 @@ export class BoidsSystem {
 
   private boundsSize = new THREE.Vector3()
   private boundsCenter = new THREE.Vector3()
+  private boidTunings: BoidTuning[] = []
   private behaviorTuning: BoidsBehaviorTuning = {
     speed: 0.55,
     turnBias: 0.14,
-    avoidWalls: 0.8
+    avoidWalls: 0.8,
+    cruiseBias: 1,
+    turnNoise: 0.08,
+    boundaryArcRadius: 0.46,
+    yawResponsiveness: 1
   }
 
   constructor(count: number, bounds: THREE.Box3) {
@@ -129,6 +158,7 @@ export class BoidsSystem {
     this.bounds.getSize(this.boundsSize)
     this.bounds.getCenter(this.boundsCenter)
     this.updateDerivedParams()
+    this.boidTunings = Array.from({ length: count }, () => ({}))
 
     for (let i = 0; i < count; i++) {
       const x = this.boundsCenter.x + (Math.random() - 0.5) * this.boundsSize.x * 0.8
@@ -154,20 +184,28 @@ export class BoidsSystem {
     const avoidWalls = THREE.MathUtils.clamp(this.behaviorTuning.avoidWalls, 0.15, 1.4)
     const speedFactor = THREE.MathUtils.clamp(this.behaviorTuning.speed, 0.25, 1.5)
     const turnBias = THREE.MathUtils.clamp(this.behaviorTuning.turnBias, 0.05, 1)
+    const cruiseBias = THREE.MathUtils.clamp(this.behaviorTuning.cruiseBias ?? 1, 0.55, 1.2)
+    const turnNoise = THREE.MathUtils.clamp(this.behaviorTuning.turnNoise ?? 0.08, 0, 0.45)
+    const boundaryArcRadius = THREE.MathUtils.clamp(this.behaviorTuning.boundaryArcRadius ?? 0.46, 0.18, 1.2)
+    const yawResponsiveness = THREE.MathUtils.clamp(this.behaviorTuning.yawResponsiveness ?? 1, 0.5, 1.45)
 
     const baseCruiseSpeed = Math.max(1.8, this.boundsSize.x * 0.24)
     this.params.maxSpeed = baseCruiseSpeed * (0.7 + speedFactor * 0.6)
-    this.params.maxForce = Math.max(1, this.params.maxSpeed * (0.42 + turnBias * 0.32))
+    this.params.maxForce = Math.max(1, this.params.maxSpeed * (0.4 + turnBias * 0.26 + yawResponsiveness * 0.12))
     this.params.neighborRadius = Math.max(1.8, minSpan * 0.38)
-    this.params.boundaryMargin = Math.min(minSpan * (0.14 + avoidWalls * 0.08), minSpan * 0.34)
-    this.params.boundaryLookAhead = 0.55 + avoidWalls * 0.35 + Math.max(0, aspectXZ - 1) * 0.08
+    this.params.boundaryMargin = Math.min(minSpan * (0.12 + avoidWalls * 0.08 + boundaryArcRadius * 0.03), minSpan * 0.34)
+    this.params.boundaryLookAhead = 0.5 + avoidWalls * 0.32 + boundaryArcRadius * 0.16 + Math.max(0, aspectXZ - 1) * 0.08
     this.params.boundaryWeight = 0.45 + avoidWalls * 0.85
-    this.params.boundaryInwardStrength = 0.3 + avoidWalls * 0.7
+    this.params.boundaryInwardStrength = 0.3 + avoidWalls * 0.62 + yawResponsiveness * 0.08
     this.params.hardBoundaryMultiplier = 2.5
-    this.params.lateralCruiseBias = THREE.MathUtils.clamp(0.54 + Math.max(0, aspectXZ - 1) * 0.12, 0.54, 0.82)
-    this.params.verticalWanderScale = THREE.MathUtils.clamp(0.5 - Math.max(0, aspectXZ - 1) * 0.06, 0.3, 0.5)
-    this.params.depthWanderScale = THREE.MathUtils.clamp(0.48 - Math.max(0, aspectXZ - 1) * 0.1, 0.2, 0.48)
-    this.params.cruiseWeight = THREE.MathUtils.clamp(0.38 + Math.max(0, aspectXZ - 1) * 0.08, 0.38, 0.62)
+    this.params.lateralCruiseBias = THREE.MathUtils.clamp(
+      (0.54 + Math.max(0, aspectXZ - 1) * 0.12) * cruiseBias,
+      0.48,
+      0.94
+    )
+    this.params.verticalWanderScale = THREE.MathUtils.clamp(0.48 - Math.max(0, aspectXZ - 1) * 0.05 + turnNoise * 0.08, 0.28, 0.56)
+    this.params.depthWanderScale = THREE.MathUtils.clamp(0.42 - Math.max(0, aspectXZ - 1) * 0.08 + boundaryArcRadius * 0.06, 0.18, 0.56)
+    this.params.cruiseWeight = THREE.MathUtils.clamp(0.36 + Math.max(0, aspectXZ - 1) * 0.08 + turnNoise * 0.12, 0.34, 0.68)
 
     for (const boid of this.boids) {
       boid.maxSpeed = this.params.maxSpeed
@@ -182,6 +220,53 @@ export class BoidsSystem {
     }
 
     this.updateDerivedParams()
+  }
+
+  setBoidTuning(index: number, tuning: BoidTuning): void {
+    if (index < 0) return
+
+    while (this.boidTunings.length <= index) {
+      this.boidTunings.push({})
+    }
+
+    this.boidTunings[index] = {
+      ...this.boidTunings[index],
+      ...tuning,
+      steeringWeights: {
+        ...this.boidTunings[index]?.steeringWeights,
+        ...tuning.steeringWeights
+      }
+    }
+  }
+
+  private resolveBoidRuntimeParams(index: number): RuntimeBoidParams {
+    const tuning = this.boidTunings[index] ?? {}
+    const steeringWeights = tuning.steeringWeights ?? {}
+    const cruiseSpeed = THREE.MathUtils.clamp(tuning.cruiseSpeed ?? 1, 0.58, 1.35)
+    const yawResponsiveness = THREE.MathUtils.clamp(tuning.yawResponsiveness ?? 1, 0.5, 1.4)
+    const cruiseBias = THREE.MathUtils.clamp(tuning.cruiseBias ?? 1, 0.52, 1.18)
+    const turnNoise = THREE.MathUtils.clamp(tuning.turnNoise ?? 0.08, 0, 0.4)
+    const boundaryArcRadius = THREE.MathUtils.clamp(tuning.boundaryArcRadius ?? 0.46, 0.18, 1.18)
+
+    return {
+      alignment: this.params.alignment * (steeringWeights.alignment ?? 1),
+      cohesion: this.params.cohesion * (steeringWeights.cohesion ?? 1),
+      separation: this.params.separation * (steeringWeights.separation ?? 1),
+      maxSpeed: this.params.maxSpeed * cruiseSpeed,
+      maxForce: this.params.maxForce * (0.82 + yawResponsiveness * 0.2 + turnNoise * 0.12),
+      neighborRadius: this.params.neighborRadius * (0.92 + boundaryArcRadius * 0.08),
+      boundaryMargin: this.params.boundaryMargin * (0.92 + boundaryArcRadius * 0.16),
+      boundaryLookAhead: this.params.boundaryLookAhead * (0.84 + boundaryArcRadius * 0.24),
+      boundaryWeight: this.params.boundaryWeight * (0.78 + yawResponsiveness * 0.18),
+      boundaryInwardStrength: this.params.boundaryInwardStrength * (1.06 - boundaryArcRadius * 0.22),
+      hardBoundaryMultiplier: this.params.hardBoundaryMultiplier,
+      lateralCruiseBias: THREE.MathUtils.clamp(this.params.lateralCruiseBias * cruiseBias, 0.42, 1.08),
+      verticalWanderScale: THREE.MathUtils.clamp(this.params.verticalWanderScale + turnNoise * 0.12, 0.24, 0.64),
+      depthWanderScale: THREE.MathUtils.clamp(this.params.depthWanderScale + boundaryArcRadius * 0.08, 0.18, 0.64),
+      cruiseWeight: THREE.MathUtils.clamp(this.params.cruiseWeight * (0.84 + cruiseBias * 0.16), 0.24, 0.84),
+      boundaryArcRadius,
+      turnNoise
+    }
   }
 
   private alignment(boid: Boid, neighbors: Boid[]): THREE.Vector3 {
@@ -221,12 +306,12 @@ export class BoidsSystem {
     return boid.seek(avgPosition)
   }
 
-  private separation(boid: Boid, neighbors: Boid[]): THREE.Vector3 {
+  private separation(boid: Boid, neighbors: Boid[], runtime: RuntimeBoidParams): THREE.Vector3 {
     const steer = new THREE.Vector3()
 
     for (const neighbor of neighbors) {
       const distance = boid.position.distanceTo(neighbor.position)
-      if (distance > 0 && distance < this.params.neighborRadius * 0.45) {
+      if (distance > 0 && distance < runtime.neighborRadius * 0.45) {
         const diff = new THREE.Vector3().subVectors(boid.position, neighbor.position)
         diff.normalize()
         diff.divideScalar(distance)
@@ -248,20 +333,21 @@ export class BoidsSystem {
     return steer
   }
 
-  private cruise(boid: Boid): THREE.Vector3 {
+  private cruise(boid: Boid, index: number): THREE.Vector3 {
+    const runtime = this.resolveBoidRuntimeParams(index)
     const desired = boid.velocity.clone()
     if (desired.lengthSq() === 0) {
       desired.set(1, 0, 0)
     }
 
     const lateralDirection = Math.sign(desired.x || boid.position.x - this.boundsCenter.x || 1)
-    desired.x = lateralDirection * Math.max(Math.abs(desired.x), boid.maxSpeed * this.params.lateralCruiseBias)
-    desired.y *= this.params.verticalWanderScale
-    desired.z *= this.params.depthWanderScale
+    desired.x = lateralDirection * Math.max(Math.abs(desired.x), boid.maxSpeed * runtime.lateralCruiseBias)
+    desired.y *= runtime.verticalWanderScale
+    desired.z *= runtime.depthWanderScale
     desired.normalize().multiplyScalar(boid.maxSpeed)
 
     const steer = desired.sub(boid.velocity)
-    steer.clampLength(0, boid.maxForce * this.params.cruiseWeight)
+    steer.clampLength(0, boid.maxForce * runtime.cruiseWeight)
 
     return steer
   }
@@ -278,10 +364,11 @@ export class BoidsSystem {
     return 0
   }
 
-  private boundaries(boid: Boid): THREE.Vector3 {
-    const comfortMargin = this.params.boundaryMargin
+  private boundaries(boid: Boid, index: number): THREE.Vector3 {
+    const runtime = this.resolveBoidRuntimeParams(index)
+    const comfortMargin = runtime.boundaryMargin
     const hardMargin = Math.max(comfortMargin * 0.35, 0.25)
-    const predictedPosition = boid.position.clone().addScaledVector(boid.velocity, this.params.boundaryLookAhead)
+    const predictedPosition = boid.position.clone().addScaledVector(boid.velocity, runtime.boundaryLookAhead)
     const desired = boid.velocity.clone()
     const travelSpeed = Math.max(boid.velocity.length(), boid.maxSpeed * 0.75, 0.001)
     const comfortMin = this.bounds.min.clone().addScalar(comfortMargin)
@@ -303,18 +390,22 @@ export class BoidsSystem {
     const zStrength = Math.abs(zComfortPressure) + Math.abs(zHardPressure) * 1.4
 
     if (xStrength > 0) {
-      desired.x += travelSpeed * Math.sign(xComfortPressure || xHardPressure) * xStrength * this.params.boundaryInwardStrength
-      desired.z += depthDirection * travelSpeed * xStrength * 0.18
+      desired.x += travelSpeed *
+        Math.sign(xComfortPressure || xHardPressure) *
+        xStrength *
+        runtime.boundaryInwardStrength *
+        (1.04 - runtime.boundaryArcRadius * 0.18)
+      desired.z += depthDirection * travelSpeed * xStrength * (0.08 + runtime.boundaryArcRadius * 0.24)
     }
 
     if (yStrength > 0) {
-      desired.y += travelSpeed * Math.sign(yComfortPressure || yHardPressure) * yStrength * this.params.boundaryInwardStrength * 0.75
+      desired.y += travelSpeed * Math.sign(yComfortPressure || yHardPressure) * yStrength * runtime.boundaryInwardStrength * 0.75
       desired.x += lateralDirection * travelSpeed * yStrength * 0.08
     }
 
     if (zStrength > 0) {
-      desired.z += travelSpeed * Math.sign(zComfortPressure || zHardPressure) * zStrength * this.params.boundaryInwardStrength * 0.65
-      desired.x += lateralDirection * travelSpeed * zStrength * (0.28 + this.params.lateralCruiseBias * 0.18)
+      desired.z += travelSpeed * Math.sign(zComfortPressure || zHardPressure) * zStrength * runtime.boundaryInwardStrength * 0.65
+      desired.x += lateralDirection * travelSpeed * zStrength * (0.16 + runtime.boundaryArcRadius * 0.22 + runtime.lateralCruiseBias * 0.12)
     }
 
     if (desired.lengthSq() === 0 || (xStrength === 0 && yStrength === 0 && zStrength === 0)) {
@@ -323,19 +414,19 @@ export class BoidsSystem {
 
     desired.normalize().multiplyScalar(boid.maxSpeed)
     const steer = desired.sub(boid.velocity)
-    steer.multiplyScalar(this.params.boundaryWeight)
-    steer.clampLength(0, boid.maxForce * this.params.hardBoundaryMultiplier)
+    steer.multiplyScalar(runtime.boundaryWeight)
+    steer.clampLength(0, boid.maxForce * runtime.hardBoundaryMultiplier)
 
     return steer
   }
 
-  private getNeighbors(boid: Boid): Boid[] {
+  private getNeighbors(boid: Boid, runtime: RuntimeBoidParams): Boid[] {
     const neighbors: Boid[] = []
 
     for (const other of this.boids) {
       if (other !== boid) {
         const distance = boid.position.distanceTo(other.position)
-        if (distance < this.params.neighborRadius) {
+        if (distance < runtime.neighborRadius) {
           neighbors.push(other)
         }
       }
@@ -357,14 +448,18 @@ export class BoidsSystem {
   }
 
   update(deltaTime: number): void {
-    for (const boid of this.boids) {
-      const neighbors = this.getNeighbors(boid)
+    for (let index = 0; index < this.boids.length; index++) {
+      const boid = this.boids[index]
+      const runtime = this.resolveBoidRuntimeParams(index)
+      boid.maxSpeed = runtime.maxSpeed
+      boid.maxForce = runtime.maxForce
+      const neighbors = this.getNeighbors(boid, runtime)
 
-      const alignmentForce = this.alignment(boid, neighbors).multiplyScalar(this.params.alignment)
-      const cohesionForce = this.cohesion(boid, neighbors).multiplyScalar(this.params.cohesion)
-      const separationForce = this.separation(boid, neighbors).multiplyScalar(this.params.separation)
-      const boundaryForce = this.boundaries(boid)
-      const cruiseForce = this.cruise(boid)
+      const alignmentForce = this.alignment(boid, neighbors).multiplyScalar(runtime.alignment)
+      const cohesionForce = this.cohesion(boid, neighbors).multiplyScalar(runtime.cohesion)
+      const separationForce = this.separation(boid, neighbors, runtime).multiplyScalar(runtime.separation)
+      const boundaryForce = this.boundaries(boid, index)
+      const cruiseForce = this.cruise(boid, index)
 
       boid.applyForce(alignmentForce)
       boid.applyForce(cohesionForce)
