@@ -173,16 +173,16 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
   },
   {
     id: 'driftwood-backfill',
-    x: 0.01,
-    z: -0.31,
+    x: -0.06,
+    z: -0.38,
     layer: 'background',
     massRole: 'driftwood-backfill',
     plantType: 'fan-leaf',
     baseHeight: 8.24,
     spreadX: 0.32,
     spreadZ: 0.24,
-    hueBase: 0.29,
-    rotationY: 0.04,
+    hueBase: 0.22,
+    rotationY: -0.12,
     scale: new THREE.Vector3(1.26, 2.18, 1.2),
     assetIds: ['plant-fan-cluster', 'plant-sword-cluster']
   },
@@ -1229,25 +1229,30 @@ export class AquascapingSystem {
     }
     material.roughnessMap = material.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
     material.aoMap = material.aoMap ?? this.getVisualTexture('driftwood-ao')
-    material.aoMapIntensity = material.aoMap ? Math.max(material.aoMapIntensity ?? 0.94, 0.94) : 0
+    material.aoMapIntensity = material.aoMap
+      ? THREE.MathUtils.clamp(material.aoMapIntensity ?? 0.6, 0.54, 0.68)
+      : 0
     const driftwoodColor = material.color?.clone() ?? new THREE.Color('#6f5641')
     const driftwoodHsl = { h: 0, s: 0, l: 0 }
     driftwoodColor.getHSL(driftwoodHsl)
-    if (driftwoodHsl.l < 0.15) {
+    if (driftwoodHsl.l < 0.28) {
       driftwoodColor.setHSL(
         driftwoodHsl.h,
-        THREE.MathUtils.clamp(driftwoodHsl.s * 0.92 + 0.02, 0.16, 0.34),
-        0.15
+        THREE.MathUtils.clamp(driftwoodHsl.s * 0.84 + 0.02, 0.1, 0.28),
+        0.28
       )
     }
     material.color = driftwoodColor
+    material.emissive = material.emissive ?? new THREE.Color('#000000')
+    material.emissive.lerp(new THREE.Color('#3d2b1b'), 0.18)
+    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.05)
     material.roughness = typeof material.roughness === 'number'
-      ? Math.max(material.roughness, material.roughnessMap ? 0.9 : 0.94)
-      : material.roughnessMap ? 0.92 : 0.96
+      ? Math.max(material.roughness, material.roughnessMap ? 0.92 : 0.95)
+      : material.roughnessMap ? 0.93 : 0.96
     material.metalness = typeof material.metalness === 'number'
       ? Math.min(material.metalness, 0.03)
       : 0.02
-    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.07, 0.03, 0.14)
+    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.05, 0.02, 0.09)
 
     if (material instanceof THREE.MeshPhysicalMaterial) {
       material.clearcoat = Math.min(material.clearcoat ?? 0, 0.03)
@@ -1444,216 +1449,201 @@ export class AquascapingSystem {
 
     const driftwoodGroup = new THREE.Group()
     driftwoodGroup.position.set(
-      center.x + size.x * 0.08,
-      bounds.min.y + 0.86,
-      center.z - size.z * 0.08
+      center.x + size.x * 0.1,
+      bounds.min.y + 0.88,
+      center.z + size.z * 0.03
     )
-    driftwoodGroup.rotation.y = -0.38
+    driftwoodGroup.rotation.set(-0.08, -0.16, 0.12)
+    driftwoodGroup.scale.set(1.16, 1.14, 1.12)
     driftwoodGroup.userData = {
       role: 'hero-driftwood'
     }
 
+    const driftwoodMaterial = this.createDriftwoodMaterial()
+    driftwoodGroup.add(this.createHeroDriftwoodTrunk(driftwoodMaterial))
+
     const driftwoodAsset = this.cloneVisualModelGroup('driftwood-hero', {
-      role: 'hero-driftwood'
+      role: 'driftwood-asset-core'
     })
     if (driftwoodAsset) {
-      driftwoodAsset.position.copy(driftwoodGroup.position)
-      driftwoodAsset.rotation.copy(driftwoodGroup.rotation)
-      driftwoodAsset.scale.set(1.18, 1.18, 1.18)
-      this.decorations.push(driftwoodAsset)
-      this.group.add(driftwoodAsset)
-      return
+      driftwoodGroup.userData = {
+        ...driftwoodGroup.userData,
+        assetId: 'driftwood-hero'
+      }
+      this.fitHeroDriftwoodAssetCore(driftwoodAsset, size)
+      driftwoodGroup.add(driftwoodAsset)
     }
 
-    const branchMaterial = this.createDriftwoodMaterial()
-    const branchDefinitions: DriftwoodTubeDefinition[] = [
-      {
-        radius: 0.18,
-        points: [
-          new THREE.Vector3(-1.8, 0.15, 0.5),
-          new THREE.Vector3(-0.65, 1.55, 0.2),
-          new THREE.Vector3(0.85, 2.55, -0.25),
-          new THREE.Vector3(2.05, 2.1, -0.7)
-        ],
-        tubularSegments: 34,
-        radialSegments: 8,
-        ellipseAspect: 1.28,
-        tipScale: 0.58,
-        flare: 0.42,
-        twist: 0.7,
-        barkAmplitude: 0.1
-      },
-      {
-        radius: 0.1,
-        points: [
-          new THREE.Vector3(-0.2, 1.45, 0.2),
-          new THREE.Vector3(0.55, 2.35, 0.65),
-          new THREE.Vector3(1.55, 2.85, 0.8)
-        ],
-        tubularSegments: 28,
-        radialSegments: 7,
-        ellipseAspect: 1.18,
-        tipScale: 0.48,
-        flare: 0.18,
-        twist: 0.82,
-        barkAmplitude: 0.12
-      },
-      {
-        radius: 0.08,
-        points: [
-          new THREE.Vector3(0.35, 1.35, -0.05),
-          new THREE.Vector3(1.15, 2.05, -0.8),
-          new THREE.Vector3(1.65, 2.5, -1.2)
-        ],
-        tubularSegments: 26,
-        radialSegments: 7,
-        ellipseAspect: 1.22,
-        tipScale: 0.44,
-        flare: 0.2,
-        twist: 1.04,
-        barkAmplitude: 0.12
-      }
-    ]
+    driftwoodGroup.add(this.createHeroDriftwoodRootFlare(driftwoodMaterial))
 
-    branchDefinitions.forEach((definition) => {
-      const branch = this.createDriftwoodTubeMesh(definition, branchMaterial, 'driftwood-branch')
+    this.createHeroDriftwoodBranchAttachments(driftwoodMaterial).forEach((branch) => {
       driftwoodGroup.add(branch)
     })
 
-    const branchletDefinitions: DriftwoodTubeDefinition[] = [
+    this.createHeroDriftwoodRoots(driftwoodMaterial).forEach((root) => {
+      driftwoodGroup.add(root)
+    })
+
+    this.createHeroDriftwoodBrokenStubs(driftwoodMaterial).forEach((stub) => {
+      driftwoodGroup.add(stub)
+    })
+
+    driftwoodGroup.add(this.createHeroDriftwoodLocalShadow())
+    driftwoodGroup.add(this.createHeroDriftwoodLocalFill())
+    driftwoodGroup.add(this.createHeroDriftwoodLocalRim())
+
+    const epiphyteAttachments = [
+      { offset: new THREE.Vector3(-0.92, 0.92, 0.48), hue: 0.28, rotationY: -0.24 },
+      { offset: new THREE.Vector3(0.24, 1.84, 0.82), hue: 0.33, rotationY: 0.46 },
+      { offset: new THREE.Vector3(0.94, 1.58, -0.42), hue: 0.26, rotationY: -0.58 }
+    ]
+    epiphyteAttachments.forEach((attachment) => {
+      const cluster = this.createEpiphyteCluster(attachment.hue)
+      cluster.position.copy(attachment.offset)
+      cluster.rotation.y = attachment.rotationY
+      driftwoodGroup.add(cluster)
+      this.plants.push(cluster)
+    })
+
+    this.decorations.push(driftwoodGroup)
+    this.group.add(driftwoodGroup)
+  }
+
+  private createHeroDriftwoodTrunk(material: THREE.Material): THREE.Mesh {
+    const trunk = this.createDriftwoodTubeMesh({
+      radius: 0.38,
+      points: [
+        new THREE.Vector3(-1.9, 0.06, 0.42),
+        new THREE.Vector3(-1.04, 0.78, 0.24),
+        new THREE.Vector3(0.14, 1.52, 0.06),
+        new THREE.Vector3(1.62, 2.04, -0.26),
+        new THREE.Vector3(3.08, 2.18, -0.94)
+      ],
+      tubularSegments: 46,
+      radialSegments: 9,
+      ellipseAspect: 1.48,
+      tipScale: 0.52,
+      flare: 0.56,
+      twist: 0.62,
+      barkAmplitude: 0.12
+    }, material, 'driftwood-trunk')
+    trunk.position.set(0.04, 0.2, 0.18)
+    trunk.rotation.set(-0.04, 0.14, -0.04)
+    trunk.scale.set(1.24, 1.12, 1.18)
+    return trunk
+  }
+
+  private createHeroDriftwoodBranchAttachments(material: THREE.Material): THREE.Mesh[] {
+    const branchDefinitions: DriftwoodTubeDefinition[] = [
       {
-        radius: 0.04,
+        radius: 0.098,
         points: [
-          new THREE.Vector3(0.22, 1.88, 0.34),
-          new THREE.Vector3(0.86, 2.36, 0.54),
-          new THREE.Vector3(1.24, 2.72, 0.98)
+          new THREE.Vector3(0.54, 1.58, 0.08),
+          new THREE.Vector3(1.38, 2.36, 0.72),
+          new THREE.Vector3(2.38, 2.74, 1.14)
         ],
-        tubularSegments: 22,
-        radialSegments: 6,
-        ellipseAspect: 1.16,
-        tipScale: 0.34,
-        flare: 0.14,
-        twist: 0.92,
-        barkAmplitude: 0.14
+        tubularSegments: 28,
+        radialSegments: 7,
+        ellipseAspect: 1.2,
+        tipScale: 0.42,
+        flare: 0.24,
+        twist: 0.78,
+        barkAmplitude: 0.12
       },
       {
-        radius: 0.032,
+        radius: 0.082,
         points: [
-          new THREE.Vector3(0.62, 1.76, -0.22),
-          new THREE.Vector3(1.18, 2.12, -0.58),
-          new THREE.Vector3(1.72, 2.26, -1.04)
+          new THREE.Vector3(0.58, 1.56, 0.0),
+          new THREE.Vector3(1.48, 2.12, -0.72),
+          new THREE.Vector3(2.44, 2.32, -1.42)
         ],
-        tubularSegments: 20,
-        radialSegments: 6,
-        ellipseAspect: 1.14,
-        tipScale: 0.3,
-        flare: 0.12,
-        twist: 1.06,
-        barkAmplitude: 0.13
-      },
-      {
-        radius: 0.028,
-        points: [
-          new THREE.Vector3(-0.48, 1.62, 0.12),
-          new THREE.Vector3(-0.06, 2.12, 0.22),
-          new THREE.Vector3(0.42, 2.54, 0.3)
-        ],
-        tubularSegments: 18,
-        radialSegments: 6,
-        ellipseAspect: 1.12,
-        tipScale: 0.28,
-        flare: 0.1,
-        twist: 0.86,
+        tubularSegments: 26,
+        radialSegments: 7,
+        ellipseAspect: 1.2,
+        tipScale: 0.4,
+        flare: 0.2,
+        twist: 0.9,
         barkAmplitude: 0.12
       }
     ]
-    branchletDefinitions.forEach((definition) => {
-      const branchlet = this.createDriftwoodTubeMesh(definition, branchMaterial, 'driftwood-branchlet')
-      driftwoodGroup.add(branchlet)
-    })
 
+    return branchDefinitions.map((definition) => this.createDriftwoodTubeMesh(
+      definition,
+      material,
+      'driftwood-branch-attachment'
+    ))
+  }
+
+  private createHeroDriftwoodRoots(material: THREE.Material): THREE.Mesh[] {
     const rootDefinitions: DriftwoodTubeDefinition[] = [
       {
-        radius: 0.022,
+        radius: 0.024,
         points: [
-          new THREE.Vector3(-1.32, 0.66, 0.34),
-          new THREE.Vector3(-1.18, 0.12, 0.18),
-          new THREE.Vector3(-1.06, -0.48, 0.08)
+          new THREE.Vector3(-1.62, 0.42, 0.32),
+          new THREE.Vector3(-1.5, -0.16, 0.18),
+          new THREE.Vector3(-1.42, -0.54, 0.02)
         ],
         tubularSegments: 18,
         radialSegments: 5,
         ellipseAspect: 1.2,
-        tipScale: 0.62,
-        flare: 0.5,
-        twist: 0.48,
+        tipScale: 0.6,
+        flare: 0.46,
+        twist: 0.46,
         barkAmplitude: 0.11
       },
       {
-        radius: 0.018,
+        radius: 0.02,
         points: [
-          new THREE.Vector3(-0.24, 1.02, 0.28),
-          new THREE.Vector3(-0.16, 0.32, 0.12),
-          new THREE.Vector3(-0.08, -0.4, 0.06)
+          new THREE.Vector3(-1.18, 0.36, 0.28),
+          new THREE.Vector3(-1.02, -0.22, 0.14),
+          new THREE.Vector3(-0.82, -0.44, 0.04)
         ],
         tubularSegments: 18,
         radialSegments: 5,
         ellipseAspect: 1.16,
-        tipScale: 0.58,
-        flare: 0.42,
-        twist: 0.42,
+        tipScale: 0.56,
+        flare: 0.4,
+        twist: 0.4,
         barkAmplitude: 0.1
       },
       {
-        radius: 0.016,
+        radius: 0.018,
         points: [
-          new THREE.Vector3(0.94, 1.24, -0.12),
-          new THREE.Vector3(0.98, 0.42, -0.18),
-          new THREE.Vector3(1.02, -0.34, -0.24)
+          new THREE.Vector3(-0.22, 0.22, -0.02),
+          new THREE.Vector3(0.12, -0.2, -0.18),
+          new THREE.Vector3(0.56, -0.34, -0.42)
         ],
         tubularSegments: 18,
         radialSegments: 5,
         ellipseAspect: 1.14,
-        tipScale: 0.54,
-        flare: 0.4,
-        twist: 0.36,
+        tipScale: 0.52,
+        flare: 0.34,
+        twist: 0.34,
         barkAmplitude: 0.1
       }
     ]
-    rootDefinitions.forEach((definition) => {
-      const root = this.createDriftwoodTubeMesh(definition, branchMaterial, 'driftwood-root')
-      driftwoodGroup.add(root)
-    })
 
-    const rootFlare = new THREE.Mesh(
-      new THREE.SphereGeometry(0.42, 18, 12),
-      branchMaterial
-    )
-    rootFlare.position.set(-1.26, 0.12, 0.26)
-    rootFlare.scale.set(1.5, 0.62, 1.18)
-    rootFlare.rotation.set(-0.18, 0.34, 0.08)
-    rootFlare.castShadow = true
-    rootFlare.receiveShadow = true
-    rootFlare.userData = {
-      role: 'driftwood-root-flare'
-    }
-    driftwoodGroup.add(rootFlare)
+    return rootDefinitions.map((definition) => this.createDriftwoodTubeMesh(definition, material, 'driftwood-root'))
+  }
 
+  private createHeroDriftwoodBrokenStubs(material: THREE.Material): THREE.Mesh[] {
     const brokenStubDefinitions = [
       {
-        position: new THREE.Vector3(-0.18, 1.68, 0.22),
-        rotation: new THREE.Euler(0.56, -0.3, 0.42),
-        scale: new THREE.Vector3(0.12, 0.2, 0.1)
+        position: new THREE.Vector3(-0.1, 1.72, 0.16),
+        rotation: new THREE.Euler(0.58, -0.28, 0.42),
+        scale: new THREE.Vector3(0.12, 0.22, 0.1)
       },
       {
-        position: new THREE.Vector3(0.88, 2.06, -0.22),
-        rotation: new THREE.Euler(-0.34, 0.52, -0.2),
+        position: new THREE.Vector3(0.92, 1.98, -0.18),
+        rotation: new THREE.Euler(-0.32, 0.54, -0.18),
         scale: new THREE.Vector3(0.1, 0.18, 0.08)
       }
     ]
-    brokenStubDefinitions.forEach((definition) => {
+
+    return brokenStubDefinitions.map((definition) => {
       const stub = new THREE.Mesh(
         new THREE.CylinderGeometry(0.08, 0.04, 0.34, 7),
-        branchMaterial
+        material
       )
       stub.position.copy(definition.position)
       stub.rotation.copy(definition.rotation)
@@ -1663,24 +1653,86 @@ export class AquascapingSystem {
       stub.userData = {
         role: 'driftwood-broken-stub'
       }
-      driftwoodGroup.add(stub)
+      return stub
     })
+  }
 
-    const epiphyteAttachments = [
-      { offset: new THREE.Vector3(-0.25, 1.15, 0.32), hue: 0.29 },
-      { offset: new THREE.Vector3(0.72, 1.95, 0.58), hue: 0.33 },
-      { offset: new THREE.Vector3(1.02, 1.55, -0.42), hue: 0.26 }
-    ]
-    epiphyteAttachments.forEach((attachment) => {
-      const cluster = this.createEpiphyteCluster(attachment.hue)
-      cluster.position.copy(attachment.offset)
-      cluster.rotation.y = Math.random() * Math.PI * 2
-      driftwoodGroup.add(cluster)
-      this.plants.push(cluster)
-    })
+  private createHeroDriftwoodRootFlare(material: THREE.Material): THREE.Mesh {
+    const rootFlare = new THREE.Mesh(
+      new THREE.SphereGeometry(0.46, 18, 12),
+      material
+    )
+    rootFlare.position.set(-1.76, 0.06, 0.36)
+    rootFlare.scale.set(2.38, 0.92, 1.62)
+    rootFlare.rotation.set(-0.2, 0.36, 0.06)
+    rootFlare.castShadow = true
+    rootFlare.receiveShadow = true
+    rootFlare.userData = {
+      role: 'driftwood-root-flare'
+    }
+    return rootFlare
+  }
 
-    this.decorations.push(driftwoodGroup)
-    this.group.add(driftwoodGroup)
+  private createHeroDriftwoodLocalShadow(): THREE.Mesh {
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.4, 1.7),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#102026'),
+        transparent: true,
+        opacity: 0.12,
+        depthWrite: false
+      })
+    )
+    shadow.rotation.x = -Math.PI / 2
+    shadow.position.set(0.44, 0.08, 0.24)
+    shadow.userData = {
+      role: 'driftwood-local-shadow'
+    }
+    return shadow
+  }
+
+  private createHeroDriftwoodLocalFill(): THREE.PointLight {
+    const fill = new THREE.PointLight('#f1e7d2', 1.72, 7, 1.9)
+    fill.position.set(0.62, 0.94, 1.56)
+    fill.userData = {
+      role: 'driftwood-local-fill'
+    }
+    return fill
+  }
+
+  private createHeroDriftwoodLocalRim(): THREE.PointLight {
+    const rim = new THREE.PointLight('#adc0b8', 0.72, 5.2, 1.9)
+    rim.position.set(-0.92, 1.52, -0.88)
+    rim.userData = {
+      role: 'driftwood-local-rim'
+    }
+    return rim
+  }
+
+  private fitHeroDriftwoodAssetCore(asset: THREE.Group, tankSize: THREE.Vector3): void {
+    asset.rotation.set(-0.24, 0.44, -0.18)
+
+    const sourceBounds = new THREE.Box3().setFromObject(asset)
+    const sourceSize = sourceBounds.getSize(new THREE.Vector3())
+    const targetSize = new THREE.Vector3(
+      tankSize.x * 0.16,
+      tankSize.y * 0.22,
+      tankSize.z * 0.16
+    )
+
+    asset.scale.set(
+      targetSize.x / Math.max(sourceSize.x, 0.001),
+      targetSize.y / Math.max(sourceSize.y, 0.001),
+      targetSize.z / Math.max(sourceSize.z, 0.001)
+    )
+
+    const fittedBounds = new THREE.Box3().setFromObject(asset)
+    const fittedCenter = fittedBounds.getCenter(new THREE.Vector3())
+    asset.position.set(
+      0.82 - fittedCenter.x,
+      0.34 - fittedBounds.min.y,
+      0.04 - fittedCenter.z
+    )
   }
 
   private createHeroRockRidge(bounds: THREE.Box3): void {
@@ -1958,7 +2010,7 @@ export class AquascapingSystem {
   private createDriftwoodTubeMesh(
     definition: DriftwoodTubeDefinition,
     material: THREE.Material,
-    role: 'driftwood-branch' | 'driftwood-branchlet' | 'driftwood-root'
+    role: 'driftwood-trunk' | 'driftwood-branch-attachment' | 'driftwood-root'
   ): THREE.Mesh {
     const curve = new THREE.CatmullRomCurve3(definition.points)
     const geometry = new THREE.TubeGeometry(
@@ -2057,39 +2109,37 @@ export class AquascapingSystem {
   private createDriftwoodBurialDetails(bounds: THREE.Box3): void {
     const size = new THREE.Vector3()
     bounds.getSize(size)
-    const driftwoodAnchor = substrateHardscapeAnchors.find((anchor) => anchor.id === 'driftwood-root-flare')
-    const basePosition = new THREE.Vector3(
-      (driftwoodAnchor?.x ?? 0.08) * size.x,
-      bounds.min.y + 0.04,
-      (driftwoodAnchor?.z ?? -0.08) * size.z
+    const driftwoodGroup = this.group.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
     )
+    if (!driftwoodGroup) return
 
     const burialShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.2, 1.2),
+      new THREE.PlaneGeometry(size.x * 0.16, size.z * 0.12),
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#102026'),
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.2,
         depthWrite: false
       })
     )
     burialShadow.rotation.x = -Math.PI / 2
-    burialShadow.position.set(basePosition.x - 0.28, basePosition.y, basePosition.z + 0.2)
+    burialShadow.position.set(-1.42, 0.02, 0.46)
     burialShadow.userData = {
       role: 'driftwood-burial-shadow'
     }
-    this.group.add(burialShadow)
+    driftwoodGroup.add(burialShadow)
 
     const moundDefinitions = [
       {
-        offset: new THREE.Vector3(-0.38, 0.12, 0.2),
-        scale: new THREE.Vector3(0.72, 0.16, 0.36),
-        color: '#8d7b63'
+        offset: new THREE.Vector3(-1.74, 0.14, 0.44),
+        scale: new THREE.Vector3(0.92, 0.18, 0.44),
+        color: '#9b896e'
       },
       {
-        offset: new THREE.Vector3(0.18, 0.1, 0.12),
-        scale: new THREE.Vector3(0.54, 0.12, 0.28),
-        color: '#776750'
+        offset: new THREE.Vector3(-1.02, 0.1, 0.28),
+        scale: new THREE.Vector3(0.64, 0.12, 0.34),
+        color: '#85745b'
       }
     ]
     moundDefinitions.forEach((definition) => {
@@ -2101,17 +2151,13 @@ export class AquascapingSystem {
           metalness: 0
         })
       )
-      mound.position.set(
-        basePosition.x + definition.offset.x,
-        bounds.min.y + definition.offset.y,
-        basePosition.z + definition.offset.z
-      )
+      mound.position.copy(definition.offset)
       mound.scale.copy(definition.scale)
       mound.receiveShadow = true
       mound.userData = {
         role: 'driftwood-detritus-mound'
       }
-      this.group.add(mound)
+      driftwoodGroup.add(mound)
     })
   }
 

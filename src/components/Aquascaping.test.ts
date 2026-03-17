@@ -87,7 +87,7 @@ describe('AquascapingSystem composition', () => {
     expect(foregroundPlants.length).toBeGreaterThan(0)
   })
 
-  it('adds a driftwood arch with epiphyte clusters so the scape has a clear hero silhouette', () => {
+  it('adds a trunk-first driftwood hardscape with readable fork and epiphytes so the scape has a clear hero silhouette', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -99,11 +99,11 @@ describe('AquascapingSystem composition', () => {
 
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
     const driftwood = aquascapingGroup.children.find((child) => child.userData.role === 'hero-driftwood') as THREE.Group | undefined
-    const branches = driftwood?.children.filter(
-      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-branch'
+    const trunks = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-trunk'
     ) ?? []
-    const branchlets = driftwood?.children.filter(
-      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-branchlet'
+    const branchAttachments = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-branch-attachment'
     ) ?? []
     const roots = driftwood?.children.filter(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-root'
@@ -122,18 +122,29 @@ describe('AquascapingSystem composition', () => {
         (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'epiphyte-leaf'
       )
     )
+    const localFill = driftwood?.children.find(
+      (child): child is THREE.PointLight => child instanceof THREE.PointLight && child.userData.role === 'driftwood-local-fill'
+    )
+    const localShadow = driftwood?.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-local-shadow'
+    )
 
     expect(driftwood).toBeDefined()
-    expect(branches.some((branch) => branch.geometry.type === 'TubeGeometry')).toBe(true)
-    expect(branches.some((branch) => branch.userData.crossSectionAspect > 1.05)).toBe(true)
-    expect(branchlets.some((branchlet) => branchlet.userData.tipRadius < branchlet.userData.baseRadius)).toBe(true)
-    expect(branches.every((branch) => branch.castShadow)).toBe(true)
-    expect(branchlets.length).toBeGreaterThanOrEqual(2)
+    expect(trunks).toHaveLength(1)
+    expect(trunks[0]?.geometry.type).toBe('TubeGeometry')
+    expect(trunks[0]?.userData.crossSectionAspect).toBeGreaterThan(1.05)
+    expect(trunks[0]?.userData.tipRadius).toBeLessThan(trunks[0]?.userData.baseRadius)
+    expect(trunks.every((trunk) => trunk.castShadow)).toBe(true)
+    expect(branchAttachments.length).toBeGreaterThanOrEqual(2)
+    expect(branchAttachments.length).toBeLessThanOrEqual(3)
+    expect(branchAttachments.every((branch) => branch.userData.tipRadius < branch.userData.baseRadius)).toBe(true)
     expect(roots.length).toBeGreaterThanOrEqual(3)
     expect(brokenStubs.length).toBeGreaterThanOrEqual(2)
     expect(rootFlare).toBeDefined()
     expect(epiphytes.length).toBeGreaterThanOrEqual(2)
     expect(epiphyteLeaves.length).toBeGreaterThan(0)
+    expect(localFill).toBeDefined()
+    expect(localShadow).toBeDefined()
   })
 
   it('builds a raised rock ridge and tall canopy plants around the hero silhouette', () => {
@@ -424,12 +435,15 @@ describe('AquascapingSystem composition', () => {
     new AquascapingSystem(scene, bounds)
 
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
-    const burialShadow = aquascapingGroup.children.find(
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    )
+    const burialShadow = driftwood?.children.find(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-burial-shadow'
     )
-    const detritusMounds = aquascapingGroup.children.filter(
+    const detritusMounds = driftwood?.children.filter(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-detritus-mound'
-    )
+    ) ?? []
 
     expect(burialShadow).toBeDefined()
     expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.transparent).toBe(true)
@@ -1230,6 +1244,12 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     expect(heroDriftwood).toBeDefined()
     expect(heroDriftwood).not.toBe(driftwoodAsset)
     expect(heroDriftwood.userData.assetId).toBe('driftwood-hero')
+    expect(heroDriftwood.children.some((child) => child.userData.assetId === 'driftwood-hero')).toBe(true)
+    expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-root-flare')).toBe(true)
+    expect(heroDriftwood.children.filter((child) => child.userData.role === 'driftwood-branch-attachment').length).toBeGreaterThanOrEqual(2)
+    expect(heroDriftwood.children.filter((child) => child.userData.role === 'epiphyte-cluster').length).toBeGreaterThanOrEqual(2)
+    expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-local-shadow')).toBe(true)
+    expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-burial-shadow')).toBe(true)
     expect(heroRockRidge).toBeDefined()
     expect(heroRockRidge.userData.assetId).toBe('rock-ridge-hero')
     expect(heroCanopyAssets.length).toBeGreaterThanOrEqual(2)
@@ -1237,6 +1257,45 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     expect(plantedMassAssets.length).toBeGreaterThanOrEqual(3)
     expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-sword-cluster')).toBe(true)
     expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-fan-cluster')).toBe(true)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('keeps authored driftwood assets inside a larger hero silhouette instead of letting the raw asset read as the whole hardscape', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const driftwoodAsset = createModelAssetScene('driftwood-hero')
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null },
+        'rock-ridge-hero': null,
+        'plant-sword-cluster': null,
+        'plant-fan-cluster': null
+      }
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const heroDriftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    )
+    const assetCore = heroDriftwood?.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.assetId === 'driftwood-hero'
+    )
+    const heroSize = heroDriftwood ? getWorldBounds(heroDriftwood).getSize(new THREE.Vector3()) : null
+    const assetSize = assetCore ? getWorldBounds(assetCore).getSize(new THREE.Vector3()) : null
+
+    expect(heroDriftwood).toBeDefined()
+    expect(assetCore).toBeDefined()
+    expect(heroSize?.x ?? 0).toBeGreaterThan((assetSize?.x ?? 0) * 1.5)
+    expect(heroSize?.y ?? 0).toBeGreaterThan((assetSize?.y ?? 0) * 1.4)
 
     getContextSpy.mockRestore()
   })
@@ -1264,10 +1323,12 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
     const driftwood = aquascapingGroup.children.find((child) => child.userData.role === 'hero-driftwood') as THREE.Group | undefined
     const ridge = aquascapingGroup.children.find((child) => child.userData.role === 'hero-rock-ridge') as THREE.Group | undefined
-    const branches = driftwood?.children.filter((child) => child.userData.role === 'driftwood-branch') ?? []
+    const trunks = driftwood?.children.filter((child) => child.userData.role === 'driftwood-trunk') ?? []
+    const branchAttachments = driftwood?.children.filter((child) => child.userData.role === 'driftwood-branch-attachment') ?? []
     const ridgeRocks = ridge?.children.filter((child) => child.userData.role === 'ridge-rock') ?? []
 
-    expect(branches.length).toBeGreaterThan(0)
+    expect(trunks).toHaveLength(1)
+    expect(branchAttachments.length).toBeGreaterThanOrEqual(2)
     expect(ridgeRocks.length).toBeGreaterThan(0)
 
     getContextSpy.mockRestore()
