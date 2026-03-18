@@ -53,6 +53,12 @@ type BoidTuning = {
   cruiseBias?: number
   turnNoise?: number
   boundaryArcRadius?: number
+  activeSpeedMultiplier?: number
+  preferredLateralX?: number
+  preferredDepthY?: number
+  lanePull?: number
+  depthPull?: number
+  drag?: number
   fishSafeExtents?: FishRenderExtents
   steeringWeights?: SteeringWeightTuning
 }
@@ -62,6 +68,11 @@ type RuntimeBoidParams = BoidParams & {
   fishSafeExtents: FishRenderExtents
   frontComfortBias: number
   turnNoise: number
+  preferredLateralX: number
+  preferredDepthY: number
+  lanePull: number
+  depthPull: number
+  drag: number
 }
 
 export class Boid {
@@ -261,6 +272,20 @@ export class BoidsSystem {
     const cruiseBias = THREE.MathUtils.clamp(tuning.cruiseBias ?? 1, 0.52, 1.18)
     const turnNoise = THREE.MathUtils.clamp(tuning.turnNoise ?? 0.08, 0, 0.4)
     const boundaryArcRadius = THREE.MathUtils.clamp(tuning.boundaryArcRadius ?? 0.46, 0.18, 1.18)
+    const activeSpeedMultiplier = THREE.MathUtils.clamp(tuning.activeSpeedMultiplier ?? 1, 0.72, 1.42)
+    const preferredLateralX = THREE.MathUtils.clamp(
+      tuning.preferredLateralX ?? this.boundsCenter.x,
+      this.bounds.min.x,
+      this.bounds.max.x
+    )
+    const preferredDepthY = THREE.MathUtils.clamp(
+      tuning.preferredDepthY ?? this.boundsCenter.y,
+      this.bounds.min.y,
+      this.bounds.max.y
+    )
+    const lanePull = THREE.MathUtils.clamp(tuning.lanePull ?? 0, 0, 0.65)
+    const depthPull = THREE.MathUtils.clamp(tuning.depthPull ?? 0, 0, 0.65)
+    const drag = THREE.MathUtils.clamp(tuning.drag ?? 0, 0, 1.4)
     const fishSafeExtents = tuning.fishSafeExtents ?? DEFAULT_FISH_SAFE_EXTENTS
     const totalLength = fishSafeExtents.noseExtent + fishSafeExtents.tailExtent
     const noseBias = totalLength > 0 ? fishSafeExtents.noseExtent / totalLength : 0.5
@@ -270,7 +295,7 @@ export class BoidsSystem {
       alignment: this.params.alignment * (steeringWeights.alignment ?? 1),
       cohesion: this.params.cohesion * (steeringWeights.cohesion ?? 1),
       separation: this.params.separation * (steeringWeights.separation ?? 1),
-      maxSpeed: this.params.maxSpeed * cruiseSpeed,
+      maxSpeed: this.params.maxSpeed * cruiseSpeed * activeSpeedMultiplier,
       maxForce: this.params.maxForce * (0.82 + yawResponsiveness * 0.2 + turnNoise * 0.12),
       neighborRadius: this.params.neighborRadius * (0.92 + boundaryArcRadius * 0.08),
       boundaryMargin: this.params.boundaryMargin * (0.92 + boundaryArcRadius * 0.16),
@@ -285,7 +310,12 @@ export class BoidsSystem {
       boundaryArcRadius,
       fishSafeExtents,
       frontComfortBias,
-      turnNoise
+      turnNoise,
+      preferredLateralX,
+      preferredDepthY,
+      lanePull,
+      depthPull,
+      drag
     }
   }
 
@@ -368,6 +398,29 @@ export class BoidsSystem {
 
     const steer = desired.sub(boid.velocity)
     steer.clampLength(0, boid.maxForce * runtime.cruiseWeight)
+
+    return steer
+  }
+
+  private lanePreference(boid: Boid, runtime: RuntimeBoidParams): THREE.Vector3 {
+    if (runtime.lanePull <= 0 && runtime.depthPull <= 0) {
+      return new THREE.Vector3()
+    }
+
+    const desired = new THREE.Vector3(
+      (runtime.preferredLateralX - boid.position.x) * runtime.lanePull,
+      (runtime.preferredDepthY - boid.position.y) * runtime.depthPull,
+      0
+    )
+    desired.addScaledVector(this.resolveHeadingDirection(boid), boid.maxSpeed * 0.12)
+
+    if (desired.lengthSq() === 0) {
+      return desired
+    }
+
+    desired.clampLength(0, boid.maxSpeed * 0.38)
+    const steer = desired.sub(boid.velocity.clone().multiply(new THREE.Vector3(0.58, 0.54, 0.18)))
+    steer.clampLength(0, boid.maxForce * 0.34)
 
     return steer
   }
@@ -616,14 +669,19 @@ export class BoidsSystem {
       const separationForce = this.separation(boid, neighbors, runtime).multiplyScalar(runtime.separation)
       const boundaryForce = this.boundaries(boid, index)
       const cruiseForce = this.cruise(boid, index)
+      const laneForce = this.lanePreference(boid, runtime)
 
       boid.applyForce(alignmentForce)
       boid.applyForce(cohesionForce)
       boid.applyForce(separationForce)
       boid.applyForce(boundaryForce)
       boid.applyForce(cruiseForce)
+      boid.applyForce(laneForce)
 
       boid.update(deltaTime)
+      if (runtime.drag > 0) {
+        boid.velocity.multiplyScalar(Math.max(0.08, 1 - (runtime.drag * deltaTime)))
+      }
       this.postClamp(boid, runtime)
     }
   }

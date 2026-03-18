@@ -370,6 +370,10 @@ describe('BoidsSystem boundary steering', () => {
           cruiseBias?: number
           boundaryArcRadius?: number
           turnNoise?: number
+          preferredLateralX?: number
+          preferredDepthY?: number
+          lanePull?: number
+          depthPull?: number
         }
       ) => void
     }).setBoidTuning?.bind(system)
@@ -378,6 +382,8 @@ describe('BoidsSystem boundary steering', () => {
         maxSpeed: number
         lateralCruiseBias: number
         boundaryArcRadius: number
+        preferredLateralX: number
+        preferredDepthY: number
       }
     }).resolveBoidRuntimeParams.bind(system)
 
@@ -385,13 +391,21 @@ describe('BoidsSystem boundary steering', () => {
       cruiseSpeed: 1.22,
       cruiseBias: 0.9,
       boundaryArcRadius: 0.28,
-      turnNoise: 0.18
+      turnNoise: 0.18,
+      preferredLateralX: -2.4,
+      preferredDepthY: 1.2,
+      lanePull: 0.34,
+      depthPull: 0.28
     })
     setBoidTuning?.(1, {
       cruiseSpeed: 0.76,
       cruiseBias: 0.58,
       boundaryArcRadius: 0.94,
-      turnNoise: 0.06
+      turnNoise: 0.06,
+      preferredLateralX: 2.6,
+      preferredDepthY: -1.4,
+      lanePull: 0.18,
+      depthPull: 0.22
     })
 
     const slender = resolveBoidRuntimeParams(0)
@@ -400,6 +414,74 @@ describe('BoidsSystem boundary steering', () => {
     expect(slender.maxSpeed).toBeGreaterThan(disk.maxSpeed)
     expect(slender.lateralCruiseBias).toBeGreaterThan(disk.lateralCruiseBias)
     expect(disk.boundaryArcRadius).toBeGreaterThan(slender.boundaryArcRadius)
+    expect(slender.preferredLateralX).toBeLessThan(0)
+    expect(disk.preferredDepthY).toBeLessThan(0)
+  })
+
+  test('lane preference does not increase front-glass wall bounce', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-12, -4, -5), new THREE.Vector3(12, 4, 5))
+    const system = new BoidsSystem(1, bounds)
+    const internals = system as unknown as {
+      params: BoundaryParams
+      setBoidTuning?: (
+        index: number,
+        tuning: {
+          fishSafeExtents?: {
+            noseExtent: number
+            tailExtent: number
+            halfBodyWidth: number
+            halfBodyHeight: number
+          }
+          preferredLateralX?: number
+          preferredDepthY?: number
+          lanePull?: number
+          depthPull?: number
+        }
+      ) => void
+    }
+
+    internals.params.alignment = 0
+    internals.params.cohesion = 0
+    internals.params.separation = 0
+    internals.params.boundaryMargin = 3.2
+    internals.params.boundaryLookAhead = 2.1
+    internals.params.boundaryWeight = 1.1
+    internals.params.boundaryInwardStrength = 0.82
+    system.boids[0].position.set(0.8, 0.4, 3.9)
+    system.boids[0].velocity.set(0.3, 0.04, 1.4)
+    system.boids[0].maxSpeed = 2.2
+    system.boids[0].maxForce = 0.45
+
+    internals.setBoidTuning?.(0, {
+      fishSafeExtents: {
+        noseExtent: 0.95,
+        tailExtent: 0.62,
+        halfBodyWidth: 0.2,
+        halfBodyHeight: 0.16
+      },
+      preferredLateralX: 5.4,
+      preferredDepthY: -1.2,
+      lanePull: 0.42,
+      depthPull: 0.3
+    })
+
+    for (let i = 0; i < 180; i++) {
+      system.update(1 / 60)
+    }
+
+    const extents = {
+      noseExtent: 0.95,
+      tailExtent: 0.62,
+      halfBodyWidth: 0.2,
+      halfBodyHeight: 0.16
+    }
+    const safeBounds = createFishSafeBounds(
+      bounds,
+      resolveFishAxisExtents(extents, system.boids[0].velocity.clone().setLength(system.boids[0].velocity.length() || 1))
+    )
+
+    expect(system.boids[0].position.z).toBeLessThanOrEqual(safeBounds.max.z + 0.0001)
+    expect(system.boids[0].velocity.z).toBeLessThanOrEqual(system.boids[0].maxSpeed)
   })
 
   test('larger boundaryArcRadius bends boundary steering into a wider return arc', () => {
