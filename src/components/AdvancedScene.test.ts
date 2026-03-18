@@ -1109,6 +1109,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(getBottomClearanceRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.16)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.08)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.18)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThanOrEqual(0.15)
     expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 })

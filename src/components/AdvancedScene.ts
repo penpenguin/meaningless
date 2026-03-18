@@ -1234,7 +1234,7 @@ export class AdvancedAquariumScene {
         map: this.createHeroFrontFillTexture(),
         color: new THREE.Color('#d9efe5'),
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.16,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -1245,7 +1245,7 @@ export class AdvancedAquariumScene {
     heroFrontFill.rotation.y = 0.08
     heroFrontFill.rotation.z = -0.04
     heroFrontFill.renderOrder = 2
-    heroFrontFill.userData.baseOpacity = 0.12
+    heroFrontFill.userData.baseOpacity = 0.16
     heroFrontFill.userData.baseX = heroFrontFillPosition.x
     heroFrontFill.userData.baseY = heroFrontFillPosition.y
     this.heroFrontFillMesh = heroFrontFill
@@ -3394,7 +3394,7 @@ export class AdvancedAquariumScene {
 
     if (this.heroFrontFillMesh) {
       const material = this.heroFrontFillMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.05 + (premiumTheme.causticsStrength * 0.08) + (premiumTheme.surfaceGlowStrength * 0.018)
+      const baseOpacity = 0.12 + (premiumTheme.causticsStrength * 0.08) + (premiumTheme.surfaceGlowStrength * 0.018)
       this.heroFrontFillMesh.userData.baseOpacity = baseOpacity
       material.color = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#edf4de'), 0.48)
       material.opacity = baseOpacity

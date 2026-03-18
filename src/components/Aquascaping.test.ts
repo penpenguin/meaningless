@@ -447,7 +447,63 @@ describe('AquascapingSystem composition', () => {
 
     expect(burialShadow).toBeDefined()
     expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.transparent).toBe(true)
+    expect(burialShadow?.position.x ?? 0).toBeLessThanOrEqual(-1.5)
+    expect(burialShadow?.position.z ?? 0).toBeGreaterThanOrEqual(0.52)
     expect(detritusMounds.length).toBeGreaterThanOrEqual(2)
+    expect(detritusMounds.some((mound) => mound.position.x <= -1.5 && mound.position.z >= 0.48)).toBe(true)
+  })
+
+  it('stages the driftwood ahead of the ridge and adds small attachments so the wood reads as the main hardscape', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': null,
+        'rock-ridge-hero': null,
+        'plant-sword-cluster': null,
+        'plant-fan-cluster': null
+      }
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    )
+    const ridge = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-rock-ridge'
+    )
+    const mossPatches = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-moss-patch'
+    ) ?? []
+    const fineTwigs = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-fine-twig'
+    ) ?? []
+    const rootBases = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-root-base'
+    ) ?? []
+    const localFill = driftwood?.children.find(
+      (child): child is THREE.PointLight => child instanceof THREE.PointLight && child.userData.role === 'driftwood-local-fill'
+    )
+
+    expect(driftwood).toBeDefined()
+    expect(ridge).toBeDefined()
+    expect((driftwood?.position.x ?? 0) + 0.45).toBeLessThan(ridge?.position.x ?? 0)
+    expect((driftwood?.position.y ?? 0) - 0.18).toBeGreaterThan(ridge?.position.y ?? 0)
+    expect((driftwood?.position.z ?? 0) - 0.85).toBeGreaterThan(ridge?.position.z ?? 0)
+    expect(mossPatches.length).toBeGreaterThanOrEqual(2)
+    expect(fineTwigs.length).toBeGreaterThanOrEqual(1)
+    expect(rootBases.length).toBeGreaterThanOrEqual(1)
+    expect(localFill?.intensity ?? 0).toBeGreaterThanOrEqual(1.95)
+    expect(localFill?.position.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(0.9)
+    expect(localFill?.position.z ?? 0).toBeGreaterThanOrEqual(1.68)
   })
 
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
@@ -1102,6 +1158,29 @@ describe('AquascapingSystem premium materials', () => {
     expect(clonedMaterial?.opacity).toBe(1)
     expect(clonedMaterial?.alphaTest).toBeGreaterThanOrEqual(0.12)
     expect(clonedMaterial?.transmission ?? 0).toBeLessThanOrEqual(0.015)
+  })
+
+  it('fits the driftwood asset core into a larger, taller forward-biased hero silhouette', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const asset = createModelAssetScene('driftwood-hero')
+    const tankSize = createOpenWaterBounds().getSize(new THREE.Vector3())
+
+    const fitHeroDriftwoodAssetCore = (AquascapingSystem.prototype as unknown as {
+      fitHeroDriftwoodAssetCore: (asset: THREE.Group, tankSize: THREE.Vector3) => void
+    }).fitHeroDriftwoodAssetCore.bind(instance)
+
+    fitHeroDriftwoodAssetCore(asset, tankSize)
+
+    const fittedSize = getWorldBounds(asset).getSize(new THREE.Vector3())
+
+    expect(fittedSize.x).toBeGreaterThanOrEqual(3.3)
+    expect(fittedSize.y).toBeGreaterThanOrEqual(3.1)
+    expect(fittedSize.z).toBeGreaterThanOrEqual(2.2)
+    expect(asset.position.x).toBeGreaterThanOrEqual(0.96)
+    expect(asset.position.y).toBeGreaterThanOrEqual(0.42)
+    expect(asset.position.z).toBeGreaterThanOrEqual(0.18)
+    expect(asset.rotation.x).toBeLessThanOrEqual(-0.28)
+    expect(asset.rotation.y).toBeGreaterThanOrEqual(0.56)
   })
 })
 
