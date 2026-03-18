@@ -5,6 +5,7 @@ import type { AquascapeLayoutStyle, Theme } from '../types/aquarium'
 type PlantLayer = 'foreground' | 'background' | 'midground'
 type PlantType = 'ribbon-seaweed' | 'sword-leaf' | 'fan-leaf'
 type PlantRenderRole = 'hero' | 'repeated'
+type PlantClusterKind = 'core' | 'satellite' | 'offshoot'
 type PlantMassRole =
   | 'front-left-edge'
   | 'front-left'
@@ -16,6 +17,11 @@ type PlantMassRole =
   | 'front-center'
   | 'front-right'
   | 'front-right-edge'
+
+type PlantMixEntry = {
+  plantType: PlantType
+  weight: number
+}
 
 type PlantClusterDefinition = {
   id: string
@@ -30,6 +36,13 @@ type PlantClusterDefinition = {
   hueBase: number
   rotationY: number
   scale: THREE.Vector3
+  heightMin: number
+  heightMax: number
+  satelliteCount: number
+  offshootCount: number
+  minDistance: number
+  depthLaneCount: number
+  plantMix?: PlantMixEntry[]
   assetIds?: string[]
 }
 
@@ -37,6 +50,25 @@ type PlantScatterDefinition = Pick<
   PlantClusterDefinition,
   'x' | 'z' | 'layer' | 'plantType' | 'baseHeight' | 'spreadX' | 'spreadZ' | 'hueBase'
 >
+
+type SampledPlantPlacement = {
+  id: string
+  zoneId: string
+  massRole: PlantMassRole
+  layer: PlantLayer
+  plantType: PlantType
+  clusterKind: PlantClusterKind
+  x: number
+  z: number
+  baseHeight: number
+  hueBase: number
+  rotationY: number
+  tiltX: number
+  tiltZ: number
+  depthLane: number
+  scale: THREE.Vector3
+  assetIds?: string[]
+}
 
 type AquascapingOptions = {
   layoutStyle?: AquascapeLayoutStyle
@@ -122,11 +154,17 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     massRole: 'front-left-edge',
     plantType: 'fan-leaf',
     baseHeight: 1.55,
-    spreadX: 0.24,
-    spreadZ: 0.16,
+    spreadX: 0.16,
+    spreadZ: 0.12,
     hueBase: 0.25,
     rotationY: -0.3,
-    scale: new THREE.Vector3(0.68, 0.64, 0.82)
+    scale: new THREE.Vector3(0.68, 0.64, 0.82),
+    heightMin: 0.96,
+    heightMax: 1.28,
+    satelliteCount: 1,
+    offshootCount: 0,
+    minDistance: 0.06,
+    depthLaneCount: 2
   },
   {
     id: 'front-left',
@@ -134,13 +172,19 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     z: 0.2,
     layer: 'foreground',
     massRole: 'front-left',
-    plantType: 'sword-leaf',
+    plantType: 'fan-leaf',
     baseHeight: 1.82,
-    spreadX: 0.28,
-    spreadZ: 0.18,
+    spreadX: 0.2,
+    spreadZ: 0.14,
     hueBase: 0.22,
     rotationY: -0.16,
-    scale: new THREE.Vector3(0.82, 0.78, 0.86)
+    scale: new THREE.Vector3(0.82, 0.78, 0.86),
+    heightMin: 1.06,
+    heightMax: 1.72,
+    satelliteCount: 1,
+    offshootCount: 1,
+    minDistance: 0.062,
+    depthLaneCount: 2
   },
   {
     id: 'left-rear',
@@ -150,11 +194,21 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     massRole: 'left-rear',
     plantType: 'sword-leaf',
     baseHeight: 9.8,
-    spreadX: 0.36,
-    spreadZ: 0.24,
+    spreadX: 0.42,
+    spreadZ: 0.28,
     hueBase: 0.22,
     rotationY: -0.4,
     scale: new THREE.Vector3(1.38, 2.56, 1.34),
+    heightMin: 8.7,
+    heightMax: 10.8,
+    satelliteCount: 2,
+    offshootCount: 1,
+    minDistance: 0.07,
+    depthLaneCount: 3,
+    plantMix: [
+      { plantType: 'sword-leaf', weight: 0.58 },
+      { plantType: 'fan-leaf', weight: 0.42 }
+    ],
     assetIds: ['plant-sword-cluster', 'plant-fan-cluster']
   },
   {
@@ -165,11 +219,21 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     massRole: 'left-shoulder',
     plantType: 'fan-leaf',
     baseHeight: 4.54,
-    spreadX: 0.28,
+    spreadX: 0.24,
     spreadZ: 0.18,
     hueBase: 0.24,
     rotationY: -0.2,
-    scale: new THREE.Vector3(1.02, 1.26, 1.04)
+    scale: new THREE.Vector3(1.02, 1.26, 1.04),
+    heightMin: 4.02,
+    heightMax: 5.4,
+    satelliteCount: 1,
+    offshootCount: 0,
+    minDistance: 0.066,
+    depthLaneCount: 2,
+    plantMix: [
+      { plantType: 'fan-leaf', weight: 0.68 },
+      { plantType: 'sword-leaf', weight: 0.32 }
+    ]
   },
   {
     id: 'driftwood-backfill',
@@ -179,11 +243,21 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     massRole: 'driftwood-backfill',
     plantType: 'fan-leaf',
     baseHeight: 8.24,
-    spreadX: 0.32,
-    spreadZ: 0.24,
+    spreadX: 0.34,
+    spreadZ: 0.26,
     hueBase: 0.22,
     rotationY: -0.12,
     scale: new THREE.Vector3(1.26, 2.18, 1.2),
+    heightMin: 4.4,
+    heightMax: 8.3,
+    satelliteCount: 2,
+    offshootCount: 1,
+    minDistance: 0.068,
+    depthLaneCount: 3,
+    plantMix: [
+      { plantType: 'fan-leaf', weight: 0.64 },
+      { plantType: 'sword-leaf', weight: 0.36 }
+    ],
     assetIds: ['plant-fan-cluster', 'plant-sword-cluster']
   },
   {
@@ -198,7 +272,17 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     spreadZ: 0.18,
     hueBase: 0.27,
     rotationY: 0.18,
-    scale: new THREE.Vector3(1.04, 1.3, 0.98)
+    scale: new THREE.Vector3(1.04, 1.3, 0.98),
+    heightMin: 3.9,
+    heightMax: 5.1,
+    satelliteCount: 1,
+    offshootCount: 0,
+    minDistance: 0.064,
+    depthLaneCount: 2,
+    plantMix: [
+      { plantType: 'fan-leaf', weight: 0.62 },
+      { plantType: 'sword-leaf', weight: 0.38 }
+    ]
   },
   {
     id: 'right-rear',
@@ -209,10 +293,20 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     plantType: 'sword-leaf',
     baseHeight: 9.6,
     spreadX: 0.24,
-    spreadZ: 0.18,
+    spreadZ: 0.2,
     hueBase: 0.34,
     rotationY: 0.3,
     scale: new THREE.Vector3(1.04, 2.38, 0.98),
+    heightMin: 8.4,
+    heightMax: 10.3,
+    satelliteCount: 1,
+    offshootCount: 1,
+    minDistance: 0.072,
+    depthLaneCount: 3,
+    plantMix: [
+      { plantType: 'sword-leaf', weight: 0.74 },
+      { plantType: 'fan-leaf', weight: 0.26 }
+    ],
     assetIds: ['plant-sword-cluster', 'plant-fan-cluster']
   },
   {
@@ -223,11 +317,17 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     massRole: 'front-center',
     plantType: 'fan-leaf',
     baseHeight: 1.42,
-    spreadX: 0.2,
-    spreadZ: 0.14,
+    spreadX: 0.12,
+    spreadZ: 0.1,
     hueBase: 0.26,
     rotationY: -0.04,
-    scale: new THREE.Vector3(0.58, 0.56, 0.62)
+    scale: new THREE.Vector3(0.58, 0.56, 0.62),
+    heightMin: 0.94,
+    heightMax: 1.18,
+    satelliteCount: 0,
+    offshootCount: 0,
+    minDistance: 0.058,
+    depthLaneCount: 2
   },
   {
     id: 'front-right',
@@ -237,11 +337,17 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     massRole: 'front-right',
     plantType: 'fan-leaf',
     baseHeight: 1.72,
-    spreadX: 0.24,
-    spreadZ: 0.16,
+    spreadX: 0.18,
+    spreadZ: 0.12,
     hueBase: 0.28,
     rotationY: 0.18,
-    scale: new THREE.Vector3(0.76, 0.68, 0.78)
+    scale: new THREE.Vector3(0.76, 0.68, 0.78),
+    heightMin: 1.02,
+    heightMax: 1.64,
+    satelliteCount: 1,
+    offshootCount: 0,
+    minDistance: 0.06,
+    depthLaneCount: 2
   },
   {
     id: 'front-right-edge',
@@ -251,13 +357,257 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     massRole: 'front-right-edge',
     plantType: 'fan-leaf',
     baseHeight: 1.48,
-    spreadX: 0.24,
-    spreadZ: 0.16,
+    spreadX: 0.14,
+    spreadZ: 0.1,
     hueBase: 0.24,
     rotationY: 0.28,
-    scale: new THREE.Vector3(0.64, 0.6, 0.76)
+    scale: new THREE.Vector3(0.64, 0.6, 0.76),
+    heightMin: 0.92,
+    heightMax: 1.22,
+    satelliteCount: 1,
+    offshootCount: 0,
+    minDistance: 0.058,
+    depthLaneCount: 2
   }
 ]
+
+const plantedPlacementSeed = 0x53a9d2f1
+const plantedPlacementBounds = {
+  minX: -0.46,
+  maxX: 0.46,
+  minZ: -0.42,
+  maxZ: 0.24
+}
+
+const createSeededRandom = (seed: number): (() => number) => {
+  let state = seed >>> 0
+
+  return () => {
+    state += 0x6D2B79F5
+    let value = Math.imul(state ^ (state >>> 15), state | 1)
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const hashSeed = (seed: number, input: string): number => {
+  let hashed = seed >>> 0
+
+  for (let index = 0; index < input.length; index += 1) {
+    hashed = Math.imul(hashed ^ input.charCodeAt(index), 16777619)
+  }
+
+  return hashed >>> 0
+}
+
+const clampNormalizedPlantX = (value: number): number => (
+  THREE.MathUtils.clamp(value, plantedPlacementBounds.minX, plantedPlacementBounds.maxX)
+)
+
+const clampNormalizedPlantZ = (value: number): number => (
+  THREE.MathUtils.clamp(value, plantedPlacementBounds.minZ, plantedPlacementBounds.maxZ)
+)
+
+const sampleRange = (rng: () => number, min: number, max: number): number => (
+  min + ((max - min) * rng())
+)
+
+const pickPlantTypeFromMix = (
+  zone: PlantClusterDefinition,
+  rng: () => number,
+  clusterKind: PlantClusterKind
+): PlantType => {
+  if (zone.layer === 'foreground' || !zone.plantMix?.length) {
+    return zone.plantType
+  }
+
+  if (clusterKind === 'core') {
+    return zone.plantType
+  }
+
+  const totalWeight = zone.plantMix.reduce((sum, entry) => sum + entry.weight, 0)
+  let cursor = rng() * totalWeight
+
+  for (const entry of zone.plantMix) {
+    cursor -= entry.weight
+    if (cursor <= 0) {
+      return entry.plantType
+    }
+  }
+
+  return zone.plantMix[zone.plantMix.length - 1]!.plantType
+}
+
+const createPlacementScale = (
+  zone: PlantClusterDefinition,
+  rng: () => number,
+  clusterKind: PlantClusterKind
+): THREE.Vector3 => {
+  const scaleBand = clusterKind === 'core'
+    ? { x: [0.94, 1.08], y: [0.96, 1.08], z: [0.92, 1.06] }
+    : clusterKind === 'satellite'
+      ? { x: [0.82, 0.98], y: [0.78, 0.94], z: [0.82, 0.98] }
+      : { x: [0.68, 0.86], y: [0.64, 0.82], z: [0.7, 0.88] }
+
+  return zone.scale.clone().multiply(
+    new THREE.Vector3(
+      sampleRange(rng, scaleBand.x[0], scaleBand.x[1]),
+      sampleRange(rng, scaleBand.y[0], scaleBand.y[1]),
+      sampleRange(rng, scaleBand.z[0], scaleBand.z[1])
+    )
+  )
+}
+
+const createZonePlacement = (
+  zone: PlantClusterDefinition,
+  clusterKind: PlantClusterKind,
+  index: number,
+  totalCount: number,
+  existingPlacements: SampledPlantPlacement[],
+  corePlacement: SampledPlantPlacement | null,
+  rng: () => number
+): SampledPlantPlacement | null => {
+  const laneCount = Math.max(zone.depthLaneCount, 1)
+  const depthLane = clusterKind === 'core'
+    ? Math.floor((laneCount - 1) / 2)
+    : Math.floor(rng() * laneCount)
+  const laneSpacing = zone.layer === 'background' ? 0.028 : zone.layer === 'midground' ? 0.022 : 0.018
+  const laneOffset = (depthLane - ((laneCount - 1) / 2)) * laneSpacing
+
+  for (let attempt = 0; attempt < 28; attempt += 1) {
+    const angleBase = ((index + 1) / (totalCount + 1)) * Math.PI * 2
+    const angle = angleBase + sampleRange(rng, -0.75, 0.75) + (zone.rotationY * 0.35)
+    const radiusProfile = clusterKind === 'core'
+      ? { min: 0.02, max: 0.1 }
+      : clusterKind === 'satellite'
+        ? { min: 0.22, max: 0.58 }
+        : { min: 0.54, max: 0.94 }
+    const radiusX = zone.spreadX * sampleRange(rng, radiusProfile.min, radiusProfile.max)
+    const radiusZ = zone.spreadZ * sampleRange(rng, radiusProfile.min, radiusProfile.max)
+    const baseX = clusterKind === 'satellite' && corePlacement ? corePlacement.x : zone.x
+    const baseZ = clusterKind === 'satellite' && corePlacement ? corePlacement.z : zone.z
+    const x = clampNormalizedPlantX(
+      baseX
+        + (Math.cos(angle) * radiusX)
+        + sampleRange(rng, -zone.spreadX * 0.08, zone.spreadX * 0.08)
+    )
+    const z = clampNormalizedPlantZ(
+      baseZ
+        + (Math.sin(angle) * radiusZ)
+        + laneOffset
+        + sampleRange(rng, -zone.spreadZ * 0.08, zone.spreadZ * 0.08)
+    )
+    const tooClose = existingPlacements.some((placement) =>
+      Math.hypot(placement.x - x, placement.z - z) < zone.minDistance
+    )
+
+    if (tooClose) {
+      continue
+    }
+
+    const heightBias = clusterKind === 'core'
+      ? sampleRange(rng, 0.72, 0.98)
+      : clusterKind === 'satellite'
+        ? sampleRange(rng, 0.34, 0.78)
+        : sampleRange(rng, 0.08, 0.46)
+    const plantType = pickPlantTypeFromMix(zone, rng, clusterKind)
+    const hueOffset = plantType === 'fan-leaf'
+      ? 0.008
+      : plantType === 'sword-leaf'
+        ? -0.006
+        : -0.018
+
+    return {
+      id: `${zone.id}-${clusterKind}-${index + 1}`,
+      zoneId: zone.id,
+      massRole: zone.massRole,
+      layer: zone.layer,
+      plantType,
+      clusterKind,
+      x,
+      z,
+      baseHeight: THREE.MathUtils.lerp(zone.heightMin, zone.heightMax, heightBias),
+      hueBase: zone.hueBase + hueOffset + sampleRange(rng, -0.016, 0.026),
+      rotationY: zone.rotationY + sampleRange(rng, -0.36, 0.36) + (depthLane * 0.06),
+      tiltX: sampleRange(rng, -0.08, 0.08) + (clusterKind === 'offshoot' ? sampleRange(rng, -0.02, 0.03) : 0),
+      tiltZ: sampleRange(rng, -0.11, 0.11),
+      depthLane,
+      scale: createPlacementScale(zone, rng, clusterKind),
+      assetIds: clusterKind === 'core' && zone.layer !== 'foreground' ? zone.assetIds : undefined
+    }
+  }
+
+  return null
+}
+
+const sampleZonePlacements = (zone: PlantClusterDefinition): SampledPlantPlacement[] => {
+  const rng = createSeededRandom(hashSeed(plantedPlacementSeed, zone.id))
+  const placements: SampledPlantPlacement[] = []
+  let corePlacement: SampledPlantPlacement | null = null
+
+  ;([
+    { clusterKind: 'core' as const, count: 1 },
+    { clusterKind: 'satellite' as const, count: zone.satelliteCount },
+    { clusterKind: 'offshoot' as const, count: zone.offshootCount }
+  ]).forEach(({ clusterKind, count }) => {
+    for (let index = 0; index < count; index += 1) {
+      const placement = createZonePlacement(
+        zone,
+        clusterKind,
+        index,
+        Math.max(count, 1),
+        placements,
+        corePlacement,
+        rng
+      )
+
+      if (!placement) {
+        continue
+      }
+
+      placements.push(placement)
+      if (clusterKind === 'core') {
+        corePlacement = placement
+      }
+    }
+  })
+
+  return placements
+}
+
+const createSubstratePlantAnchor = (
+  placement: SampledPlantPlacement,
+  index: number
+): SubstratePlantAnchor => {
+  const layerRadius = placement.layer === 'background'
+    ? { x: 0.028, z: 0.026, mound: 0.014, scoop: 0.007, bias: 0.014 }
+    : placement.layer === 'midground'
+      ? { x: 0.03, z: 0.028, mound: 0.017, scoop: 0.009, bias: 0.016 }
+      : { x: 0.024, z: 0.022, mound: 0.013, scoop: 0.008, bias: 0.014 }
+  const clusterMultiplier = placement.clusterKind === 'core'
+    ? 1
+    : placement.clusterKind === 'satellite'
+      ? 0.86
+      : 0.74
+  const scoopLead = layerRadius.bias * clusterMultiplier
+
+  return {
+    id: `plant-placement-${index + 1}`,
+    x: placement.x,
+    z: placement.z,
+    layer: placement.layer,
+    radiusX: layerRadius.x * clusterMultiplier * THREE.MathUtils.clamp(placement.scale.x, 0.72, 1.18),
+    radiusZ: layerRadius.z * clusterMultiplier * THREE.MathUtils.clamp(placement.scale.z, 0.72, 1.14),
+    moundHeight: layerRadius.mound * clusterMultiplier * THREE.MathUtils.clamp(placement.scale.y * 0.62, 0.74, 1.18),
+    scoopDepth: layerRadius.scoop * clusterMultiplier,
+    scoopBiasX: Math.sin(placement.rotationY) * scoopLead,
+    scoopBiasZ: (Math.cos(placement.rotationY) * scoopLead) + (placement.layer === 'foreground' ? 0.01 : 0.004)
+  }
+}
+
+export const sampledPlantPlacements: SampledPlantPlacement[] = plantClusterDefinitions.flatMap((zone) =>
+  sampleZonePlacements(zone)
+)
 
 const marineSeaweedClusterDefinitions: PlantScatterDefinition[] = [
   { x: -0.34, z: 0.2, layer: 'foreground', plantType: 'fan-leaf', baseHeight: 2.45, spreadX: 0.72, spreadZ: 0.52, hueBase: 0.24 },
@@ -317,18 +667,9 @@ export const substrateHardscapeAnchors: SubstrateHardscapeAnchor[] = [
   }
 ]
 
-export const substratePlantAnchors: SubstratePlantAnchor[] = plantClusterDefinitions.map((cluster, index) => ({
-  id: `plant-cluster-${index + 1}`,
-  x: cluster.x,
-  z: cluster.z,
-  layer: cluster.layer,
-  radiusX: cluster.layer === 'background' ? 0.054 : cluster.layer === 'midground' ? 0.058 : 0.046,
-  radiusZ: cluster.layer === 'background' ? 0.05 : cluster.layer === 'midground' ? 0.052 : 0.042,
-  moundHeight: cluster.layer === 'background' ? 0.018 : cluster.layer === 'midground' ? 0.022 : 0.016,
-  scoopDepth: cluster.layer === 'background' ? 0.008 : cluster.layer === 'midground' ? 0.014 : 0.011,
-  scoopBiasX: cluster.plantType === 'fan-leaf' ? -0.014 : 0.014,
-  scoopBiasZ: cluster.layer === 'foreground' ? 0.024 : 0.014
-}))
+export const substratePlantAnchors: SubstratePlantAnchor[] = sampledPlantPlacements.map((placement, index) =>
+  createSubstratePlantAnchor(placement, index)
+)
 
 export class AquascapingSystem {
   private group: THREE.Group
@@ -441,59 +782,56 @@ export class AquascapingSystem {
     bounds.getSize(size)
     const substrateY = bounds.min.y + 0.42
 
-    plantClusterDefinitions.forEach((cluster) => {
+    sampledPlantPlacements.forEach((placement) => {
       const x = THREE.MathUtils.clamp(
-        cluster.x * size.x + (Math.random() - 0.5) * cluster.spreadX,
+        placement.x * size.x,
         bounds.min.x + 0.34,
         bounds.max.x - 0.34
       )
       const z = THREE.MathUtils.clamp(
-        cluster.z * size.z + (Math.random() - 0.5) * cluster.spreadZ,
+        placement.z * size.z,
         bounds.min.z + 0.28,
         bounds.max.z - 0.28
       )
-      const height = cluster.baseHeight + Math.random() * (
-        cluster.layer === 'background'
-          ? 0.9
-          : cluster.layer === 'midground'
-            ? 0.6
-            : 0.26
-      )
-      const hue = cluster.hueBase + Math.random() * 0.03
+      const height = placement.baseHeight
+      const hue = placement.hueBase
       const userData = {
         role: 'planted-mass',
-        massRole: cluster.massRole,
-        anchorId: cluster.id,
-        layer: cluster.layer,
-        plantType: cluster.plantType
+        massRole: placement.massRole,
+        anchorId: placement.id,
+        zoneId: placement.zoneId,
+        clusterKind: placement.clusterKind,
+        depthLane: placement.depthLane,
+        layer: placement.layer,
+        plantType: placement.plantType
       }
 
-      const assetMass = cluster.layer !== 'foreground'
-        ? this.cloneFirstAvailableVisualModelGroup(cluster.assetIds ?? [], userData)
+      const assetMass = placement.layer !== 'foreground'
+        ? this.cloneFirstAvailableVisualModelGroup(placement.assetIds ?? [], userData)
         : null
       const massGroup = assetMass ?? new THREE.Group()
       massGroup.position.set(x, substrateY, z)
-      massGroup.rotation.y = cluster.rotationY + (Math.random() - 0.5) * 0.1
-      massGroup.scale.copy(cluster.scale)
+      massGroup.rotation.set(placement.tiltX, placement.rotationY, placement.tiltZ)
+      massGroup.scale.copy(placement.scale)
 
       if (assetMass) {
         this.addPlantMassFiller(
           massGroup,
-          cluster.layer,
-          height * (cluster.layer === 'background' ? 0.94 : 0.86),
+          placement.layer,
+          height * (placement.layer === 'background' ? 0.94 : 0.86),
           hue,
-          cluster.plantType,
-          cluster.layer !== 'foreground'
+          placement.plantType,
+          placement.layer !== 'foreground'
         )
       } else {
         massGroup.userData = userData
         this.addPlantMassFiller(
           massGroup,
-          cluster.layer,
+          placement.layer,
           height,
           hue,
-          cluster.plantType,
-          cluster.layer === 'background'
+          placement.plantType,
+          placement.layer === 'background'
         )
       }
 
@@ -507,94 +845,6 @@ export class AquascapingSystem {
     bounds.getSize(size)
     const center = new THREE.Vector3()
     bounds.getCenter(center)
-    const substrateY = bounds.min.y + 0.42
-
-    const accentDefinitions = [
-      {
-        accentType: 'crypt-clump',
-        plantType: 'sword-leaf' as const,
-        layer: 'foreground' as const,
-        position: new THREE.Vector3(center.x - size.x * 0.18, substrateY, center.z + size.z * 0.2),
-        rotationY: -0.18,
-        scale: new THREE.Vector3(0.82, 0.8, 0.84),
-        height: 1.52,
-        hue: 0.21,
-        tint: '#66794e',
-        blend: 0.28
-      },
-      {
-        accentType: 'foreground-tuft',
-        plantType: 'fan-leaf' as const,
-        layer: 'foreground' as const,
-        position: new THREE.Vector3(center.x + size.x * 0.15, substrateY, center.z + size.z * 0.23),
-        rotationY: 0.14,
-        scale: new THREE.Vector3(0.72, 0.68, 0.74),
-        height: 1.18,
-        hue: 0.26,
-        tint: '#62774c',
-        blend: 0.26
-      },
-      {
-        accentType: 'wall-tuft',
-        plantType: 'fan-leaf' as const,
-        layer: 'foreground' as const,
-        position: new THREE.Vector3(center.x - size.x * 0.38, substrateY, center.z + size.z * 0.08),
-        rotationY: -0.28,
-        scale: new THREE.Vector3(0.66, 0.64, 0.78),
-        height: 1.1,
-        hue: 0.24,
-        tint: '#667a51',
-        blend: 0.24
-      },
-      {
-        accentType: 'foreground-tuft',
-        plantType: 'fan-leaf' as const,
-        layer: 'foreground' as const,
-        position: new THREE.Vector3(center.x - size.x * 0.02, substrateY, center.z + size.z * 0.17),
-        rotationY: -0.08,
-        scale: new THREE.Vector3(0.58, 0.58, 0.62),
-        height: 1.02,
-        hue: 0.24,
-        tint: '#61754a',
-        blend: 0.24
-      },
-      {
-        accentType: 'wall-tuft',
-        plantType: 'fan-leaf' as const,
-        layer: 'foreground' as const,
-        position: new THREE.Vector3(center.x + size.x * 0.39, substrateY, center.z + size.z * 0.09),
-        rotationY: 0.26,
-        scale: new THREE.Vector3(0.64, 0.62, 0.76),
-        height: 1.06,
-        hue: 0.25,
-        tint: '#657a4f',
-        blend: 0.24
-      }
-    ]
-
-    accentDefinitions.forEach((definition) => {
-      const accentGroup = new THREE.Group()
-      accentGroup.position.copy(definition.position)
-      accentGroup.rotation.y = definition.rotationY
-      accentGroup.scale.copy(definition.scale)
-      accentGroup.userData = {
-        role: 'freshwater-accent',
-        accentType: definition.accentType,
-        layer: definition.layer,
-        plantType: definition.plantType
-      }
-
-      if (definition.plantType === 'sword-leaf') {
-        this.createSwordLeafPlant(accentGroup, definition.layer, definition.height, definition.hue)
-      } else {
-        this.createFanLeafPlant(accentGroup, definition.layer, definition.height, definition.hue)
-      }
-
-      this.toneAccentGroup(accentGroup, definition.tint, definition.blend)
-      this.plants.push(accentGroup)
-      this.decorations.push(accentGroup)
-      this.group.add(accentGroup)
-    })
 
     ;[
       {
@@ -997,17 +1247,17 @@ export class AquascapingSystem {
   ): THREE.Color {
     const hueOffset = plantType === 'fan-leaf' ? -0.01 : plantType === 'ribbon-seaweed' ? -0.025 : -0.015
     const hue = layer === 'background' ? 0.26 + hueOffset : layer === 'midground' ? 0.29 + hueOffset : 0.31 + hueOffset
-    const saturation = plantType === 'fan-leaf' ? 0.32 : plantType === 'ribbon-seaweed' ? 0.38 : 0.3
+    const saturation = plantType === 'fan-leaf' ? 0.34 : plantType === 'ribbon-seaweed' ? 0.39 : 0.32
     const backgroundLightness = plantType === 'fan-leaf'
-      ? role === 'hero' ? 0.43 : 0.4
+      ? role === 'hero' ? 0.45 : 0.42
       : plantType === 'ribbon-seaweed'
-        ? role === 'hero' ? 0.39 : 0.37
-        : role === 'hero' ? 0.42 : 0.39
+        ? role === 'hero' ? 0.4 : 0.38
+        : role === 'hero' ? 0.44 : 0.41
     const lightness = layer === 'background'
       ? backgroundLightness
       : layer === 'midground'
-        ? role === 'hero' ? 0.38 : 0.34
-        : role === 'hero' ? 0.39 : 0.35
+        ? role === 'hero' ? 0.39 : 0.35
+        : role === 'hero' ? 0.4 : 0.36
 
     return new THREE.Color().setHSL(hue, saturation, lightness)
   }
@@ -1030,11 +1280,11 @@ export class AquascapingSystem {
     toned.getHSL(tonedHsl)
 
     const lightnessFloor = layer === 'background'
-      ? role === 'hero' ? 0.34 : 0.32
+      ? role === 'hero' ? 0.36 : 0.35
       : layer === 'midground'
-        ? 0.3
-        : 0.28
-    const saturationFloor = plantType === 'ribbon-seaweed' ? 0.18 : 0.16
+        ? 0.32
+        : 0.3
+    const saturationFloor = plantType === 'ribbon-seaweed' ? 0.2 : 0.18
 
     if (tonedHsl.l < lightnessFloor || tonedHsl.s < saturationFloor) {
       toned.setHSL(
