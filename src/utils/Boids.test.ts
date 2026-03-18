@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import * as THREE from 'three'
 import { Boid, BoidsSystem } from './Boids'
+import { createFishSafeBounds, resolveFishAxisExtents } from '../components/sceneBounds'
 
 type BoundaryParams = {
   maxSpeed: number
@@ -92,6 +93,75 @@ describe('BoidsSystem boundary steering', () => {
     expect(cautiousBoid.position.x).toBeLessThan(daringBoid.position.x)
   })
 
+  test('larger fish-safe extents start steering away from the front glass sooner', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-8, -4, -5), new THREE.Vector3(8, 4, 5))
+    const system = new BoidsSystem(2, bounds)
+
+    system.boids[0].position.set(0.5, 0.1, 2.7)
+    system.boids[0].velocity.set(0.2, 0, 1.1)
+    system.boids[0].maxSpeed = 2
+    system.boids[0].maxForce = 0.5
+
+    system.boids[1].position.copy(system.boids[0].position)
+    system.boids[1].velocity.copy(system.boids[0].velocity)
+    system.boids[1].maxSpeed = 2
+    system.boids[1].maxForce = 0.5
+
+    const internals = system as unknown as {
+      params: BoundaryParams
+      setBoidTuning?: (
+        index: number,
+        tuning: {
+          fishSafeExtents?: {
+            noseExtent: number
+            tailExtent: number
+            halfBodyWidth: number
+            halfBodyHeight: number
+          }
+        }
+      ) => void
+    }
+
+    internals.params.alignment = 0
+    internals.params.cohesion = 0
+    internals.params.separation = 0
+    internals.params.boundaryMargin = 0.6
+    internals.params.boundaryLookAhead = 1.1
+    internals.params.boundaryWeight = 1.1
+    internals.params.boundaryInwardStrength = 0.8
+    internals.params.hardBoundaryMultiplier = 2.5
+
+    internals.setBoidTuning?.(0, {
+      fishSafeExtents: {
+        noseExtent: 0.35,
+        tailExtent: 0.28,
+        halfBodyWidth: 0.14,
+        halfBodyHeight: 0.12
+      }
+    })
+    internals.setBoidTuning?.(1, {
+      fishSafeExtents: {
+        noseExtent: 1.1,
+        tailExtent: 0.7,
+        halfBodyWidth: 0.36,
+        halfBodyHeight: 0.26
+      }
+    })
+
+    const smallForce = (
+      BoidsSystem.prototype as unknown as {
+        boundaries: (boid: Boid, index: number) => THREE.Vector3
+      }
+    ).boundaries.call(system, system.boids[0], 0)
+    const largeForce = (
+      BoidsSystem.prototype as unknown as {
+        boundaries: (boid: Boid, index: number) => THREE.Vector3
+      }
+    ).boundaries.call(system, system.boids[1], 1)
+
+    expect(largeForce.z).toBeLessThan(smallForce.z)
+  })
+
   test('similar simulated seconds stay close between 30fps and 120fps', () => {
     const randomValues = [
       0.11, 0.73, 0.29, 0.64, 0.41, 0.18, 0.87, 0.52, 0.36, 0.95,
@@ -139,6 +209,153 @@ describe('BoidsSystem boundary steering', () => {
     expect(lowFps.boids[0].velocity.angleTo(highFps.boids[0].velocity)).toBeLessThan(0.35)
 
     randomSpy.mockRestore()
+  })
+
+  test('post-clamp keeps fish-safe front and back bounds without a hard bounce', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -3, -5), new THREE.Vector3(5, 3, 5))
+    const system = new BoidsSystem(0, bounds)
+    const frontBoid = new Boid(0.2, 0, 4.65)
+    const backBoid = new Boid(-0.4, 0, -4.65)
+    frontBoid.velocity.set(0.7, 0, 2.4)
+    backBoid.velocity.set(-0.6, 0, -2.2)
+    frontBoid.maxSpeed = 3
+    frontBoid.maxForce = 0.45
+    backBoid.maxSpeed = 3
+    backBoid.maxForce = 0.45
+    system.boids.push(frontBoid, backBoid)
+
+    const internals = system as unknown as {
+      params: BoundaryParams
+      setBoidTuning?: (
+        index: number,
+        tuning: {
+          fishSafeExtents?: {
+            noseExtent: number
+            tailExtent: number
+            halfBodyWidth: number
+            halfBodyHeight: number
+          }
+        }
+      ) => void
+    }
+
+    internals.params.alignment = 0
+    internals.params.cohesion = 0
+    internals.params.separation = 0
+    internals.params.boundaryWeight = 0.25
+    internals.params.boundaryMargin = 1
+    internals.params.boundaryLookAhead = 0.8
+    internals.params.cruiseWeight = 0
+    internals.setBoidTuning?.(0, {
+      fishSafeExtents: {
+        noseExtent: 0.9,
+        tailExtent: 0.6,
+        halfBodyWidth: 0.18,
+        halfBodyHeight: 0.16
+      }
+    })
+    internals.setBoidTuning?.(1, {
+      fishSafeExtents: {
+        noseExtent: 0.9,
+        tailExtent: 0.6,
+        halfBodyWidth: 0.18,
+        halfBodyHeight: 0.16
+      }
+    })
+
+    system.update(0.4)
+
+    const extents = {
+      noseExtent: 0.9,
+      tailExtent: 0.6,
+      halfBodyWidth: 0.18,
+      halfBodyHeight: 0.16
+    }
+    const frontSafeBounds = createFishSafeBounds(
+      bounds,
+      resolveFishAxisExtents(extents, frontBoid.velocity.clone().setLength(frontBoid.velocity.length() || 1))
+    )
+    const backSafeBounds = createFishSafeBounds(
+      bounds,
+      resolveFishAxisExtents(extents, backBoid.velocity.clone().setLength(backBoid.velocity.length() || 1))
+    )
+
+    expect(frontBoid.position.z).toBeLessThanOrEqual(frontSafeBounds.max.z + 0.0001)
+    expect(backBoid.position.z).toBeGreaterThanOrEqual(backSafeBounds.min.z - 0.0001)
+    expect(frontBoid.velocity.x).toBeGreaterThan(0.2)
+    expect(backBoid.velocity.x).toBeLessThan(-0.2)
+    expect(frontBoid.velocity.z).toBeLessThanOrEqual(0.001)
+    expect(backBoid.velocity.z).toBeGreaterThanOrEqual(-0.001)
+  })
+
+  test('fish-safe front bounds hold at both 30fps and 120fps', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-24, -6, -8), new THREE.Vector3(24, 6, 8))
+    const lowFps = new BoidsSystem(1, bounds)
+    const highFps = new BoidsSystem(1, bounds)
+    const systems = [lowFps, highFps]
+
+    for (const system of systems) {
+      const internals = system as unknown as {
+        params: BoundaryParams
+        setBoidTuning?: (
+          index: number,
+          tuning: {
+            fishSafeExtents?: {
+              noseExtent: number
+              tailExtent: number
+              halfBodyWidth: number
+              halfBodyHeight: number
+            }
+          }
+        ) => void
+      }
+
+      internals.params.alignment = 0
+      internals.params.cohesion = 0
+      internals.params.separation = 0
+      internals.params.boundaryMargin = 3.8
+      internals.params.boundaryLookAhead = 2.4
+      internals.params.boundaryWeight = 1.1
+      internals.params.boundaryInwardStrength = 0.8
+      system.boids[0].position.set(1.2, 0.4, 5.8)
+      system.boids[0].velocity.set(0.35, 0.02, 1.6)
+      system.boids[0].maxSpeed = 2.2
+      system.boids[0].maxForce = 0.45
+      internals.setBoidTuning?.(0, {
+        fishSafeExtents: {
+          noseExtent: 1.1,
+          tailExtent: 0.72,
+          halfBodyWidth: 0.24,
+          halfBodyHeight: 0.2
+        }
+      })
+    }
+
+    for (let i = 0; i < 60; i++) {
+      lowFps.update(1 / 30)
+    }
+
+    for (let i = 0; i < 240; i++) {
+      highFps.update(1 / 120)
+    }
+
+    const extents = {
+      noseExtent: 1.1,
+      tailExtent: 0.72,
+      halfBodyWidth: 0.24,
+      halfBodyHeight: 0.2
+    }
+    const lowSafeBounds = createFishSafeBounds(
+      bounds,
+      resolveFishAxisExtents(extents, lowFps.boids[0].velocity.clone().setLength(lowFps.boids[0].velocity.length() || 1))
+    )
+    const highSafeBounds = createFishSafeBounds(
+      bounds,
+      resolveFishAxisExtents(extents, highFps.boids[0].velocity.clone().setLength(highFps.boids[0].velocity.length() || 1))
+    )
+
+    expect(lowFps.boids[0].position.z).toBeLessThanOrEqual(lowSafeBounds.max.z + 0.0001)
+    expect(highFps.boids[0].position.z).toBeLessThanOrEqual(highSafeBounds.max.z + 0.0001)
   })
 
   test('per-boid tuning supports faster slender cruisers and wider disk boundary arcs', () => {

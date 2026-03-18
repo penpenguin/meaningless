@@ -1,5 +1,10 @@
+import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { createOpenWaterBounds } from './sceneBounds'
+import {
+  createFishSafeBounds,
+  createOpenWaterBounds,
+  resolveFishAxisExtents
+} from './sceneBounds'
 import {
   AQUARIUM_OPEN_WATER_MARGINS,
   AQUARIUM_TANK_DIMENSIONS
@@ -21,5 +26,28 @@ describe('createOpenWaterBounds', () => {
     expect(frontAspect).toBeLessThan(1.65)
     expect(openWaterSize.x).toBeGreaterThan(openWaterSize.y)
     expect(openWaterSize.y).toBeGreaterThan(openWaterSize.z)
+  })
+})
+
+describe('createFishSafeBounds', () => {
+  it('shrinks open-water bounds using render extents projected onto the tank axes', () => {
+    const openWaterBounds = createOpenWaterBounds(AQUARIUM_TANK_DIMENSIONS)
+    const axisExtents = resolveFishAxisExtents(
+      {
+        noseExtent: 1.2,
+        tailExtent: 0.8,
+        halfBodyWidth: 0.4,
+        halfBodyHeight: 0.6
+      },
+      new THREE.Vector3(0, 0, 1)
+    )
+    const safeBounds = createFishSafeBounds(openWaterBounds, axisExtents)
+
+    expect(safeBounds.min.x).toBeCloseTo(openWaterBounds.min.x + 0.4)
+    expect(safeBounds.max.x).toBeCloseTo(openWaterBounds.max.x - 0.4)
+    expect(safeBounds.min.y).toBeCloseTo(openWaterBounds.min.y + 0.6)
+    expect(safeBounds.max.y).toBeCloseTo(openWaterBounds.max.y - 0.6)
+    expect(safeBounds.min.z).toBeCloseTo(openWaterBounds.min.z + 0.8)
+    expect(safeBounds.max.z).toBeCloseTo(openWaterBounds.max.z - 1.2)
   })
 })

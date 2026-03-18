@@ -1,6 +1,17 @@
 import * as THREE from 'three'
+import {
+  createFishSafeBounds,
+  resolveFishAxisExtents,
+  type FishRenderExtents
+} from '../components/sceneBounds'
 
 const clamp01 = (value: number): number => THREE.MathUtils.clamp(value, 0, 1)
+const DEFAULT_FISH_SAFE_EXTENTS: FishRenderExtents = {
+  noseExtent: 0,
+  tailExtent: 0,
+  halfBodyWidth: 0,
+  halfBodyHeight: 0
+}
 
 interface BoidParams {
   alignment: number
@@ -42,11 +53,14 @@ type BoidTuning = {
   cruiseBias?: number
   turnNoise?: number
   boundaryArcRadius?: number
+  fishSafeExtents?: FishRenderExtents
   steeringWeights?: SteeringWeightTuning
 }
 
 type RuntimeBoidParams = BoidParams & {
   boundaryArcRadius: number
+  fishSafeExtents: FishRenderExtents
+  frontComfortBias: number
   turnNoise: number
 }
 
@@ -247,6 +261,10 @@ export class BoidsSystem {
     const cruiseBias = THREE.MathUtils.clamp(tuning.cruiseBias ?? 1, 0.52, 1.18)
     const turnNoise = THREE.MathUtils.clamp(tuning.turnNoise ?? 0.08, 0, 0.4)
     const boundaryArcRadius = THREE.MathUtils.clamp(tuning.boundaryArcRadius ?? 0.46, 0.18, 1.18)
+    const fishSafeExtents = tuning.fishSafeExtents ?? DEFAULT_FISH_SAFE_EXTENTS
+    const totalLength = fishSafeExtents.noseExtent + fishSafeExtents.tailExtent
+    const noseBias = totalLength > 0 ? fishSafeExtents.noseExtent / totalLength : 0.5
+    const frontComfortBias = THREE.MathUtils.clamp(1.1 + noseBias * 0.24, 1.1, 1.32)
 
     return {
       alignment: this.params.alignment * (steeringWeights.alignment ?? 1),
@@ -265,6 +283,8 @@ export class BoidsSystem {
       depthWanderScale: THREE.MathUtils.clamp(this.params.depthWanderScale + boundaryArcRadius * 0.08, 0.18, 0.64),
       cruiseWeight: THREE.MathUtils.clamp(this.params.cruiseWeight * (0.84 + cruiseBias * 0.16), 0.24, 0.84),
       boundaryArcRadius,
+      fishSafeExtents,
+      frontComfortBias,
       turnNoise
     }
   }
@@ -364,26 +384,162 @@ export class BoidsSystem {
     return 0
   }
 
+  private resolveHeadingDirection(boid: Boid): THREE.Vector3 {
+    const heading = boid.velocity.clone()
+    if (heading.lengthSq() > 0) {
+      return heading.normalize()
+    }
+
+    heading.set(Math.sign(boid.position.x - this.boundsCenter.x || 1), 0, 0)
+    return heading.normalize()
+  }
+
+  private normalizeInsetRange(min: number, max: number, minInset: number, maxInset: number): [number, number] {
+    const insetMin = min + minInset
+    const insetMax = max - maxInset
+    if (insetMin <= insetMax) {
+      return [insetMin, insetMax]
+    }
+
+    const midpoint = (min + max) * 0.5
+    return [midpoint, midpoint]
+  }
+
+  private resolveFishSafeBounds(boid: Boid, runtime: RuntimeBoidParams): THREE.Box3 {
+    const safeBounds = createFishSafeBounds(
+      this.bounds,
+      resolveFishAxisExtents(runtime.fishSafeExtents, this.resolveHeadingDirection(boid))
+    )
+
+    const minX = safeBounds.min.x <= safeBounds.max.x ? safeBounds.min.x : this.boundsCenter.x
+    const maxX = safeBounds.min.x <= safeBounds.max.x ? safeBounds.max.x : this.boundsCenter.x
+    const minY = safeBounds.min.y <= safeBounds.max.y ? safeBounds.min.y : this.boundsCenter.y
+    const maxY = safeBounds.min.y <= safeBounds.max.y ? safeBounds.max.y : this.boundsCenter.y
+    const minZ = safeBounds.min.z <= safeBounds.max.z ? safeBounds.min.z : this.boundsCenter.z
+    const maxZ = safeBounds.min.z <= safeBounds.max.z ? safeBounds.max.z : this.boundsCenter.z
+
+    return new THREE.Box3(
+      new THREE.Vector3(minX, minY, minZ),
+      new THREE.Vector3(maxX, maxY, maxZ)
+    )
+  }
+
+  private postClamp(boid: Boid, runtime: RuntimeBoidParams): void {
+    const safeBounds = this.resolveFishSafeBounds(boid, runtime)
+    const originalSpeed = boid.velocity.length()
+    const clampEpsilon = 0.0001
+    const hitLeft = boid.position.x < safeBounds.min.x
+    const hitRight = boid.position.x > safeBounds.max.x
+    const hitBottom = boid.position.y < safeBounds.min.y
+    const hitTop = boid.position.y > safeBounds.max.y
+    const hitBack = boid.position.z < safeBounds.min.z
+    const hitFront = boid.position.z > safeBounds.max.z
+
+    if (!(hitLeft || hitRight || hitBottom || hitTop || hitBack || hitFront)) {
+      return
+    }
+
+    boid.position.clamp(safeBounds.min, safeBounds.max)
+
+    if ((hitLeft || boid.position.x <= safeBounds.min.x + clampEpsilon) && boid.velocity.x < 0) {
+      boid.velocity.x = 0
+    }
+    if ((hitRight || boid.position.x >= safeBounds.max.x - clampEpsilon) && boid.velocity.x > 0) {
+      boid.velocity.x = 0
+    }
+    if ((hitBottom || boid.position.y <= safeBounds.min.y + clampEpsilon) && boid.velocity.y < 0) {
+      boid.velocity.y = 0
+    }
+    if ((hitTop || boid.position.y >= safeBounds.max.y - clampEpsilon) && boid.velocity.y > 0) {
+      boid.velocity.y = 0
+    }
+    if ((hitBack || boid.position.z <= safeBounds.min.z + clampEpsilon) && boid.velocity.z < 0) {
+      boid.velocity.z = 0
+    }
+    if ((hitFront || boid.position.z >= safeBounds.max.z - clampEpsilon) && boid.velocity.z > 0) {
+      boid.velocity.z = 0
+    }
+
+    if (boid.velocity.lengthSq() > Math.max(0.001, originalSpeed * originalSpeed * 0.04)) {
+      return
+    }
+
+    const tangentSpeed = Math.max(originalSpeed * 0.42, boid.maxSpeed * 0.18)
+    if (hitFront || hitBack) {
+      boid.velocity.x += Math.sign(boid.velocity.x || boid.position.x - this.boundsCenter.x || 1) * tangentSpeed
+    }
+    if (hitLeft || hitRight) {
+      boid.velocity.z += Math.sign(boid.velocity.z || boid.position.z - this.boundsCenter.z || 1) * tangentSpeed
+    }
+    if (hitBottom || hitTop) {
+      boid.velocity.x += Math.sign(boid.velocity.x || boid.position.x - this.boundsCenter.x || 1) * tangentSpeed * 0.72
+    }
+    boid.velocity.clampLength(0, boid.maxSpeed)
+  }
+
   private boundaries(boid: Boid, index: number): THREE.Vector3 {
     const runtime = this.resolveBoidRuntimeParams(index)
+    const safeBounds = this.resolveFishSafeBounds(boid, runtime)
     const comfortMargin = runtime.boundaryMargin
     const hardMargin = Math.max(comfortMargin * 0.35, 0.25)
     const predictedPosition = boid.position.clone().addScaledVector(boid.velocity, runtime.boundaryLookAhead)
     const desired = boid.velocity.clone()
     const travelSpeed = Math.max(boid.velocity.length(), boid.maxSpeed * 0.75, 0.001)
-    const comfortMin = this.bounds.min.clone().addScalar(comfortMargin)
-    const comfortMax = this.bounds.max.clone().subScalar(comfortMargin)
-    const hardMin = this.bounds.min.clone().addScalar(hardMargin)
-    const hardMax = this.bounds.max.clone().subScalar(hardMargin)
+    const [xComfortMin, xComfortMax] = this.normalizeInsetRange(
+      safeBounds.min.x,
+      safeBounds.max.x,
+      comfortMargin,
+      comfortMargin
+    )
+    const [yComfortMin, yComfortMax] = this.normalizeInsetRange(
+      safeBounds.min.y,
+      safeBounds.max.y,
+      comfortMargin,
+      comfortMargin
+    )
+    const [zComfortMin, zComfortMax] = this.normalizeInsetRange(
+      safeBounds.min.z,
+      safeBounds.max.z,
+      comfortMargin * 0.92,
+      comfortMargin * runtime.frontComfortBias
+    )
+    const [xHardMin, xHardMax] = this.normalizeInsetRange(
+      safeBounds.min.x,
+      safeBounds.max.x,
+      hardMargin,
+      hardMargin
+    )
+    const [yHardMin, yHardMax] = this.normalizeInsetRange(
+      safeBounds.min.y,
+      safeBounds.max.y,
+      hardMargin,
+      hardMargin
+    )
+    const [zHardMin, zHardMax] = this.normalizeInsetRange(
+      safeBounds.min.z,
+      safeBounds.max.z,
+      hardMargin * 0.92,
+      hardMargin * Math.max(1.04, runtime.frontComfortBias - 0.08)
+    )
     const lateralDirection = Math.sign(boid.velocity.x || boid.position.x - this.boundsCenter.x || 1)
     const depthDirection = Math.sign(boid.velocity.z || boid.position.z - this.boundsCenter.z || 1)
 
-    const xComfortPressure = this.axisPressure(predictedPosition.x, comfortMin.x, comfortMax.x, comfortMargin)
-    const xHardPressure = this.axisPressure(predictedPosition.x, hardMin.x, hardMax.x, hardMargin)
-    const yComfortPressure = this.axisPressure(predictedPosition.y, comfortMin.y, comfortMax.y, comfortMargin)
-    const yHardPressure = this.axisPressure(predictedPosition.y, hardMin.y, hardMax.y, hardMargin)
-    const zComfortPressure = this.axisPressure(predictedPosition.z, comfortMin.z, comfortMax.z, comfortMargin)
-    const zHardPressure = this.axisPressure(predictedPosition.z, hardMin.z, hardMax.z, hardMargin)
+    const xComfortPressure = this.axisPressure(predictedPosition.x, xComfortMin, xComfortMax, comfortMargin)
+    const xHardPressure = this.axisPressure(predictedPosition.x, xHardMin, xHardMax, hardMargin)
+    const yComfortPressure = this.axisPressure(predictedPosition.y, yComfortMin, yComfortMax, comfortMargin)
+    const yHardPressure = this.axisPressure(predictedPosition.y, yHardMin, yHardMax, hardMargin)
+    const zComfortPressure = this.axisPressure(
+      predictedPosition.z,
+      zComfortMin,
+      zComfortMax,
+      Math.max(comfortMargin, comfortMargin * runtime.frontComfortBias)
+    )
+    const zHardPressure = this.axisPressure(
+      predictedPosition.z,
+      zHardMin,
+      zHardMax,
+      Math.max(hardMargin, hardMargin * runtime.frontComfortBias)
+    )
 
     const xStrength = Math.abs(xComfortPressure) + Math.abs(xHardPressure) * 1.4
     const yStrength = Math.abs(yComfortPressure) + Math.abs(yHardPressure) * 1.4
@@ -468,6 +624,7 @@ export class BoidsSystem {
       boid.applyForce(cruiseForce)
 
       boid.update(deltaTime)
+      this.postClamp(boid, runtime)
     }
   }
 }

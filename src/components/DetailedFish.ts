@@ -5,6 +5,11 @@ import type { FishGroup, SchoolMood, Tuning } from '../types/aquarium'
 import { getFishContent, getFishContentList } from '../content/registry'
 import type { LoadedModelAsset, VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
+import {
+  createFishSafeBounds,
+  resolveFishAxisExtents,
+  type FishRenderExtents
+} from './sceneBounds'
 
 interface FishVariant {
   name: string
@@ -207,6 +212,7 @@ export class DetailedFishSystem {
     verticalOffset: number
     depthOffset: number
     scaleMultiplier: number
+    fishSafeExtents: FishRenderExtents
   }>()
   
   constructor(scene: THREE.Scene, bounds: THREE.Box3, visualAssets: VisualAssetBundle | null = null) {
@@ -460,6 +466,132 @@ export class DetailedFishSystem {
     )
   }
 
+  private resolveSilhouette(variant: FishVariant): Required<NonNullable<FishVariant['silhouette']>> {
+    return {
+      bodyLength: variant.silhouette?.bodyLength ?? 1.5,
+      bodyHeight: variant.silhouette?.bodyHeight ?? 0.32,
+      bodyThickness: variant.silhouette?.bodyThickness ?? 0.3,
+      noseLength: variant.silhouette?.noseLength ?? 0.24,
+      tailLength: variant.silhouette?.tailLength ?? 0.42,
+      tailHeight: variant.silhouette?.tailHeight ?? 0.4,
+      dorsalHeight: variant.silhouette?.dorsalHeight ?? 0.28,
+      ventralHeight: variant.silhouette?.ventralHeight ?? 0.16,
+      pectoralLength: variant.silhouette?.pectoralLength ?? 0.22,
+      topFullness: variant.silhouette?.topFullness ?? 0.72,
+      bellyFullness: variant.silhouette?.bellyFullness ?? 0.8
+    }
+  }
+
+  private resolveBoundsExtentsFromModel(
+    bounds: THREE.Box3,
+    variant: FishVariant,
+    renderPath: FishRenderPath,
+    scaleMultiplier: number
+  ): FishRenderExtents {
+    const scale = variant.scale * scaleMultiplier
+    const size = bounds.getSize(new THREE.Vector3())
+    const forwardAxis = this.getModelForwardAxis(variant, renderPath)
+    const absX = Math.abs(forwardAxis.x)
+    const absY = Math.abs(forwardAxis.y)
+    const axis = absX >= absY && absX >= Math.abs(forwardAxis.z)
+      ? 'x'
+      : absY >= Math.abs(forwardAxis.z)
+        ? 'y'
+        : 'z'
+
+    let noseExtent = bounds.max.x
+    let tailExtent = -bounds.min.x
+    let halfBodyWidth = size.z * 0.5
+    let halfBodyHeight = size.y * 0.5
+
+    if (axis === 'y') {
+      noseExtent = forwardAxis.y >= 0 ? bounds.max.y : -bounds.min.y
+      tailExtent = forwardAxis.y >= 0 ? -bounds.min.y : bounds.max.y
+      halfBodyWidth = size.x * 0.5
+      halfBodyHeight = size.z * 0.5
+    } else if (axis === 'z') {
+      noseExtent = forwardAxis.z >= 0 ? bounds.max.z : -bounds.min.z
+      tailExtent = forwardAxis.z >= 0 ? -bounds.min.z : bounds.max.z
+      halfBodyWidth = size.x * 0.5
+      halfBodyHeight = size.y * 0.5
+    } else {
+      noseExtent = forwardAxis.x >= 0 ? bounds.max.x : -bounds.min.x
+      tailExtent = forwardAxis.x >= 0 ? -bounds.min.x : bounds.max.x
+    }
+
+    return {
+      noseExtent: Math.max(0.04, noseExtent * scale),
+      tailExtent: Math.max(0.04, tailExtent * scale),
+      halfBodyWidth: Math.max(0.03, halfBodyWidth * scale),
+      halfBodyHeight: Math.max(0.03, halfBodyHeight * scale)
+    }
+  }
+
+  private resolveProceduralFishSafeExtents(variant: FishVariant, scaleMultiplier: number): FishRenderExtents {
+    const silhouette = this.resolveSilhouette(variant)
+    const scale = variant.scale * variant.scale * scaleMultiplier
+    const halfLength = (((silhouette.bodyLength + silhouette.noseLength + silhouette.tailLength) * 0.5) + 0.04) * scale
+    const halfBodyHeight = Math.max(
+      silhouette.bodyHeight,
+      silhouette.tailHeight * 0.56,
+      (silhouette.bodyHeight * 0.42) + (silhouette.dorsalHeight * 0.56),
+      (silhouette.bodyHeight * 0.34) + (silhouette.ventralHeight * 0.46)
+    ) * scale
+    const halfBodyWidth = Math.max(
+      (silhouette.bodyThickness * 0.5) + 0.03,
+      (silhouette.bodyThickness * 0.4) + (silhouette.pectoralLength * 0.18)
+    ) * scale
+
+    return {
+      noseExtent: Math.max(0.04, halfLength),
+      tailExtent: Math.max(0.04, halfLength),
+      halfBodyWidth: Math.max(0.03, halfBodyWidth),
+      halfBodyHeight: Math.max(0.03, halfBodyHeight)
+    }
+  }
+
+  private resolveFishSafeExtents(
+    variant: FishVariant,
+    renderPath: FishRenderPath,
+    scaleMultiplier: number = 1.04
+  ): FishRenderExtents {
+    if (renderPath === 'hero') {
+      const heroAsset = this.getVisualModel(variant.heroModelId)
+      const heroRenderable = heroAsset?.sourceMesh ?? heroAsset?.scene ?? null
+      if (heroRenderable) {
+        const bounds = new THREE.Box3().setFromObject(heroRenderable)
+        if (!bounds.isEmpty()) {
+          return this.resolveBoundsExtentsFromModel(bounds, variant, renderPath, scaleMultiplier)
+        }
+      }
+      return this.resolveProceduralFishSafeExtents(variant, scaleMultiplier)
+    }
+
+    if (renderPath === 'school') {
+      const schoolAsset = this.getVisualModel(variant.schoolModelId)
+      const sourceMesh = schoolAsset?.sourceMesh ?? null
+      if (sourceMesh) {
+        const bounds = new THREE.Box3().setFromObject(sourceMesh)
+        if (!bounds.isEmpty()) {
+          return this.resolveBoundsExtentsFromModel(bounds, variant, renderPath, scaleMultiplier)
+        }
+      }
+    }
+
+    return this.resolveProceduralFishSafeExtents(variant, scaleMultiplier)
+  }
+
+  private clampPositionToFishSafeBounds(
+    position: THREE.Vector3,
+    bounds: THREE.Box3,
+    extents: FishRenderExtents,
+    direction: THREE.Vector3
+  ): void {
+    const heading = direction.lengthSq() > 0 ? direction.clone().normalize() : new THREE.Vector3(1, 0, 0)
+    const safeBounds = createFishSafeBounds(bounds, resolveFishAxisExtents(extents, heading))
+    position.clamp(safeBounds.min, safeBounds.max)
+  }
+
   private applyVariantLocomotionTuning(): void {
     if (!this.boids || typeof (this.boids as unknown as { setBoidTuning?: unknown }).setBoidTuning !== 'function') {
       return
@@ -470,12 +602,14 @@ export class DetailedFishSystem {
       if (!variant) return
 
       const profile = this.getLocomotionProfile(variant)
+      const renderPath = this.getVisualModel(variant.schoolModelId)?.sourceMesh ? 'school' : 'procedural'
       this.boids.setBoidTuning(index, {
         cruiseSpeed: profile.cruiseSpeed,
         yawResponsiveness: profile.yawResponsiveness,
         cruiseBias: profile.cruiseBias,
         turnNoise: profile.turnNoise,
         boundaryArcRadius: profile.boundaryArcRadius,
+        fishSafeExtents: this.resolveFishSafeExtents(variant, renderPath),
         steeringWeights: profile.steeringWeights
       })
     })
@@ -704,6 +838,7 @@ export class DetailedFishSystem {
 
         const placement = placements[index] ?? placements[placements.length - 1]
         const isSlenderVariant = variant.name === 'Neon'
+        const heroScaleMultiplier = placement.scaleMultiplier * (isSlenderVariant ? 1.28 : 1)
         this.heroAssignments.set(candidate.boidIndex, {
           object: heroObject,
           body: (heroObject.userData.motionNodes as { body?: THREE.Object3D } | undefined)?.body ?? heroObject,
@@ -711,7 +846,8 @@ export class DetailedFishSystem {
           lateralOffset: placement.lateralOffset,
           verticalOffset: placement.verticalOffset,
           depthOffset: placement.depthOffset,
-          scaleMultiplier: placement.scaleMultiplier * (isSlenderVariant ? 1.28 : 1)
+          scaleMultiplier: heroScaleMultiplier,
+          fishSafeExtents: this.resolveFishSafeExtents(variant, 'hero', heroScaleMultiplier * 1.04)
         })
         this.heroFishMeshes.push(heroObject)
         this.group.add(heroObject)
@@ -1109,19 +1245,7 @@ export class DetailedFishSystem {
   }
   
   private createDetailedFishGeometry(variant: FishVariant): THREE.BufferGeometry {
-    const silhouette = {
-      bodyLength: variant.silhouette?.bodyLength ?? 1.5,
-      bodyHeight: variant.silhouette?.bodyHeight ?? 0.32,
-      bodyThickness: variant.silhouette?.bodyThickness ?? 0.3,
-      noseLength: variant.silhouette?.noseLength ?? 0.24,
-      tailLength: variant.silhouette?.tailLength ?? 0.42,
-      tailHeight: variant.silhouette?.tailHeight ?? 0.4,
-      dorsalHeight: variant.silhouette?.dorsalHeight ?? 0.28,
-      ventralHeight: variant.silhouette?.ventralHeight ?? 0.16,
-      pectoralLength: variant.silhouette?.pectoralLength ?? 0.22,
-      topFullness: variant.silhouette?.topFullness ?? 0.72,
-      bellyFullness: variant.silhouette?.bellyFullness ?? 0.8
-    }
+    const silhouette = this.resolveSilhouette(variant)
 
     const tailRootX = -silhouette.bodyLength * 0.48
     const bodyShoulderX = silhouette.bodyLength * 0.06
@@ -1584,6 +1708,12 @@ export class DetailedFishSystem {
           heroAssignment.object.position.x += heroAssignment.lateralOffset
           heroAssignment.object.position.y += heroAssignment.verticalOffset
           heroAssignment.object.position.z += heroAssignment.depthOffset
+          this.clampPositionToFishSafeBounds(
+            heroAssignment.object.position,
+            bounds,
+            heroAssignment.fishSafeExtents,
+            this.tempDirection
+          )
           if (this.tempDirection.lengthSq() > 0) {
             const heroQuaternion = this.resolveHeadingQuaternion(variant, 'hero', this.tempDirection)
             heroAssignment.object.quaternion.copy(heroQuaternion)

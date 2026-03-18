@@ -180,6 +180,98 @@ describe('DetailedFishSystem locomotion profiles', () => {
 
     expect(alignedForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
   })
+
+  test('applyVariantLocomotionTuning passes fish-safe extents to boids', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const setBoidTuning = vi.fn()
+
+    ;(instance as unknown as {
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser'
+        silhouette?: {
+          bodyLength?: number
+          bodyHeight?: number
+          bodyThickness?: number
+          noseLength?: number
+          tailLength?: number
+          dorsalHeight?: number
+          ventralHeight?: number
+        }
+      }>
+      boidVariantIndices: number[]
+      boids: {
+        boids: unknown[]
+        setBoidTuning: (index: number, tuning: unknown) => void
+      }
+      visualAssets: null
+    }).variants = [{
+      name: 'Neon',
+      scale: 0.35,
+      speed: 1.5,
+      locomotionProfileId: 'slender-darter',
+      silhouette: {
+        bodyLength: 1.82,
+        bodyHeight: 0.18,
+        bodyThickness: 0.15,
+        noseLength: 0.3,
+        tailLength: 0.36,
+        dorsalHeight: 0.12,
+        ventralHeight: 0.06
+      }
+    }]
+    ;(instance as unknown as {
+      boidVariantIndices: number[]
+      boids: {
+        boids: unknown[]
+        setBoidTuning: (index: number, tuning: unknown) => void
+      }
+      visualAssets: null
+    }).boidVariantIndices = [0]
+    ;(instance as unknown as {
+      boids: {
+        boids: unknown[]
+        setBoidTuning: (index: number, tuning: unknown) => void
+      }
+      visualAssets: null
+    }).boids = {
+      boids: [{}],
+      setBoidTuning
+    }
+    ;(instance as unknown as {
+      visualAssets: null
+    }).visualAssets = null
+
+    const applyVariantLocomotionTuning = (DetailedFishSystem.prototype as unknown as {
+      applyVariantLocomotionTuning: () => void
+    }).applyVariantLocomotionTuning.bind(instance)
+
+    applyVariantLocomotionTuning()
+
+    expect(setBoidTuning).toHaveBeenCalledTimes(1)
+    expect(setBoidTuning).toHaveBeenCalledWith(0, expect.objectContaining({
+      fishSafeExtents: expect.objectContaining({
+        noseExtent: expect.any(Number),
+        tailExtent: expect.any(Number),
+        halfBodyWidth: expect.any(Number),
+        halfBodyHeight: expect.any(Number)
+      })
+    }))
+
+    const tuning = setBoidTuning.mock.calls[0]?.[1] as {
+      fishSafeExtents: {
+        noseExtent: number
+        tailExtent: number
+        halfBodyWidth: number
+        halfBodyHeight: number
+      }
+    }
+    expect(tuning.fishSafeExtents.noseExtent).toBeGreaterThan(tuning.fishSafeExtents.halfBodyWidth)
+    expect(tuning.fishSafeExtents.tailExtent).toBeGreaterThan(0)
+    expect(tuning.fishSafeExtents.halfBodyHeight).toBeGreaterThan(0)
+  })
 })
 
 describe('DetailedFishSystem premium materials', () => {
@@ -1668,6 +1760,46 @@ describe('DetailedFishSystem quality scaling', () => {
 
     system.setQuality('standard')
     expect(internals.heroFishMeshes.every((mesh) => mesh.visible)).toBe(true)
+  })
+
+  test('keeps the hero fish nose behind the front safe plane even with a forward depth offset', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const system = new DetailedFishSystem(scene, bounds)
+
+    system.setFishGroups([
+      { speciesId: 'neon-tetra', count: 8 }
+    ])
+
+    const internals = system as unknown as {
+      boids: {
+        boids: Array<{
+          position: THREE.Vector3
+          velocity: THREE.Vector3
+        }>
+      }
+      heroAssignments: Map<number, {
+        object: THREE.Object3D
+        fishSafeExtents: {
+          noseExtent: number
+          tailExtent: number
+          halfBodyWidth: number
+          halfBodyHeight: number
+        }
+      }>
+    }
+
+    const heroEntry = Array.from(internals.heroAssignments.entries())[0]
+    expect(heroEntry).toBeDefined()
+
+    const [heroBoidIndex, heroAssignment] = heroEntry!
+    const heroBoid = internals.boids.boids[heroBoidIndex]
+    heroBoid.position.set(-0.2, 0.1, 4.72)
+    heroBoid.velocity.set(0, 0, 1.4)
+
+    system.update(0, 0)
+
+    expect(heroAssignment.object.position.z).toBeLessThanOrEqual(bounds.max.z - heroAssignment.fishSafeExtents.noseExtent + 0.0001)
   })
 })
 
