@@ -23,6 +23,8 @@ type PlantMixEntry = {
   weight: number
 }
 
+type PlantRadiusBand = [number, number]
+
 type PlantClusterDefinition = {
   id: string
   x: number
@@ -38,8 +40,12 @@ type PlantClusterDefinition = {
   scale: THREE.Vector3
   heightMin: number
   heightMax: number
+  coreCount: number
   satelliteCount: number
   offshootCount: number
+  coreRadius: PlantRadiusBand
+  satelliteRadius: PlantRadiusBand
+  offshootRadius: PlantRadiusBand
   minDistance: number
   depthLaneCount: number
   plantMix?: PlantMixEntry[]
@@ -147,67 +153,55 @@ export type SubstratePlantAnchor = {
 
 export const plantClusterDefinitions: PlantClusterDefinition[] = [
   {
-    id: 'front-left-edge',
-    x: -0.42,
-    z: 0.12,
-    layer: 'foreground',
-    massRole: 'front-left-edge',
-    plantType: 'fan-leaf',
-    baseHeight: 1.55,
-    spreadX: 0.16,
-    spreadZ: 0.12,
-    hueBase: 0.25,
-    rotationY: -0.3,
-    scale: new THREE.Vector3(0.68, 0.64, 0.82),
-    heightMin: 0.96,
-    heightMax: 1.28,
-    satelliteCount: 1,
-    offshootCount: 0,
-    minDistance: 0.06,
-    depthLaneCount: 2
-  },
-  {
     id: 'front-left',
-    x: -0.24,
-    z: 0.2,
+    x: -0.28,
+    z: 0.18,
     layer: 'foreground',
     massRole: 'front-left',
     plantType: 'fan-leaf',
-    baseHeight: 1.82,
-    spreadX: 0.2,
-    spreadZ: 0.14,
-    hueBase: 0.22,
-    rotationY: -0.16,
-    scale: new THREE.Vector3(0.82, 0.78, 0.86),
-    heightMin: 1.06,
-    heightMax: 1.72,
-    satelliteCount: 1,
+    baseHeight: 1.62,
+    spreadX: 0.26,
+    spreadZ: 0.16,
+    hueBase: 0.24,
+    rotationY: -0.22,
+    scale: new THREE.Vector3(0.74, 0.66, 0.8),
+    heightMin: 0.92,
+    heightMax: 1.54,
+    coreCount: 1,
+    satelliteCount: 2,
     offshootCount: 1,
-    minDistance: 0.062,
+    coreRadius: [0.02, 0.14],
+    satelliteRadius: [0.18, 0.44],
+    offshootRadius: [0.44, 0.82],
+    minDistance: 0.055,
     depthLaneCount: 2
   },
   {
     id: 'left-rear',
     x: -0.36,
-    z: -0.28,
+    z: -0.27,
     layer: 'background',
     massRole: 'left-rear',
     plantType: 'sword-leaf',
-    baseHeight: 9.8,
-    spreadX: 0.42,
-    spreadZ: 0.28,
-    hueBase: 0.22,
-    rotationY: -0.4,
-    scale: new THREE.Vector3(1.38, 2.56, 1.34),
-    heightMin: 8.7,
-    heightMax: 10.8,
+    baseHeight: 9.96,
+    spreadX: 0.5,
+    spreadZ: 0.34,
+    hueBase: 0.235,
+    rotationY: -0.36,
+    scale: new THREE.Vector3(1.32, 2.62, 1.28),
+    heightMin: 8.9,
+    heightMax: 10.9,
+    coreCount: 2,
     satelliteCount: 2,
     offshootCount: 1,
-    minDistance: 0.07,
-    depthLaneCount: 3,
+    coreRadius: [0.04, 0.18],
+    satelliteRadius: [0.24, 0.64],
+    offshootRadius: [0.62, 1],
+    minDistance: 0.062,
+    depthLaneCount: 4,
     plantMix: [
-      { plantType: 'sword-leaf', weight: 0.58 },
-      { plantType: 'fan-leaf', weight: 0.42 }
+      { plantType: 'sword-leaf', weight: 0.62 },
+      { plantType: 'fan-leaf', weight: 0.38 }
     ],
     assetIds: ['plant-sword-cluster', 'plant-fan-cluster']
   },
@@ -218,45 +212,53 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     layer: 'midground',
     massRole: 'left-shoulder',
     plantType: 'fan-leaf',
-    baseHeight: 4.54,
-    spreadX: 0.24,
-    spreadZ: 0.18,
+    baseHeight: 4.72,
+    spreadX: 0.26,
+    spreadZ: 0.2,
     hueBase: 0.24,
-    rotationY: -0.2,
-    scale: new THREE.Vector3(1.02, 1.26, 1.04),
-    heightMin: 4.02,
-    heightMax: 5.4,
+    rotationY: -0.18,
+    scale: new THREE.Vector3(0.98, 1.28, 1.02),
+    heightMin: 4.04,
+    heightMax: 5.48,
+    coreCount: 1,
     satelliteCount: 1,
-    offshootCount: 0,
-    minDistance: 0.066,
-    depthLaneCount: 2,
+    offshootCount: 1,
+    coreRadius: [0.03, 0.12],
+    satelliteRadius: [0.18, 0.42],
+    offshootRadius: [0.42, 0.74],
+    minDistance: 0.058,
+    depthLaneCount: 3,
     plantMix: [
-      { plantType: 'fan-leaf', weight: 0.68 },
-      { plantType: 'sword-leaf', weight: 0.32 }
+      { plantType: 'fan-leaf', weight: 0.7 },
+      { plantType: 'sword-leaf', weight: 0.3 }
     ]
   },
   {
     id: 'driftwood-backfill',
-    x: -0.06,
-    z: -0.38,
+    x: -0.04,
+    z: -0.35,
     layer: 'background',
     massRole: 'driftwood-backfill',
     plantType: 'fan-leaf',
-    baseHeight: 8.24,
-    spreadX: 0.34,
-    spreadZ: 0.26,
-    hueBase: 0.22,
-    rotationY: -0.12,
-    scale: new THREE.Vector3(1.26, 2.18, 1.2),
-    heightMin: 4.4,
-    heightMax: 8.3,
+    baseHeight: 8.02,
+    spreadX: 0.32,
+    spreadZ: 0.28,
+    hueBase: 0.225,
+    rotationY: -0.08,
+    scale: new THREE.Vector3(1.22, 2.12, 1.14),
+    heightMin: 4.6,
+    heightMax: 8.2,
+    coreCount: 2,
     satelliteCount: 2,
     offshootCount: 1,
-    minDistance: 0.068,
-    depthLaneCount: 3,
+    coreRadius: [0.03, 0.16],
+    satelliteRadius: [0.16, 0.46],
+    offshootRadius: [0.46, 0.88],
+    minDistance: 0.058,
+    depthLaneCount: 4,
     plantMix: [
-      { plantType: 'fan-leaf', weight: 0.64 },
-      { plantType: 'sword-leaf', weight: 0.36 }
+      { plantType: 'fan-leaf', weight: 0.66 },
+      { plantType: 'sword-leaf', weight: 0.34 }
     ],
     assetIds: ['plant-fan-cluster', 'plant-sword-cluster']
   },
@@ -267,106 +269,78 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
     layer: 'midground',
     massRole: 'mid-right-backfill',
     plantType: 'fan-leaf',
-    baseHeight: 4.48,
-    spreadX: 0.26,
-    spreadZ: 0.18,
-    hueBase: 0.27,
-    rotationY: 0.18,
-    scale: new THREE.Vector3(1.04, 1.3, 0.98),
-    heightMin: 3.9,
-    heightMax: 5.1,
+    baseHeight: 4.42,
+    spreadX: 0.24,
+    spreadZ: 0.2,
+    hueBase: 0.275,
+    rotationY: 0.2,
+    scale: new THREE.Vector3(1, 1.28, 0.96),
+    heightMin: 3.88,
+    heightMax: 5.18,
+    coreCount: 1,
     satelliteCount: 1,
-    offshootCount: 0,
-    minDistance: 0.064,
-    depthLaneCount: 2,
+    offshootCount: 1,
+    coreRadius: [0.03, 0.12],
+    satelliteRadius: [0.18, 0.42],
+    offshootRadius: [0.42, 0.76],
+    minDistance: 0.056,
+    depthLaneCount: 3,
     plantMix: [
-      { plantType: 'fan-leaf', weight: 0.62 },
-      { plantType: 'sword-leaf', weight: 0.38 }
+      { plantType: 'fan-leaf', weight: 0.64 },
+      { plantType: 'sword-leaf', weight: 0.36 }
     ]
   },
   {
     id: 'right-rear',
-    x: 0.38,
-    z: -0.24,
+    x: 0.36,
+    z: -0.25,
     layer: 'background',
     massRole: 'right-rear',
     plantType: 'sword-leaf',
-    baseHeight: 9.6,
+    baseHeight: 9.46,
     spreadX: 0.24,
-    spreadZ: 0.2,
-    hueBase: 0.34,
-    rotationY: 0.3,
-    scale: new THREE.Vector3(1.04, 2.38, 0.98),
-    heightMin: 8.4,
-    heightMax: 10.3,
-    satelliteCount: 1,
+    spreadZ: 0.24,
+    hueBase: 0.325,
+    rotationY: 0.28,
+    scale: new THREE.Vector3(1.02, 2.42, 0.9),
+    heightMin: 8.5,
+    heightMax: 10.2,
+    coreCount: 1,
+    satelliteCount: 2,
     offshootCount: 1,
-    minDistance: 0.072,
-    depthLaneCount: 3,
+    coreRadius: [0.03, 0.12],
+    satelliteRadius: [0.18, 0.44],
+    offshootRadius: [0.5, 0.86],
+    minDistance: 0.064,
+    depthLaneCount: 4,
     plantMix: [
-      { plantType: 'sword-leaf', weight: 0.74 },
-      { plantType: 'fan-leaf', weight: 0.26 }
+      { plantType: 'sword-leaf', weight: 0.76 },
+      { plantType: 'fan-leaf', weight: 0.24 }
     ],
     assetIds: ['plant-sword-cluster', 'plant-fan-cluster']
   },
   {
-    id: 'front-center',
-    x: 0.02,
-    z: 0.18,
-    layer: 'foreground',
-    massRole: 'front-center',
-    plantType: 'fan-leaf',
-    baseHeight: 1.42,
-    spreadX: 0.12,
-    spreadZ: 0.1,
-    hueBase: 0.26,
-    rotationY: -0.04,
-    scale: new THREE.Vector3(0.58, 0.56, 0.62),
-    heightMin: 0.94,
-    heightMax: 1.18,
-    satelliteCount: 0,
-    offshootCount: 0,
-    minDistance: 0.058,
-    depthLaneCount: 2
-  },
-  {
     id: 'front-right',
-    x: 0.24,
-    z: 0.19,
+    x: 0.27,
+    z: 0.17,
     layer: 'foreground',
     massRole: 'front-right',
     plantType: 'fan-leaf',
-    baseHeight: 1.72,
-    spreadX: 0.18,
-    spreadZ: 0.12,
-    hueBase: 0.28,
-    rotationY: 0.18,
-    scale: new THREE.Vector3(0.76, 0.68, 0.78),
-    heightMin: 1.02,
-    heightMax: 1.64,
-    satelliteCount: 1,
-    offshootCount: 0,
-    minDistance: 0.06,
-    depthLaneCount: 2
-  },
-  {
-    id: 'front-right-edge',
-    x: 0.4,
-    z: 0.1,
-    layer: 'foreground',
-    massRole: 'front-right-edge',
-    plantType: 'fan-leaf',
-    baseHeight: 1.48,
-    spreadX: 0.14,
-    spreadZ: 0.1,
-    hueBase: 0.24,
-    rotationY: 0.28,
-    scale: new THREE.Vector3(0.64, 0.6, 0.76),
-    heightMin: 0.92,
-    heightMax: 1.22,
-    satelliteCount: 1,
-    offshootCount: 0,
-    minDistance: 0.058,
+    baseHeight: 1.54,
+    spreadX: 0.24,
+    spreadZ: 0.16,
+    hueBase: 0.27,
+    rotationY: 0.22,
+    scale: new THREE.Vector3(0.7, 0.64, 0.76),
+    heightMin: 0.88,
+    heightMax: 1.46,
+    coreCount: 1,
+    satelliteCount: 2,
+    offshootCount: 1,
+    coreRadius: [0.02, 0.14],
+    satelliteRadius: [0.18, 0.42],
+    offshootRadius: [0.42, 0.8],
+    minDistance: 0.055,
     depthLaneCount: 2
   }
 ]
@@ -412,10 +386,16 @@ const sampleRange = (rng: () => number, min: number, max: number): number => (
   min + ((max - min) * rng())
 )
 
+const sampleRadiusInBand = (
+  rng: () => number,
+  band: PlantRadiusBand
+): number => Math.sqrt(sampleRange(rng, band[0] ** 2, band[1] ** 2))
+
 const pickPlantTypeFromMix = (
   zone: PlantClusterDefinition,
   rng: () => number,
-  clusterKind: PlantClusterKind
+  clusterKind: PlantClusterKind,
+  index: number
 ): PlantType => {
   if (zone.layer === 'foreground' || !zone.plantMix?.length) {
     return zone.plantType
@@ -425,17 +405,37 @@ const pickPlantTypeFromMix = (
     return zone.plantType
   }
 
-  const totalWeight = zone.plantMix.reduce((sum, entry) => sum + entry.weight, 0)
+  if (clusterKind === 'offshoot' && zone.plantMix.length > 1) {
+    return zone.plantMix[zone.plantMix.length - 1]!.plantType
+  }
+
+  if (clusterKind === 'satellite' && zone.plantMix.length > 1 && index % 2 === 1) {
+    return zone.plantMix[zone.plantMix.length - 1]!.plantType
+  }
+
+  const weightedMix = clusterKind === 'offshoot' && zone.plantMix.length > 1
+    ? zone.plantMix.map((entry, entryIndex) => ({
+      plantType: entry.plantType,
+      weight: entry.weight * (entryIndex === 0 ? 0.58 : 1.42)
+    }))
+    : clusterKind === 'satellite' && zone.plantMix.length > 1
+      ? zone.plantMix.map((entry, entryIndex) => ({
+        plantType: entry.plantType,
+        weight: entry.weight * (entryIndex === 0 ? 0.82 : 1.18)
+      }))
+      : zone.plantMix
+
+  const totalWeight = weightedMix.reduce((sum, entry) => sum + entry.weight, 0)
   let cursor = rng() * totalWeight
 
-  for (const entry of zone.plantMix) {
+  for (const entry of weightedMix) {
     cursor -= entry.weight
     if (cursor <= 0) {
       return entry.plantType
     }
   }
 
-  return zone.plantMix[zone.plantMix.length - 1]!.plantType
+  return weightedMix[weightedMix.length - 1]!.plantType
 }
 
 const createPlacementScale = (
@@ -462,40 +462,58 @@ const createZonePlacement = (
   zone: PlantClusterDefinition,
   clusterKind: PlantClusterKind,
   index: number,
-  totalCount: number,
   existingPlacements: SampledPlantPlacement[],
-  corePlacement: SampledPlantPlacement | null,
+  corePlacements: SampledPlantPlacement[],
   rng: () => number
 ): SampledPlantPlacement | null => {
   const laneCount = Math.max(zone.depthLaneCount, 1)
+  const laneMidpoint = (laneCount - 1) / 2
+  const laneSpacing = zone.layer === 'background' ? 0.03 : zone.layer === 'midground' ? 0.024 : 0.019
   const depthLane = clusterKind === 'core'
-    ? Math.floor((laneCount - 1) / 2)
+    ? THREE.MathUtils.clamp(
+      Math.round(laneMidpoint + sampleRange(rng, -0.75, 0.75)),
+      0,
+      laneCount - 1
+    )
     : Math.floor(rng() * laneCount)
-  const laneSpacing = zone.layer === 'background' ? 0.028 : zone.layer === 'midground' ? 0.022 : 0.018
-  const laneOffset = (depthLane - ((laneCount - 1) / 2)) * laneSpacing
+  const laneOffset = (depthLane - laneMidpoint) * laneSpacing
+  const radiusBand = clusterKind === 'core'
+    ? zone.coreRadius
+    : clusterKind === 'satellite'
+      ? zone.satelliteRadius
+      : zone.offshootRadius
 
-  for (let attempt = 0; attempt < 28; attempt += 1) {
-    const angleBase = ((index + 1) / (totalCount + 1)) * Math.PI * 2
-    const angle = angleBase + sampleRange(rng, -0.75, 0.75) + (zone.rotationY * 0.35)
-    const radiusProfile = clusterKind === 'core'
-      ? { min: 0.02, max: 0.1 }
+  for (let attempt = 0; attempt < 36; attempt += 1) {
+    const sampledCore = corePlacements.length > 0
+      ? corePlacements[Math.floor(rng() * corePlacements.length)]!
+      : null
+    const usesCoreOrigin = sampledCore !== null && (clusterKind === 'satellite' || (clusterKind === 'offshoot' && rng() < 0.68))
+    const baseX = usesCoreOrigin ? sampledCore!.x : zone.x
+    const baseZ = usesCoreOrigin ? sampledCore!.z : zone.z
+    const angle = sampleRange(rng, -Math.PI, Math.PI) + (zone.rotationY * 0.22)
+    const radial = sampleRadiusInBand(rng, radiusBand)
+    const radiusX = zone.spreadX * radial
+    const radiusZ = zone.spreadZ * radial
+    const driftMagnitude = clusterKind === 'core'
+      ? sampleRange(rng, -0.02, 0.035)
       : clusterKind === 'satellite'
-        ? { min: 0.22, max: 0.58 }
-        : { min: 0.54, max: 0.94 }
-    const radiusX = zone.spreadX * sampleRange(rng, radiusProfile.min, radiusProfile.max)
-    const radiusZ = zone.spreadZ * sampleRange(rng, radiusProfile.min, radiusProfile.max)
-    const baseX = clusterKind === 'satellite' && corePlacement ? corePlacement.x : zone.x
-    const baseZ = clusterKind === 'satellite' && corePlacement ? corePlacement.z : zone.z
+        ? sampleRange(rng, -0.015, 0.065)
+        : sampleRange(rng, 0.04, 0.14)
+    const driftAngle = zone.rotationY + sampleRange(rng, -0.55, 0.55)
+    const directionalDriftX = Math.sin(driftAngle) * driftMagnitude
+    const directionalDriftZ = Math.cos(driftAngle) * driftMagnitude
     const x = clampNormalizedPlantX(
       baseX
         + (Math.cos(angle) * radiusX)
-        + sampleRange(rng, -zone.spreadX * 0.08, zone.spreadX * 0.08)
+        + directionalDriftX
+        + sampleRange(rng, -zone.spreadX * 0.06, zone.spreadX * 0.06)
     )
     const z = clampNormalizedPlantZ(
       baseZ
         + (Math.sin(angle) * radiusZ)
         + laneOffset
-        + sampleRange(rng, -zone.spreadZ * 0.08, zone.spreadZ * 0.08)
+        + directionalDriftZ
+        + sampleRange(rng, -zone.spreadZ * 0.06, zone.spreadZ * 0.06)
     )
     const tooClose = existingPlacements.some((placement) =>
       Math.hypot(placement.x - x, placement.z - z) < zone.minDistance
@@ -506,16 +524,23 @@ const createZonePlacement = (
     }
 
     const heightBias = clusterKind === 'core'
-      ? sampleRange(rng, 0.72, 0.98)
+      ? sampleRange(rng, 0.76, 0.98)
       : clusterKind === 'satellite'
-        ? sampleRange(rng, 0.34, 0.78)
-        : sampleRange(rng, 0.08, 0.46)
-    const plantType = pickPlantTypeFromMix(zone, rng, clusterKind)
+        ? sampleRange(rng, 0.38, 0.8)
+        : sampleRange(rng, 0.14, 0.52)
+    const plantType = pickPlantTypeFromMix(zone, rng, clusterKind, index)
     const hueOffset = plantType === 'fan-leaf'
       ? 0.008
       : plantType === 'sword-leaf'
         ? -0.006
         : -0.018
+    const laneRotationBias = (depthLane - laneMidpoint) * 0.08
+    const tiltSpreadX = zone.layer === 'background' ? 0.12 : zone.layer === 'midground' ? 0.1 : 0.08
+    const tiltSpreadZ = zone.layer === 'background' ? 0.16 : zone.layer === 'midground' ? 0.14 : 0.1
+    const tiltX = sampleRange(rng, -tiltSpreadX, tiltSpreadX)
+      + (clusterKind === 'offshoot' ? sampleRange(rng, -0.05, 0.06) : 0)
+    const tiltZ = sampleRange(rng, -tiltSpreadZ, tiltSpreadZ)
+      + (Math.cos(angle) * 0.025)
 
     return {
       id: `${zone.id}-${clusterKind}-${index + 1}`,
@@ -528,9 +553,9 @@ const createZonePlacement = (
       z,
       baseHeight: THREE.MathUtils.lerp(zone.heightMin, zone.heightMax, heightBias),
       hueBase: zone.hueBase + hueOffset + sampleRange(rng, -0.016, 0.026),
-      rotationY: zone.rotationY + sampleRange(rng, -0.36, 0.36) + (depthLane * 0.06),
-      tiltX: sampleRange(rng, -0.08, 0.08) + (clusterKind === 'offshoot' ? sampleRange(rng, -0.02, 0.03) : 0),
-      tiltZ: sampleRange(rng, -0.11, 0.11),
+      rotationY: zone.rotationY + sampleRange(rng, -0.48, 0.48) + laneRotationBias,
+      tiltX,
+      tiltZ,
       depthLane,
       scale: createPlacementScale(zone, rng, clusterKind),
       assetIds: clusterKind === 'core' && zone.layer !== 'foreground' ? zone.assetIds : undefined
@@ -543,10 +568,10 @@ const createZonePlacement = (
 const sampleZonePlacements = (zone: PlantClusterDefinition): SampledPlantPlacement[] => {
   const rng = createSeededRandom(hashSeed(plantedPlacementSeed, zone.id))
   const placements: SampledPlantPlacement[] = []
-  let corePlacement: SampledPlantPlacement | null = null
+  const corePlacements: SampledPlantPlacement[] = []
 
   ;([
-    { clusterKind: 'core' as const, count: 1 },
+    { clusterKind: 'core' as const, count: zone.coreCount },
     { clusterKind: 'satellite' as const, count: zone.satelliteCount },
     { clusterKind: 'offshoot' as const, count: zone.offshootCount }
   ]).forEach(({ clusterKind, count }) => {
@@ -555,9 +580,8 @@ const sampleZonePlacements = (zone: PlantClusterDefinition): SampledPlantPlaceme
         zone,
         clusterKind,
         index,
-        Math.max(count, 1),
         placements,
-        corePlacement,
+        corePlacements,
         rng
       )
 
@@ -567,7 +591,7 @@ const sampleZonePlacements = (zone: PlantClusterDefinition): SampledPlantPlaceme
 
       placements.push(placement)
       if (clusterKind === 'core') {
-        corePlacement = placement
+        corePlacements.push(placement)
       }
     }
   })
@@ -577,31 +601,41 @@ const sampleZonePlacements = (zone: PlantClusterDefinition): SampledPlantPlaceme
 
 const createSubstratePlantAnchor = (
   placement: SampledPlantPlacement,
-  index: number
+  index: number,
+  placements: SampledPlantPlacement[]
 ): SubstratePlantAnchor => {
   const layerRadius = placement.layer === 'background'
-    ? { x: 0.028, z: 0.026, mound: 0.014, scoop: 0.007, bias: 0.014 }
+    ? { x: 0.03, z: 0.028, mound: 0.015, scoop: 0.008, bias: 0.015 }
     : placement.layer === 'midground'
       ? { x: 0.03, z: 0.028, mound: 0.017, scoop: 0.009, bias: 0.016 }
-      : { x: 0.024, z: 0.022, mound: 0.013, scoop: 0.008, bias: 0.014 }
+      : { x: 0.022, z: 0.022, mound: 0.012, scoop: 0.008, bias: 0.013 }
   const clusterMultiplier = placement.clusterKind === 'core'
-    ? 1
+    ? 1.08
     : placement.clusterKind === 'satellite'
-      ? 0.86
+      ? 0.9
       : 0.74
+  const localDensity = placements.filter((candidate) =>
+    candidate.zoneId === placement.zoneId
+      && candidate.id !== placement.id
+      && Math.hypot(candidate.x - placement.x, candidate.z - placement.z) < (placement.layer === 'background' ? 0.14 : 0.11)
+  ).length
+  const densityMultiplier = 1 + (Math.min(localDensity, 4) * 0.08)
   const scoopLead = layerRadius.bias * clusterMultiplier
+  const laneBias = (placement.depthLane - 1) * (placement.layer === 'background' ? 0.004 : 0.0025)
+  const leanBiasX = placement.tiltZ * 0.11
+  const leanBiasZ = placement.tiltX * 0.12
 
   return {
-    id: `plant-placement-${index + 1}`,
+    id: placement.id || `plant-placement-${index + 1}`,
     x: placement.x,
     z: placement.z,
     layer: placement.layer,
-    radiusX: layerRadius.x * clusterMultiplier * THREE.MathUtils.clamp(placement.scale.x, 0.72, 1.18),
-    radiusZ: layerRadius.z * clusterMultiplier * THREE.MathUtils.clamp(placement.scale.z, 0.72, 1.14),
-    moundHeight: layerRadius.mound * clusterMultiplier * THREE.MathUtils.clamp(placement.scale.y * 0.62, 0.74, 1.18),
-    scoopDepth: layerRadius.scoop * clusterMultiplier,
-    scoopBiasX: Math.sin(placement.rotationY) * scoopLead,
-    scoopBiasZ: (Math.cos(placement.rotationY) * scoopLead) + (placement.layer === 'foreground' ? 0.01 : 0.004)
+    radiusX: layerRadius.x * clusterMultiplier * densityMultiplier * THREE.MathUtils.clamp(placement.scale.x, 0.72, 1.18),
+    radiusZ: layerRadius.z * clusterMultiplier * densityMultiplier * THREE.MathUtils.clamp(placement.scale.z, 0.72, 1.14),
+    moundHeight: layerRadius.mound * clusterMultiplier * densityMultiplier * THREE.MathUtils.clamp(placement.scale.y * 0.62, 0.74, 1.18),
+    scoopDepth: layerRadius.scoop * clusterMultiplier * (1 + Math.min(localDensity, 3) * 0.1 + ((Math.abs(placement.tiltX) + Math.abs(placement.tiltZ)) * 0.6)),
+    scoopBiasX: (Math.sin(placement.rotationY) * scoopLead) + leanBiasX,
+    scoopBiasZ: (Math.cos(placement.rotationY) * scoopLead) + (placement.layer === 'foreground' ? 0.008 : 0.004) + leanBiasZ + laneBias
   }
 }
 
@@ -667,8 +701,8 @@ export const substrateHardscapeAnchors: SubstrateHardscapeAnchor[] = [
   }
 ]
 
-export const substratePlantAnchors: SubstratePlantAnchor[] = sampledPlantPlacements.map((placement, index) =>
-  createSubstratePlantAnchor(placement, index)
+export const substratePlantAnchors: SubstratePlantAnchor[] = sampledPlantPlacements.map((placement, index, placements) =>
+  createSubstratePlantAnchor(placement, index, placements)
 )
 
 export class AquascapingSystem {
@@ -1249,10 +1283,10 @@ export class AquascapingSystem {
     const hue = layer === 'background' ? 0.26 + hueOffset : layer === 'midground' ? 0.29 + hueOffset : 0.31 + hueOffset
     const saturation = plantType === 'fan-leaf' ? 0.34 : plantType === 'ribbon-seaweed' ? 0.39 : 0.32
     const backgroundLightness = plantType === 'fan-leaf'
-      ? role === 'hero' ? 0.45 : 0.42
+      ? role === 'hero' ? 0.47 : 0.44
       : plantType === 'ribbon-seaweed'
-        ? role === 'hero' ? 0.4 : 0.38
-        : role === 'hero' ? 0.44 : 0.41
+        ? role === 'hero' ? 0.42 : 0.4
+        : role === 'hero' ? 0.46 : 0.43
     const lightness = layer === 'background'
       ? backgroundLightness
       : layer === 'midground'
@@ -1280,7 +1314,7 @@ export class AquascapingSystem {
     toned.getHSL(tonedHsl)
 
     const lightnessFloor = layer === 'background'
-      ? role === 'hero' ? 0.36 : 0.35
+      ? role === 'hero' ? 0.38 : 0.37
       : layer === 'midground'
         ? 0.32
         : 0.3

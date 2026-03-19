@@ -81,6 +81,30 @@ const getMinimumDistance = (
   return minimumDistance
 }
 
+const getNearestNeighborDistances = (
+  placements: Array<{ x: number; z: number }>
+): number[] => (
+  placements.map((placement, index) => {
+    let nearestDistance = Number.POSITIVE_INFINITY
+
+    for (let nextIndex = 0; nextIndex < placements.length; nextIndex += 1) {
+      if (index === nextIndex) {
+        continue
+      }
+
+      nearestDistance = Math.min(
+        nearestDistance,
+        Math.hypot(
+          placement.x - placements[nextIndex]!.x,
+          placement.z - placements[nextIndex]!.z
+        )
+      )
+    }
+
+    return nearestDistance
+  })
+)
+
 describe('AquascapingSystem composition', () => {
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
 
@@ -280,6 +304,9 @@ describe('AquascapingSystem composition', () => {
     const driftwoodPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'driftwood-backfill')
     const rightRearPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'right-rear')
     const foregroundPlacements = sampledPlantPlacements.filter((placement) => placement.layer === 'foreground')
+    const foregroundNearestDistances = getNearestNeighborDistances(foregroundPlacements)
+    const leftRearLanes = new Set(leftRearPlacements.map((placement) => placement.depthLane))
+    const driftwoodLanes = new Set(driftwoodPlacements.map((placement) => placement.depthLane))
 
     expect(backgroundClusters.length).toBeGreaterThanOrEqual(3)
     expect(backgroundClusters.some((cluster) => cluster.massRole === 'left-rear' && cluster.x <= -0.24 && cluster.z <= -0.2)).toBe(true)
@@ -305,19 +332,29 @@ describe('AquascapingSystem composition', () => {
     expect(midgroundClusters.every((cluster) => cluster.baseHeight >= 3.8)).toBe(true)
     expect(foregroundClusters.every((cluster) => cluster.baseHeight <= 2)).toBe(true)
     expect(sampledPlantPlacements.length).toBeGreaterThan(plantClusterDefinitions.length)
-    expect(leftRearPlacements.length).toBeGreaterThanOrEqual(4)
-    expect(driftwoodPlacements.length).toBeGreaterThanOrEqual(4)
-    expect(rightRearPlacements.length).toBeGreaterThanOrEqual(3)
+    expect(leftRearPlacements.length).toBeGreaterThanOrEqual(5)
+    expect(driftwoodPlacements.length).toBeGreaterThanOrEqual(5)
+    expect(rightRearPlacements.length).toBeGreaterThanOrEqual(4)
     expect(rightRearPlacements.length).toBeLessThan(leftRearPlacements.length)
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('sword-leaf')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('fan-leaf')).toBe(true)
+    expect(new Set(driftwoodPlacements.map((placement) => placement.plantType)).has('sword-leaf')).toBe(true)
     expect(new Set(driftwoodPlacements.map((placement) => placement.plantType)).has('fan-leaf')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.clusterKind)).has('satellite')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.clusterKind)).has('offshoot')).toBe(true)
     expect(getMinimumDistance(leftRearPlacements)).toBeGreaterThanOrEqual(0.06)
+    expect(Math.max(...leftRearPlacements.map((placement) => placement.x)) - Math.min(...leftRearPlacements.map((placement) => placement.x))).toBeGreaterThan(0.2)
+    expect(Math.max(...driftwoodPlacements.map((placement) => placement.z)) - Math.min(...driftwoodPlacements.map((placement) => placement.z))).toBeGreaterThan(0.12)
+    expect(leftRearLanes.size).toBeGreaterThanOrEqual(2)
+    expect(driftwoodLanes.size).toBeGreaterThanOrEqual(2)
+    expect(leftRearPlacements.some((placement) => placement.tiltX > 0)).toBe(true)
+    expect(leftRearPlacements.some((placement) => placement.tiltX < 0)).toBe(true)
+    expect(driftwoodPlacements.some((placement) => placement.tiltZ > 0)).toBe(true)
+    expect(driftwoodPlacements.some((placement) => placement.tiltZ < 0)).toBe(true)
     expect(driftwoodPlacements.every((placement) => placement.baseHeight >= 4.2 && placement.baseHeight <= 8.4)).toBe(true)
     expect(foregroundPlacements.every((placement) => placement.baseHeight <= 2)).toBe(true)
     expect(foregroundPlacements.every((placement) => placement.plantType === 'fan-leaf')).toBe(true)
+    expect(Math.max(...foregroundNearestDistances) - Math.min(...foregroundNearestDistances)).toBeGreaterThan(0.03)
   })
 
   it('derives substrate plant anchors from sampled placements instead of fixed zone centers', () => {
@@ -331,6 +368,10 @@ describe('AquascapingSystem composition', () => {
     expect(substratePlantAnchors.length).toBe(sampledPlantPlacements.length)
     expect(substratePlantAnchors.every((anchor) => sampledPositionKeys.has(positionKey(anchor.x, anchor.z)))).toBe(true)
     expect(substratePlantAnchors.some((anchor) => !zonePositionKeys.has(positionKey(anchor.x, anchor.z)))).toBe(true)
+    expect(substratePlantAnchors.some((anchor) => anchor.id.includes('-core-'))).toBe(true)
+    expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.moundHeight)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.moundHeight))).toBeGreaterThan(0.004)
+    expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.scoopDepth)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.scoopDepth))).toBeGreaterThan(0.002)
+    expect(substratePlantAnchors.some((anchor) => Math.abs(anchor.scoopBiasX) > 0.01)).toBe(true)
   })
 
   it('builds denser foliage clusters so planted masses stay readable edge-on', () => {
@@ -797,9 +838,9 @@ describe('AquascapingSystem premium materials', () => {
     const backgroundFan = getPlantTint('background', 'fan-leaf')
     const backgroundRibbon = getPlantTint('background', 'ribbon-seaweed')
 
-    expect(backgroundSword.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.37)
-    expect(backgroundFan.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.37)
-    expect(backgroundRibbon.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.36)
+    expect(backgroundSword.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.39)
+    expect(backgroundFan.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.4)
+    expect(backgroundRibbon.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.38)
   })
 
   it('renders background broad-leaf foliage as solid tinted shapes instead of narrow alpha cutouts', () => {
