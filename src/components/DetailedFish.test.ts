@@ -335,7 +335,13 @@ describe('DetailedFishSystem locomotion profiles', () => {
         yawResponsiveness: number
         tailBeatFreq: number
         bodyWiggleAmount: number
+        depthBobAmount: number
+        boundaryArcRadius: number
         turnStartLag: number
+        curiosityRate: number
+        retargetIntervalRange: [number, number]
+        stateDurationRange: [number, number]
+        stateWeights: Record<'cruise' | 'inspect' | 'glide' | 'burst' | 'hover', number>
       }
     }
 
@@ -346,10 +352,21 @@ describe('DetailedFishSystem locomotion profiles', () => {
     const calmCruiser = getLocomotionProfile.bind(instance)(variants.find((variant) => variant.name === 'Tropical')!)
 
     expect(slenderDarter.cruiseSpeed).toBeGreaterThan(calmCruiser.cruiseSpeed)
-    expect(slenderDarter.tailBeatFreq).toBeGreaterThan(diskGlider.tailBeatFreq)
-    expect(diskGlider.yawResponsiveness).toBeLessThan(slenderDarter.yawResponsiveness)
+    expect(slenderDarter.tailBeatFreq).toBeGreaterThan(calmCruiser.tailBeatFreq * 1.8)
+    expect(diskGlider.yawResponsiveness).toBeLessThan(calmCruiser.yawResponsiveness)
     expect(goldfishWobble.bodyWiggleAmount).toBeGreaterThan(calmCruiser.bodyWiggleAmount)
     expect(goldfishWobble.turnStartLag).toBeGreaterThan(diskGlider.turnStartLag)
+    expect(goldfishWobble.depthBobAmount).toBeGreaterThan(calmCruiser.depthBobAmount)
+    expect(calmCruiser.curiosityRate).toBeLessThan(goldfishWobble.curiosityRate)
+    expect(diskGlider.boundaryArcRadius).toBeGreaterThan(slenderDarter.boundaryArcRadius)
+    expect(calmCruiser.boundaryArcRadius).toBeGreaterThan(slenderDarter.boundaryArcRadius)
+    expect(diskGlider.stateWeights.glide + diskGlider.stateWeights.hover).toBeGreaterThan(
+      slenderDarter.stateWeights.glide + slenderDarter.stateWeights.hover
+    )
+    expect(slenderDarter.stateDurationRange[1]).toBeLessThan(diskGlider.stateDurationRange[0])
+    expect(diskGlider.retargetIntervalRange[0]).toBeGreaterThanOrEqual(4)
+    expect(slenderDarter.retargetIntervalRange[0]).toBeGreaterThanOrEqual(4)
+    expect(goldfishWobble.retargetIntervalRange[1]).toBeLessThanOrEqual(14)
   })
 
   test('applyVariantLocomotionTuning passes fish-safe extents to boids', () => {
@@ -1583,7 +1600,7 @@ describe('DetailedFishSystem asset-backed models', () => {
     expect(heroObject).toBeInstanceOf(THREE.Group)
     const motionNodes = heroObject.userData.motionNodes as { body?: THREE.Object3D; tail?: THREE.Object3D | null } | undefined
     expect(motionNodes?.body).toBeInstanceOf(THREE.Mesh)
-    expect(motionNodes?.tail ?? null).toBeNull()
+    expect(motionNodes?.tail?.name).toBe('HeroTailPivot')
     expect((motionNodes?.body as THREE.Mesh).geometry).toBe(sourceMesh.geometry)
     expect((((motionNodes?.body as THREE.Mesh).material) as THREE.MeshPhysicalMaterial).map).toBe(sourceMesh.material.map)
   })
@@ -1786,6 +1803,47 @@ describe('DetailedFishSystem wander target timing', () => {
     const internals = system as unknown as { fishCount: number }
 
     expect(internals.fishCount).toBe(66)
+  })
+
+  test('scheduleNextRetargetTime keeps gait-specific cadence inside the 4-14 second window', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants, getLocomotionProfile, scheduleNextRetargetTime } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser'
+      }>
+      getLocomotionProfile: (variant: {
+        locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser'
+      }) => {
+        retargetIntervalRange: [number, number]
+      }
+      scheduleNextRetargetTime: (
+        profile: { retargetIntervalRange: [number, number] },
+        gaitState: 'cruise' | 'inspect' | 'glide' | 'burst' | 'hover',
+        elapsedTime: number
+      ) => number
+    }
+
+    const variants = createFishVariants.bind(instance)()
+    const profiles = variants.map((variant) => getLocomotionProfile.bind(instance)(variant))
+    const randomSpy = vi.spyOn(Math, 'random')
+    const gaitStates = ['cruise', 'inspect', 'glide', 'burst', 'hover'] as const
+
+    for (const gaitState of gaitStates) {
+      randomSpy.mockReturnValue(0)
+      profiles.forEach((profile) => {
+        const cadence = scheduleNextRetargetTime.bind(instance)(profile, gaitState, 10) - 10
+        expect(cadence).toBeGreaterThanOrEqual(4)
+      })
+
+      randomSpy.mockReturnValue(0.9999)
+      profiles.forEach((profile) => {
+        const cadence = scheduleNextRetargetTime.bind(instance)(profile, gaitState, 10) - 10
+        expect(cadence).toBeLessThanOrEqual(14)
+      })
+    }
+
+    randomSpy.mockRestore()
   })
 
   test('initializeRandomness seeds wander targets relative to the tank bounds', () => {

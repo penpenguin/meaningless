@@ -167,143 +167,143 @@ const FISH_SAFE_PADDING_BY_PATH: Record<FishRenderPath, FishSafePadding> = {
 
 const LOCOMOTION_PROFILES: Record<NonNullable<FishVariant['locomotionProfileId']>, LocomotionProfile> = {
   'calm-cruiser': {
-    cruiseSpeed: 0.98,
-    yawResponsiveness: 0.82,
-    bankAmount: 0.28,
-    tailBeatFreq: 1.38,
-    bodyWiggleAmount: 0.24,
-    curiosityRate: 0.48,
-    depthBobAmount: 0.28,
-    boundaryArcRadius: 0.98,
-    cruiseBias: 0.82,
-    turnNoise: 0.11,
-    suddenTurnRate: 0.006,
-    burstMultiplier: 1.12,
-    glideFactor: 0.84,
-    hoverDrag: 0.88,
-    inspectCuriosity: 0.58,
-    turnStartLag: 0.08,
-    lanePull: 0.34,
-    depthPull: 0.3,
-    interestWeight: 0.16,
-    retargetIntervalRange: [4.8, 8.4],
-    stateDurationRange: [4.5, 8.5],
-    stateWeights: {
-      cruise: 0.54,
-      inspect: 0.14,
-      glide: 0.22,
-      burst: 0.04,
-      hover: 0.06
-    },
-    steeringWeights: {
-      alignment: 0.94,
-      cohesion: 1.02,
-      separation: 0.96
-    }
-  },
-  'disk-glider': {
-    cruiseSpeed: 0.84,
-    yawResponsiveness: 0.66,
-    bankAmount: 0.22,
-    tailBeatFreq: 0.96,
-    bodyWiggleAmount: 0.18,
-    curiosityRate: 0.4,
+    cruiseSpeed: 0.96,
+    yawResponsiveness: 0.76,
+    bankAmount: 0.24,
+    tailBeatFreq: 1.18,
+    bodyWiggleAmount: 0.22,
+    curiosityRate: 0.32,
     depthBobAmount: 0.24,
     boundaryArcRadius: 1.08,
-    cruiseBias: 0.64,
-    turnNoise: 0.07,
-    suddenTurnRate: 0.004,
+    cruiseBias: 0.86,
+    turnNoise: 0.09,
+    suddenTurnRate: 0.0048,
     burstMultiplier: 1.08,
-    glideFactor: 0.76,
-    hoverDrag: 0.96,
-    inspectCuriosity: 0.48,
+    glideFactor: 0.82,
+    hoverDrag: 0.92,
+    inspectCuriosity: 0.42,
     turnStartLag: 0.12,
-    lanePull: 0.26,
+    lanePull: 0.3,
     depthPull: 0.28,
-    interestWeight: 0.14,
-    retargetIntervalRange: [5.6, 9.6],
-    stateDurationRange: [5.4, 9.2],
+    interestWeight: 0.13,
+    retargetIntervalRange: [6.4, 11.8],
+    stateDurationRange: [5.8, 10.6],
     stateWeights: {
-      cruise: 0.42,
-      inspect: 0.12,
-      glide: 0.34,
+      cruise: 0.62,
+      inspect: 0.08,
+      glide: 0.2,
       burst: 0.03,
-      hover: 0.09
+      hover: 0.07
     },
     steeringWeights: {
-      alignment: 0.88,
-      cohesion: 1.08,
+      alignment: 0.96,
+      cohesion: 1.04,
       separation: 0.92
     }
   },
-  'slender-darter': {
-    cruiseSpeed: 1.24,
-    yawResponsiveness: 1.18,
-    bankAmount: 0.44,
-    tailBeatFreq: 2.52,
+  'disk-glider': {
+    cruiseSpeed: 0.82,
+    yawResponsiveness: 0.54,
+    bankAmount: 0.18,
+    tailBeatFreq: 0.76,
     bodyWiggleAmount: 0.16,
-    curiosityRate: 0.88,
-    depthBobAmount: 0.18,
-    boundaryArcRadius: 0.46,
-    cruiseBias: 0.96,
-    turnNoise: 0.24,
-    suddenTurnRate: 0.016,
-    burstMultiplier: 1.16,
-    glideFactor: 0.9,
-    hoverDrag: 0.7,
-    inspectCuriosity: 0.72,
-    turnStartLag: 0.05,
-    lanePull: 0.42,
-    depthPull: 0.24,
-    interestWeight: 0.18,
-    retargetIntervalRange: [2.6, 5.0],
-    stateDurationRange: [2.2, 4.2],
-    stateWeights: {
-      cruise: 0.58,
-      inspect: 0.14,
-      glide: 0.08,
-      burst: 0.14,
-      hover: 0.06
-    },
-    steeringWeights: {
-      alignment: 1.12,
-      cohesion: 0.84,
-      separation: 1.08
-    }
-  },
-  'goldfish-wobble': {
-    cruiseSpeed: 0.9,
-    yawResponsiveness: 0.74,
-    bankAmount: 0.3,
-    tailBeatFreq: 1.72,
-    bodyWiggleAmount: 0.54,
-    curiosityRate: 0.68,
-    depthBobAmount: 0.46,
-    boundaryArcRadius: 0.9,
-    cruiseBias: 0.7,
-    turnNoise: 0.19,
-    suddenTurnRate: 0.01,
-    burstMultiplier: 1.1,
-    glideFactor: 0.88,
+    curiosityRate: 0.28,
+    depthBobAmount: 0.2,
+    boundaryArcRadius: 1.14,
+    cruiseBias: 0.62,
+    turnNoise: 0.05,
+    suddenTurnRate: 0.003,
+    burstMultiplier: 1.06,
+    glideFactor: 0.72,
     hoverDrag: 1.04,
-    inspectCuriosity: 0.68,
-    turnStartLag: 0.18,
+    inspectCuriosity: 0.36,
+    turnStartLag: 0.16,
     lanePull: 0.22,
-    depthPull: 0.34,
-    interestWeight: 0.22,
-    retargetIntervalRange: [3.8, 7.4],
-    stateDurationRange: [3.6, 7.0],
+    depthPull: 0.26,
+    interestWeight: 0.12,
+    retargetIntervalRange: [7.2, 12.6],
+    stateDurationRange: [6.8, 11.6],
     stateWeights: {
       cruise: 0.36,
-      inspect: 0.26,
-      glide: 0.12,
-      burst: 0.06,
+      inspect: 0.08,
+      glide: 0.34,
+      burst: 0.02,
       hover: 0.2
     },
     steeringWeights: {
-      alignment: 0.9,
-      cohesion: 0.98,
+      alignment: 0.86,
+      cohesion: 1.1,
       separation: 0.9
+    }
+  },
+  'slender-darter': {
+    cruiseSpeed: 1.28,
+    yawResponsiveness: 1.24,
+    bankAmount: 0.46,
+    tailBeatFreq: 2.74,
+    bodyWiggleAmount: 0.14,
+    curiosityRate: 0.86,
+    depthBobAmount: 0.16,
+    boundaryArcRadius: 0.46,
+    cruiseBias: 1.02,
+    turnNoise: 0.26,
+    suddenTurnRate: 0.014,
+    burstMultiplier: 1.22,
+    glideFactor: 0.9,
+    hoverDrag: 0.62,
+    inspectCuriosity: 0.66,
+    turnStartLag: 0.04,
+    lanePull: 0.46,
+    depthPull: 0.24,
+    interestWeight: 0.16,
+    retargetIntervalRange: [4.2, 7.1],
+    stateDurationRange: [4.2, 6.4],
+    stateWeights: {
+      cruise: 0.56,
+      inspect: 0.12,
+      glide: 0.06,
+      burst: 0.2,
+      hover: 0.06
+    },
+    steeringWeights: {
+      alignment: 1.14,
+      cohesion: 0.82,
+      separation: 1.1
+    }
+  },
+  'goldfish-wobble': {
+    cruiseSpeed: 0.92,
+    yawResponsiveness: 0.68,
+    bankAmount: 0.28,
+    tailBeatFreq: 1.54,
+    bodyWiggleAmount: 0.62,
+    curiosityRate: 0.54,
+    depthBobAmount: 0.58,
+    boundaryArcRadius: 0.94,
+    cruiseBias: 0.68,
+    turnNoise: 0.18,
+    suddenTurnRate: 0.008,
+    burstMultiplier: 1.08,
+    glideFactor: 0.84,
+    hoverDrag: 1.08,
+    inspectCuriosity: 0.56,
+    turnStartLag: 0.24,
+    lanePull: 0.2,
+    depthPull: 0.38,
+    interestWeight: 0.18,
+    retargetIntervalRange: [5.1, 9.8],
+    stateDurationRange: [4.8, 8.8],
+    stateWeights: {
+      cruise: 0.32,
+      inspect: 0.22,
+      glide: 0.1,
+      burst: 0.05,
+      hover: 0.31
+    },
+    steeringWeights: {
+      alignment: 0.88,
+      cohesion: 0.98,
+      separation: 0.88
     }
   }
 }
@@ -868,14 +868,14 @@ export class DetailedFishSystem {
     const gaitScale = gaitState === 'glide'
       ? 1.18
       : gaitState === 'inspect'
-        ? 0.68
+        ? 0.86
         : gaitState === 'burst'
-          ? 0.42
+          ? 0.82
           : gaitState === 'hover'
-            ? 0.56
+            ? 1.08
             : 0.9
 
-    return elapsedTime + (base * gaitScale)
+    return elapsedTime + THREE.MathUtils.clamp(base * gaitScale, 4, 14)
   }
 
   private scheduleNextStateChangeTime(
@@ -885,11 +885,13 @@ export class DetailedFishSystem {
   ): number {
     const base = this.randomRange(profile.stateDurationRange[0], profile.stateDurationRange[1])
     const gaitScale = gaitState === 'glide'
-      ? 1.14
+      ? 1.22
+      : gaitState === 'inspect'
+        ? 0.92
       : gaitState === 'burst'
-        ? 0.54
+        ? 0.64
         : gaitState === 'hover'
-          ? 0.78
+          ? 1.12
           : 1
 
     return elapsedTime + (base * gaitScale)
@@ -940,7 +942,7 @@ export class DetailedFishSystem {
   private chooseNextGaitState(index: number, profile: LocomotionProfile): GaitState {
     const current = this.gaitStates[index] ?? 'cruise'
     const entries = (Object.entries(profile.stateWeights) as Array<[GaitState, number]>)
-      .map(([state, weight]) => [state, state === current ? weight * 0.18 : weight] as const)
+      .map(([state, weight]) => [state, state === current ? weight * 0.1 : weight] as const)
     const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
     if (total <= 0) {
       return current
@@ -1009,7 +1011,7 @@ export class DetailedFishSystem {
           : anchor.x > 0.08
             ? ['right', 'center'] as PreferredLateralLane[]
             : ['center'] as PreferredLateralLane[],
-        weight: anchor.id === 'driftwood-root-flare' ? 0.26 : 0.2
+        weight: anchor.id === 'driftwood-root-flare' ? 0.3 : 0.18
       }))
 
     const plantPoints = substratePlantAnchors
@@ -1023,7 +1025,7 @@ export class DetailedFishSystem {
             : anchor.layer === 'midground'
               ? midLaneY
               : bounds.min.y + (size.y * 0.4),
-          projectZ(anchor.z + (anchor.layer === 'background' ? 0.07 : 0.05))
+          projectZ(anchor.z + (anchor.layer === 'background' ? 0.09 : 0.06))
         ),
         preferredDepthBands: anchor.layer === 'background'
           ? ['upper', 'mid'] as PreferredDepthBand[]
@@ -1035,7 +1037,7 @@ export class DetailedFishSystem {
           : anchor.x > 0.08
             ? ['right', 'center'] as PreferredLateralLane[]
             : ['center'] as PreferredLateralLane[],
-        weight: anchor.layer === 'background' ? 0.2 : 0.16
+        weight: anchor.layer === 'background' ? 0.22 : 0.17
       }))
 
     const openLanePoints: HabitatInterestPoint[] = [
@@ -1044,14 +1046,14 @@ export class DetailedFishSystem {
         position: new THREE.Vector3(center.x - (size.x * 0.18), midLaneY, center.z + (size.z * 0.04)),
         preferredDepthBands: ['mid', 'upper'] as PreferredDepthBand[],
         preferredLateralLanes: ['left', 'center'] as PreferredLateralLane[],
-        weight: 0.18
+        weight: 0.14
       },
       {
         kind: 'open-lane',
         position: new THREE.Vector3(center.x + (size.x * 0.18), upperLaneY, center.z - (size.z * 0.08)),
         preferredDepthBands: ['upper', 'mid'] as PreferredDepthBand[],
         preferredLateralLanes: ['right', 'center'] as PreferredLateralLane[],
-        weight: 0.18
+        weight: 0.14
       }
     ]
 
@@ -1168,7 +1170,7 @@ export class DetailedFishSystem {
   private transitionGaitState(index: number, elapsedTime: number, profile: LocomotionProfile): void {
     const nextState = this.chooseNextGaitState(index, profile)
     this.gaitStates[index] = nextState
-    this.stateCooldowns[index] = elapsedTime + 0.5 + profile.turnStartLag + (Math.random() * 0.8)
+    this.stateCooldowns[index] = elapsedTime + 0.9 + profile.turnStartLag + (Math.random() * 1.1)
     this.nextStateChangeTimes[index] = this.scheduleNextStateChangeTime(profile, nextState, elapsedTime)
     this.nextRetargetTimes[index] = Math.min(
       this.nextRetargetTimes[index] || Number.POSITIVE_INFINITY,
@@ -1385,11 +1387,19 @@ export class DetailedFishSystem {
       this.preferredLateralLanes[i] = this.pickPreferredLateralLane()
       this.gaitStates[i] = this.pickInitialGaitState(profile)
       this.interestSeeds[i] = Math.random()
-      this.stateCooldowns[i] = Math.random() * (0.4 + profile.turnStartLag)
+      this.stateCooldowns[i] = Math.random() * (0.8 + profile.turnStartLag)
       
       // Variant-aware cadence spread keeps schools from sharing one rhythm.
-      const minSpeed = THREE.MathUtils.clamp(0.84 + ((profile.cruiseSpeed - 1) * 0.12), 0.76, 0.98)
-      const maxSpeed = THREE.MathUtils.clamp(minSpeed + 0.18 + (profile.turnNoise * 0.12), minSpeed + 0.12, 1.22)
+      const minSpeed = THREE.MathUtils.clamp(
+        0.76 + ((profile.cruiseSpeed - 1) * 0.16) - (profile.turnStartLag * 0.08),
+        0.72,
+        0.98
+      )
+      const maxSpeed = THREE.MathUtils.clamp(
+        minSpeed + 0.24 + (profile.turnNoise * 0.16) + (profile.bodyWiggleAmount * 0.04),
+        minSpeed + 0.18,
+        1.28
+      )
       this.speedMultipliers[i] = THREE.MathUtils.lerp(minSpeed, maxSpeed, Math.random())
 
       this.nextRetargetTimes[i] = this.scheduleNextRetargetTime(profile, this.gaitStates[i], 0)
@@ -1465,8 +1475,15 @@ export class DetailedFishSystem {
       const cadence = this.speedMultipliers?.[boidIndex] ?? 1
       const offset = this.randomOffsets?.[boidIndex] ?? 0
       phaseOffsets[i] = phase
-      tailAmplitudes[i] = (0.025 + (profile.bodyWiggleAmount * 0.045)) * (0.82 + (Math.sin(offset * 1.7) * 0.18))
-      tailFrequencies[i] = Math.max(0.45, profile.tailBeatFreq * cadence * (0.88 + Math.cos(offset * 1.3) * 0.12))
+      tailAmplitudes[i] = (
+        0.03 +
+        (profile.bodyWiggleAmount * 0.05) +
+        (Math.max(0, 1 - profile.yawResponsiveness) * 0.008)
+      ) * (0.78 + (Math.sin(offset * 1.7) * 0.22))
+      tailFrequencies[i] = Math.max(
+        0.45,
+        profile.tailBeatFreq * cadence * (0.84 + Math.cos(offset * 1.3) * 0.16)
+      )
     }
 
     geometry.setAttribute('instancePhaseOffset', new THREE.InstancedBufferAttribute(phaseOffsets, 1))
@@ -1540,9 +1557,11 @@ float rearMask = 1.0 - smoothstep(tailRegion, uFishForwardRange.y, forwardProjec
 float tailMask = smoothstep(0.0, 1.0, rearMask);
 float bodyMask = smoothstep(0.24, 1.0, rearMask);
 float tailWave = sin((uFishMotionTime * instanceTailFrequency) + instancePhaseOffset) * instanceTailAmplitude;
+float rearBodyWave = sin((uFishMotionTime * instanceTailFrequency * 0.58) + instancePhaseOffset + 0.7) * instanceTailAmplitude;
 transformed += fishSideAxis * tailWave * tailMask;
-transformed += fishForwardAxis * (-abs(tailWave) * tailMask * 0.12);
-transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instancePhaseOffset) * instanceTailAmplitude * bodyMask * 0.26;`
+transformed += fishSideAxis * rearBodyWave * bodyMask * 0.42;
+transformed += fishForwardAxis * (-abs(tailWave) * tailMask * 0.14);
+transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instancePhaseOffset) * instanceTailAmplitude * bodyMask * 0.28;`
         )
     }
 
@@ -1739,15 +1758,48 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
 
   private wrapHeroMotionObject(body: THREE.Object3D, variant: FishVariant): THREE.Group {
     const root = new THREE.Group()
-    root.add(body)
-    const tail = this.findHeroTailTarget(body, variant)
+    const forwardAxis = this.getModelForwardAxis(variant, 'hero').clone().normalize()
+    let tail = this.findHeroTailTarget(body, variant)
+
+    if (tail) {
+      root.add(body)
+    } else {
+      const tailPivot = new THREE.Group()
+      const tailPivotDistance = this.resolveHeroTailPivotDistance(body, forwardAxis)
+      tailPivot.name = 'HeroTailPivot'
+      tailPivot.position.copy(forwardAxis).multiplyScalar(-tailPivotDistance)
+      body.position.addScaledVector(forwardAxis, tailPivotDistance)
+      tailPivot.add(body)
+      root.add(tailPivot)
+      tail = tailPivot
+    }
+
     root.userData.motionNodes = {
       body,
       tail,
       bodyRotation: body.rotation.clone(),
-      tailRotation: tail?.rotation.clone() ?? null
+      tailRotation: tail?.rotation.clone() ?? null,
+      bodyPosition: body.position.clone(),
+      tailPosition: tail?.position.clone() ?? null,
+      tailMode: tail?.name === 'HeroTailPivot' ? 'pivot' : tail ? 'node' : 'none'
     }
     return root
+  }
+
+  private resolveHeroTailPivotDistance(body: THREE.Object3D, forwardAxis: THREE.Vector3): number {
+    body.updateMatrixWorld(true)
+    const bounds = new THREE.Box3().setFromObject(body)
+    if (bounds.isEmpty()) {
+      return 0.18
+    }
+
+    const size = bounds.getSize(new THREE.Vector3())
+    const projectedLength =
+      (Math.abs(forwardAxis.x) * size.x) +
+      (Math.abs(forwardAxis.y) * size.y) +
+      (Math.abs(forwardAxis.z) * size.z)
+
+    return THREE.MathUtils.clamp(projectedLength * 0.32, 0.12, 0.9)
   }
 
   private findHeroTailTarget(root: THREE.Object3D, variant: FishVariant): THREE.Object3D | null {
@@ -2611,24 +2663,38 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       tail?: THREE.Object3D | null
       bodyRotation?: THREE.Euler
       tailRotation?: THREE.Euler | null
+      bodyPosition?: THREE.Vector3
+      tailPosition?: THREE.Vector3 | null
+      tailMode?: 'pivot' | 'node' | 'none'
     } | undefined
     const body = motionNodes?.body
     if (!body) return
 
+    body.position.copy(motionNodes?.bodyPosition ?? body.position)
     body.rotation.copy(motionNodes?.bodyRotation ?? new THREE.Euler())
 
     const tail = motionNodes?.tail ?? null
     if (tail) {
+      tail.position.copy(motionNodes?.tailPosition ?? tail.position)
       tail.rotation.copy(motionNodes?.tailRotation ?? new THREE.Euler())
-      body.rotation.z += bodySway * 0.55
-      body.rotation.x += bodyPitch * 0.85
-      tail.rotation.y += tailWave
-      tail.rotation.z += bodySway * 0.4
+      if (motionNodes?.tailMode === 'pivot') {
+        body.rotation.z += bodySway * 0.28
+        body.rotation.x += bodyPitch * 0.72
+        tail.rotation.y += tailWave * 1.1
+        tail.rotation.z += bodySway * 0.2
+        return
+      }
+
+      body.rotation.z += bodySway * 0.42
+      body.rotation.x += bodyPitch * 0.82
+      tail.rotation.y += tailWave * 1.14
+      tail.rotation.z += bodySway * 0.34
       return
     }
 
-    body.rotation.z += (bodySway * 0.7) + (tailWave * 0.12)
-    body.rotation.x += bodyPitch
+    body.rotation.z += bodySway * 0.54
+    body.rotation.x += bodyPitch * 0.92
+    body.rotation.y += tailWave * 0.2
   }
 
   getVisibleFishCount(): number {
