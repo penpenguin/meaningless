@@ -121,20 +121,12 @@ describe('DetailedFishSystem locomotion profiles', () => {
       createFishVariants: () => Array<{
         name: string
         locomotionProfileId?: string
-        orientationCorrection?: {
-          procedural?: {
-            modelForwardAxis?: [number, number, number]
-            correctionQuaternion?: [number, number, number, number]
-          }
-          schoolGLB?: {
-            modelForwardAxis?: [number, number, number]
-            correctionQuaternion?: [number, number, number, number]
-          }
-          heroGLB?: {
-            modelForwardAxis?: [number, number, number]
-            correctionQuaternion?: [number, number, number, number]
-          }
-        }
+        proceduralForwardAxis?: [number, number, number]
+        schoolForwardAxis?: [number, number, number]
+        heroForwardAxis?: [number, number, number]
+        proceduralCorrectionQuaternion?: [number, number, number, number]
+        schoolCorrectionQuaternion?: [number, number, number, number]
+        heroCorrectionQuaternion?: [number, number, number, number]
       }>
     }
 
@@ -149,17 +141,12 @@ describe('DetailedFishSystem locomotion profiles', () => {
     expect(neon?.locomotionProfileId).toBe('slender-darter')
     expect(goldfish?.locomotionProfileId).toBe('goldfish-wobble')
 
-    expect(tropical?.orientationCorrection).toEqual({
-      procedural: {
-        modelForwardAxis: [1, 0, 0]
-      },
-      schoolGLB: {
-        modelForwardAxis: [1, 0, 0]
-      },
-      heroGLB: {
-        modelForwardAxis: [1, 0, 0]
-      }
-    })
+    expect(tropical?.proceduralForwardAxis).toEqual([1, 0, 0])
+    expect(tropical?.schoolForwardAxis).toEqual([1, 0, 0])
+    expect(tropical?.heroForwardAxis).toEqual([1, 0, 0])
+    expect(tropical?.proceduralCorrectionQuaternion).toBeUndefined()
+    expect(tropical?.schoolCorrectionQuaternion).toBeUndefined()
+    expect(tropical?.heroCorrectionQuaternion).toBeUndefined()
   })
 
   test('resolveHeadingQuaternion aligns corrected per-asset forward axes with velocity', () => {
@@ -167,20 +154,12 @@ describe('DetailedFishSystem locomotion profiles', () => {
     const { resolveHeadingQuaternion } = DetailedFishSystem.prototype as unknown as {
       resolveHeadingQuaternion: (
         variant: {
-          orientationCorrection?: {
-            procedural?: {
-              modelForwardAxis?: [number, number, number]
-              correctionQuaternion?: [number, number, number, number]
-            }
-            schoolGLB?: {
-              modelForwardAxis?: [number, number, number]
-              correctionQuaternion?: [number, number, number, number]
-            }
-            heroGLB?: {
-              modelForwardAxis?: [number, number, number]
-              correctionQuaternion?: [number, number, number, number]
-            }
-          }
+          proceduralForwardAxis?: [number, number, number]
+          schoolForwardAxis?: [number, number, number]
+          heroForwardAxis?: [number, number, number]
+          proceduralCorrectionQuaternion?: [number, number, number, number]
+          schoolCorrectionQuaternion?: [number, number, number, number]
+          heroCorrectionQuaternion?: [number, number, number, number]
         },
         renderPath: 'procedural' | 'school' | 'hero',
         direction: THREE.Vector3
@@ -188,19 +167,11 @@ describe('DetailedFishSystem locomotion profiles', () => {
     }
 
     const variant = {
-      orientationCorrection: {
-        procedural: {
-          modelForwardAxis: [0, 0, 1] as [number, number, number],
-          correctionQuaternion: [0, Math.sin(Math.PI / 4), 0, Math.cos(Math.PI / 4)] as [number, number, number, number]
-        },
-        schoolGLB: {
-          modelForwardAxis: [0, 0, 1] as [number, number, number],
-          correctionQuaternion: [0, Math.sin(Math.PI / 4), 0, Math.cos(Math.PI / 4)] as [number, number, number, number]
-        },
-        heroGLB: {
-          modelForwardAxis: [1, 0, 0] as [number, number, number]
-        }
-      }
+      proceduralForwardAxis: [0, 0, 1] as [number, number, number],
+      schoolForwardAxis: [0, 0, 1] as [number, number, number],
+      heroForwardAxis: [1, 0, 0] as [number, number, number],
+      proceduralCorrectionQuaternion: [0, Math.sin(Math.PI / 4), 0, Math.cos(Math.PI / 4)] as [number, number, number, number],
+      schoolCorrectionQuaternion: [0, Math.sin(Math.PI / 4), 0, Math.cos(Math.PI / 4)] as [number, number, number, number]
     }
 
     const proceduralQuaternion = resolveHeadingQuaternion.bind(instance)(
@@ -219,21 +190,135 @@ describe('DetailedFishSystem locomotion profiles', () => {
       new THREE.Vector3(0, 0, -1)
     ).clone()
 
-    const proceduralForward = new THREE.Vector3(...variant.orientationCorrection.procedural.modelForwardAxis)
-      .applyQuaternion(new THREE.Quaternion(...variant.orientationCorrection.procedural.correctionQuaternion))
+    const proceduralForward = new THREE.Vector3(...variant.proceduralForwardAxis)
+      .applyQuaternion(new THREE.Quaternion(...variant.proceduralCorrectionQuaternion))
       .applyQuaternion(proceduralQuaternion)
       .normalize()
-    const schoolForward = new THREE.Vector3(...variant.orientationCorrection.schoolGLB.modelForwardAxis)
-      .applyQuaternion(new THREE.Quaternion(...variant.orientationCorrection.schoolGLB.correctionQuaternion))
+    const schoolForward = new THREE.Vector3(...variant.schoolForwardAxis)
+      .applyQuaternion(new THREE.Quaternion(...variant.schoolCorrectionQuaternion))
       .applyQuaternion(schoolQuaternion)
       .normalize()
-    const heroForward = new THREE.Vector3(...variant.orientationCorrection.heroGLB.modelForwardAxis)
+    const heroForward = new THREE.Vector3(...variant.heroForwardAxis)
       .applyQuaternion(heroQuaternion)
       .normalize()
 
     expect(proceduralForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
     expect(schoolForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
     expect(heroForward.angleTo(new THREE.Vector3(0, 0, -1))).toBeLessThan(1e-5)
+  })
+
+  test('resolveFishSafeExtents keeps procedural extents at world-scaled geometry size', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants, createDetailedFishGeometry, resolveFishSafeExtents } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        scale: number
+        speed: number
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        silhouette?: {
+          bodyLength?: number
+          bodyHeight?: number
+          bodyThickness?: number
+          noseLength?: number
+          tailLength?: number
+          tailHeight?: number
+          dorsalHeight?: number
+          ventralHeight?: number
+          pectoralLength?: number
+          topFullness?: number
+          bellyFullness?: number
+        }
+      }>
+      createDetailedFishGeometry: (variant: {
+        name: string
+        scale: number
+        speed: number
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+      }) => THREE.BufferGeometry
+      resolveFishSafeExtents: (variant: {
+        name: string
+        scale: number
+        speed: number
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+      }, renderPath: 'procedural' | 'school' | 'hero', scaleMultiplier?: number) => {
+        noseExtent: number
+        tailExtent: number
+        halfBodyWidth: number
+        halfBodyHeight: number
+      }
+    }
+
+    const neon = createFishVariants.bind(instance)().find((variant) => variant.name === 'Neon')
+    expect(neon).toBeDefined()
+
+    const geometry = createDetailedFishGeometry.bind(instance)(neon!)
+    const geometryBounds = new THREE.Box3().setFromObject(new THREE.Mesh(geometry))
+    const extents = resolveFishSafeExtents.bind(instance)(neon!, 'procedural')
+
+    expect(extents.noseExtent).toBeGreaterThanOrEqual((geometryBounds.max.x * neon!.scale) - 0.0001)
+    expect(extents.tailExtent).toBeGreaterThanOrEqual((Math.abs(geometryBounds.min.x) * neon!.scale) - 0.0001)
+    expect(extents.halfBodyWidth).toBeGreaterThanOrEqual((Math.max(Math.abs(geometryBounds.min.z), geometryBounds.max.z) * neon!.scale) - 0.0001)
+  })
+
+  test('resolveBoundsExtentsFromModel projects corrected forward axes across the full bounds volume', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { resolveBoundsExtentsFromModel } = DetailedFishSystem.prototype as unknown as {
+      resolveBoundsExtentsFromModel: (
+        bounds: THREE.Box3,
+        variant: {
+          scale: number
+          speed: number
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          schoolForwardAxis?: [number, number, number]
+          schoolCorrectionQuaternion?: [number, number, number, number]
+        },
+        renderPath: 'procedural' | 'school' | 'hero',
+        scaleMultiplier: number
+      ) => {
+        noseExtent: number
+        tailExtent: number
+        halfBodyWidth: number
+        halfBodyHeight: number
+      }
+    }
+
+    const variant = {
+      scale: 0.6,
+      speed: 1,
+      primaryColor: new THREE.Color(0xffffff),
+      secondaryColor: new THREE.Color(0xffffff),
+      schoolForwardAxis: [0, 0, 1] as [number, number, number],
+      schoolCorrectionQuaternion: [0, Math.sin(Math.PI / 8), 0, Math.cos(Math.PI / 8)] as [number, number, number, number]
+    }
+    const bounds = new THREE.Box3(
+      new THREE.Vector3(-0.15, -0.2, -1.4),
+      new THREE.Vector3(0.35, 0.25, 1.6)
+    )
+
+    const extents = resolveBoundsExtentsFromModel.bind(instance)(bounds, variant, 'school', 1)
+    const forward = new THREE.Vector3(...variant.schoolForwardAxis)
+      .applyQuaternion(new THREE.Quaternion(...variant.schoolCorrectionQuaternion))
+      .normalize()
+
+    const corners = [
+      new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+      new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.max.z),
+      new THREE.Vector3(bounds.min.x, bounds.max.y, bounds.min.z),
+      new THREE.Vector3(bounds.min.x, bounds.max.y, bounds.max.z),
+      new THREE.Vector3(bounds.max.x, bounds.min.y, bounds.min.z),
+      new THREE.Vector3(bounds.max.x, bounds.min.y, bounds.max.z),
+      new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.min.z),
+      new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.max.z)
+    ]
+    const rawProjectedNoseExtent = Math.max(...corners.map((corner) => corner.dot(forward))) * variant.scale
+    const rawProjectedTailExtent = Math.max(...corners.map((corner) => -corner.dot(forward))) * variant.scale
+
+    expect(extents.noseExtent).toBeGreaterThan(rawProjectedNoseExtent)
+    expect(extents.tailExtent).toBeGreaterThan(rawProjectedTailExtent)
   })
 
   test('locomotion profiles keep distinct yaw responsiveness, tail beat, and cruise speed by variant', () => {

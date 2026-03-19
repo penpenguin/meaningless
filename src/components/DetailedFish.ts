@@ -39,6 +39,12 @@ interface FishVariant {
   scale: number
   speed: number
   locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser'
+  proceduralForwardAxis?: AxisTuple
+  schoolForwardAxis?: AxisTuple
+  heroForwardAxis?: AxisTuple
+  proceduralCorrectionQuaternion?: QuaternionTuple
+  schoolCorrectionQuaternion?: QuaternionTuple
+  heroCorrectionQuaternion?: QuaternionTuple
   modelForwardAxis?: {
     procedural: AxisTuple
     school: AxisTuple
@@ -72,6 +78,12 @@ interface FishVariant {
 }
 
 type FishRenderPath = 'procedural' | 'school' | 'hero'
+type FishSafePadding = {
+  nose: number
+  tail: number
+  width: number
+  height: number
+}
 
 type LocomotionProfile = {
   cruiseSpeed: number
@@ -131,6 +143,26 @@ const DEFAULT_FORWARD_AXIS: [number, number, number] = [1, 0, 0]
 const DEFAULT_ORIENTATION_CORRECTION: Required<OrientationCorrection> = {
   modelForwardAxis: DEFAULT_FORWARD_AXIS,
   correctionQuaternion: [0, 0, 0, 1]
+}
+const FISH_SAFE_PADDING_BY_PATH: Record<FishRenderPath, FishSafePadding> = {
+  procedural: {
+    nose: 0.12,
+    tail: 0.14,
+    width: 0.08,
+    height: 0.1
+  },
+  school: {
+    nose: 0.14,
+    tail: 0.16,
+    width: 0.09,
+    height: 0.11
+  },
+  hero: {
+    nose: 0.16,
+    tail: 0.18,
+    width: 0.1,
+    height: 0.12
+  }
 }
 
 const LOCOMOTION_PROFILES: Record<NonNullable<FishVariant['locomotionProfileId']>, LocomotionProfile> = {
@@ -402,17 +434,9 @@ export class DetailedFishSystem {
         scale: 0.5,
         speed: 1.0,
         locomotionProfileId: 'calm-cruiser',
-        orientationCorrection: {
-          procedural: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          schoolGLB: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          heroGLB: {
-            modelForwardAxis: [1, 0, 0]
-          }
-        },
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
         patternTextureId: 'fish-tropical',
         baseColorTextureId: 'fish-tropical-basecolor',
         normalTextureId: 'fish-tropical-normal',
@@ -441,17 +465,9 @@ export class DetailedFishSystem {
         scale: 0.65,
         speed: 0.8,
         locomotionProfileId: 'disk-glider',
-        orientationCorrection: {
-          procedural: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          schoolGLB: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          heroGLB: {
-            modelForwardAxis: [1, 0, 0]
-          }
-        },
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
         patternTextureId: 'fish-angelfish',
         baseColorTextureId: 'fish-angelfish-basecolor',
         normalTextureId: 'fish-angelfish-normal',
@@ -480,17 +496,9 @@ export class DetailedFishSystem {
         scale: 0.35,
         speed: 1.5,
         locomotionProfileId: 'slender-darter',
-        orientationCorrection: {
-          procedural: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          schoolGLB: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          heroGLB: {
-            modelForwardAxis: [1, 0, 0]
-          }
-        },
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
         patternTextureId: 'fish-neon',
         baseColorTextureId: 'fish-neon-basecolor',
         normalTextureId: 'fish-neon-normal',
@@ -519,17 +527,9 @@ export class DetailedFishSystem {
         scale: 0.55,
         speed: 0.9,
         locomotionProfileId: 'goldfish-wobble',
-        orientationCorrection: {
-          procedural: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          schoolGLB: {
-            modelForwardAxis: [1, 0, 0]
-          },
-          heroGLB: {
-            modelForwardAxis: [1, 0, 0]
-          }
-        },
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
         patternTextureId: 'fish-goldfish',
         baseColorTextureId: 'fish-goldfish-basecolor',
         normalTextureId: 'fish-goldfish-normal',
@@ -586,24 +586,46 @@ export class DetailedFishSystem {
     return LOCOMOTION_PROFILES[variant.locomotionProfileId ?? 'calm-cruiser']
   }
 
-  private getOrientationCorrection(
+  private getLegacyOrientationCorrection(
     variant: FishVariant,
     renderPath: FishRenderPath
-  ): Required<OrientationCorrection> {
-    const correction = renderPath === 'school'
+  ): OrientationCorrection | undefined {
+    return renderPath === 'school'
       ? variant.orientationCorrection?.schoolGLB
       : renderPath === 'hero'
         ? variant.orientationCorrection?.heroGLB
         : variant.orientationCorrection?.procedural
-    const fallbackAxis = renderPath === 'school'
+  }
+
+  private getOrientationCorrection(
+    variant: FishVariant,
+    renderPath: FishRenderPath
+  ): Required<OrientationCorrection> {
+    const legacyCorrection = this.getLegacyOrientationCorrection(variant, renderPath)
+    const forwardAxis = renderPath === 'school'
+      ? variant.schoolForwardAxis
+      : renderPath === 'hero'
+        ? variant.heroForwardAxis
+        : variant.proceduralForwardAxis
+    const correctionQuaternion = renderPath === 'school'
+      ? variant.schoolCorrectionQuaternion
+      : renderPath === 'hero'
+        ? variant.heroCorrectionQuaternion
+        : variant.proceduralCorrectionQuaternion
+    const legacyForwardAxis = renderPath === 'school'
       ? variant.modelForwardAxis?.school
       : renderPath === 'hero'
         ? variant.modelForwardAxis?.hero
         : variant.modelForwardAxis?.procedural
 
     return {
-      modelForwardAxis: correction?.modelForwardAxis ?? fallbackAxis ?? DEFAULT_ORIENTATION_CORRECTION.modelForwardAxis,
-      correctionQuaternion: correction?.correctionQuaternion ?? DEFAULT_ORIENTATION_CORRECTION.correctionQuaternion
+      modelForwardAxis: forwardAxis ??
+        legacyCorrection?.modelForwardAxis ??
+        legacyForwardAxis ??
+        DEFAULT_ORIENTATION_CORRECTION.modelForwardAxis,
+      correctionQuaternion: correctionQuaternion ??
+        legacyCorrection?.correctionQuaternion ??
+        DEFAULT_ORIENTATION_CORRECTION.correctionQuaternion
     }
   }
 
@@ -669,48 +691,60 @@ export class DetailedFishSystem {
     scaleMultiplier: number
   ): FishRenderExtents {
     const scale = variant.scale * scaleMultiplier
-    const size = bounds.getSize(new THREE.Vector3())
-    const forwardAxis = this.getModelForwardAxis(variant, renderPath)
-    const absX = Math.abs(forwardAxis.x)
-    const absY = Math.abs(forwardAxis.y)
-    const axis = absX >= absY && absX >= Math.abs(forwardAxis.z)
-      ? 'x'
-      : absY >= Math.abs(forwardAxis.z)
-        ? 'y'
-        : 'z'
+    const size = bounds.getSize(new THREE.Vector3()).multiplyScalar(scale)
+    const forwardAxis = this.getModelForwardAxis(variant, renderPath).clone().normalize()
+    const rightAxis = new THREE.Vector3().crossVectors(forwardAxis, new THREE.Vector3(0, 1, 0))
+    if (rightAxis.lengthSq() === 0) {
+      rightAxis.crossVectors(forwardAxis, new THREE.Vector3(0, 0, 1))
+    }
+    rightAxis.normalize()
+    const upAxis = new THREE.Vector3().crossVectors(rightAxis, forwardAxis).normalize()
+    const corners = [
+      new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+      new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.max.z),
+      new THREE.Vector3(bounds.min.x, bounds.max.y, bounds.min.z),
+      new THREE.Vector3(bounds.min.x, bounds.max.y, bounds.max.z),
+      new THREE.Vector3(bounds.max.x, bounds.min.y, bounds.min.z),
+      new THREE.Vector3(bounds.max.x, bounds.min.y, bounds.max.z),
+      new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.min.z),
+      new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.max.z)
+    ]
 
-    let noseExtent = bounds.max.x
-    let tailExtent = -bounds.min.x
-    let halfBodyWidth = size.z * 0.5
-    let halfBodyHeight = size.y * 0.5
+    let noseExtent = 0
+    let tailExtent = 0
+    let halfBodyWidth = 0
+    let halfBodyHeight = 0
 
-    if (axis === 'y') {
-      noseExtent = forwardAxis.y >= 0 ? bounds.max.y : -bounds.min.y
-      tailExtent = forwardAxis.y >= 0 ? -bounds.min.y : bounds.max.y
-      halfBodyWidth = size.x * 0.5
-      halfBodyHeight = size.z * 0.5
-    } else if (axis === 'z') {
-      noseExtent = forwardAxis.z >= 0 ? bounds.max.z : -bounds.min.z
-      tailExtent = forwardAxis.z >= 0 ? -bounds.min.z : bounds.max.z
-      halfBodyWidth = size.x * 0.5
-      halfBodyHeight = size.y * 0.5
-    } else {
-      noseExtent = forwardAxis.x >= 0 ? bounds.max.x : -bounds.min.x
-      tailExtent = forwardAxis.x >= 0 ? -bounds.min.x : bounds.max.x
+    for (const corner of corners) {
+      const scaledCorner = corner.multiplyScalar(scale)
+      noseExtent = Math.max(noseExtent, scaledCorner.dot(forwardAxis))
+      tailExtent = Math.max(tailExtent, -scaledCorner.dot(forwardAxis))
+      halfBodyWidth = Math.max(halfBodyWidth, Math.abs(scaledCorner.dot(rightAxis)))
+      halfBodyHeight = Math.max(halfBodyHeight, Math.abs(scaledCorner.dot(upAxis)))
     }
 
+    const padding = FISH_SAFE_PADDING_BY_PATH[renderPath]
+    const referenceLength = Math.max(size.x, size.y, size.z)
+    const nosePadding = Math.max(0.04, referenceLength * padding.nose)
+    const tailPadding = Math.max(0.04, referenceLength * padding.tail)
+    const widthPadding = Math.max(0.03, referenceLength * padding.width)
+    const heightPadding = Math.max(0.03, referenceLength * padding.height)
+
     return {
-      noseExtent: Math.max(0.04, noseExtent * scale),
-      tailExtent: Math.max(0.04, tailExtent * scale),
-      halfBodyWidth: Math.max(0.03, halfBodyWidth * scale),
-      halfBodyHeight: Math.max(0.03, halfBodyHeight * scale)
+      noseExtent: Math.max(0.04, noseExtent + nosePadding),
+      tailExtent: Math.max(0.04, tailExtent + tailPadding),
+      halfBodyWidth: Math.max(0.03, halfBodyWidth + widthPadding),
+      halfBodyHeight: Math.max(0.03, halfBodyHeight + heightPadding)
     }
   }
 
   private resolveProceduralFishSafeExtents(variant: FishVariant, scaleMultiplier: number): FishRenderExtents {
     const silhouette = this.resolveSilhouette(variant)
-    const scale = variant.scale * variant.scale * scaleMultiplier
-    const halfLength = (((silhouette.bodyLength + silhouette.noseLength + silhouette.tailLength) * 0.5) + 0.04) * scale
+    const scale = variant.scale * scaleMultiplier
+    const padding = FISH_SAFE_PADDING_BY_PATH.procedural
+    const referenceLength = (silhouette.bodyLength + silhouette.noseLength + silhouette.tailLength) * scale
+    const noseExtent = (((silhouette.bodyLength * 0.5) + silhouette.noseLength) * scale) + Math.max(0.04, referenceLength * padding.nose)
+    const tailExtent = (((silhouette.bodyLength * 0.5) + silhouette.tailLength) * scale) + Math.max(0.04, referenceLength * padding.tail)
     const halfBodyHeight = Math.max(
       silhouette.bodyHeight,
       silhouette.tailHeight * 0.56,
@@ -723,10 +757,10 @@ export class DetailedFishSystem {
     ) * scale
 
     return {
-      noseExtent: Math.max(0.04, halfLength),
-      tailExtent: Math.max(0.04, halfLength),
-      halfBodyWidth: Math.max(0.03, halfBodyWidth),
-      halfBodyHeight: Math.max(0.03, halfBodyHeight)
+      noseExtent: Math.max(0.04, noseExtent),
+      tailExtent: Math.max(0.04, tailExtent),
+      halfBodyWidth: Math.max(0.03, halfBodyWidth + Math.max(0.03, referenceLength * padding.width)),
+      halfBodyHeight: Math.max(0.03, halfBodyHeight + Math.max(0.03, referenceLength * padding.height))
     }
   }
 
@@ -769,7 +803,23 @@ export class DetailedFishSystem {
   ): void {
     const heading = direction.lengthSq() > 0 ? direction.clone().normalize() : new THREE.Vector3(1, 0, 0)
     const safeBounds = createFishSafeBounds(bounds, resolveFishAxisExtents(extents, heading))
-    position.clamp(safeBounds.min, safeBounds.max)
+    const boundsCenter = bounds.getCenter(new THREE.Vector3())
+    const normalizedMin = new THREE.Vector3(
+      safeBounds.min.x <= safeBounds.max.x ? safeBounds.min.x : boundsCenter.x,
+      safeBounds.min.y <= safeBounds.max.y ? safeBounds.min.y : boundsCenter.y,
+      safeBounds.min.z <= safeBounds.max.z ? safeBounds.min.z : boundsCenter.z
+    )
+    const normalizedMax = new THREE.Vector3(
+      safeBounds.min.x <= safeBounds.max.x ? safeBounds.max.x : boundsCenter.x,
+      safeBounds.min.y <= safeBounds.max.y ? safeBounds.max.y : boundsCenter.y,
+      safeBounds.min.z <= safeBounds.max.z ? safeBounds.max.z : boundsCenter.z
+    )
+    position.clamp(normalizedMin, normalizedMax)
+    position.z = THREE.MathUtils.clamp(
+      position.z,
+      bounds.min.z + extents.tailExtent,
+      bounds.max.z - extents.noseExtent
+    )
   }
 
   private ensureMotionStateArrays(): void {
@@ -2526,7 +2576,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
             heroAssignment.object.position,
             bounds,
             heroAssignment.fishSafeExtents,
-            this.tempDirection
+            this.tempDirection.lengthSq() > 0 ? this.tempDirection : previousVelocity
           )
           if (this.tempDirection.lengthSq() > 0) {
             const heroQuaternion = this.resolveHeadingQuaternion(variant, 'hero', this.tempDirection)
