@@ -460,9 +460,9 @@ export class DetailedFishSystem {
       },
       {
         name: 'Angelfish',
-        primaryColor: new THREE.Color(0x87ceeb),
-        secondaryColor: new THREE.Color(0x4169e1),
-        scale: 0.65,
+        primaryColor: new THREE.Color(0xd9d6c8),
+        secondaryColor: new THREE.Color(0x807a69),
+        scale: 0.66,
         speed: 0.8,
         locomotionProfileId: 'disk-glider',
         proceduralForwardAxis: [1, 0, 0],
@@ -476,17 +476,48 @@ export class DetailedFishSystem {
         schoolModelId: 'fish-angelfish-school',
         heroModelId: 'fish-angelfish-hero',
         silhouette: {
-          bodyLength: 1.06,
-          bodyHeight: 0.62,
-          bodyThickness: 0.18,
-          noseLength: 0.18,
+          bodyLength: 1.08,
+          bodyHeight: 0.64,
+          bodyThickness: 0.2,
+          noseLength: 0.2,
           tailLength: 0.34,
-          tailHeight: 0.52,
-          dorsalHeight: 0.9,
-          ventralHeight: 0.96,
+          tailHeight: 0.54,
+          dorsalHeight: 0.98,
+          ventralHeight: 1.02,
+          pectoralLength: 0.22,
+          topFullness: 0.92,
+          bellyFullness: 0.9
+        }
+      },
+      {
+        name: 'Butterflyfish',
+        primaryColor: new THREE.Color(0xf2cf63),
+        secondaryColor: new THREE.Color(0xf6eed1),
+        scale: 0.62,
+        speed: 0.82,
+        locomotionProfileId: 'disk-glider',
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
+        patternTextureId: 'fish-butterflyfish',
+        baseColorTextureId: 'fish-butterflyfish-basecolor',
+        normalTextureId: 'fish-butterflyfish-normal',
+        roughnessTextureId: 'fish-butterflyfish-roughness',
+        alphaTextureId: 'fish-butterflyfish-alpha',
+        schoolModelId: 'fish-butterflyfish-school',
+        heroModelId: 'fish-butterflyfish-hero',
+        silhouette: {
+          bodyLength: 1.12,
+          bodyHeight: 0.66,
+          bodyThickness: 0.2,
+          noseLength: 0.18,
+          tailLength: 0.3,
+          tailHeight: 0.44,
+          dorsalHeight: 0.52,
+          ventralHeight: 0.44,
           pectoralLength: 0.24,
-          topFullness: 0.9,
-          bellyFullness: 0.88
+          topFullness: 0.94,
+          bellyFullness: 0.9
         }
       },
       {
@@ -522,9 +553,9 @@ export class DetailedFishSystem {
       },
       {
         name: 'Goldfish',
-        primaryColor: new THREE.Color(0xffd700),
-        secondaryColor: new THREE.Color(0xff8c00),
-        scale: 0.55,
+        primaryColor: new THREE.Color(0xf6b03a),
+        secondaryColor: new THREE.Color(0xffdb9b),
+        scale: 0.58,
         speed: 0.9,
         locomotionProfileId: 'goldfish-wobble',
         proceduralForwardAxis: [1, 0, 0],
@@ -538,17 +569,17 @@ export class DetailedFishSystem {
         schoolModelId: 'fish-goldfish-school',
         heroModelId: 'fish-goldfish-hero',
         silhouette: {
-          bodyLength: 1.26,
-          bodyHeight: 0.48,
-          bodyThickness: 0.32,
+          bodyLength: 1.28,
+          bodyHeight: 0.52,
+          bodyThickness: 0.35,
           noseLength: 0.22,
-          tailLength: 0.52,
-          tailHeight: 0.6,
-          dorsalHeight: 0.36,
-          ventralHeight: 0.22,
-          pectoralLength: 0.26,
-          topFullness: 0.84,
-          bellyFullness: 0.94
+          tailLength: 0.6,
+          tailHeight: 0.7,
+          dorsalHeight: 0.4,
+          ventralHeight: 0.28,
+          pectoralLength: 0.28,
+          topFullness: 0.82,
+          bellyFullness: 1.02
         }
       }
     ]
@@ -2122,6 +2153,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     if (archetype === 'Neon') return this.safeVariantIndex('neon')
     if (archetype === 'Tropical') return this.safeVariantIndex('tropical')
     if (archetype === 'Angelfish') return this.safeVariantIndex('angelfish')
+    if (archetype === 'Butterflyfish') return this.safeVariantIndex('butterflyfish')
     if (archetype === 'Goldfish') return this.safeVariantIndex('goldfish')
     return this.safeVariantIndex('neon')
   }

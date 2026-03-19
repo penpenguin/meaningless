@@ -1008,6 +1008,7 @@ describe('DetailedFishSystem asset-backed models', () => {
       createFishVariants: () => Array<{
         name: string
         patternTextureId?: string
+        baseColorTextureId?: string
         schoolModelId?: string
         heroModelId?: string
       }>
@@ -1022,8 +1023,15 @@ describe('DetailedFishSystem asset-backed models', () => {
     })
     expect(variants.find((variant) => variant.name === 'Angelfish')).toMatchObject({
       patternTextureId: 'fish-angelfish',
+      baseColorTextureId: 'fish-angelfish-basecolor',
       schoolModelId: 'fish-angelfish-school',
       heroModelId: 'fish-angelfish-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'Butterflyfish')).toMatchObject({
+      patternTextureId: 'fish-butterflyfish',
+      baseColorTextureId: 'fish-butterflyfish-basecolor',
+      schoolModelId: 'fish-butterflyfish-school',
+      heroModelId: 'fish-butterflyfish-hero'
     })
     expect(variants.find((variant) => variant.name === 'Neon')).toMatchObject({
       patternTextureId: 'fish-neon',
@@ -1032,6 +1040,7 @@ describe('DetailedFishSystem asset-backed models', () => {
     })
     expect(variants.find((variant) => variant.name === 'Goldfish')).toMatchObject({
       patternTextureId: 'fish-goldfish',
+      baseColorTextureId: 'fish-goldfish-basecolor',
       schoolModelId: 'fish-goldfish-school',
       heroModelId: 'fish-goldfish-hero'
     })
@@ -2223,6 +2232,7 @@ describe('DetailedFishSystem variant mapping', () => {
     internals.variants = [
       { name: 'Tropical' },
       { name: 'Angelfish' },
+      { name: 'Butterflyfish' },
       { name: 'Neon' },
       { name: 'Goldfish' }
     ]
@@ -2233,8 +2243,9 @@ describe('DetailedFishSystem variant mapping', () => {
 
     expect(resolveVariantIndex('clownfish')).toBe(0)
     expect(resolveVariantIndex('angelfish')).toBe(1)
-    expect(resolveVariantIndex('cardinal-tetra')).toBe(2)
-    expect(resolveVariantIndex('goldfish')).toBe(3)
+    expect(resolveVariantIndex('butterflyfish')).toBe(2)
+    expect(resolveVariantIndex('cardinal-tetra')).toBe(3)
+    expect(resolveVariantIndex('goldfish')).toBe(4)
   })
 })
 

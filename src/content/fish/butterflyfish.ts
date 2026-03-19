@@ -13,7 +13,7 @@ export const butterflyfish = createFishContent({
     requiredViewSeconds: 1200
   },
   render: {
-    archetype: 'Angelfish'
+    archetype: 'Butterflyfish'
   },
   gameplay: {
     unlockCost: 40,

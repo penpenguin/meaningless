@@ -204,6 +204,10 @@ describe('public aquarium asset urls', () => {
     expect(textureIds.has('fish-angelfish-normal')).toBe(true)
     expect(textureIds.has('fish-angelfish-roughness')).toBe(true)
     expect(textureIds.has('fish-angelfish-alpha')).toBe(true)
+    expect(textureIds.has('fish-butterflyfish-basecolor')).toBe(true)
+    expect(textureIds.has('fish-butterflyfish-normal')).toBe(true)
+    expect(textureIds.has('fish-butterflyfish-roughness')).toBe(true)
+    expect(textureIds.has('fish-butterflyfish-alpha')).toBe(true)
     expect(textureIds.has('fish-goldfish-basecolor')).toBe(true)
     expect(textureIds.has('fish-goldfish-normal')).toBe(true)
     expect(textureIds.has('fish-goldfish-roughness')).toBe(true)
@@ -216,8 +220,25 @@ describe('public aquarium asset urls', () => {
     expect(textureUrls.some((url) => url.endsWith('fish-goldfish.svg'))).toBe(false)
     expect(textureUrls.some((url) => url.endsWith('fish-tropical.svg'))).toBe(false)
     expect(textureUrls.some((url) => url.endsWith('fish-neon-basecolor.png'))).toBe(true)
+    expect(textureUrls.some((url) => url.endsWith('fish-butterflyfish-basecolor.png'))).toBe(true)
     expect(textureUrls.some((url) => url.endsWith('fish-scale-normal.svg'))).toBe(true)
     expect(textureUrls.some((url) => url.endsWith('fish-scale-roughness.svg'))).toBe(true)
+  })
+
+  it('exposes butterflyfish authored school and hero models alongside the refreshed angelfish and goldfish assets', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const modelIds = new Set(manifest.models.map((entry) => entry.id))
+    const modelUrls = manifest.models.map((entry) => entry.url)
+
+    expect(modelIds.has('fish-angelfish-school')).toBe(true)
+    expect(modelIds.has('fish-angelfish-hero')).toBe(true)
+    expect(modelIds.has('fish-butterflyfish-school')).toBe(true)
+    expect(modelIds.has('fish-butterflyfish-hero')).toBe(true)
+    expect(modelIds.has('fish-goldfish-school')).toBe(true)
+    expect(modelIds.has('fish-goldfish-hero')).toBe(true)
+
+    expect(modelUrls.some((url) => url.endsWith('fish-butterflyfish-school.glb'))).toBe(true)
+    expect(modelUrls.some((url) => url.endsWith('fish-butterflyfish-hero.glb'))).toBe(true)
   })
 
   it('uses bark png textures for driftwood and exposes ao support for shared fallback maps', () => {

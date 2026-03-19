@@ -1,5 +1,7 @@
+// @ts-nocheck
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import zlib from 'node:zlib'
 import { JSDOM } from 'jsdom'
 import * as THREE from 'three'
@@ -7,10 +9,10 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
 const outputDir = path.resolve('public/assets/aquarium')
-const atlasWidth = 1024
-const atlasHeight = 512
+export const atlasWidth = 1024
+export const atlasHeight = 512
 
-const atlasRects = {
+export const atlasRects = {
   body: { u0: 0.06, v0: 0.22, u1: 0.94, v1: 0.9 },
   dorsal: { u0: 0.04, v0: 0.03, u1: 0.2, v1: 0.18 },
   ventral: { u0: 0.22, v0: 0.03, u1: 0.38, v1: 0.18 },
@@ -18,7 +20,7 @@ const atlasRects = {
   tail: { u0: 0.66, v0: 0.02, u1: 0.96, v1: 0.2 }
 }
 
-const fishConfigs = [
+export const fishAssetConfigs = [
   {
     id: 'tropical',
     primary: '#f28d3f',
@@ -42,24 +44,45 @@ const fishConfigs = [
   },
   {
     id: 'angelfish',
-    primary: '#d8e5ef',
-    secondary: '#8fa3ba',
-    accent: '#2b3443',
+    primary: '#d9d6c8',
+    secondary: '#7f7867',
+    accent: '#494236',
     silhouette: {
-      bodyLength: 1.06,
-      bodyHeight: 0.62,
-      bodyThickness: 0.18,
-      noseLength: 0.18,
+      bodyLength: 1.08,
+      bodyHeight: 0.64,
+      bodyThickness: 0.2,
+      noseLength: 0.2,
       tailLength: 0.34,
-      tailHeight: 0.52,
-      dorsalHeight: 0.9,
-      ventralHeight: 0.96,
-      pectoralLength: 0.24,
-      topFullness: 0.9,
-      bellyFullness: 0.88
+      tailHeight: 0.54,
+      dorsalHeight: 0.98,
+      ventralHeight: 1.02,
+      pectoralLength: 0.22,
+      topFullness: 0.92,
+      bellyFullness: 0.9
     },
     heroScale: 1.16,
     pattern: 'angelfish'
+  },
+  {
+    id: 'butterflyfish',
+    primary: '#f2cf63',
+    secondary: '#f8eed1',
+    accent: '#30353b',
+    silhouette: {
+      bodyLength: 1.12,
+      bodyHeight: 0.66,
+      bodyThickness: 0.2,
+      noseLength: 0.18,
+      tailLength: 0.3,
+      tailHeight: 0.44,
+      dorsalHeight: 0.52,
+      ventralHeight: 0.44,
+      pectoralLength: 0.24,
+      topFullness: 0.94,
+      bellyFullness: 0.9
+    },
+    heroScale: 1.18,
+    pattern: 'butterflyfish'
   },
   {
     id: 'neon',
@@ -84,23 +107,23 @@ const fishConfigs = [
   },
   {
     id: 'goldfish',
-    primary: '#f6bf58',
-    secondary: '#f28a32',
-    accent: '#96511e',
+    primary: '#f6a338',
+    secondary: '#ffd59a',
+    accent: '#8e3f16',
     silhouette: {
-      bodyLength: 1.26,
-      bodyHeight: 0.48,
-      bodyThickness: 0.32,
+      bodyLength: 1.28,
+      bodyHeight: 0.52,
+      bodyThickness: 0.35,
       noseLength: 0.22,
-      tailLength: 0.52,
-      tailHeight: 0.6,
-      dorsalHeight: 0.36,
-      ventralHeight: 0.22,
-      pectoralLength: 0.26,
-      topFullness: 0.84,
-      bellyFullness: 0.94
+      tailLength: 0.6,
+      tailHeight: 0.7,
+      dorsalHeight: 0.4,
+      ventralHeight: 0.28,
+      pectoralLength: 0.28,
+      topFullness: 0.82,
+      bellyFullness: 1.02
     },
-    heroScale: 1.14,
+    heroScale: 1.18,
     pattern: 'goldfish'
   }
 ]
@@ -315,7 +338,7 @@ class ExportCanvas {
   }
 }
 
-const installExporterPolyfills = () => {
+export const installExporterPolyfills = () => {
   const { window } = new JSDOM('')
   globalThis.Blob = window.Blob
   globalThis.FileReader = window.FileReader
@@ -377,11 +400,11 @@ const sampleBody = (config, u, v) => {
   const primary = hexToRgb(config.primary)
   const secondary = hexToRgb(config.secondary)
   const accent = hexToRgb(config.accent)
-  const belly = mixColor([0.92, 0.94, 0.95], secondary, 0.22)
-  const dorsal = multiplyColor(primary, 0.58)
+  const belly = mixColor([0.95, 0.94, 0.9], secondary, 0.24)
+  const dorsal = multiplyColor(primary, 0.56)
   let color = mixColor(dorsal, belly, smoothstep(0.12, 0.72, v))
-  let roughness = 0.38
-  let height = 0.46 + (Math.sin(u * 34) * 0.016) + (Math.sin(v * 58) * 0.01)
+  let roughness = 0.62
+  let height = 0.46 + (Math.sin(u * 34) * 0.014) + (Math.sin(v * 58) * 0.01)
 
   if (config.pattern === 'neon') {
     const cyanStripe = gauss(v, 0.58, 0.09)
@@ -393,29 +416,70 @@ const sampleBody = (config, u, v) => {
     roughness = 0.34 - (cyanStripe * 0.08)
     height += (cyanStripe * 0.08) + (redStripe * 0.05)
   } else if (config.pattern === 'angelfish') {
-    const bandA = gauss(u, 0.26, 0.05)
-    const bandB = gauss(u, 0.5, 0.05)
-    const bandC = gauss(u, 0.73, 0.05)
+    const bandA = gauss(u, 0.3, 0.05)
+    const bandB = gauss(u, 0.56, 0.06)
+    const bandC = gauss(u, 0.76, 0.055)
     const bandStrength = Math.max(bandA, bandB, bandC)
-    color = mixColor(color, multiplyColor(accent, 0.72), bandStrength * 0.92)
-    color = mixColor(color, [0.93, 0.86, 0.65], gauss(u, 0.9, 0.08) * 0.4)
-    color = mixColor(color, [0.98, 0.99, 1], smoothstep(0.2, 0.68, v) * 0.25)
-    roughness = 0.42 + (bandStrength * 0.08)
-    height += bandStrength * 0.09
+    const eyeRing = gauss(u, 0.86, 0.028) * gauss(v, 0.58, 0.04)
+    const eyeCore = gauss(u, 0.868, 0.014) * gauss(v, 0.578, 0.023)
+    const eyeHighlight = gauss(u, 0.853, 0.008) * gauss(v, 0.594, 0.013)
+    const gillBand = gauss(u, 0.77, 0.024) * gauss(v, 0.56, 0.18)
+    const headVeil = gauss(u, 0.86, 0.09) * gauss(v, 0.58, 0.24)
+    const dorsalOlive = gauss(v, 0.78, 0.12) * smoothstep(0.2, 0.82, u)
+    color = mixColor(color, [0.98, 0.97, 0.92], smoothstep(0.1, 0.34, v) * 0.26)
+    color = mixColor(color, [0.54, 0.48, 0.4], bandStrength * 0.7)
+    color = mixColor(color, [0.72, 0.7, 0.58], headVeil * 0.32)
+    color = mixColor(color, [0.6, 0.62, 0.46], dorsalOlive * 0.28)
+    color = mixColor(color, [0.52, 0.44, 0.34], gillBand * 0.6)
+    color = mixColor(color, [0.78, 0.62, 0.42], eyeRing * 0.72)
+    color = mixColor(color, [0.1, 0.1, 0.12], eyeCore)
+    color = mixColor(color, [0.96, 0.96, 0.92], eyeHighlight * 0.9)
+    roughness = 0.68 + (bandStrength * 0.06) + (gillBand * 0.05)
+    height += (Math.sin(u * 26 + v * 8) * 0.02) + (bandStrength * 0.05) + (gillBand * 0.05) + (eyeRing * 0.12)
+  } else if (config.pattern === 'butterflyfish') {
+    const eyeBand = gauss(u, 0.84, 0.045) * gauss(v, 0.56, 0.13)
+    const rearBand = gauss(u, 0.58, 0.055) * gauss(v, 0.58, 0.3)
+    const tailAccent = smoothstep(0.03, 0.18, u) * gauss(v, 0.54, 0.26)
+    const dorsalWash = gauss(v, 0.8, 0.12) * smoothstep(0.12, 0.9, u)
+    const ventralFade = smoothstep(0.05, 0.28, v)
+    const eyeCore = gauss(u, 0.872, 0.016) * gauss(v, 0.57, 0.024)
+    const eyeHighlight = gauss(u, 0.858, 0.008) * gauss(v, 0.588, 0.012)
+    const mouth = gauss(u, 0.965, 0.022) * gauss(v, 0.49, 0.05)
+    const gillBand = gauss(u, 0.74, 0.024) * gauss(v, 0.56, 0.16)
+    color = mixColor([0.9, 0.84, 0.3], [0.98, 0.95, 0.82], smoothstep(0.1, 0.62, v))
+    color = mixColor(color, [0.98, 0.96, 0.9], ventralFade * 0.22)
+    color = mixColor(color, [0.98, 0.85, 0.22], dorsalWash * 0.44)
+    color = mixColor(color, [0.24, 0.24, 0.28], eyeBand * 0.88)
+    color = mixColor(color, [0.44, 0.38, 0.26], rearBand * 0.34)
+    color = mixColor(color, [0.92, 0.6, 0.14], tailAccent * 0.55)
+    color = mixColor(color, [0.72, 0.54, 0.2], gillBand * 0.32)
+    color = mixColor(color, [0.12, 0.12, 0.14], eyeCore)
+    color = mixColor(color, [0.96, 0.95, 0.88], eyeHighlight * 0.9)
+    color = mixColor(color, [0.84, 0.68, 0.34], mouth * 0.5)
+    roughness = 0.72 + (eyeBand * 0.06) + (tailAccent * 0.04)
+    height += (Math.sin(u * 24 + v * 7) * 0.018) + (rearBand * 0.04) + (gillBand * 0.03) + (eyeBand * 0.06)
   } else if (config.pattern === 'goldfish') {
-    const faceGlow = gauss(u, 0.86, 0.08) * gauss(v, 0.56, 0.18)
-    const warmRidge = smoothstep(0.18, 0.78, u)
-    const cheekShadow = gauss(u, 0.9, 0.03) * gauss(v, 0.54, 0.055)
-    const dorsalPatch = gauss(v, 0.74, 0.11) * smoothstep(0.26, 0.82, u)
-    const tailWarm = smoothstep(0.62, 0.96, u) * gauss(v, 0.5, 0.26)
-    color = mixColor(color, [0.98, 0.7, 0.2], warmRidge * 0.75)
-    color = mixColor(color, [1, 0.88, 0.56], smoothstep(0.06, 0.3, v) * 0.35)
-    color = mixColor(color, [0.96, 0.78, 0.42], faceGlow * 0.85)
-    color = mixColor(color, [0.92, 0.52, 0.18], dorsalPatch * 0.28)
-    color = mixColor(color, [0.95, 0.52, 0.16], tailWarm * 0.42)
-    color = mixColor(color, [0.72, 0.33, 0.12], cheekShadow * 0.82)
-    roughness = 0.36 - (faceGlow * 0.08) + (tailWarm * 0.03)
-    height += (Math.sin(u * 24 + v * 9) * 0.02) + (faceGlow * 0.06) + (dorsalPatch * 0.04)
+    const dorsalBand = gauss(v, 0.78, 0.12) * smoothstep(0.18, 0.86, u)
+    const bellyLight = smoothstep(0.06, 0.28, v)
+    const headWarm = gauss(u, 0.84, 0.11) * gauss(v, 0.58, 0.22)
+    const peduncle = gauss(u, 0.14, 0.08) * gauss(v, 0.52, 0.28)
+    const gillBand = gauss(u, 0.77, 0.025) * gauss(v, 0.56, 0.18)
+    const mouth = gauss(u, 0.965, 0.02) * gauss(v, 0.49, 0.05)
+    const eyeRing = gauss(u, 0.89, 0.026) * gauss(v, 0.585, 0.038)
+    const eyeCore = gauss(u, 0.898, 0.014) * gauss(v, 0.58, 0.022)
+    const eyeHighlight = gauss(u, 0.884, 0.008) * gauss(v, 0.598, 0.012)
+    const scaleBreakup = (Math.sin(u * 44) * Math.sin(v * 76)) * 0.022
+    color = mixColor(color, [1, 0.9, 0.58], bellyLight * 0.32)
+    color = mixColor(color, [0.92, 0.47, 0.14], dorsalBand * 0.48)
+    color = mixColor(color, [0.98, 0.68, 0.24], headWarm * 0.42)
+    color = mixColor(color, [0.86, 0.34, 0.12], peduncle * 0.5)
+    color = mixColor(color, [0.72, 0.3, 0.12], gillBand * 0.7)
+    color = mixColor(color, [0.92, 0.52, 0.28], mouth * 0.52)
+    color = mixColor(color, [0.86, 0.58, 0.28], eyeRing * 0.6)
+    color = mixColor(color, [0.08, 0.08, 0.09], eyeCore)
+    color = mixColor(color, [0.98, 0.96, 0.92], eyeHighlight * 0.92)
+    roughness = 0.7 - (smoothstep(0.24, 0.76, u) * 0.08) + (gillBand * 0.08) + (peduncle * 0.06)
+    height += scaleBreakup + (gillBand * 0.07) + (eyeRing * 0.16) + (peduncle * 0.04)
   } else {
     const eyeLine = smoothstep(0.74, 0.82, u) * (1 - smoothstep(0.88, 0.96, u)) * gauss(v, 0.56, 0.035)
     const finEdge = smoothstep(0.74, 1, u) * gauss(v, 0.5, 0.28)
@@ -436,25 +500,45 @@ const sampleBody = (config, u, v) => {
 const sampleFin = (config, finKind, u, v) => {
   const primary = hexToRgb(config.primary)
   const secondary = hexToRgb(config.secondary)
-  let color = mixColor([0.95, 0.96, 0.97], mixColor(primary, secondary, 0.4), 0.35)
-  let height = 0.5 + (Math.sin(u * 32) * 0.01)
-  let roughness = 0.72
+  let color = mixColor([0.96, 0.95, 0.92], mixColor(primary, secondary, 0.45), 0.42)
+  let height = 0.5 + (Math.sin(u * 32) * 0.012)
+  let roughness = 0.8
   const edge = Math.min(u, 1 - u, v, 1 - v)
   const centerMask = smoothstep(0.02, 0.24, edge)
-  let alpha = lerp(0.18, 0.88, centerMask)
+  const rayA = gauss(u, 0.2, 0.04)
+  const rayB = gauss(u, 0.38, 0.04)
+  const rayC = gauss(u, 0.56, 0.04)
+  const rayD = gauss(u, 0.74, 0.04)
+  const rayStrength = clamp01(rayA + rayB + rayC + rayD)
+  let alpha = lerp(0.16, 0.8, centerMask) + (rayStrength * 0.08)
 
   if (config.pattern === 'angelfish') {
-    const band = gauss(u, 0.45, 0.08) + gauss(u, 0.72, 0.08)
-    color = mixColor(color, multiplyColor(hexToRgb(config.accent), 0.92), clamp01(band * 0.4))
-    alpha *= 0.95
-    height += band * 0.04
-  } else if (config.pattern === 'goldfish') {
-    const warm = smoothstep(0.15, 0.85, u)
-    const veins = gauss(u, 0.32, 0.05) + gauss(u, 0.58, 0.05)
-    color = mixColor(color, [1, 0.78, 0.45], warm * 0.55)
-    color = mixColor(color, [0.98, 0.56, 0.22], clamp01(veins * 0.22))
+    const smoke = gauss(v, 0.64, 0.18) * smoothstep(0.1, 0.92, u)
+    const edgeRim = 1 - smoothstep(0.03, 0.16, edge)
+    color = mixColor(color, [0.84, 0.82, 0.74], smoke * 0.22)
+    color = mixColor(color, [0.52, 0.46, 0.38], edgeRim * 0.3)
+    color = mixColor(color, [0.75, 0.66, 0.44], rayStrength * 0.18)
     alpha *= 0.9
-    roughness = 0.78
+    roughness = 0.86
+    height += rayStrength * 0.05
+  } else if (config.pattern === 'butterflyfish') {
+    const border = 1 - smoothstep(0.03, 0.14, edge)
+    const warmEdge = smoothstep(0.72, 1, u) + gauss(v, 0.76, 0.18)
+    color = mixColor(color, [0.98, 0.88, 0.4], warmEdge * 0.24)
+    color = mixColor(color, [0.28, 0.28, 0.3], border * 0.38)
+    color = mixColor(color, [0.64, 0.54, 0.22], rayStrength * 0.24)
+    alpha *= 0.86
+    roughness = 0.88
+    height += border * 0.03
+  } else if (config.pattern === 'goldfish') {
+    const warm = smoothstep(0.12, 0.9, u)
+    const edgeFade = 1 - smoothstep(0.03, 0.14, edge)
+    color = mixColor(color, [1, 0.82, 0.5], warm * 0.46)
+    color = mixColor(color, [0.98, 0.55, 0.22], rayStrength * 0.34)
+    color = mixColor(color, [0.86, 0.42, 0.18], edgeFade * 0.22)
+    alpha *= 0.82
+    roughness = 0.92
+    height += rayStrength * 0.08
   } else if (config.pattern === 'neon') {
     const tailFlash = finKind === 'tail' ? smoothstep(0.3, 1, u) : gauss(v, 0.55, 0.16)
     color = mixColor(color, [0.56, 0.9, 1], tailFlash * 0.4)
@@ -472,7 +556,7 @@ const sampleFin = (config, finKind, u, v) => {
   return { color, roughness, height, alpha }
 }
 
-const createAtlas = (config) => {
+export const createAtlas = (config) => {
   const baseColor = new Uint8Array(atlasWidth * atlasHeight * 4)
   const roughness = new Uint8Array(atlasWidth * atlasHeight * 4)
   const alpha = new Uint8Array(atlasWidth * atlasHeight * 4)
@@ -534,6 +618,23 @@ const createAtlas = (config) => {
   }
 
   return { baseColor, normal, roughness, alpha }
+}
+
+export const sampleAtlas = (atlas, rect, localU, localV) => {
+  const u = rect.u0 + (clamp01(localU) * (rect.u1 - rect.u0))
+  const v = rect.v0 + (clamp01(localV) * (rect.v1 - rect.v0))
+  const x = Math.max(0, Math.min(atlasWidth - 1, Math.round(u * (atlasWidth - 1))))
+  const y = Math.max(0, Math.min(atlasHeight - 1, Math.round((1 - v) * (atlasHeight - 1))))
+  const index = ((y * atlasWidth) + x) * 4
+  return {
+    baseColor: [
+      atlas.baseColor[index] / 255,
+      atlas.baseColor[index + 1] / 255,
+      atlas.baseColor[index + 2] / 255
+    ],
+    roughness: atlas.roughness[index] / 255,
+    alpha: atlas.alpha[index] / 255
+  }
 }
 
 const remapUv = (geometry, rect, axisU = 'x', axisV = 'y') => {
@@ -698,7 +799,7 @@ const exportGlb = async (object) => {
   })
 }
 
-const writeFishAssets = async (config) => {
+export const writeFishAssets = async (config) => {
   const atlas = createAtlas(config)
   const baseColorPath = path.join(outputDir, `fish-${config.id}-basecolor.png`)
   const normalPath = path.join(outputDir, `fish-${config.id}-normal.png`)
@@ -769,16 +870,18 @@ const writeFishAssets = async (config) => {
   fs.writeFileSync(path.join(outputDir, `fish-${config.id}-hero.glb`), heroGlb)
 }
 
-const main = async () => {
+export const main = async () => {
   installExporterPolyfills()
   fs.mkdirSync(outputDir, { recursive: true })
 
-  for (const config of fishConfigs) {
+  for (const config of fishAssetConfigs) {
     await writeFishAssets(config)
   }
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exitCode = 1
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error)
+    process.exitCode = 1
+  })
+}

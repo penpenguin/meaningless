@@ -64,7 +64,7 @@ export type SpeciesUnlockRule = {
   requiredViewSeconds?: number
 }
 
-export type SpeciesArchetype = 'Tropical' | 'Angelfish' | 'Neon' | 'Goldfish'
+export type SpeciesArchetype = 'Tropical' | 'Angelfish' | 'Butterflyfish' | 'Neon' | 'Goldfish'
 
 export type SpeciesRenderConfig = {
   archetype: SpeciesArchetype
