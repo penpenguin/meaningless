@@ -1485,17 +1485,17 @@ export class AquascapingSystem {
     const driftwoodColor = material.color?.clone() ?? new THREE.Color('#6f5641')
     const driftwoodHsl = { h: 0, s: 0, l: 0 }
     driftwoodColor.getHSL(driftwoodHsl)
-    if (driftwoodHsl.l < 0.3) {
+    if (driftwoodHsl.l < 0.33) {
       driftwoodColor.setHSL(
         driftwoodHsl.h,
-        THREE.MathUtils.clamp(driftwoodHsl.s * 0.8 + 0.02, 0.1, 0.26),
-        0.3
+        THREE.MathUtils.clamp(driftwoodHsl.s * 0.78 + 0.025, 0.1, 0.24),
+        0.33
       )
     }
     material.color = driftwoodColor
     material.emissive = material.emissive ?? new THREE.Color('#000000')
-    material.emissive.lerp(new THREE.Color('#4a3523'), 0.22)
-    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.07)
+    material.emissive.lerp(new THREE.Color('#503923'), 0.24)
+    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.09)
     material.roughness = typeof material.roughness === 'number'
       ? Math.max(material.roughness, material.roughnessMap ? 0.92 : 0.95)
       : material.roughnessMap ? 0.93 : 0.96
@@ -1699,12 +1699,12 @@ export class AquascapingSystem {
 
     const driftwoodGroup = new THREE.Group()
     driftwoodGroup.position.set(
-      center.x + size.x * 0.074,
-      bounds.min.y + 0.98,
-      center.z + size.z * 0.07
+      center.x + size.x * 0.056,
+      bounds.min.y + 1.18,
+      center.z + size.z * 0.12
     )
-    driftwoodGroup.rotation.set(-0.05, -0.38, 0.16)
-    driftwoodGroup.scale.set(1.34, 1.3, 1.18)
+    driftwoodGroup.rotation.set(-0.01, -0.14, 0.2)
+    driftwoodGroup.scale.set(1.72, 1.58, 1.34)
     driftwoodGroup.userData = {
       role: 'hero-driftwood'
     }
@@ -1755,10 +1755,11 @@ export class AquascapingSystem {
     driftwoodGroup.add(this.createHeroDriftwoodLocalRim())
 
     const epiphyteAttachments = [
-      { offset: new THREE.Vector3(-1.12, 0.98, 0.54), hue: 0.28, rotationY: -0.18 },
-      { offset: new THREE.Vector3(0.42, 2.04, 0.96), hue: 0.33, rotationY: 0.52 },
-      { offset: new THREE.Vector3(1.18, 1.88, -0.3), hue: 0.26, rotationY: -0.46 },
-      { offset: new THREE.Vector3(0.04, 1.7, 0.2), hue: 0.3, rotationY: 0.1 }
+      { offset: new THREE.Vector3(-1.26, 0.92, 0.72), hue: 0.27, rotationY: -0.16 },
+      { offset: new THREE.Vector3(-0.24, 1.78, -0.08), hue: 0.29, rotationY: -0.12 },
+      { offset: new THREE.Vector3(0.54, 2.12, 1.08), hue: 0.33, rotationY: 0.58 },
+      { offset: new THREE.Vector3(1.08, 2.48, -0.38), hue: 0.25, rotationY: -0.42 },
+      { offset: new THREE.Vector3(-0.88, 2.34, -0.44), hue: 0.31, rotationY: 0.28 }
     ]
     epiphyteAttachments.forEach((attachment) => {
       const cluster = this.createEpiphyteCluster(attachment.hue)
@@ -1776,11 +1777,11 @@ export class AquascapingSystem {
     const trunk = this.createDriftwoodTubeMesh({
       radius: 0.4,
       points: [
-        new THREE.Vector3(-2.04, -0.02, 0.56),
-        new THREE.Vector3(-1.16, 0.82, 0.38),
-        new THREE.Vector3(0.12, 1.64, 0.12),
-        new THREE.Vector3(1.82, 2.26, -0.26),
-        new THREE.Vector3(3.52, 2.52, -1.18)
+        new THREE.Vector3(-2.18, -0.08, 0.72),
+        new THREE.Vector3(-1.12, 0.92, 0.54),
+        new THREE.Vector3(0.26, 1.84, 0.18),
+        new THREE.Vector3(2.1, 2.54, -0.22),
+        new THREE.Vector3(4.08, 2.96, -1.02)
       ],
       tubularSegments: 50,
       radialSegments: 9,
@@ -1790,9 +1791,9 @@ export class AquascapingSystem {
       twist: 0.66,
       barkAmplitude: 0.13
     }, material, 'driftwood-trunk')
-    trunk.position.set(0.02, 0.18, 0.2)
-    trunk.rotation.set(-0.06, 0.18, -0.03)
-    trunk.scale.set(1.34, 1.2, 1.16)
+    trunk.position.set(0.08, 0.22, 0.16)
+    trunk.rotation.set(-0.02, 0.06, -0.08)
+    trunk.scale.set(1.7, 1.36, 1.22)
     return trunk
   }
 
@@ -1801,9 +1802,9 @@ export class AquascapingSystem {
       {
         radius: 0.104,
         points: [
-          new THREE.Vector3(0.48, 1.6, 0.12),
-          new THREE.Vector3(1.24, 2.52, 0.94),
-          new THREE.Vector3(2.36, 3.08, 1.54)
+          new THREE.Vector3(0.62, 1.84, 0.24),
+          new THREE.Vector3(1.88, 3.14, 1.16),
+          new THREE.Vector3(3.96, 4.02, 1.88)
         ],
         tubularSegments: 30,
         radialSegments: 7,
@@ -1816,9 +1817,9 @@ export class AquascapingSystem {
       {
         radius: 0.088,
         points: [
-          new THREE.Vector3(0.42, 1.56, -0.04),
-          new THREE.Vector3(1.34, 2.34, -0.88),
-          new THREE.Vector3(2.56, 2.64, -1.8)
+          new THREE.Vector3(-0.18, 1.64, -0.02),
+          new THREE.Vector3(-0.96, 2.36, -0.58),
+          new THREE.Vector3(-1.72, 3.02, -0.94)
         ],
         tubularSegments: 28,
         radialSegments: 7,
@@ -1928,16 +1929,22 @@ export class AquascapingSystem {
     })
     const patchDefinitions = [
       {
-        position: new THREE.Vector3(-0.72, 1.08, 0.48),
-        rotation: new THREE.Euler(-0.26, 0.18, 0.12),
-        scale: new THREE.Vector3(0.44, 0.08, 0.28),
+        position: new THREE.Vector3(-0.94, 1.14, 0.62),
+        rotation: new THREE.Euler(-0.3, 0.12, 0.16),
+        scale: new THREE.Vector3(0.52, 0.08, 0.32),
         color: '#5d7247'
       },
       {
-        position: new THREE.Vector3(0.36, 1.92, 0.68),
-        rotation: new THREE.Euler(-0.32, 0.42, -0.08),
-        scale: new THREE.Vector3(0.38, 0.08, 0.24),
+        position: new THREE.Vector3(0.52, 2.08, 0.92),
+        rotation: new THREE.Euler(-0.34, 0.48, -0.06),
+        scale: new THREE.Vector3(0.42, 0.08, 0.26),
         color: '#64784c'
+      },
+      {
+        position: new THREE.Vector3(-0.62, 2.18, -0.28),
+        rotation: new THREE.Euler(-0.24, -0.18, 0.1),
+        scale: new THREE.Vector3(0.34, 0.07, 0.22),
+        color: '#5b7046'
       }
     ]
 
@@ -1964,9 +1971,9 @@ export class AquascapingSystem {
       {
         radius: 0.018,
         points: [
-          new THREE.Vector3(1.52, 2.54, 0.92),
-          new THREE.Vector3(2.12, 2.92, 1.24),
-          new THREE.Vector3(2.88, 3.1, 1.46)
+          new THREE.Vector3(1.74, 2.86, 1.08),
+          new THREE.Vector3(2.38, 3.2, 1.36),
+          new THREE.Vector3(3.12, 3.42, 1.52)
         ],
         tubularSegments: 18,
         radialSegments: 5,
@@ -1979,9 +1986,9 @@ export class AquascapingSystem {
       {
         radius: 0.014,
         points: [
-          new THREE.Vector3(1.72, 2.24, -1.02),
-          new THREE.Vector3(2.18, 2.46, -1.42),
-          new THREE.Vector3(2.74, 2.56, -1.72)
+          new THREE.Vector3(-0.84, 2.36, -0.56),
+          new THREE.Vector3(-1.38, 2.64, -0.82),
+          new THREE.Vector3(-1.96, 2.92, -1.04)
         ],
         tubularSegments: 16,
         radialSegments: 5,
@@ -1989,6 +1996,21 @@ export class AquascapingSystem {
         tipScale: 0.24,
         flare: 0.1,
         twist: 0.74,
+        barkAmplitude: 0.08
+      },
+      {
+        radius: 0.016,
+        points: [
+          new THREE.Vector3(2.22, 2.54, -0.18),
+          new THREE.Vector3(2.86, 2.72, -0.36),
+          new THREE.Vector3(3.42, 2.86, -0.52)
+        ],
+        tubularSegments: 16,
+        radialSegments: 5,
+        ellipseAspect: 1.1,
+        tipScale: 0.22,
+        flare: 0.1,
+        twist: 0.62,
         barkAmplitude: 0.08
       }
     ]
@@ -2003,9 +2025,14 @@ export class AquascapingSystem {
   private createHeroDriftwoodRootBases(material: THREE.Material): THREE.Mesh[] {
     const rootBaseDefinitions = [
       {
-        position: new THREE.Vector3(-1.96, -0.02, 0.56),
-        rotation: new THREE.Euler(-0.22, 0.38, 0.06),
-        scale: new THREE.Vector3(0.84, 0.2, 0.52)
+        position: new THREE.Vector3(-2.18, -0.12, 0.74),
+        rotation: new THREE.Euler(-0.24, 0.34, 0.1),
+        scale: new THREE.Vector3(0.98, 0.22, 0.58)
+      },
+      {
+        position: new THREE.Vector3(-1.42, -0.08, 0.36),
+        rotation: new THREE.Euler(-0.18, 0.26, -0.04),
+        scale: new THREE.Vector3(0.7, 0.18, 0.42)
       }
     ]
 
@@ -2031,9 +2058,9 @@ export class AquascapingSystem {
       new THREE.SphereGeometry(0.46, 18, 12),
       material
     )
-    rootFlare.position.set(-1.9, 0.0, 0.46)
-    rootFlare.scale.set(2.56, 0.94, 1.76)
-    rootFlare.rotation.set(-0.22, 0.42, 0.08)
+    rootFlare.position.set(-2.04, -0.08, 0.58)
+    rootFlare.scale.set(2.92, 1.08, 1.92)
+    rootFlare.rotation.set(-0.26, 0.36, 0.1)
     rootFlare.castShadow = true
     rootFlare.receiveShadow = true
     rootFlare.userData = {
@@ -2044,16 +2071,16 @@ export class AquascapingSystem {
 
   private createHeroDriftwoodLocalShadow(): THREE.Mesh {
     const shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.4, 1.7),
+      new THREE.PlaneGeometry(4.2, 2.08),
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#102026'),
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.14,
         depthWrite: false
       })
     )
     shadow.rotation.x = -Math.PI / 2
-    shadow.position.set(0.28, 0.08, 0.42)
+    shadow.position.set(0.14, 0.08, 0.6)
     shadow.userData = {
       role: 'driftwood-local-shadow'
     }
@@ -2061,8 +2088,8 @@ export class AquascapingSystem {
   }
 
   private createHeroDriftwoodLocalFill(): THREE.PointLight {
-    const fill = new THREE.PointLight('#f5edd9', 2.02, 7.4, 1.9)
-    fill.position.set(0.54, 0.84, 1.78)
+    const fill = new THREE.PointLight('#f4ebd8', 2.28, 8.4, 1.9)
+    fill.position.set(0.26, 0.72, 2.06)
     fill.userData = {
       role: 'driftwood-local-fill'
     }
@@ -2079,14 +2106,14 @@ export class AquascapingSystem {
   }
 
   private fitHeroDriftwoodAssetCore(asset: THREE.Group, tankSize: THREE.Vector3): void {
-    asset.rotation.set(-0.3, 0.62, -0.2)
+    asset.rotation.set(-0.24, 0.42, -0.08)
 
     const sourceBounds = new THREE.Box3().setFromObject(asset)
     const sourceSize = sourceBounds.getSize(new THREE.Vector3())
     const targetSize = new THREE.Vector3(
-      tankSize.x * 0.232,
-      tankSize.y * 0.292,
-      tankSize.z * 0.218
+      tankSize.x * 0.312,
+      tankSize.y * 0.35,
+      tankSize.z * 0.244
     )
 
     asset.scale.set(
@@ -2098,9 +2125,9 @@ export class AquascapingSystem {
     const fittedBounds = new THREE.Box3().setFromObject(asset)
     const fittedCenter = fittedBounds.getCenter(new THREE.Vector3())
     asset.position.set(
-      1.08 - fittedCenter.x,
-      0.46 - fittedBounds.min.y,
-      0.24 - fittedCenter.z
+      1.16 - fittedCenter.x,
+      0.58 - fittedBounds.min.y,
+      0.42 - fittedCenter.z
     )
   }
 
@@ -2112,11 +2139,11 @@ export class AquascapingSystem {
 
     const ridgeGroup = new THREE.Group()
     ridgeGroup.position.set(
-      center.x + size.x * 0.142,
-      bounds.min.y + 0.62,
-      center.z - size.z * 0.082
+      center.x + size.x * 0.182,
+      bounds.min.y + 0.58,
+      center.z - size.z * 0.112
     )
-    ridgeGroup.rotation.y = -0.34
+    ridgeGroup.rotation.y = -0.28
     ridgeGroup.userData = {
       role: 'hero-rock-ridge'
     }
@@ -2484,16 +2511,16 @@ export class AquascapingSystem {
     if (!driftwoodGroup) return
 
     const burialShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(size.x * 0.18, size.z * 0.14),
+      new THREE.PlaneGeometry(size.x * 0.23, size.z * 0.18),
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#102026'),
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.24,
         depthWrite: false
       })
     )
     burialShadow.rotation.x = -Math.PI / 2
-    burialShadow.position.set(-1.58, 0.02, 0.58)
+    burialShadow.position.set(-1.86, 0.02, 0.7)
     burialShadow.userData = {
       role: 'driftwood-burial-shadow'
     }
@@ -2501,18 +2528,23 @@ export class AquascapingSystem {
 
     const moundDefinitions = [
       {
-        offset: new THREE.Vector3(-1.92, 0.12, 0.58),
-        scale: new THREE.Vector3(1.02, 0.22, 0.52),
+        offset: new THREE.Vector3(-2.18, 0.14, 0.72),
+        scale: new THREE.Vector3(1.12, 0.24, 0.6),
         color: '#9b896e'
       },
       {
-        offset: new THREE.Vector3(-1.18, 0.08, 0.42),
-        scale: new THREE.Vector3(0.72, 0.14, 0.38),
+        offset: new THREE.Vector3(-1.54, 0.1, 0.56),
+        scale: new THREE.Vector3(0.82, 0.16, 0.46),
         color: '#85745b'
       },
       {
-        offset: new THREE.Vector3(-1.56, 0.1, 0.34),
-        scale: new THREE.Vector3(0.58, 0.12, 0.28),
+        offset: new THREE.Vector3(-1.92, 0.12, 0.38),
+        scale: new THREE.Vector3(0.64, 0.14, 0.34),
+        color: '#85745b'
+      },
+      {
+        offset: new THREE.Vector3(-1.18, 0.08, 0.28),
+        scale: new THREE.Vector3(0.58, 0.12, 0.3),
         color: '#85745b'
       }
     ]

@@ -150,6 +150,23 @@ describe('AquascapingSystem composition', () => {
     const localShadow = driftwood?.children.find(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-local-shadow'
     )
+    const driftwoodBounds = driftwood ? getWorldBounds(driftwood) : null
+    const driftwoodCenter = driftwoodBounds?.getCenter(new THREE.Vector3()) ?? new THREE.Vector3()
+    const frontCamera = new THREE.PerspectiveCamera(34, 1, 0.1, 64)
+    frontCamera.position.set(
+      driftwoodCenter.x,
+      driftwoodCenter.y + 0.18,
+      (driftwoodBounds?.max.z ?? 0) + 13
+    )
+    frontCamera.lookAt(driftwoodCenter.x, driftwoodCenter.y + 0.48, driftwoodCenter.z)
+    frontCamera.updateMatrixWorld()
+    frontCamera.updateProjectionMatrix()
+    const projectedBranchXs = branchAttachments.map((branch) =>
+      getWorldBounds(branch).getCenter(new THREE.Vector3()).project(frontCamera).x
+    )
+    const projectedTrunkX = trunks[0]
+      ? getWorldBounds(trunks[0]).getCenter(new THREE.Vector3()).project(frontCamera).x
+      : 0
 
     expect(driftwood).toBeDefined()
     expect(trunks).toHaveLength(1)
@@ -157,13 +174,14 @@ describe('AquascapingSystem composition', () => {
     expect(trunks[0]?.userData.crossSectionAspect).toBeGreaterThan(1.05)
     expect(trunks[0]?.userData.tipRadius).toBeLessThan(trunks[0]?.userData.baseRadius)
     expect(trunks.every((trunk) => trunk.castShadow)).toBe(true)
-    expect(branchAttachments.length).toBeGreaterThanOrEqual(2)
-    expect(branchAttachments.length).toBeLessThanOrEqual(3)
+    expect(branchAttachments).toHaveLength(2)
     expect(branchAttachments.every((branch) => branch.userData.tipRadius < branch.userData.baseRadius)).toBe(true)
+    expect(projectedBranchXs.some((x) => x < projectedTrunkX - 0.04)).toBe(true)
+    expect(projectedBranchXs.some((x) => x > projectedTrunkX + 0.04)).toBe(true)
     expect(roots.length).toBeGreaterThanOrEqual(3)
     expect(brokenStubs.length).toBeGreaterThanOrEqual(2)
     expect(rootFlare).toBeDefined()
-    expect(epiphytes.length).toBeGreaterThanOrEqual(2)
+    expect(epiphytes.length).toBeGreaterThanOrEqual(5)
     expect(epiphyteLeaves.length).toBeGreaterThan(0)
     expect(localFill).toBeDefined()
     expect(localShadow).toBeDefined()
@@ -500,10 +518,10 @@ describe('AquascapingSystem composition', () => {
 
     expect(burialShadow).toBeDefined()
     expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.transparent).toBe(true)
-    expect(burialShadow?.position.x ?? 0).toBeLessThanOrEqual(-1.5)
-    expect(burialShadow?.position.z ?? 0).toBeGreaterThanOrEqual(0.52)
-    expect(detritusMounds.length).toBeGreaterThanOrEqual(2)
-    expect(detritusMounds.some((mound) => mound.position.x <= -1.5 && mound.position.z >= 0.48)).toBe(true)
+    expect(burialShadow?.position.x ?? 0).toBeLessThanOrEqual(-1.74)
+    expect(burialShadow?.position.z ?? 0).toBeGreaterThanOrEqual(0.62)
+    expect(detritusMounds.length).toBeGreaterThanOrEqual(4)
+    expect(detritusMounds.some((mound) => mound.position.x <= -1.7 && mound.position.z >= 0.56)).toBe(true)
   })
 
   it('stages the driftwood ahead of the ridge and adds small attachments so the wood reads as the main hardscape', () => {
@@ -545,18 +563,22 @@ describe('AquascapingSystem composition', () => {
     const localFill = driftwood?.children.find(
       (child): child is THREE.PointLight => child instanceof THREE.PointLight && child.userData.role === 'driftwood-local-fill'
     )
+    const driftwoodSize = driftwood ? getWorldBounds(driftwood).getSize(new THREE.Vector3()) : new THREE.Vector3()
+    const ridgeSize = ridge ? getWorldBounds(ridge).getSize(new THREE.Vector3()) : new THREE.Vector3()
 
     expect(driftwood).toBeDefined()
     expect(ridge).toBeDefined()
-    expect((driftwood?.position.x ?? 0) + 0.45).toBeLessThan(ridge?.position.x ?? 0)
-    expect((driftwood?.position.y ?? 0) - 0.18).toBeGreaterThan(ridge?.position.y ?? 0)
-    expect((driftwood?.position.z ?? 0) - 0.85).toBeGreaterThan(ridge?.position.z ?? 0)
-    expect(mossPatches.length).toBeGreaterThanOrEqual(2)
-    expect(fineTwigs.length).toBeGreaterThanOrEqual(1)
-    expect(rootBases.length).toBeGreaterThanOrEqual(1)
-    expect(localFill?.intensity ?? 0).toBeGreaterThanOrEqual(1.95)
-    expect(localFill?.position.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(0.9)
-    expect(localFill?.position.z ?? 0).toBeGreaterThanOrEqual(1.68)
+    expect((driftwood?.position.x ?? 0) + 1.1).toBeLessThan(ridge?.position.x ?? 0)
+    expect((driftwood?.position.y ?? 0) - 0.34).toBeGreaterThan(ridge?.position.y ?? 0)
+    expect((driftwood?.position.z ?? 0) - 1.22).toBeGreaterThan(ridge?.position.z ?? 0)
+    expect(driftwoodSize.x).toBeGreaterThan(ridgeSize.x * 1.38)
+    expect(driftwoodSize.y).toBeGreaterThan(ridgeSize.y * 1.2)
+    expect(mossPatches.length).toBeGreaterThanOrEqual(3)
+    expect(fineTwigs.length).toBeGreaterThanOrEqual(3)
+    expect(rootBases.length).toBeGreaterThanOrEqual(2)
+    expect(localFill?.intensity ?? 0).toBeGreaterThanOrEqual(2.24)
+    expect(localFill?.position.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(0.78)
+    expect(localFill?.position.z ?? 0).toBeGreaterThanOrEqual(1.92)
   })
 
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
@@ -1067,10 +1089,11 @@ describe('AquascapingSystem premium materials', () => {
       { role: 'hero-driftwood' }
     ) as THREE.MeshPhysicalMaterial
 
-    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.15)
+    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.32)
     expect(material.roughness).toBeGreaterThanOrEqual(0.9)
     expect(material.metalness).toBeLessThanOrEqual(0.03)
     expect(material.clearcoat).toBeLessThanOrEqual(0.03)
+    expect(material.emissiveIntensity).toBeGreaterThanOrEqual(0.09)
   })
 
   it('supplements missing driftwood maps, adds uv2 for ao, and clamps glossy reflections on cloned hero assets', () => {
@@ -1226,14 +1249,15 @@ describe('AquascapingSystem premium materials', () => {
 
     const fittedSize = getWorldBounds(asset).getSize(new THREE.Vector3())
 
-    expect(fittedSize.x).toBeGreaterThanOrEqual(3.3)
-    expect(fittedSize.y).toBeGreaterThanOrEqual(3.1)
-    expect(fittedSize.z).toBeGreaterThanOrEqual(2.2)
-    expect(asset.position.x).toBeGreaterThanOrEqual(0.96)
-    expect(asset.position.y).toBeGreaterThanOrEqual(0.42)
-    expect(asset.position.z).toBeGreaterThanOrEqual(0.18)
-    expect(asset.rotation.x).toBeLessThanOrEqual(-0.28)
-    expect(asset.rotation.y).toBeGreaterThanOrEqual(0.56)
+    expect(fittedSize.x).toBeGreaterThanOrEqual(4.45)
+    expect(fittedSize.y).toBeGreaterThanOrEqual(3.75)
+    expect(fittedSize.z).toBeGreaterThanOrEqual(2.45)
+    expect(asset.position.x).toBeGreaterThanOrEqual(1.02)
+    expect(asset.position.y).toBeGreaterThanOrEqual(0.5)
+    expect(asset.position.z).toBeGreaterThanOrEqual(0.34)
+    expect(asset.rotation.x).toBeLessThanOrEqual(-0.2)
+    expect(asset.rotation.y).toBeGreaterThanOrEqual(0.34)
+    expect(asset.rotation.z).toBeGreaterThanOrEqual(-0.14)
   })
 })
 
@@ -1379,7 +1403,10 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     expect(heroDriftwood.children.some((child) => child.userData.assetId === 'driftwood-hero')).toBe(true)
     expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-root-flare')).toBe(true)
     expect(heroDriftwood.children.filter((child) => child.userData.role === 'driftwood-branch-attachment').length).toBeGreaterThanOrEqual(2)
-    expect(heroDriftwood.children.filter((child) => child.userData.role === 'epiphyte-cluster').length).toBeGreaterThanOrEqual(2)
+    expect(heroDriftwood.children.filter((child) => child.userData.role === 'epiphyte-cluster').length).toBeGreaterThanOrEqual(5)
+    expect(heroDriftwood.children.filter((child) => child.userData.role === 'driftwood-moss-patch').length).toBeGreaterThanOrEqual(3)
+    expect(heroDriftwood.children.filter((child) => child.userData.role === 'driftwood-fine-twig').length).toBeGreaterThanOrEqual(3)
+    expect(heroDriftwood.children.filter((child) => child.userData.role === 'driftwood-root-base').length).toBeGreaterThanOrEqual(2)
     expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-local-shadow')).toBe(true)
     expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-burial-shadow')).toBe(true)
     expect(heroRockRidge).toBeDefined()
