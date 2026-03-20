@@ -1967,6 +1967,15 @@ describe('DetailedFishSystem wander target timing', () => {
     expect(internals.fishCount).toBe(66)
   })
 
+  test('uses a sparser default school count for nature-showcase so fish stay secondary to the aquascape', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-9, -4, -5), new THREE.Vector3(9, 4, 5))
+    const system = new DetailedFishSystem(scene, bounds, null, { layoutStyle: 'nature-showcase' })
+    const internals = system as unknown as { fishCount: number }
+
+    expect(internals.fishCount).toBe(32)
+  })
+
   test('scheduleNextRetargetTime keeps gait-specific cadence inside the 4-14 second window', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const { createFishVariants, getLocomotionProfile, scheduleNextRetargetTime } = DetailedFishSystem.prototype as unknown as {
@@ -2313,6 +2322,100 @@ describe('DetailedFishSystem quality scaling', () => {
     expect(resolveHeroPriorityMultiplier.bind(showcase)(butterflyfish)).toBeLessThan(1)
     expect(resolveHeroAccentScaleMultiplier.bind(showcase)(butterflyfish!)).toBeLessThan(1)
     expect(resolveHeroAccentDepthMultiplier.bind(showcase)(butterflyfish!)).toBeLessThan(1)
+  })
+
+  test('uses more recessed and smaller hero placements in nature-showcase than planted', () => {
+    const planted = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(planted as unknown as { layoutStyle: 'planted' }).layoutStyle = 'planted'
+    ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+
+    const { resolveHeroPlacements } = DetailedFishSystem.prototype as unknown as {
+      resolveHeroPlacements: () => Array<{
+        lateralOffset: number
+        verticalOffset: number
+        depthOffset: number
+        scaleMultiplier: number
+      }>
+    }
+
+    const plantedPlacements = resolveHeroPlacements.bind(planted)()
+    const showcasePlacements = resolveHeroPlacements.bind(showcase)()
+
+    expect(showcasePlacements).toHaveLength(plantedPlacements.length)
+    expect(Math.max(...showcasePlacements.map((placement) => placement.depthOffset)))
+      .toBeLessThan(Math.max(...plantedPlacements.map((placement) => placement.depthOffset)))
+    expect(Math.max(...showcasePlacements.map((placement) => placement.scaleMultiplier)))
+      .toBeLessThan(Math.max(...plantedPlacements.map((placement) => placement.scaleMultiplier)))
+  })
+})
+
+describe('DetailedFishSystem nature-showcase composition bias', () => {
+  test('biases showcase lane and depth preferences toward left/center and mid/upper water', () => {
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+    const { pickPreferredLateralLane, pickPreferredDepthBand, getLocomotionProfile, createFishVariants } = DetailedFishSystem.prototype as unknown as {
+      pickPreferredLateralLane: () => 'left' | 'center' | 'right'
+      pickPreferredDepthBand: (profile: {
+        boundaryArcRadius: number
+        cruiseSpeed: number
+      }) => 'upper' | 'mid' | 'hardscape-near'
+      getLocomotionProfile: (variant: { locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser' }) => {
+        boundaryArcRadius: number
+        cruiseSpeed: number
+      }
+      createFishVariants: () => Array<{ name: string; locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser' }>
+    }
+
+    const neon = createFishVariants.bind(showcase)().find((variant) => variant.name === 'Neon')
+    expect(neon).toBeDefined()
+    const profile = getLocomotionProfile.bind(showcase)(neon!)
+
+    const leftLane = vi.spyOn(Math, 'random').mockReturnValueOnce(0.2)
+    expect(pickPreferredLateralLane.bind(showcase)()).toBe('left')
+    leftLane.mockRestore()
+
+    const centerLane = vi.spyOn(Math, 'random').mockReturnValueOnce(0.72)
+    expect(pickPreferredLateralLane.bind(showcase)()).toBe('center')
+    centerLane.mockRestore()
+
+    const upperDepth = vi.spyOn(Math, 'random').mockReturnValueOnce(0.24)
+    expect(pickPreferredDepthBand.bind(showcase)(profile)).toBe('upper')
+    upperDepth.mockRestore()
+
+    const midDepth = vi.spyOn(Math, 'random').mockReturnValueOnce(0.88)
+    expect(pickPreferredDepthBand.bind(showcase)(profile)).toBe('mid')
+    midDepth.mockRestore()
+  })
+
+  test('builds showcase habitat interest points around the left mound, center lane, and right beach-overhead lane', () => {
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+
+    const { buildHabitatInterestPoints } = DetailedFishSystem.prototype as unknown as {
+      buildHabitatInterestPoints: (bounds: THREE.Box3) => Array<{
+        kind: 'hardscape' | 'plant' | 'open-lane'
+        position: THREE.Vector3
+        weight: number
+      }>
+    }
+
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -4, -5), new THREE.Vector3(5, 4, 5))
+    const points = buildHabitatInterestPoints.bind(showcase)(bounds)
+
+    const openLanePoints = points.filter((point) => point.kind === 'open-lane')
+    expect(openLanePoints).toHaveLength(2)
+    expect(openLanePoints.some((point) => point.position.x < 0 && point.position.z < 0.5)).toBe(true)
+    expect(openLanePoints.some((point) => point.position.x > 0 && point.position.z > 0)).toBe(true)
+
+    const leftHardscapeWeight = points
+      .filter((point) => point.kind === 'hardscape' && point.position.x < 0)
+      .reduce((total, point) => total + point.weight, 0)
+    const rightHardscapeWeight = points
+      .filter((point) => point.kind === 'hardscape' && point.position.x > 0)
+      .reduce((total, point) => total + point.weight, 0)
+
+    expect(leftHardscapeWeight).toBeGreaterThan(rightHardscapeWeight)
   })
 })
 

@@ -382,7 +382,7 @@ export class DetailedFishSystem {
     this.bounds = bounds
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    this.fishCount = isMobile ? 25 : 66
+    this.fishCount = this.resolveDefaultFishCount(isMobile)
     
     this.variants = this.createFishVariants()
     this.boids = new BoidsSystem(this.fishCount, bounds)
@@ -394,6 +394,14 @@ export class DetailedFishSystem {
     
     this.createDetailedFishMeshes(initialCounts)
     this.applyVariantLocomotionTuning()
+  }
+
+  private resolveDefaultFishCount(isMobile: boolean): number {
+    if (this.layoutStyle === 'nature-showcase') {
+      return isMobile ? 18 : 32
+    }
+
+    return isMobile ? 25 : 66
   }
 
   applyTuning(tuning: Partial<Tuning>): void {
@@ -937,6 +945,24 @@ export class DetailedFishSystem {
 
   private pickPreferredDepthBand(profile: LocomotionProfile): PreferredDepthBand {
     const roll = Math.random()
+    if (this.layoutStyle === 'nature-showcase') {
+      if (profile.boundaryArcRadius > 0.96) {
+        if (roll < 0.24) return 'upper'
+        if (roll < 0.82) return 'mid'
+        return 'hardscape-near'
+      }
+
+      if (profile.cruiseSpeed > 1.1) {
+        if (roll < 0.32) return 'upper'
+        if (roll < 0.92) return 'mid'
+        return 'hardscape-near'
+      }
+
+      if (roll < 0.22) return 'upper'
+      if (roll < 0.84) return 'mid'
+      return 'hardscape-near'
+    }
+
     if (profile.boundaryArcRadius > 0.96) {
       if (roll < 0.36) return 'hardscape-near'
       if (roll < 0.72) return 'mid'
@@ -956,6 +982,12 @@ export class DetailedFishSystem {
 
   private pickPreferredLateralLane(): PreferredLateralLane {
     const roll = Math.random()
+    if (this.layoutStyle === 'nature-showcase') {
+      if (roll < 0.36) return 'left'
+      if (roll < 0.76) return 'center'
+      return 'right'
+    }
+
     if (roll < 0.33) return 'left'
     if (roll < 0.66) return 'center'
     return 'right'
@@ -1003,6 +1035,16 @@ export class DetailedFishSystem {
     boundsSize: THREE.Vector3
   ): number {
     const band = this.preferredDepthBands[index] ?? 'mid'
+    if (this.layoutStyle === 'nature-showcase') {
+      if (band === 'upper') {
+        return bounds.min.y + (boundsSize.y * 0.66)
+      }
+      if (band === 'hardscape-near') {
+        return bounds.min.y + (boundsSize.y * 0.34)
+      }
+      return bounds.min.y + (boundsSize.y * 0.56)
+    }
+
     if (band === 'upper') {
       return bounds.min.y + (boundsSize.y * 0.68)
     }
@@ -1018,6 +1060,16 @@ export class DetailedFishSystem {
     boundsSize: THREE.Vector3
   ): number {
     const lane = this.preferredLateralLanes[index] ?? 'center'
+    if (this.layoutStyle === 'nature-showcase') {
+      if (lane === 'left') {
+        return bounds.min.x + (boundsSize.x * 0.31)
+      }
+      if (lane === 'right') {
+        return bounds.max.x - (boundsSize.x * 0.22)
+      }
+      return bounds.min.x + (boundsSize.x * 0.46)
+    }
+
     if (lane === 'left') {
       return bounds.min.x + (boundsSize.x * 0.28)
     }
@@ -1032,16 +1084,17 @@ export class DetailedFishSystem {
     const center = bounds.getCenter(new THREE.Vector3())
     const projectX = (value: number): number => center.x + (value * size.x)
     const projectZ = (value: number): number => center.z + (value * size.z)
-    const hardscapeY = bounds.min.y + (size.y * 0.28)
-    const upperLaneY = bounds.min.y + (size.y * 0.66)
-    const midLaneY = bounds.min.y + (size.y * 0.52)
+    const showcaseLayout = this.layoutStyle === 'nature-showcase'
+    const hardscapeY = bounds.min.y + (size.y * (showcaseLayout ? 0.34 : 0.28))
+    const upperLaneY = bounds.min.y + (size.y * (showcaseLayout ? 0.68 : 0.66))
+    const midLaneY = bounds.min.y + (size.y * (showcaseLayout ? 0.56 : 0.52))
 
     const hardscapePoints = resolveSubstrateHardscapeAnchors(this.layoutStyle).map((anchor) => ({
       kind: 'hardscape' as const,
       position: new THREE.Vector3(
         projectX(anchor.x),
         hardscapeY + (anchor.rimHeight * size.y * 0.08),
-        projectZ(anchor.z)
+        projectZ(anchor.z + (showcaseLayout ? -0.04 : 0))
       ),
         preferredDepthBands: ['hardscape-near', 'mid'] as PreferredDepthBand[],
         preferredLateralLanes: anchor.x < -0.08
@@ -1049,7 +1102,15 @@ export class DetailedFishSystem {
           : anchor.x > 0.08
             ? ['right', 'center'] as PreferredLateralLane[]
             : ['center'] as PreferredLateralLane[],
-        weight: anchor.id === 'driftwood-root-flare' ? 0.3 : 0.18
+        weight: showcaseLayout
+          ? anchor.id === 'driftwood-root-flare'
+            ? 0.34
+            : anchor.x < -0.08
+              ? 0.24
+              : 0.14
+          : anchor.id === 'driftwood-root-flare'
+            ? 0.3
+            : 0.18
       }))
 
     const plantPoints = resolveSubstratePlantAnchors(this.layoutStyle)
@@ -1063,7 +1124,11 @@ export class DetailedFishSystem {
             : anchor.layer === 'midground'
               ? midLaneY
               : bounds.min.y + (size.y * 0.4),
-          projectZ(anchor.z + (anchor.layer === 'background' ? 0.09 : 0.06))
+          projectZ(anchor.z + (anchor.layer === 'background'
+            ? (showcaseLayout ? 0.04 : 0.09)
+            : showcaseLayout
+              ? 0.02
+              : 0.06))
         ),
         preferredDepthBands: anchor.layer === 'background'
           ? ['upper', 'mid'] as PreferredDepthBand[]
@@ -1075,25 +1140,48 @@ export class DetailedFishSystem {
           : anchor.x > 0.08
             ? ['right', 'center'] as PreferredLateralLane[]
             : ['center'] as PreferredLateralLane[],
-        weight: anchor.layer === 'background' ? 0.22 : 0.17
+        weight: showcaseLayout
+          ? anchor.layer === 'background'
+            ? 0.2
+            : 0.15
+          : anchor.layer === 'background'
+            ? 0.22
+            : 0.17
       }))
 
-    const openLanePoints: HabitatInterestPoint[] = [
-      {
-        kind: 'open-lane',
-        position: new THREE.Vector3(center.x - (size.x * 0.18), midLaneY, center.z + (size.z * 0.04)),
-        preferredDepthBands: ['mid', 'upper'] as PreferredDepthBand[],
-        preferredLateralLanes: ['left', 'center'] as PreferredLateralLane[],
-        weight: 0.14
-      },
-      {
-        kind: 'open-lane',
-        position: new THREE.Vector3(center.x + (size.x * 0.18), upperLaneY, center.z - (size.z * 0.08)),
-        preferredDepthBands: ['upper', 'mid'] as PreferredDepthBand[],
-        preferredLateralLanes: ['right', 'center'] as PreferredLateralLane[],
-        weight: 0.14
-      }
-    ]
+    const openLanePoints: HabitatInterestPoint[] = showcaseLayout
+      ? [
+        {
+          kind: 'open-lane',
+          position: new THREE.Vector3(center.x - (size.x * 0.08), midLaneY, center.z - (size.z * 0.06)),
+          preferredDepthBands: ['mid', 'upper'] as PreferredDepthBand[],
+          preferredLateralLanes: ['left', 'center'] as PreferredLateralLane[],
+          weight: 0.2
+        },
+        {
+          kind: 'open-lane',
+          position: new THREE.Vector3(center.x + (size.x * 0.22), upperLaneY, center.z + (size.z * 0.06)),
+          preferredDepthBands: ['upper', 'mid'] as PreferredDepthBand[],
+          preferredLateralLanes: ['right', 'center'] as PreferredLateralLane[],
+          weight: 0.18
+        }
+      ]
+      : [
+        {
+          kind: 'open-lane',
+          position: new THREE.Vector3(center.x - (size.x * 0.18), midLaneY, center.z + (size.z * 0.04)),
+          preferredDepthBands: ['mid', 'upper'] as PreferredDepthBand[],
+          preferredLateralLanes: ['left', 'center'] as PreferredLateralLane[],
+          weight: 0.14
+        },
+        {
+          kind: 'open-lane',
+          position: new THREE.Vector3(center.x + (size.x * 0.18), upperLaneY, center.z - (size.z * 0.08)),
+          preferredDepthBands: ['upper', 'mid'] as PreferredDepthBand[],
+          preferredLateralLanes: ['right', 'center'] as PreferredLateralLane[],
+          weight: 0.14
+        }
+      ]
 
     return [...hardscapePoints, ...plantPoints, ...openLanePoints]
   }
@@ -1157,19 +1245,23 @@ export class DetailedFishSystem {
     const anchor = interestPoint?.position ?? new THREE.Vector3(
       laneX,
       depthY,
-      THREE.MathUtils.lerp(bounds.min.z + (boundsSize.z * 0.26), bounds.max.z - (boundsSize.z * 0.28), 0.5 + ((this.interestSeeds[index] ?? 0.5) - 0.5) * 0.8)
+      THREE.MathUtils.lerp(
+        bounds.min.z + (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.28 : 0.26)),
+        bounds.max.z - (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.36 : 0.28)),
+        0.5 + ((this.interestSeeds[index] ?? 0.5) - 0.5) * (this.layoutStyle === 'nature-showcase' ? 0.62 : 0.8)
+      )
     )
     const lateralSpread = gaitState === 'glide'
-      ? boundsSize.x * 0.18
+      ? boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.15 : 0.18)
       : gaitState === 'hover'
         ? boundsSize.x * 0.04
-        : boundsSize.x * 0.12
+        : boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.1 : 0.12)
     const verticalSpread = gaitState === 'hover'
       ? boundsSize.y * 0.03
-      : boundsSize.y * 0.08
+      : boundsSize.y * (this.layoutStyle === 'nature-showcase' ? 0.07 : 0.08)
     const depthSpread = gaitState === 'inspect'
-      ? boundsSize.z * 0.05
-      : boundsSize.z * 0.08
+      ? boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.04 : 0.05)
+      : boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.06 : 0.08)
 
     wanderDirection.set(
       (Math.random() - 0.5) * 2,
@@ -1198,8 +1290,8 @@ export class DetailedFishSystem {
     )
     wanderTarget.z = THREE.MathUtils.clamp(
       wanderTarget.z,
-      bounds.min.z + boundsSize.z * 0.2,
-      bounds.max.z - boundsSize.z * 0.2
+      bounds.min.z + boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.22 : 0.2),
+      bounds.max.z - boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.28 : 0.2)
     )
 
     return wanderTarget.clone()
@@ -2130,9 +2222,9 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
   }> {
     if (this.layoutStyle === 'nature-showcase') {
       return [
-        { lateralOffset: -1.02, verticalOffset: 0.08, depthOffset: 1.42, scaleMultiplier: 1.9 },
-        { lateralOffset: 0.88, verticalOffset: -0.06, depthOffset: 1.26, scaleMultiplier: 1.74 },
-        { lateralOffset: 0.14, verticalOffset: 0.22, depthOffset: 1.34, scaleMultiplier: 1.6 }
+        { lateralOffset: -0.88, verticalOffset: 0.04, depthOffset: 1.08, scaleMultiplier: 1.46 },
+        { lateralOffset: 0.58, verticalOffset: 0.02, depthOffset: 0.98, scaleMultiplier: 1.34 },
+        { lateralOffset: -0.08, verticalOffset: 0.18, depthOffset: 1.02, scaleMultiplier: 1.22 }
       ]
     }
 
@@ -2153,7 +2245,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     if (this.layoutStyle === 'nature-showcase') {
-      return 0.74
+      return 0.58
     }
 
     if (this.layoutStyle === 'planted') {
@@ -2169,7 +2261,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     if (this.layoutStyle === 'nature-showcase') {
-      return 0.86
+      return 0.74
     }
 
     if (this.layoutStyle === 'planted') {
@@ -2185,7 +2277,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     if (this.layoutStyle === 'nature-showcase') {
-      return 0.82
+      return 0.72
     }
 
     if (this.layoutStyle === 'planted') {
