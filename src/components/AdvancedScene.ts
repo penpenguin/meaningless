@@ -3842,7 +3842,9 @@ export class AdvancedAquariumScene {
   
   private createAdvancedFishSystem(): void {
     const tankBounds = createOpenWaterBounds(this.getTankDimensions())
-    this.fishSystem = new DetailedFishSystem(this.scene, tankBounds, this.visualAssets)
+    this.fishSystem = new DetailedFishSystem(this.scene, tankBounds, this.visualAssets, {
+      layoutStyle: resolveTheme(this.scene).layoutStyle
+    })
     if (this.pendingFishGroups) {
       this.fishSystem.setFishGroups(this.pendingFishGroups)
       this.pendingFishGroups = null

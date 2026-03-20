@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
-import { AquascapingSystem, plantClusterDefinitions, sampledPlantPlacements, substratePlantAnchors } from './Aquascaping'
+import {
+  AquascapingSystem,
+  plantClusterDefinitions,
+  resolveHardscapePlantAnchors,
+  resolveSampledPlantPlacements,
+  resolveSubstratePlantAnchors
+} from './Aquascaping'
 import { createOpenWaterBounds } from './sceneBounds'
 
 const createMockCanvasContext = (): CanvasRenderingContext2D => {
@@ -80,30 +86,6 @@ const getMinimumDistance = (
 
   return minimumDistance
 }
-
-const getNearestNeighborDistances = (
-  placements: Array<{ x: number; z: number }>
-): number[] => (
-  placements.map((placement, index) => {
-    let nearestDistance = Number.POSITIVE_INFINITY
-
-    for (let nextIndex = 0; nextIndex < placements.length; nextIndex += 1) {
-      if (index === nextIndex) {
-        continue
-      }
-
-      nearestDistance = Math.min(
-        nearestDistance,
-        Math.hypot(
-          placement.x - placements[nextIndex]!.x,
-          placement.z - placements[nextIndex]!.z
-        )
-      )
-    }
-
-    return nearestDistance
-  })
-)
 
 describe('AquascapingSystem composition', () => {
   let getContextSpy: ReturnType<typeof vi.spyOn> | null = null
@@ -242,8 +224,8 @@ describe('AquascapingSystem composition', () => {
     expect(ridgeSlates.length).toBeGreaterThanOrEqual(2)
     expect(ridgeRubble.length).toBeGreaterThanOrEqual(4)
     expect(canopyPlants.length).toBeGreaterThanOrEqual(4)
-    expect(canopyTypes.has('sword-leaf')).toBe(true)
-    expect(canopyTypes.has('fan-leaf')).toBe(true)
+    expect(canopyTypes.has('vallisneria-tall')).toBe(true)
+    expect(canopyTypes.has('stem-green-bush')).toBe(true)
   })
 
   it('uses hero canopy assets as visible left, center, and right background masses', () => {
@@ -293,71 +275,88 @@ describe('AquascapingSystem composition', () => {
   })
 
   it('defines planted zones that expand into irregular sampled colony placements', () => {
+    const sampledPlantPlacements = resolveSampledPlantPlacements('planted', 0x53a9d2f1)
     const backgroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'background')
     const midgroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'midground')
     const foregroundClusters = plantClusterDefinitions.filter((cluster) => cluster.layer === 'foreground')
     const leftRear = plantClusterDefinitions.find((cluster) => cluster.massRole === 'left-rear')
-    const driftwoodBackfill = plantClusterDefinitions.find((cluster) => cluster.massRole === 'driftwood-backfill')
+    const leftMid = plantClusterDefinitions.find((cluster) => cluster.massRole === 'left-shoulder')
+    const centerMid = plantClusterDefinitions.find((cluster) => cluster.massRole === 'front-center')
+    const rightMid = plantClusterDefinitions.find((cluster) => cluster.massRole === 'mid-right-backfill')
     const rightRear = plantClusterDefinitions.find((cluster) => cluster.massRole === 'right-rear')
-    const midRightBackfill = plantClusterDefinitions.find((cluster) => cluster.massRole === 'mid-right-backfill')
     const leftRearPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-rear')
-    const driftwoodPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'driftwood-backfill')
+    const leftMidPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-shoulder')
+    const centerMidPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'front-center')
+    const rightMidPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'mid-right-backfill')
     const rightRearPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'right-rear')
     const foregroundPlacements = sampledPlantPlacements.filter((placement) => placement.layer === 'foreground')
-    const foregroundNearestDistances = getNearestNeighborDistances(foregroundPlacements)
     const leftRearLanes = new Set(leftRearPlacements.map((placement) => placement.depthLane))
-    const driftwoodLanes = new Set(driftwoodPlacements.map((placement) => placement.depthLane))
+    const rightMidSpecies = new Set(rightMidPlacements.map((placement) => placement.plantType))
+    const rightRearSpecies = new Set(rightRearPlacements.map((placement) => placement.plantType))
+    const foregroundRightSidePlacements = foregroundPlacements.filter((placement) => placement.x > 0.14)
 
-    expect(backgroundClusters.length).toBeGreaterThanOrEqual(3)
+    expect(backgroundClusters.length).toBeGreaterThanOrEqual(2)
     expect(backgroundClusters.some((cluster) => cluster.massRole === 'left-rear' && cluster.x <= -0.24 && cluster.z <= -0.2)).toBe(true)
-    expect(backgroundClusters.some((cluster) => cluster.massRole === 'driftwood-backfill' && Math.abs(cluster.x) <= 0.08 && cluster.z <= -0.22)).toBe(true)
-    expect(backgroundClusters.some((cluster) => cluster.massRole === 'right-rear' && cluster.x >= 0.26 && cluster.z <= -0.18)).toBe(true)
-    expect(backgroundClusters.every((cluster) => cluster.plantType !== 'ribbon-seaweed')).toBe(true)
+    expect(backgroundClusters.some((cluster) => cluster.massRole === 'right-rear' && cluster.x >= 0.18 && cluster.z <= -0.1)).toBe(true)
+    expect(backgroundClusters.filter((cluster) => cluster.plantType === 'vallisneria-tall')).toHaveLength(1)
     expect(leftRear?.baseHeight).toBeGreaterThanOrEqual(9.5)
     expect(leftRear?.spreadX).toBeGreaterThanOrEqual(0.32)
     expect(leftRear?.spreadZ).toBeGreaterThanOrEqual(0.22)
-    expect(leftRear?.scale.x).toBeGreaterThanOrEqual(1.3)
-    expect(leftRear?.scale.y).toBeGreaterThanOrEqual(2.5)
-    expect(driftwoodBackfill?.baseHeight).toBeGreaterThanOrEqual(7.9)
-    expect(driftwoodBackfill?.spreadX).toBeGreaterThanOrEqual(0.28)
-    expect(driftwoodBackfill?.spreadZ).toBeGreaterThanOrEqual(0.22)
-    expect(driftwoodBackfill?.scale.x).toBeGreaterThanOrEqual(1.2)
-    expect(driftwoodBackfill?.scale.y).toBeGreaterThanOrEqual(2.1)
-    expect(rightRear?.baseHeight).toBeGreaterThanOrEqual(9.4)
-    expect(rightRear?.spreadX).toBeGreaterThanOrEqual(0.24)
-    expect(rightRear?.spreadZ).toBeGreaterThanOrEqual(0.18)
-    expect(rightRear?.scale.x).toBeGreaterThanOrEqual(1)
-    expect(rightRear?.scale.y).toBeGreaterThanOrEqual(2.3)
-    expect(midRightBackfill?.plantType).not.toBe('ribbon-seaweed')
-    expect(midgroundClusters.every((cluster) => cluster.baseHeight >= 3.8)).toBe(true)
+    expect(leftRear?.plantType).toBe('vallisneria-tall')
+    expect(leftMid?.plantType).toBe('javafern-large')
+    expect(centerMid?.plantType).toBe('javafern-large')
+    expect(rightMid?.plantType).toBe('crypt-brown')
+    expect(rightRear?.plantType).toBe('crypt-brown')
+    expect(midgroundClusters.every((cluster) => cluster.baseHeight >= 2.6)).toBe(true)
     expect(foregroundClusters.every((cluster) => cluster.baseHeight <= 2)).toBe(true)
     expect(sampledPlantPlacements.length).toBeGreaterThan(plantClusterDefinitions.length)
-    expect(leftRearPlacements.length).toBeGreaterThanOrEqual(5)
-    expect(driftwoodPlacements.length).toBeGreaterThanOrEqual(5)
-    expect(rightRearPlacements.length).toBeGreaterThanOrEqual(4)
-    expect(rightRearPlacements.length).toBeLessThan(leftRearPlacements.length)
-    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('sword-leaf')).toBe(true)
-    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('fan-leaf')).toBe(true)
-    expect(new Set(driftwoodPlacements.map((placement) => placement.plantType)).has('sword-leaf')).toBe(true)
-    expect(new Set(driftwoodPlacements.map((placement) => placement.plantType)).has('fan-leaf')).toBe(true)
+    expect(leftRearPlacements.length).toBeGreaterThanOrEqual(4)
+    expect(leftMidPlacements.length).toBeGreaterThanOrEqual(3)
+    expect(centerMidPlacements.length).toBeGreaterThanOrEqual(3)
+    expect(rightRearPlacements.length).toBeGreaterThanOrEqual(3)
+    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('vallisneria-tall')).toBe(true)
+    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('stem-green-bush')).toBe(true)
+    expect(new Set(leftMidPlacements.map((placement) => placement.plantType)).has('javafern-large')).toBe(true)
+    expect(new Set(leftMidPlacements.map((placement) => placement.plantType)).has('anubias-nana-clump')).toBe(true)
+    expect(new Set(centerMidPlacements.map((placement) => placement.plantType)).has('javafern-narrow')).toBe(true)
+    expect(rightMidSpecies.has('crypt-brown')).toBe(true)
+    expect(rightRearSpecies.has('crypt-brown')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.clusterKind)).has('satellite')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.clusterKind)).has('offshoot')).toBe(true)
     expect(getMinimumDistance(leftRearPlacements)).toBeGreaterThanOrEqual(0.06)
     expect(Math.max(...leftRearPlacements.map((placement) => placement.x)) - Math.min(...leftRearPlacements.map((placement) => placement.x))).toBeGreaterThan(0.2)
-    expect(Math.max(...driftwoodPlacements.map((placement) => placement.z)) - Math.min(...driftwoodPlacements.map((placement) => placement.z))).toBeGreaterThan(0.12)
     expect(leftRearLanes.size).toBeGreaterThanOrEqual(2)
-    expect(driftwoodLanes.size).toBeGreaterThanOrEqual(2)
     expect(leftRearPlacements.some((placement) => placement.tiltX > 0)).toBe(true)
     expect(leftRearPlacements.some((placement) => placement.tiltX < 0)).toBe(true)
-    expect(driftwoodPlacements.some((placement) => placement.tiltZ > 0)).toBe(true)
-    expect(driftwoodPlacements.some((placement) => placement.tiltZ < 0)).toBe(true)
-    expect(driftwoodPlacements.every((placement) => placement.baseHeight >= 4.2 && placement.baseHeight <= 8.4)).toBe(true)
+    expect(leftMidPlacements.some((placement) => placement.tiltZ > 0)).toBe(true)
+    expect(Math.max(...leftMidPlacements.map((placement) => placement.tiltZ)) - Math.min(...leftMidPlacements.map((placement) => placement.tiltZ))).toBeGreaterThan(0.04)
+    expect(rightMidPlacements.every((placement) => placement.baseHeight >= 2.8 && placement.baseHeight <= 5.8)).toBe(true)
     expect(foregroundPlacements.every((placement) => placement.baseHeight <= 2)).toBe(true)
-    expect(foregroundPlacements.every((placement) => placement.plantType === 'fan-leaf')).toBe(true)
-    expect(Math.max(...foregroundNearestDistances) - Math.min(...foregroundNearestDistances)).toBeGreaterThan(0.03)
+    expect(foregroundPlacements.every((placement) => placement.plantType === 'anubias-petite-clump')).toBe(true)
+    expect(foregroundRightSidePlacements).toEqual([])
+    expect(getMinimumDistance(foregroundPlacements)).toBeGreaterThan(0.05)
+  })
+
+  it('regenerates sampled planted placements per seed while keeping each seed deterministic', () => {
+    const seedAPlacements = resolveSampledPlantPlacements('planted', 0x1144aa22)
+    const repeatedSeedAPlacements = resolveSampledPlantPlacements('planted', 0x1144aa22)
+    const seedBPlacements = resolveSampledPlantPlacements('planted', 0x88441122)
+
+    expect(seedAPlacements.map((placement) => positionKey(placement.x, placement.z))).toEqual(
+      repeatedSeedAPlacements.map((placement) => positionKey(placement.x, placement.z))
+    )
+    expect(seedAPlacements.map((placement) => positionKey(placement.x, placement.z))).not.toEqual(
+      seedBPlacements.map((placement) => positionKey(placement.x, placement.z))
+    )
+    expect(seedAPlacements.some((placement, index) =>
+      placement.id === seedBPlacements[index]?.id
+      && positionKey(placement.x, placement.z) !== positionKey(seedBPlacements[index]!.x, seedBPlacements[index]!.z)
+    )).toBe(true)
   })
 
   it('derives substrate plant anchors from sampled placements instead of fixed zone centers', () => {
+    const sampledPlantPlacements = resolveSampledPlantPlacements('planted', 0x53a9d2f1)
+    const substratePlantAnchors = resolveSubstratePlantAnchors('planted', 0x53a9d2f1)
     const zonePositionKeys = new Set(
       plantClusterDefinitions.map((cluster) => positionKey(cluster.x, cluster.z))
     )
@@ -372,6 +371,19 @@ describe('AquascapingSystem composition', () => {
     expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.moundHeight)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.moundHeight))).toBeGreaterThan(0.004)
     expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.scoopDepth)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.scoopDepth))).toBeGreaterThan(0.002)
     expect(substratePlantAnchors.some((anchor) => Math.abs(anchor.scoopBiasX) > 0.01)).toBe(true)
+  })
+
+  it('adds hardscape plant anchors for branch crotches, root flares, and rock crevices', () => {
+    const hardscapePlantAnchors = resolveHardscapePlantAnchors('planted')
+    const driftwoodAnchors = hardscapePlantAnchors.filter((anchor) => anchor.host === 'driftwood')
+    const rockAnchors = hardscapePlantAnchors.filter((anchor) => anchor.host === 'rock')
+
+    expect(driftwoodAnchors.some((anchor) => anchor.id.includes('branch-crotch'))).toBe(true)
+    expect(driftwoodAnchors.some((anchor) => anchor.id.includes('root-flare'))).toBe(true)
+    expect(rockAnchors.some((anchor) => anchor.id.includes('crevice'))).toBe(true)
+    expect(new Set(driftwoodAnchors.map((anchor) => anchor.plantType)).has('anubias-petite-clump')).toBe(true)
+    expect(new Set(driftwoodAnchors.map((anchor) => anchor.plantType)).has('javafern-narrow')).toBe(true)
+    expect(new Set(rockAnchors.map((anchor) => anchor.plantType)).has('anubias-petite-clump')).toBe(true)
   })
 
   it('builds denser foliage clusters so planted masses stay readable edge-on', () => {
@@ -450,7 +462,8 @@ describe('AquascapingSystem composition', () => {
     expect(plantedMasses.length).toBeGreaterThanOrEqual(18)
     expect(plantedMasses.length).toBeLessThanOrEqual(28)
     expect(massRoles.has('left-rear')).toBe(true)
-    expect(massRoles.has('driftwood-backfill')).toBe(true)
+    expect(massRoles.has('left-shoulder')).toBe(true)
+    expect(massRoles.has('mid-right-backfill')).toBe(true)
     expect(massRoles.has('right-rear')).toBe(true)
   })
 
@@ -622,6 +635,125 @@ describe('AquascapingSystem composition', () => {
     expect(localFill?.position.z ?? 0).toBeGreaterThanOrEqual(1.92)
   })
 
+  it('builds a left-heavy mound with an open right-front sand beach for nature-showcase', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = bounds.getSize(new THREE.Vector3())
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': null,
+        'rock-ridge-hero': null,
+        'rock-support-a': null,
+        'rock-support-b': null,
+        'rock-support-c': null,
+        'rock-pebble-cluster': null,
+        'rock-lava-base-cluster-a': null,
+        'rock-lava-base-cluster-b': null,
+        'rock-lava-transition-chips': null,
+        'plant-sword-cluster': null,
+        'plant-fan-cluster': null
+      }
+    }, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const heroRock = aquascapingGroup.children.find((child) => child.userData.role === 'hero-rock')
+    const ridge = aquascapingGroup.children.find((child) => child.userData.role === 'hero-rock-ridge')
+    const supportClusters = aquascapingGroup.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'support-rock-cluster'
+    )
+    const transitionPebbles = aquascapingGroup.children.filter((child) => child.userData.role === 'hardscape-transition-pebble')
+    const heroRockCenter = heroRock ? getWorldBounds(heroRock).getCenter(new THREE.Vector3()) : new THREE.Vector3()
+    const ridgeCenter = ridge ? getWorldBounds(ridge).getCenter(new THREE.Vector3()) : new THREE.Vector3()
+    const rightFrontOccupants = [
+      ...supportClusters,
+      ...transitionPebbles
+    ].filter((child) => {
+      const center = getWorldBounds(child).getCenter(new THREE.Vector3())
+      return center.x > size.x * 0.14 && center.z > size.z * 0.08
+    })
+
+    expect(heroRock).toBeDefined()
+    expect(ridge).toBeDefined()
+    expect(heroRockCenter.x).toBeLessThan(-size.x * 0.08)
+    expect(ridgeCenter.x).toBeLessThan(-size.x * 0.06)
+    expect(heroRockCenter.distanceTo(ridgeCenter)).toBeLessThan(size.x * 0.22)
+    expect(supportClusters.length).toBeGreaterThanOrEqual(2)
+    expect(supportClusters.every((cluster) => cluster.position.x < size.x * 0.02)).toBe(true)
+    expect(rightFrontOccupants).toEqual([])
+  })
+
+  it('fans the showcase driftwood from the left mound toward the upper right instead of reading as a single centered branch', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': null,
+        'rock-ridge-hero': null,
+        'rock-support-a': null,
+        'rock-support-b': null,
+        'rock-support-c': null,
+        'rock-pebble-cluster': null,
+        'rock-lava-base-cluster-a': null,
+        'rock-lava-base-cluster-b': null,
+        'rock-lava-transition-chips': null,
+        'plant-sword-cluster': null,
+        'plant-fan-cluster': null
+      }
+    }, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    )
+    const woodSpokes = driftwood?.children.filter(
+      (child): child is THREE.Mesh =>
+        child instanceof THREE.Mesh
+        && (child.userData.role === 'driftwood-trunk' || child.userData.role === 'driftwood-branch-attachment')
+    ) ?? []
+    const frontCamera = new THREE.PerspectiveCamera(34, 1, 0.1, 64)
+    const driftwoodBounds = driftwood ? getWorldBounds(driftwood) : null
+    const driftwoodCenter = driftwoodBounds?.getCenter(new THREE.Vector3()) ?? new THREE.Vector3()
+    frontCamera.position.set(
+      driftwoodCenter.x,
+      driftwoodCenter.y + 0.22,
+      (driftwoodBounds?.max.z ?? 0) + 13
+    )
+    frontCamera.lookAt(driftwoodCenter.x + 0.6, driftwoodCenter.y + 0.66, driftwoodCenter.z - 0.2)
+    frontCamera.updateMatrixWorld()
+    frontCamera.updateProjectionMatrix()
+    const projectedXs = woodSpokes.map((spoke) =>
+      getWorldBounds(spoke).getCenter(new THREE.Vector3()).project(frontCamera).x
+    )
+    const worldCenters = woodSpokes.map((spoke) => getWorldBounds(spoke).getCenter(new THREE.Vector3()))
+
+    expect(driftwood).toBeDefined()
+    expect(driftwood?.position.x ?? 0).toBeLessThan(-0.6)
+    expect(woodSpokes.length).toBeGreaterThanOrEqual(4)
+    expect(Math.max(...projectedXs) - Math.min(...projectedXs)).toBeGreaterThan(0.42)
+    expect(Math.max(...worldCenters.map((center) => center.x))).toBeGreaterThan((driftwood?.position.x ?? 0) + 3.6)
+    expect(Math.max(...worldCenters.map((center) => center.y))).toBeGreaterThan((driftwood?.position.y ?? 0) + 2.8)
+  })
+
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
@@ -643,7 +775,7 @@ describe('AquascapingSystem composition', () => {
     expect(fronds.some((frond) => frond.geometry.type === 'CylinderGeometry')).toBe(false)
   })
 
-  it('mixes sword and fan foliage into the planted aquascape', () => {
+  it('mixes distinct planted species into the layered aquascape', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -657,14 +789,15 @@ describe('AquascapingSystem composition', () => {
     const plantTypes = aquascapingGroup.children
       .filter((child) => typeof child.userData.layer === 'string')
       .map((child) => child.userData.plantType)
-    const fanPlant = aquascapingGroup.children.find((child) => child.userData.plantType === 'fan-leaf') as THREE.Group
+    const javafernPlant = aquascapingGroup.children.find((child) => child.userData.plantType === 'javafern-large') as THREE.Group
     const uniquePlantTypes = new Set(plantTypes)
 
-    expect(uniquePlantTypes.has('sword-leaf')).toBe(true)
-    expect(uniquePlantTypes.has('fan-leaf')).toBe(true)
+    expect(uniquePlantTypes.has('vallisneria-tall')).toBe(true)
+    expect(uniquePlantTypes.has('javafern-large')).toBe(true)
+    expect(uniquePlantTypes.has('crypt-brown')).toBe(true)
     expect(uniquePlantTypes.has('ribbon-seaweed')).toBe(false)
-    expect(uniquePlantTypes.size).toBeGreaterThanOrEqual(2)
-    expect(fanPlant.children.some((leaf) => leaf instanceof THREE.Mesh && leaf.geometry.type === 'ShapeGeometry')).toBe(true)
+    expect(uniquePlantTypes.size).toBeGreaterThanOrEqual(4)
+    expect(javafernPlant.children.some((leaf) => leaf instanceof THREE.Mesh && leaf.geometry.type === 'ShapeGeometry')).toBe(true)
   })
 
   it('keeps ribbon seaweed as a minor planted accent instead of a background mass', () => {
@@ -685,8 +818,8 @@ describe('AquascapingSystem composition', () => {
     const backgroundMasses = plantedMasses.filter((plant) => plant.userData.layer === 'background')
 
     expect(ribbonMasses).toEqual([])
-    expect(backgroundMasses.some((plant) => plant.userData.plantType === 'sword-leaf')).toBe(true)
-    expect(backgroundMasses.some((plant) => plant.userData.plantType === 'fan-leaf')).toBe(true)
+    expect(backgroundMasses.some((plant) => plant.userData.plantType === 'vallisneria-tall')).toBe(true)
+    expect(backgroundMasses.some((plant) => plant.userData.plantType === 'crypt-brown')).toBe(true)
   })
 
   it('does not add coral cone decorations in the default planted layout', () => {
@@ -1413,8 +1546,11 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     const bounds = createOpenWaterBounds()
     const driftwoodAsset = createModelAssetScene('driftwood-hero')
     const rockAsset = createModelAssetScene('rock-ridge-hero')
-    const swordPlantAsset = createModelAssetScene('plant-sword-cluster')
-    const fanPlantAsset = createModelAssetScene('plant-fan-cluster')
+    const vallisneriaAsset = createModelAssetScene('plant-vallisneria-tall')
+    const javafernAsset = createModelAssetScene('plant-javafern-large')
+    const stemBushAsset = createModelAssetScene('plant-stem-green-bush')
+    const cryptAsset = createModelAssetScene('plant-crypt-brown')
+    const anubiasPetiteAsset = createModelAssetScene('plant-anubias-petite-clump')
 
     new AquascapingSystem(scene, bounds, {
       manifest: { textures: [], models: [], environment: [] },
@@ -1423,8 +1559,11 @@ describe('AquascapingSystem asset-backed hero scape', () => {
       models: {
         'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null },
         'rock-ridge-hero': { scene: rockAsset, sourceMesh: null },
-        'plant-sword-cluster': { scene: swordPlantAsset, sourceMesh: null },
-        'plant-fan-cluster': { scene: fanPlantAsset, sourceMesh: null }
+        'plant-vallisneria-tall': { scene: vallisneriaAsset, sourceMesh: null },
+        'plant-javafern-large': { scene: javafernAsset, sourceMesh: null },
+        'plant-stem-green-bush': { scene: stemBushAsset, sourceMesh: null },
+        'plant-crypt-brown': { scene: cryptAsset, sourceMesh: null },
+        'plant-anubias-petite-clump': { scene: anubiasPetiteAsset, sourceMesh: null }
       }
     })
 
@@ -1453,10 +1592,10 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     expect(heroRockRidge).toBeDefined()
     expect(heroRockRidge.userData.assetId).toBe('rock-ridge-hero')
     expect(heroCanopyAssets.length).toBeGreaterThanOrEqual(2)
-    expect(heroCanopyAssets.some((child) => child.userData.assetId === 'plant-sword-cluster')).toBe(true)
+    expect(heroCanopyAssets.some((child) => child.userData.assetId === 'plant-vallisneria-tall')).toBe(true)
     expect(plantedMassAssets.length).toBeGreaterThanOrEqual(3)
-    expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-sword-cluster')).toBe(true)
-    expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-fan-cluster')).toBe(true)
+    expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-javafern-large')).toBe(true)
+    expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-crypt-brown')).toBe(true)
 
     getContextSpy.mockRestore()
   })

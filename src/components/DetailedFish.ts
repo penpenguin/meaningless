@@ -1,11 +1,11 @@
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BoidsSystem } from '../utils/Boids'
-import type { FishGroup, SchoolMood, Tuning } from '../types/aquarium'
+import type { AquascapeLayoutStyle, FishGroup, SchoolMood, Tuning } from '../types/aquarium'
 import { getFishContent, getFishContentList } from '../content/registry'
 import type { LoadedModelAsset, VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
-import { substrateHardscapeAnchors, substratePlantAnchors } from './Aquascaping'
+import { resolveSubstrateHardscapeAnchors, resolveSubstratePlantAnchors } from './Aquascaping'
 import {
   createFishSafeBounds,
   resolveFishAxisExtents,
@@ -355,6 +355,7 @@ export class DetailedFishSystem {
   private behaviorProfile: BehaviorProfile = { ...DEFAULT_BEHAVIOR_PROFILE }
   private currentQuality: QualityLevel = 'standard'
   private visualAssets: VisualAssetBundle | null
+  private layoutStyle: AquascapeLayoutStyle
   private boidVariantIndices: number[] = []
   private heroAssignments = new Map<number, {
     object: THREE.Object3D
@@ -367,9 +368,15 @@ export class DetailedFishSystem {
     fishSafeExtents: FishRenderExtents
   }>()
   
-  constructor(scene: THREE.Scene, bounds: THREE.Box3, visualAssets: VisualAssetBundle | null = null) {
+  constructor(
+    scene: THREE.Scene,
+    bounds: THREE.Box3,
+    visualAssets: VisualAssetBundle | null = null,
+    options: { layoutStyle?: AquascapeLayoutStyle } = {}
+  ) {
     this.group = new THREE.Group()
     this.visualAssets = visualAssets
+    this.layoutStyle = options.layoutStyle ?? 'planted'
     scene.add(this.group)
 
     this.bounds = bounds
@@ -1029,7 +1036,7 @@ export class DetailedFishSystem {
     const upperLaneY = bounds.min.y + (size.y * 0.66)
     const midLaneY = bounds.min.y + (size.y * 0.52)
 
-    const hardscapePoints = substrateHardscapeAnchors.map((anchor) => ({
+    const hardscapePoints = resolveSubstrateHardscapeAnchors(this.layoutStyle).map((anchor) => ({
       kind: 'hardscape' as const,
       position: new THREE.Vector3(
         projectX(anchor.x),
@@ -1045,7 +1052,7 @@ export class DetailedFishSystem {
         weight: anchor.id === 'driftwood-root-flare' ? 0.3 : 0.18
       }))
 
-    const plantPoints = substratePlantAnchors
+    const plantPoints = resolveSubstratePlantAnchors(this.layoutStyle)
       .filter((anchor) => anchor.layer !== 'foreground' || Math.abs(anchor.x) < 0.32)
       .map((anchor) => ({
         kind: 'plant' as const,
