@@ -76,11 +76,14 @@ describe('applyGradientBackground', () => {
     expect(scene.background).toBeInstanceOf(THREE.CanvasTexture)
     expect(((scene.background as THREE.CanvasTexture).userData as { isEnvironmentBackdrop?: boolean }).isEnvironmentBackdrop).toBe(true)
     const fog = scene.fog as THREE.FogExp2
+    const expectedBackdropBase = `#${new THREE.Color(theme.waterTint)
+      .lerp(new THREE.Color('#5f7467'), 0.42)
+      .getHexString()}`
     expect(fog.density).toBeCloseTo(theme.fogDensity)
     expect(fog.color.getHexString()).toBe(theme.waterTint.replace('#', '').toLowerCase())
     expect(radialGradientCalls).toBeGreaterThanOrEqual(3)
     expect(bezierCurveCalls).toBeGreaterThan(0)
     expect(strokeCalls).toBeGreaterThan(0)
-    expect(stops.map((color) => color.toLowerCase())).toContain(theme.waterTint.toLowerCase())
+    expect(stops.map((color) => color.toLowerCase())).toContain(expectedBackdropBase)
   })
 })

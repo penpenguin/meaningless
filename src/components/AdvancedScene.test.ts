@@ -899,6 +899,34 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     )
   })
 
+  it('uses a broader top canopy wash instead of a compact diorama spotlight', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createSubstrate: CreateSubstrateFn
+      createBackdropTexture: () => THREE.CanvasTexture
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createSubstrate = vi.fn()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+
+    createAdvancedTank()
+
+    const lightCanopy = internals.tank.children.find((child) => child.name === 'tank-light-canopy') as THREE.Mesh | undefined
+    const canopyGeometry = lightCanopy?.geometry as THREE.PlaneGeometry | undefined
+    const canopyMaterial = lightCanopy?.material as THREE.MeshBasicMaterial | undefined
+
+    expect(lightCanopy).toBeDefined()
+    expect(canopyGeometry?.parameters.width).toBeGreaterThan(AQUARIUM_TANK_DIMENSIONS.width * 0.85)
+    expect(canopyGeometry?.parameters.height).toBeGreaterThan(AQUARIUM_TANK_DIMENSIONS.height * 0.41)
+    expect(canopyMaterial?.opacity).toBeGreaterThan(0.145)
+  })
+
   it('splits underwater lighting into wide near-surface bands, layered midwater scatter, and phase-linked caustics', () => {
     const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
     const internals = instance as unknown as {
@@ -964,6 +992,8 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(midwaterLayers.every((mesh) => mesh.userData.phaseFamily === 'surface-caustic')).toBe(true)
     expect(floorCaustics?.userData.phaseFamily).toBe('surface-caustic')
     expect(backCaustics?.userData.phaseFamily).toBe('surface-caustic')
+    expect((floorCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.055)
+    expect((backCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.04)
   })
 
   it('keeps hero lighting anchors tank-relative when the tank dimensions grow', () => {
@@ -1138,8 +1168,8 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(getBottomClearanceRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.16)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.08)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.18)
-    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThanOrEqual(0.1)
-    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.14)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThanOrEqual(0.088)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.12)
     expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 })
@@ -1167,18 +1197,23 @@ describe('AdvancedAquariumScene lighting', () => {
     const fillLight = internals.fillLight
     const bounceLight = internals.bounceLight
     const rearRimLight = internals.rimLight
+    const ambientLight = internals.scene.children.find((child) => child instanceof THREE.AmbientLight) as THREE.AmbientLight | undefined
+    const hemisphereLight = internals.scene.children.find((child) => child instanceof THREE.HemisphereLight) as THREE.HemisphereLight | undefined
     const defaultControlsTarget = resolveDefaultControlsTarget(AQUARIUM_TANK_DIMENSIONS)
 
     expect(strongestLight).toBeDefined()
     expect(fillLight).toBeDefined()
     expect(bounceLight).toBeDefined()
     expect(rearRimLight).toBeDefined()
+    expect(ambientLight?.intensity).toBeGreaterThan(0.4)
+    expect(hemisphereLight?.intensity).toBeGreaterThan(0.95)
     const sunLight = strongestLight!
     const frontFillLight = fillLight!
     const substrateBounceLight = bounceLight!
     const rimLight = rearRimLight!
 
     expect(sunLight.intensity).toBeGreaterThan(1.5)
+    expect(frontFillLight.intensity).toBeGreaterThan(0.6)
     expect(rimLight.intensity).toBeGreaterThan(0.08)
     expect(rimLight.intensity).toBeLessThan(0.18)
     expectRatioInRange(getWidthRatio(sunLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.x)
@@ -2355,6 +2390,11 @@ describe('AdvancedAquariumScene theme application', () => {
     const midground = internals.tank.children.find((child) => child.name === 'tank-depth-midground') as THREE.Mesh | undefined
     const foreground = internals.tank.children.find((child) => child.name === 'tank-depth-foreground-shadow') as THREE.Mesh | undefined
     const frontHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-front-highlight') as THREE.Mesh | undefined
+    const waterSurfaceHighlight = internals.tank.children.find((child) => child.name === 'tank-water-surface-highlight') as THREE.Mesh | undefined
+    const waterlineFront = internals.tank.children.find((child) => child.name === 'tank-waterline-front') as THREE.Mesh | undefined
+    const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
+    const heroFrontFill = internals.tank.children.find((child) => child.name === 'tank-hero-front-fill') as THREE.Mesh | undefined
+    const backWallPanel = internals.tank.children.find((child) => child.name === 'tank-wall-back-panel') as THREE.Mesh | undefined
     const driftwoodOcclusion = internals.tank.children.find((child) => (
       child.name === 'tank-hardscape-occlusion-driftwood'
     )) as THREE.Mesh | undefined
@@ -2371,6 +2411,13 @@ describe('AdvancedAquariumScene theme application', () => {
     expect(midgroundMaterial?.color.getHexString()).not.toBe('3f7880')
     expect(foregroundMaterial?.color.getHexString()).not.toBe('07212a')
     expect(frontHighlightMaterial?.color.g ?? 0).toBeGreaterThan(frontHighlightMaterial?.color.b ?? 0)
+    expect((waterSurfaceHighlight?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0.11)
+    expect((waterSurfaceHighlight?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(
+      (waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
+    )
+    expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.1)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.1)
+    expect((backWallPanel?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.18)
     expect((driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.13)
     expect((ridgeOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.14)
     expect((backwallOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.11)
@@ -2615,8 +2662,9 @@ describe('AdvancedAquariumScene backdrop textures', () => {
 
     createBackdropTexture()
 
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(128, 140, 118, 0.22)')
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(21, 27, 25, 0.84)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(118, 128, 114, 0.16)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(18, 23, 22, 0.9)')
+    expect(stops.some((stop) => stop.includes('128, 140, 118'))).toBe(false)
     expect(stops.some((stop) => stop.includes('207, 219'))).toBe(false)
   })
 

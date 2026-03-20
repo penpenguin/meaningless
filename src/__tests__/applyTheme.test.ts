@@ -70,9 +70,12 @@ describe('applyThemeToScene', () => {
 
     expect(scene.background).toBeInstanceOf(THREE.CanvasTexture)
     const fog = scene.fog as THREE.FogExp2
+    const expectedBackdropBase = `#${new THREE.Color(nextTheme.waterTint)
+      .lerp(new THREE.Color('#5f7467'), 0.42)
+      .getHexString()}`
     expect(fog.density).toBeCloseTo(nextTheme.fogDensity)
     expect(fog.color.getHexString()).toBe('445566')
-    expect(stops.map((color) => color.toLowerCase())).toContain(nextTheme.waterTint.toLowerCase())
+    expect(stops.map((color) => color.toLowerCase())).toContain(expectedBackdropBase)
 
     getContextSpy.mockRestore()
   })

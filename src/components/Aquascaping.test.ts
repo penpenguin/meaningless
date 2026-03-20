@@ -823,6 +823,104 @@ describe('AquascapingSystem composition', () => {
     expect(secondaryCenters.some((center) => center.y > (driftwood?.position.y ?? 0) + 2.4)).toBe(true)
   })
 
+  it('assigns distinct showcase jobs to bridge, counter-fork, and uplift-fork so the wood reads as a multi-piece hardscape', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const driftwoodAsset = createModelAssetScene('driftwood-hero')
+    const driftwoodSecondaryA = createModelAssetScene('driftwood-secondary-a')
+    const driftwoodSecondaryB = createModelAssetScene('driftwood-secondary-b')
+    const driftwoodSecondaryC = createModelAssetScene('driftwood-secondary-c')
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null },
+        'driftwood-secondary-a': { scene: driftwoodSecondaryA, sourceMesh: null },
+        'driftwood-secondary-b': { scene: driftwoodSecondaryB, sourceMesh: null },
+        'driftwood-secondary-c': { scene: driftwoodSecondaryC, sourceMesh: null }
+      }
+    }, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    ) as THREE.Group | undefined
+    const secondaryBranches = driftwood?.children.filter(
+      (child): child is THREE.Group =>
+        child instanceof THREE.Group && child.userData.role === 'driftwood-secondary-branch'
+    ) ?? []
+    const branchByRole = new Map(
+      secondaryBranches.map((branch) => [branch.userData.branchRole as string, branch])
+    )
+    const bridge = branchByRole.get('bridge')
+    const counterFork = branchByRole.get('counter-fork')
+    const upliftFork = branchByRole.get('uplift-fork')
+
+    expect(bridge?.userData.buryAmount).toBeGreaterThanOrEqual(0.3)
+    expect(counterFork?.userData.buryAmount).toBeGreaterThanOrEqual(0.1)
+    expect(upliftFork?.userData.buryAmount).toBeLessThanOrEqual(0.04)
+    expect((bridge?.position.x ?? 0)).toBeLessThan(0)
+    expect((counterFork?.position.x ?? 0)).toBeGreaterThan(1.8)
+    expect((upliftFork?.position.y ?? 0) - (counterFork?.position.y ?? 0)).toBeGreaterThan(0.9)
+    expect(Math.abs((upliftFork?.rotation.z ?? 0) - (counterFork?.rotation.z ?? 0))).toBeGreaterThan(0.9)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('layers nature-showcase plants into species-driven colonies instead of a vallis wall', () => {
+    const sampledPlantPlacements = resolveSampledPlantPlacements('nature-showcase', 0x53a9d2f1)
+    const leftRearPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-rear')
+    const leftShoulderPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-shoulder')
+    const centerHardscapePlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'front-center')
+    const rightAccentPlacements = sampledPlantPlacements.filter((placement) =>
+      placement.zoneId === 'mid-right-backfill' || placement.zoneId === 'right-rear'
+    )
+    const foregroundPlacements = sampledPlantPlacements.filter((placement) => placement.layer === 'foreground')
+    const backgroundVallisPlacements = sampledPlantPlacements.filter((placement) => placement.plantType === 'vallisneria-tall')
+    const broadleafTypes = new Set(
+      [...leftShoulderPlacements, ...centerHardscapePlacements].map((placement) => placement.plantType)
+    )
+    const rightAccentTypes = new Set(rightAccentPlacements.map((placement) => placement.plantType))
+
+    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('stem-green-bush')).toBe(true)
+    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('hygrophila-rear')).toBe(true)
+    expect(backgroundVallisPlacements.length).toBeLessThanOrEqual(2)
+    expect(centerHardscapePlacements.length).toBeGreaterThanOrEqual(3)
+    expect(centerHardscapePlacements.every((placement) => placement.layer === 'midground')).toBe(true)
+    expect(broadleafTypes.has('javafern-large')).toBe(true)
+    expect(broadleafTypes.has('javafern-narrow')).toBe(true)
+    expect(broadleafTypes.has('anubias-nana-clump')).toBe(true)
+    expect(rightAccentTypes.has('crypt-brown')).toBe(true)
+    expect(foregroundPlacements.every((placement) => placement.x < 0.08)).toBe(true)
+    expect(foregroundPlacements.every((placement) => placement.plantType === 'anubias-petite-clump')).toBe(true)
+  })
+
+  it('adds dedicated nature-showcase epiphyte anchors for wood forks and rock junctions', () => {
+    const hardscapePlantAnchors = resolveHardscapePlantAnchors('nature-showcase')
+    const driftwoodAnchors = hardscapePlantAnchors.filter((anchor) => anchor.host === 'driftwood')
+    const rockAnchors = hardscapePlantAnchors.filter((anchor) => anchor.host === 'rock')
+    const driftwoodAnchorIds = new Set(driftwoodAnchors.map((anchor) => anchor.id))
+    const rockAnchorIds = new Set(rockAnchors.map((anchor) => anchor.id))
+    const driftwoodTypes = new Set(driftwoodAnchors.map((anchor) => anchor.plantType))
+
+    expect(hardscapePlantAnchors.length).toBeGreaterThanOrEqual(10)
+    expect([...driftwoodAnchorIds].some((id) => id.includes('fork'))).toBe(true)
+    expect([...rockAnchorIds].some((id) => id.includes('junction'))).toBe(true)
+    expect(rockAnchors.length).toBeGreaterThanOrEqual(4)
+    expect(driftwoodTypes.has('anubias-petite-clump')).toBe(true)
+    expect(driftwoodTypes.has('anubias-nana-clump')).toBe(true)
+    expect(driftwoodTypes.has('javafern-narrow')).toBe(true)
+    expect(driftwoodTypes.has('javafern-large')).toBe(true)
+  })
+
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
@@ -1378,11 +1476,62 @@ describe('AquascapingSystem premium materials', () => {
     }
 
     expect(material.aoMap).toBe(barkAo)
+    expect(material.normalScale.x).toBeGreaterThanOrEqual(1.3)
+    expect(material.normalScale.y).toBeLessThanOrEqual(0.68)
     expect(material.userData.driftwoodCavityMask).toBe(cavityMask)
-    expect(material.userData.driftwoodCavityStrength).toBeGreaterThanOrEqual(0.15)
-    expect(material.userData.driftwoodCavityStrength).toBeLessThanOrEqual(0.18)
-    expect(material.userData.driftwoodRidgeLift).toBeGreaterThanOrEqual(0.12)
+    expect(material.userData.driftwoodCavityStrength).toBeGreaterThanOrEqual(0.19)
+    expect(material.userData.driftwoodCavityStrength).toBeLessThanOrEqual(0.22)
+    expect(material.userData.driftwoodRidgeLift).toBeGreaterThanOrEqual(0.14)
+    expect(material.emissiveIntensity).toBeGreaterThanOrEqual(0.2)
     expect(material.customProgramCacheKey?.()).toContain('driftwood-cavity')
+  })
+
+  it('adds extra left-mound contact wood around the root flare so the showcase trunk feels planted into the rocks', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': null,
+        'rock-ridge-hero': null,
+        'plant-sword-cluster': null,
+        'plant-fan-cluster': null
+      }
+    }, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    )
+    const rootBases = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-root-base'
+    ) ?? []
+    const detritusMounds = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-detritus-mound'
+    ) ?? []
+    const burialLip = driftwood?.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-burial-lip'
+    )
+    const rootFlare = driftwood?.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-root-flare'
+    )
+
+    expect(rootBases.length).toBeGreaterThanOrEqual(4)
+    expect(detritusMounds.length).toBeGreaterThanOrEqual(5)
+    expect((burialLip?.scale.x ?? 0)).toBeGreaterThanOrEqual(2.1)
+    expect((rootFlare?.scale.x ?? 0)).toBeGreaterThanOrEqual(3.1)
+    expect(rootBases.filter((base) => base.position.x < -1.5).length).toBeGreaterThanOrEqual(3)
+
+    getContextSpy.mockRestore()
   })
 
   it('supplements missing driftwood maps, adds uv2 for ao, and clamps glossy reflections on cloned hero assets', () => {

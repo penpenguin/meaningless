@@ -402,107 +402,199 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
 const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
   {
     id: 'left-rear',
-    x: -0.37,
-    z: -0.22,
+    x: -0.34,
+    z: -0.24,
     layer: 'background',
     massRole: 'left-rear',
-    plantType: 'vallisneria-tall',
-    baseHeight: 7.62,
-    spreadX: 0.24,
+    plantType: 'stem-green-bush',
+    baseHeight: 7.36,
+    spreadX: 0.22,
     spreadZ: 0.18,
-    hueBase: 0.244,
-    rotationY: -0.4,
-    scale: new THREE.Vector3(0.94, 1.86, 0.9),
-    heightMin: 6.84,
-    heightMax: 8.18,
+    hueBase: 0.264,
+    rotationY: -0.36,
+    scale: new THREE.Vector3(0.9, 1.52, 0.9),
+    heightMin: 6.42,
+    heightMax: 7.98,
     coreCount: 1,
-    satelliteCount: 1,
+    satelliteCount: 2,
     offshootCount: 1,
     coreRadius: [0.03, 0.16],
-    satelliteRadius: [0.16, 0.36],
-    offshootRadius: [0.34, 0.62],
-    minDistance: 0.062,
+    satelliteRadius: [0.14, 0.34],
+    offshootRadius: [0.32, 0.56],
+    minDistance: 0.058,
     depthLaneCount: 4,
     plantMix: [
-      { plantType: 'vallisneria-tall', weight: 0.54 },
-      { plantType: 'stem-green-bush', weight: 0.46 }
+      { plantType: 'stem-green-bush', weight: 0.52 },
+      { plantType: 'vallisneria-tall', weight: 0.2 },
+      { plantType: 'hygrophila-rear', weight: 0.28 }
     ],
-    assetIds: ['plant-vallisneria-tall', 'plant-stem-green-bush']
+    assetIds: ['plant-stem-green-bush', 'plant-vallisneria-tall', 'plant-hygrophila-rear']
   },
   {
     id: 'left-shoulder',
-    x: -0.26,
-    z: -0.04,
+    x: -0.24,
+    z: -0.02,
     layer: 'midground',
     massRole: 'left-shoulder',
     plantType: 'javafern-large',
-    baseHeight: 5.82,
-    spreadX: 0.24,
+    baseHeight: 5.96,
+    spreadX: 0.22,
     spreadZ: 0.18,
-    hueBase: 0.284,
+    hueBase: 0.278,
     rotationY: -0.28,
-    scale: new THREE.Vector3(0.96, 1.18, 0.9),
-    heightMin: 4.84,
-    heightMax: 6.26,
+    scale: new THREE.Vector3(0.92, 1.08, 0.88),
+    heightMin: 4.96,
+    heightMax: 6.34,
     coreCount: 1,
     satelliteCount: 2,
     offshootCount: 1,
     coreRadius: [0.03, 0.12],
-    satelliteRadius: [0.16, 0.36],
-    offshootRadius: [0.3, 0.54],
+    satelliteRadius: [0.12, 0.3],
+    offshootRadius: [0.24, 0.46],
     minDistance: 0.058,
     depthLaneCount: 3,
     plantMix: [
-      { plantType: 'javafern-large', weight: 0.38 },
-      { plantType: 'javafern-narrow', weight: 0.3 },
-      { plantType: 'anubias-nana-clump', weight: 0.32 }
+      { plantType: 'javafern-large', weight: 0.46 },
+      { plantType: 'anubias-nana-clump', weight: 0.24 },
+      { plantType: 'javafern-narrow', weight: 0.3 }
     ],
     assetIds: ['plant-javafern-large', 'plant-javafern-narrow', 'plant-anubias-nana-clump']
   },
   {
+    id: 'driftwood-backfill',
+    x: -0.12,
+    z: -0.08,
+    layer: 'midground',
+    massRole: 'driftwood-backfill',
+    plantType: 'javafern-narrow',
+    baseHeight: 4.36,
+    spreadX: 0.18,
+    spreadZ: 0.14,
+    hueBase: 0.272,
+    rotationY: 0.08,
+    scale: new THREE.Vector3(0.74, 0.92, 0.72),
+    heightMin: 3.28,
+    heightMax: 4.92,
+    coreCount: 1,
+    satelliteCount: 1,
+    offshootCount: 1,
+    coreRadius: [0.03, 0.12],
+    satelliteRadius: [0.12, 0.24],
+    offshootRadius: [0.22, 0.38],
+    minDistance: 0.054,
+    depthLaneCount: 3,
+    plantMix: [
+      { plantType: 'javafern-narrow', weight: 0.42 },
+      { plantType: 'anubias-petite-clump', weight: 0.2 },
+      { plantType: 'anubias-nana-clump', weight: 0.38 }
+    ],
+    assetIds: ['plant-javafern-narrow', 'plant-anubias-petite-clump', 'plant-anubias-nana-clump']
+  },
+  {
+    id: 'front-center',
+    x: 0.02,
+    z: -0.02,
+    layer: 'midground',
+    massRole: 'front-center',
+    plantType: 'anubias-nana-clump',
+    baseHeight: 3.56,
+    spreadX: 0.16,
+    spreadZ: 0.12,
+    hueBase: 0.248,
+    rotationY: 0.14,
+    scale: new THREE.Vector3(0.68, 0.74, 0.66),
+    heightMin: 2.88,
+    heightMax: 4.24,
+    coreCount: 1,
+    satelliteCount: 1,
+    offshootCount: 1,
+    coreRadius: [0.03, 0.1],
+    satelliteRadius: [0.1, 0.22],
+    offshootRadius: [0.22, 0.38],
+    minDistance: 0.052,
+    depthLaneCount: 3,
+    plantMix: [
+      { plantType: 'anubias-nana-clump', weight: 0.46 },
+      { plantType: 'javafern-large', weight: 0.22 },
+      { plantType: 'javafern-narrow', weight: 0.32 }
+    ],
+    assetIds: ['plant-anubias-nana-clump', 'plant-javafern-large', 'plant-javafern-narrow']
+  },
+  {
+    id: 'mid-right-backfill',
+    x: 0.08,
+    z: -0.04,
+    layer: 'midground',
+    massRole: 'mid-right-backfill',
+    plantType: 'crypt-brown',
+    baseHeight: 3.28,
+    spreadX: 0.13,
+    spreadZ: 0.12,
+    hueBase: 0.058,
+    rotationY: 0.16,
+    scale: new THREE.Vector3(0.64, 0.78, 0.62),
+    heightMin: 2.68,
+    heightMax: 4.02,
+    coreCount: 1,
+    satelliteCount: 1,
+    offshootCount: 1,
+    coreRadius: [0.03, 0.12],
+    satelliteRadius: [0.12, 0.24],
+    offshootRadius: [0.2, 0.34],
+    minDistance: 0.054,
+    depthLaneCount: 3,
+    plantMix: [
+      { plantType: 'crypt-brown', weight: 0.7 },
+      { plantType: 'anubias-nana-clump', weight: 0.08 },
+      { plantType: 'crypt-brown', weight: 0.22 }
+    ],
+    assetIds: ['plant-crypt-brown', 'plant-anubias-nana-clump']
+  },
+  {
+    id: 'right-rear',
+    x: 0.14,
+    z: -0.18,
+    layer: 'background',
+    massRole: 'right-rear',
+    plantType: 'crypt-brown',
+    baseHeight: 4.22,
+    spreadX: 0.12,
+    spreadZ: 0.14,
+    hueBase: 0.056,
+    rotationY: 0.22,
+    scale: new THREE.Vector3(0.64, 0.9, 0.62),
+    heightMin: 3.56,
+    heightMax: 4.88,
+    coreCount: 1,
+    satelliteCount: 2,
+    offshootCount: 1,
+    coreRadius: [0.03, 0.12],
+    satelliteRadius: [0.12, 0.28],
+    offshootRadius: [0.24, 0.4],
+    minDistance: 0.056,
+    depthLaneCount: 3,
+    plantMix: [
+      { plantType: 'crypt-brown', weight: 0.74 },
+      { plantType: 'anubias-nana-clump', weight: 0.1 },
+      { plantType: 'crypt-brown', weight: 0.16 }
+    ],
+    assetIds: ['plant-crypt-brown', 'plant-anubias-nana-clump']
+  },
+  {
     id: 'left-foot',
-    x: -0.16,
+    x: -0.18,
     z: 0.14,
     layer: 'foreground',
     massRole: 'left-foot',
     plantType: 'anubias-petite-clump',
-    baseHeight: 1.34,
-    spreadX: 0.12,
-    spreadZ: 0.08,
-    hueBase: 0.258,
-    rotationY: -0.06,
-    scale: new THREE.Vector3(0.58, 0.54, 0.56),
-    heightMin: 0.92,
-    heightMax: 1.42,
-    coreCount: 1,
-    satelliteCount: 1,
-    offshootCount: 0,
-    coreRadius: [0.02, 0.08],
-    satelliteRadius: [0.1, 0.2],
-    offshootRadius: [0.24, 0.36],
-    minDistance: 0.05,
-    depthLaneCount: 2,
-    plantMix: [
-      { plantType: 'anubias-petite-clump', weight: 0.72 },
-      { plantType: 'anubias-nana-clump', weight: 0.28 }
-    ],
-    assetIds: ['plant-anubias-petite-clump', 'plant-anubias-nana-clump']
-  },
-  {
-    id: 'front-center',
-    x: -0.04,
-    z: 0.1,
-    layer: 'foreground',
-    massRole: 'front-center',
-    plantType: 'anubias-petite-clump',
-    baseHeight: 1.18,
+    baseHeight: 1.28,
     spreadX: 0.1,
     spreadZ: 0.08,
-    hueBase: 0.262,
-    rotationY: 0.08,
+    hueBase: 0.252,
+    rotationY: -0.1,
     scale: new THREE.Vector3(0.54, 0.5, 0.52),
-    heightMin: 0.82,
-    heightMax: 1.24,
+    heightMin: 0.9,
+    heightMax: 1.36,
     coreCount: 1,
     satelliteCount: 1,
     offshootCount: 0,
@@ -512,68 +604,10 @@ const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
     minDistance: 0.048,
     depthLaneCount: 2,
     plantMix: [
-      { plantType: 'anubias-petite-clump', weight: 0.74 },
-      { plantType: 'anubias-nana-clump', weight: 0.26 }
+      { plantType: 'anubias-petite-clump', weight: 0.78 },
+      { plantType: 'anubias-nana-clump', weight: 0.22 }
     ],
     assetIds: ['plant-anubias-petite-clump', 'plant-anubias-nana-clump']
-  },
-  {
-    id: 'mid-right-backfill',
-    x: 0.08,
-    z: -0.02,
-    layer: 'midground',
-    massRole: 'mid-right-backfill',
-    plantType: 'crypt-brown',
-    baseHeight: 3.42,
-    spreadX: 0.14,
-    spreadZ: 0.12,
-    hueBase: 0.07,
-    rotationY: 0.16,
-    scale: new THREE.Vector3(0.66, 0.8, 0.64),
-    heightMin: 2.72,
-    heightMax: 4.08,
-    coreCount: 1,
-    satelliteCount: 1,
-    offshootCount: 0,
-    coreRadius: [0.03, 0.12],
-    satelliteRadius: [0.14, 0.26],
-    offshootRadius: [0.26, 0.38],
-    minDistance: 0.056,
-    depthLaneCount: 2,
-    plantMix: [
-      { plantType: 'crypt-brown', weight: 0.76 },
-      { plantType: 'anubias-nana-clump', weight: 0.24 }
-    ],
-    assetIds: ['plant-crypt-brown', 'plant-anubias-nana-clump']
-  },
-  {
-    id: 'right-rear',
-    x: 0.12,
-    z: -0.16,
-    layer: 'background',
-    massRole: 'right-rear',
-    plantType: 'crypt-brown',
-    baseHeight: 4.46,
-    spreadX: 0.12,
-    spreadZ: 0.12,
-    hueBase: 0.068,
-    rotationY: 0.22,
-    scale: new THREE.Vector3(0.66, 0.96, 0.64),
-    heightMin: 3.84,
-    heightMax: 5.04,
-    coreCount: 1,
-    satelliteCount: 1,
-    offshootCount: 0,
-    coreRadius: [0.03, 0.12],
-    satelliteRadius: [0.12, 0.26],
-    offshootRadius: [0.24, 0.34],
-    minDistance: 0.058,
-    depthLaneCount: 2,
-    plantMix: [
-      { plantType: 'crypt-brown', weight: 0.8 },
-      { plantType: 'anubias-nana-clump', weight: 0.2 }
-    ],
-    assetIds: ['plant-crypt-brown', 'plant-anubias-nana-clump']
   }
 ]
 
@@ -1159,6 +1193,19 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     assetIds: ['plant-anubias-petite-clump']
   },
   {
+    id: 'driftwood-fork-pocket-lower',
+    host: 'driftwood',
+    massRole: 'branch-crotch',
+    layer: 'midground',
+    plantType: 'anubias-petite-clump',
+    position: new THREE.Vector3(-1.36, 0.92, 0.42),
+    rotation: new THREE.Euler(-0.24, 0.12, 0.14),
+    scale: new THREE.Vector3(0.24, 0.24, 0.24),
+    height: 1.18,
+    hueBase: 0.252,
+    assetIds: ['plant-anubias-petite-clump']
+  },
+  {
     id: 'driftwood-root-flare-pocket',
     host: 'driftwood',
     massRole: 'root-flare',
@@ -1172,7 +1219,7 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     assetIds: ['plant-anubias-petite-clump']
   },
   {
-    id: 'driftwood-branch-crotch-upper',
+    id: 'driftwood-fork-pocket-upper',
     host: 'driftwood',
     massRole: 'branch-crotch',
     layer: 'midground',
@@ -1185,7 +1232,7 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     assetIds: ['plant-javafern-narrow']
   },
   {
-    id: 'driftwood-branch-crotch-right',
+    id: 'driftwood-fork-pocket-right',
     host: 'driftwood',
     massRole: 'branch-crotch',
     layer: 'midground',
@@ -1211,6 +1258,19 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     assetIds: ['plant-anubias-nana-clump']
   },
   {
+    id: 'driftwood-fork-pocket-rear',
+    host: 'driftwood',
+    massRole: 'branch-crotch',
+    layer: 'midground',
+    plantType: 'javafern-narrow',
+    position: new THREE.Vector3(-0.36, 1.98, 0.08),
+    rotation: new THREE.Euler(-0.18, 0.34, -0.08),
+    scale: new THREE.Vector3(0.22, 0.22, 0.22),
+    height: 1.68,
+    hueBase: 0.284,
+    assetIds: ['plant-javafern-narrow']
+  },
+  {
     id: 'rock-crevice-left',
     host: 'rock',
     massRole: 'rock-crevice',
@@ -1222,6 +1282,19 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     height: 1.18,
     hueBase: 0.258,
     assetIds: ['plant-anubias-petite-clump']
+  },
+  {
+    id: 'wood-rock-junction-left',
+    host: 'rock',
+    massRole: 'rock-crevice',
+    layer: 'midground',
+    plantType: 'anubias-nana-clump',
+    position: new THREE.Vector3(-0.58, 0.52, 0.06),
+    rotation: new THREE.Euler(-0.22, 0.24, 0.14),
+    scale: new THREE.Vector3(0.2, 0.2, 0.2),
+    height: 1.26,
+    hueBase: 0.248,
+    assetIds: ['plant-anubias-nana-clump']
   },
   {
     id: 'rock-crevice-center',
@@ -1248,6 +1321,19 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     height: 1.18,
     hueBase: 0.256,
     assetIds: ['plant-anubias-nana-clump']
+  },
+  {
+    id: 'wood-rock-junction-front',
+    host: 'rock',
+    massRole: 'rock-crevice',
+    layer: 'midground',
+    plantType: 'javafern-large',
+    position: new THREE.Vector3(-0.14, 0.62, 0.08),
+    rotation: new THREE.Euler(-0.18, -0.18, 0.08),
+    scale: new THREE.Vector3(0.18, 0.18, 0.18),
+    height: 1.48,
+    hueBase: 0.276,
+    assetIds: ['plant-javafern-large']
   }
 ]
 
@@ -2327,9 +2413,7 @@ export class AquascapingSystem {
   private tuneDriftwoodMaterial<T extends THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial>(material: T): T {
     material.map = material.map ?? this.getVisualTexture('driftwood-diffuse')
     material.normalMap = material.normalMap ?? this.getVisualTexture('driftwood-normal')
-    if (material.normalMap) {
-      material.normalScale = new THREE.Vector2(1.24, 0.74)
-    }
+    material.normalScale = new THREE.Vector2(1.36, 0.64)
     material.roughnessMap = material.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
     material.aoMap = material.aoMap
       ?? this.getVisualTexture('driftwood-bark-ao')
@@ -2340,17 +2424,17 @@ export class AquascapingSystem {
     const driftwoodColor = material.color?.clone() ?? new THREE.Color('#6f5641')
     const driftwoodHsl = { h: 0, s: 0, l: 0 }
     driftwoodColor.getHSL(driftwoodHsl)
-    if (driftwoodHsl.l < 0.35) {
+    if (driftwoodHsl.l < 0.37) {
       driftwoodColor.setHSL(
         driftwoodHsl.h,
         THREE.MathUtils.clamp(driftwoodHsl.s * 0.78 + 0.025, 0.1, 0.24),
-        0.4
+        0.42
       )
     }
     material.color = driftwoodColor
     material.emissive = material.emissive ?? new THREE.Color('#000000')
     material.emissive.lerp(new THREE.Color('#5f4328'), 0.28)
-    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.18)
+    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.2)
     material.roughness = typeof material.roughness === 'number'
       ? Math.max(material.roughness, material.roughnessMap ? 0.9 : 0.94)
       : material.roughnessMap ? 0.91 : 0.95
@@ -2376,8 +2460,8 @@ export class AquascapingSystem {
     material: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial,
     cavityMask: THREE.Texture
   ): void {
-    const cavityStrength = 0.18
-    const ridgeLift = 0.13
+    const cavityStrength = 0.2
+    const ridgeLift = 0.15
     material.userData = {
       ...material.userData,
       driftwoodCavityMask: cavityMask,
@@ -2619,12 +2703,12 @@ uniform float uDriftwoodRidgeLift;`
     const driftwoodGroup = new THREE.Group()
     if (this.layoutStyle === 'nature-showcase') {
       driftwoodGroup.position.set(
-        center.x - size.x * 0.164,
-        bounds.min.y + 0.94,
-        center.z - size.z * 0.02
+        center.x - size.x * 0.176,
+        bounds.min.y + 0.9,
+        center.z - size.z * 0.012
       )
-      driftwoodGroup.rotation.set(-0.08, -0.58, 0.22)
-      driftwoodGroup.scale.set(1.74, 1.38, 1.18)
+      driftwoodGroup.rotation.set(-0.1, -0.5, 0.18)
+      driftwoodGroup.scale.set(1.8, 1.4, 1.16)
     } else {
       driftwoodGroup.position.set(
         center.x + size.x * 0.056,
@@ -3006,23 +3090,46 @@ uniform float uDriftwoodRidgeLift;`
   }
 
   private createHeroDriftwoodRootBases(material: THREE.Material): THREE.Mesh[] {
-    const rootBaseDefinitions = [
-      {
-        position: new THREE.Vector3(-2.18, -0.12, 0.74),
-        rotation: new THREE.Euler(-0.24, 0.34, 0.1),
-        scale: new THREE.Vector3(0.98, 0.22, 0.58)
-      },
-      {
-        position: new THREE.Vector3(-1.42, -0.08, 0.36),
-        rotation: new THREE.Euler(-0.18, 0.26, -0.04),
-        scale: new THREE.Vector3(0.7, 0.18, 0.42)
-      },
-      {
-        position: new THREE.Vector3(-2.46, -0.06, 0.92),
-        rotation: new THREE.Euler(-0.28, 0.42, 0.2),
-        scale: new THREE.Vector3(1.08, 0.24, 0.66)
-      }
-    ]
+    const rootBaseDefinitions = this.layoutStyle === 'nature-showcase'
+      ? [
+        {
+          position: new THREE.Vector3(-2.24, -0.14, 0.76),
+          rotation: new THREE.Euler(-0.26, 0.38, 0.12),
+          scale: new THREE.Vector3(1.08, 0.24, 0.64)
+        },
+        {
+          position: new THREE.Vector3(-1.84, -0.1, 0.52),
+          rotation: new THREE.Euler(-0.22, 0.3, 0.04),
+          scale: new THREE.Vector3(0.82, 0.2, 0.48)
+        },
+        {
+          position: new THREE.Vector3(-2.54, -0.08, 0.96),
+          rotation: new THREE.Euler(-0.32, 0.46, 0.22),
+          scale: new THREE.Vector3(1.18, 0.26, 0.7)
+        },
+        {
+          position: new THREE.Vector3(-1.58, -0.08, 0.34),
+          rotation: new THREE.Euler(-0.2, 0.24, -0.08),
+          scale: new THREE.Vector3(0.72, 0.18, 0.42)
+        }
+      ]
+      : [
+        {
+          position: new THREE.Vector3(-2.18, -0.12, 0.74),
+          rotation: new THREE.Euler(-0.24, 0.34, 0.1),
+          scale: new THREE.Vector3(0.98, 0.22, 0.58)
+        },
+        {
+          position: new THREE.Vector3(-1.42, -0.08, 0.36),
+          rotation: new THREE.Euler(-0.18, 0.26, -0.04),
+          scale: new THREE.Vector3(0.7, 0.18, 0.42)
+        },
+        {
+          position: new THREE.Vector3(-2.46, -0.06, 0.92),
+          rotation: new THREE.Euler(-0.28, 0.42, 0.2),
+          scale: new THREE.Vector3(1.08, 0.24, 0.66)
+        }
+      ]
 
     return rootBaseDefinitions.map((definition) => {
       const rootBase = new THREE.Mesh(
@@ -3046,9 +3153,15 @@ uniform float uDriftwoodRidgeLift;`
       new THREE.SphereGeometry(0.46, 18, 12),
       material
     )
-    rootFlare.position.set(-2.04, -0.08, 0.58)
-    rootFlare.scale.set(2.92, 1.08, 1.92)
-    rootFlare.rotation.set(-0.26, 0.36, 0.1)
+    if (this.layoutStyle === 'nature-showcase') {
+      rootFlare.position.set(-2.14, -0.1, 0.64)
+      rootFlare.scale.set(3.18, 1.14, 2.08)
+      rootFlare.rotation.set(-0.3, 0.42, 0.12)
+    } else {
+      rootFlare.position.set(-2.04, -0.08, 0.58)
+      rootFlare.scale.set(2.92, 1.08, 1.92)
+      rootFlare.rotation.set(-0.26, 0.36, 0.1)
+    }
     rootFlare.castShadow = true
     rootFlare.receiveShadow = true
     rootFlare.userData = {
@@ -3076,8 +3189,12 @@ uniform float uDriftwoodRidgeLift;`
   }
 
   private createHeroDriftwoodLocalFill(): THREE.PointLight {
-    const fill = new THREE.PointLight('#f4ebd8', 3.4, 9.6, 1.8)
-    fill.position.set(0.42, 0.76, 2.34)
+    const fill = new THREE.PointLight('#f4ebd8', this.layoutStyle === 'nature-showcase' ? 3.72 : 3.4, 9.6, 1.8)
+    fill.position.set(
+      this.layoutStyle === 'nature-showcase' ? 0.28 : 0.42,
+      this.layoutStyle === 'nature-showcase' ? 0.74 : 0.76,
+      this.layoutStyle === 'nature-showcase' ? 2.48 : 2.34
+    )
     fill.userData = {
       role: 'driftwood-local-fill'
     }
@@ -3085,8 +3202,12 @@ uniform float uDriftwoodRidgeLift;`
   }
 
   private createHeroDriftwoodLocalRim(): THREE.PointLight {
-    const rim = new THREE.PointLight('#adc0b8', 1.04, 6.1, 1.8)
-    rim.position.set(-1.18, 1.96, -1.08)
+    const rim = new THREE.PointLight('#adc0b8', this.layoutStyle === 'nature-showcase' ? 1.14 : 1.04, 6.1, 1.8)
+    rim.position.set(
+      this.layoutStyle === 'nature-showcase' ? -1.34 : -1.18,
+      this.layoutStyle === 'nature-showcase' ? 2.08 : 1.96,
+      this.layoutStyle === 'nature-showcase' ? -1.16 : -1.08
+    )
     rim.userData = {
       role: 'driftwood-local-rim'
     }
@@ -3094,15 +3215,25 @@ uniform float uDriftwoodRidgeLift;`
   }
 
   private fitHeroDriftwoodAssetCore(asset: THREE.Group, tankSize: THREE.Vector3): void {
-    asset.rotation.set(-0.24, 0.42, -0.08)
+    if (this.layoutStyle === 'nature-showcase') {
+      asset.rotation.set(-0.18, 0.54, -0.02)
+    } else {
+      asset.rotation.set(-0.24, 0.42, -0.08)
+    }
 
     const sourceBounds = new THREE.Box3().setFromObject(asset)
     const sourceSize = sourceBounds.getSize(new THREE.Vector3())
-    const targetSize = new THREE.Vector3(
-      tankSize.x * 0.312,
-      tankSize.y * 0.35,
-      tankSize.z * 0.244
-    )
+    const targetSize = this.layoutStyle === 'nature-showcase'
+      ? new THREE.Vector3(
+        tankSize.x * 0.286,
+        tankSize.y * 0.312,
+        tankSize.z * 0.218
+      )
+      : new THREE.Vector3(
+        tankSize.x * 0.312,
+        tankSize.y * 0.35,
+        tankSize.z * 0.244
+      )
 
     asset.scale.set(
       targetSize.x / Math.max(sourceSize.x, 0.001),
@@ -3112,11 +3243,19 @@ uniform float uDriftwoodRidgeLift;`
 
     const fittedBounds = new THREE.Box3().setFromObject(asset)
     const fittedCenter = fittedBounds.getCenter(new THREE.Vector3())
-    asset.position.set(
-      1.16 - fittedCenter.x,
-      0.58 - fittedBounds.min.y,
-      0.42 - fittedCenter.z
-    )
+    if (this.layoutStyle === 'nature-showcase') {
+      asset.position.set(
+        0.82 - fittedCenter.x,
+        0.5 - fittedBounds.min.y,
+        0.36 - fittedCenter.z
+      )
+    } else {
+      asset.position.set(
+        1.16 - fittedCenter.x,
+        0.58 - fittedBounds.min.y,
+        0.42 - fittedCenter.z
+      )
+    }
   }
 
   private createHeroDriftwoodSecondaryAssets(tankSize: THREE.Vector3): THREE.Group[] {
@@ -3124,25 +3263,25 @@ uniform float uDriftwoodRidgeLift;`
       ? [
         {
           id: 'driftwood-secondary-a',
-          position: new THREE.Vector3(-0.54, 1.06, 0.34),
-          rotation: new THREE.Euler(-0.56, 0.48, 0.52),
-          sizeRatio: new THREE.Vector3(0.13, 0.14, 0.1),
-          buryAmount: 0.24,
+          position: new THREE.Vector3(-0.84, 0.98, 0.46),
+          rotation: new THREE.Euler(-0.68, 0.38, 0.6),
+          sizeRatio: new THREE.Vector3(0.15, 0.16, 0.11),
+          buryAmount: 0.34,
           pieceRole: 'bridge'
         },
         {
           id: 'driftwood-secondary-b',
-          position: new THREE.Vector3(2.24, 2.34, 0.58),
-          rotation: new THREE.Euler(-0.28, 0.98, -0.08),
-          sizeRatio: new THREE.Vector3(0.16, 0.17, 0.1),
-          buryAmount: 0.08,
+          position: new THREE.Vector3(2.06, 2.18, 0.74),
+          rotation: new THREE.Euler(-0.22, 1.06, -0.24),
+          sizeRatio: new THREE.Vector3(0.17, 0.18, 0.11),
+          buryAmount: 0.12,
           pieceRole: 'counter-fork'
         },
         {
           id: 'driftwood-secondary-c',
-          position: new THREE.Vector3(1.68, 3.18, -0.38),
-          rotation: new THREE.Euler(0.22, 1.24, 0.74),
-          sizeRatio: new THREE.Vector3(0.11, 0.13, 0.08),
+          position: new THREE.Vector3(1.54, 3.34, -0.42),
+          rotation: new THREE.Euler(0.3, 1.28, 0.88),
+          sizeRatio: new THREE.Vector3(0.1, 0.14, 0.08),
           buryAmount: 0.03,
           pieceRole: 'uplift-fork'
         }
@@ -3723,7 +3862,10 @@ uniform float uDriftwoodRidgeLift;`
     if (!driftwoodGroup) return
 
     const burialShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(size.x * 0.23, size.z * 0.18),
+      new THREE.PlaneGeometry(
+        size.x * (this.layoutStyle === 'nature-showcase' ? 0.26 : 0.23),
+        size.z * (this.layoutStyle === 'nature-showcase' ? 0.2 : 0.18)
+      ),
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#102026'),
         transparent: true,
@@ -3732,7 +3874,11 @@ uniform float uDriftwoodRidgeLift;`
       })
     )
     burialShadow.rotation.x = -Math.PI / 2
-    burialShadow.position.set(-1.86, 0.02, 0.7)
+    burialShadow.position.set(
+      this.layoutStyle === 'nature-showcase' ? -2.04 : -1.86,
+      0.02,
+      this.layoutStyle === 'nature-showcase' ? 0.76 : 0.7
+    )
     burialShadow.userData = {
       role: 'driftwood-burial-shadow'
     }
@@ -3746,37 +3892,71 @@ uniform float uDriftwoodRidgeLift;`
         metalness: 0
       })
     )
-    burialLip.position.set(-2.02, 0.14, 0.66)
-    burialLip.scale.set(1.96, 0.22, 1.14)
-    burialLip.rotation.set(-0.18, 0.3, 0.12)
+    if (this.layoutStyle === 'nature-showcase') {
+      burialLip.position.set(-2.12, 0.16, 0.74)
+      burialLip.scale.set(2.2, 0.28, 1.24)
+      burialLip.rotation.set(-0.22, 0.38, 0.16)
+    } else {
+      burialLip.position.set(-2.02, 0.14, 0.66)
+      burialLip.scale.set(1.96, 0.22, 1.14)
+      burialLip.rotation.set(-0.18, 0.3, 0.12)
+    }
     burialLip.receiveShadow = true
     burialLip.userData = {
       role: 'driftwood-burial-lip'
     }
     driftwoodGroup.add(burialLip)
 
-    const moundDefinitions = [
-      {
-        offset: new THREE.Vector3(-2.18, 0.14, 0.72),
-        scale: new THREE.Vector3(1.12, 0.24, 0.6),
-        color: '#9b896e'
-      },
-      {
-        offset: new THREE.Vector3(-1.54, 0.1, 0.56),
-        scale: new THREE.Vector3(0.82, 0.16, 0.46),
-        color: '#85745b'
-      },
-      {
-        offset: new THREE.Vector3(-1.92, 0.12, 0.38),
-        scale: new THREE.Vector3(0.64, 0.14, 0.34),
-        color: '#85745b'
-      },
-      {
-        offset: new THREE.Vector3(-1.18, 0.08, 0.28),
-        scale: new THREE.Vector3(0.58, 0.12, 0.3),
-        color: '#85745b'
-      }
-    ]
+    const moundDefinitions = this.layoutStyle === 'nature-showcase'
+      ? [
+        {
+          offset: new THREE.Vector3(-2.24, 0.16, 0.76),
+          scale: new THREE.Vector3(1.2, 0.26, 0.66),
+          color: '#9f8d70'
+        },
+        {
+          offset: new THREE.Vector3(-1.72, 0.12, 0.62),
+          scale: new THREE.Vector3(0.9, 0.18, 0.52),
+          color: '#8e7c60'
+        },
+        {
+          offset: new THREE.Vector3(-2.02, 0.14, 0.44),
+          scale: new THREE.Vector3(0.72, 0.16, 0.4),
+          color: '#8a785d'
+        },
+        {
+          offset: new THREE.Vector3(-1.36, 0.1, 0.32),
+          scale: new THREE.Vector3(0.66, 0.14, 0.34),
+          color: '#85745b'
+        },
+        {
+          offset: new THREE.Vector3(-2.46, 0.12, 0.94),
+          scale: new THREE.Vector3(0.78, 0.16, 0.42),
+          color: '#7e6f58'
+        }
+      ]
+      : [
+        {
+          offset: new THREE.Vector3(-2.18, 0.14, 0.72),
+          scale: new THREE.Vector3(1.12, 0.24, 0.6),
+          color: '#9b896e'
+        },
+        {
+          offset: new THREE.Vector3(-1.54, 0.1, 0.56),
+          scale: new THREE.Vector3(0.82, 0.16, 0.46),
+          color: '#85745b'
+        },
+        {
+          offset: new THREE.Vector3(-1.92, 0.12, 0.38),
+          scale: new THREE.Vector3(0.64, 0.14, 0.34),
+          color: '#85745b'
+        },
+        {
+          offset: new THREE.Vector3(-1.18, 0.08, 0.28),
+          scale: new THREE.Vector3(0.58, 0.12, 0.3),
+          color: '#85745b'
+        }
+      ]
     moundDefinitions.forEach((definition) => {
       const mound = new THREE.Mesh(
         new THREE.SphereGeometry(0.44, 18, 12),
