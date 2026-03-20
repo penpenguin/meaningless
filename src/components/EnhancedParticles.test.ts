@@ -22,9 +22,12 @@ describe('EnhancedParticleSystem layering', () => {
       .toBeGreaterThan((bubblePlumes?.geometry.getAttribute('position') as THREE.BufferAttribute | undefined)?.count ?? 0)
     expect((bubblePlumes?.material as THREE.ShaderMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
     expect((suspendedMotes?.material as THREE.ShaderMaterial | undefined)?.blending).toBe(THREE.NormalBlending)
+    expect(((suspendedMotes?.material as THREE.ShaderMaterial | undefined)?.uniforms.opacityScale.value) ?? 0).toBeLessThan(0.18)
+    expect((((suspendedMotes?.material as THREE.ShaderMaterial | undefined)?.uniforms.color.value) as THREE.Color | undefined)?.g ?? 0)
+      .toBeGreaterThan(((((suspendedMotes?.material as THREE.ShaderMaterial | undefined)?.uniforms.color.value) as THREE.Color | undefined)?.b ?? 0))
   })
 
-  it('drops the suspended motes on simple quality but keeps the bubble plumes active', () => {
+  it('keeps a faint freshwater haze on simple quality while reducing the suspended motes', () => {
     const scene = new THREE.Scene()
     const bounds = createOpenWaterBounds()
     const particleSystem = new EnhancedParticleSystem(scene, bounds)
@@ -40,10 +43,14 @@ describe('EnhancedParticleSystem layering', () => {
     )
 
     expect(bubblePlumes?.visible).toBe(true)
-    expect(suspendedMotes?.visible).toBe(false)
+    expect(suspendedMotes?.visible).toBe(true)
+    expect(((suspendedMotes?.material as THREE.ShaderMaterial | undefined)?.uniforms.opacityScale.value) ?? 0)
+      .toBeGreaterThan(0.03)
 
     particleSystem.setQuality('standard')
 
     expect(suspendedMotes?.visible).toBe(true)
+    expect(((suspendedMotes?.material as THREE.ShaderMaterial | undefined)?.uniforms.opacityScale.value) ?? 0)
+      .toBeGreaterThan(0.1)
   })
 })

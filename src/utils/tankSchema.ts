@@ -24,7 +24,9 @@ const isObject = (value: unknown): value is Record<string, unknown> => {
 
 const isString = (value: unknown): value is string => typeof value === 'string'
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
-const isLayoutStyle = (value: unknown): value is Theme['layoutStyle'] => value === 'planted' || value === 'marine'
+const isLayoutStyle = (value: unknown): value is Theme['layoutStyle'] => (
+  value === 'planted' || value === 'marine' || value === 'nature-showcase'
+)
 
 const validateTheme = (value: unknown): value is Theme => {
   if (!isObject(value)) return false

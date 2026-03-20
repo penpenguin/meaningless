@@ -1,5 +1,5 @@
 export type ViewMode = 'view' | 'edit'
-export type AquascapeLayoutStyle = 'planted' | 'marine'
+export type AquascapeLayoutStyle = 'planted' | 'marine' | 'nature-showcase'
 
 export type Theme = {
   glassFrameStrength: number

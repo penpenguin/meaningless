@@ -44,7 +44,7 @@ const isString = (value: unknown): value is string => {
 }
 
 const isLayoutStyle = (value: unknown): value is Theme['layoutStyle'] => {
-  return value === 'planted' || value === 'marine'
+  return value === 'planted' || value === 'marine' || value === 'nature-showcase'
 }
 
 const isBoolean = (value: unknown): value is boolean => {

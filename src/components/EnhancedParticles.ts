@@ -231,8 +231,8 @@ export class EnhancedParticleSystem {
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
-        color: { value: new THREE.Color(0.58, 0.8, 0.84) },
-        opacityScale: { value: 0.22 },
+        color: { value: new THREE.Color(0.65, 0.72, 0.66) },
+        opacityScale: { value: 0.16 },
         verticalBounds: { value: new THREE.Vector2(bounds.min.y, bounds.max.y) }
       },
       vertexShader: moteVertexShader,
@@ -268,8 +268,8 @@ export class EnhancedParticleSystem {
     this.bubbleSystem.material.uniforms.opacityBoost.value =
       quality === 'standard' ? 1 : 0.72
 
-    this.moteSystem.points.visible = quality === 'standard'
+    this.moteSystem.points.visible = true
     this.moteSystem.material.uniforms.opacityScale.value =
-      quality === 'standard' ? 0.22 : 0
+      quality === 'standard' ? 0.16 : 0.05
   }
 }

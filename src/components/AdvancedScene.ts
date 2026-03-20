@@ -1134,10 +1134,10 @@ export class AdvancedAquariumScene {
     }
 
     const baseGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    baseGradient.addColorStop(0, 'rgba(150, 165, 145, 0.24)')
-    baseGradient.addColorStop(0.38, 'rgba(78, 96, 87, 0.42)')
-    baseGradient.addColorStop(0.72, 'rgba(46, 61, 56, 0.58)')
-    baseGradient.addColorStop(1, 'rgba(26, 34, 31, 0.82)')
+    baseGradient.addColorStop(0, 'rgba(128, 140, 118, 0.22)')
+    baseGradient.addColorStop(0.34, 'rgba(72, 85, 73, 0.4)')
+    baseGradient.addColorStop(0.7, 'rgba(37, 48, 44, 0.62)')
+    baseGradient.addColorStop(1, 'rgba(21, 27, 25, 0.84)')
     ctx.fillStyle = baseGradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -1149,9 +1149,9 @@ export class AdvancedAquariumScene {
       canvas.height * 0.22,
       canvas.width * 0.64
     )
-    haze.addColorStop(0, 'rgba(214, 225, 208, 0.16)')
-    haze.addColorStop(0.45, 'rgba(132, 153, 141, 0.08)')
-    haze.addColorStop(1, 'rgba(26, 34, 31, 0)')
+    haze.addColorStop(0, 'rgba(196, 205, 189, 0.15)')
+    haze.addColorStop(0.45, 'rgba(117, 133, 121, 0.08)')
+    haze.addColorStop(1, 'rgba(21, 27, 25, 0)')
     ctx.fillStyle = haze
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -1163,21 +1163,21 @@ export class AdvancedAquariumScene {
       canvas.height * 0.44,
       canvas.width * 0.34
     )
-    sideHaze.addColorStop(0, 'rgba(173, 191, 180, 0.12)')
-    sideHaze.addColorStop(0.52, 'rgba(101, 121, 113, 0.08)')
-    sideHaze.addColorStop(1, 'rgba(26, 34, 31, 0)')
+    sideHaze.addColorStop(0, 'rgba(161, 176, 164, 0.11)')
+    sideHaze.addColorStop(0.52, 'rgba(92, 108, 101, 0.08)')
+    sideHaze.addColorStop(1, 'rgba(21, 27, 25, 0)')
     ctx.fillStyle = sideHaze
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     const upperMist = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.62)
-    upperMist.addColorStop(0, 'rgba(230, 234, 224, 0.18)')
-    upperMist.addColorStop(0.32, 'rgba(172, 182, 168, 0.1)')
+    upperMist.addColorStop(0, 'rgba(220, 224, 214, 0.16)')
+    upperMist.addColorStop(0.32, 'rgba(160, 170, 156, 0.1)')
     upperMist.addColorStop(1, 'rgba(255, 255, 255, 0)')
     ctx.fillStyle = upperMist
     ctx.fillRect(0, 0, canvas.width, canvas.height * 0.62)
 
     ctx.lineWidth = 18
-    ctx.strokeStyle = 'rgba(17, 27, 24, 0.24)'
+    ctx.strokeStyle = 'rgba(18, 24, 21, 0.22)'
     ;[
       { x: 0.16, height: 0.32, bend: -0.05 },
       { x: 0.35, height: 0.48, bend: 0.04 },
@@ -1350,12 +1350,12 @@ export class AdvancedAquariumScene {
     const heroFrontFillPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.heroFrontFill)
 
     const lightCanopy = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth * 0.74, tankHeight * 0.36),
+      new THREE.PlaneGeometry(tankWidth * 0.82, tankHeight * 0.4),
       new THREE.MeshBasicMaterial({
         map: this.createHeroLightCanopyTexture(),
-        color: new THREE.Color('#d9e5d8'),
+        color: new THREE.Color('#d8dfcf'),
         transparent: true,
-        opacity: 0.16,
+        opacity: 0.14,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -1364,7 +1364,7 @@ export class AdvancedAquariumScene {
     lightCanopy.name = 'tank-light-canopy'
     lightCanopy.position.copy(lightCanopyPosition)
     lightCanopy.renderOrder = 2
-    lightCanopy.userData.baseOpacity = 0.18
+    lightCanopy.userData.baseOpacity = 0.15
     lightCanopy.userData.baseY = lightCanopyPosition.y
     this.lightCanopyMesh = lightCanopy
     this.tank.add(lightCanopy)
@@ -1394,9 +1394,9 @@ export class AdvancedAquariumScene {
       new THREE.PlaneGeometry(tankWidth * 0.44, tankDepth * 0.34),
       new THREE.MeshBasicMaterial({
         map: this.createHeroGroundGlowTexture(),
-        color: new THREE.Color('#d4d7ba'),
+        color: new THREE.Color('#d1ccb0'),
         transparent: true,
-        opacity: 0.15,
+        opacity: 0.11,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -1406,7 +1406,7 @@ export class AdvancedAquariumScene {
     heroGroundGlow.rotation.x = -Math.PI / 2
     heroGroundGlow.position.copy(heroGroundGlowPosition)
     heroGroundGlow.renderOrder = 2
-    heroGroundGlow.userData.baseOpacity = 0.18
+    heroGroundGlow.userData.baseOpacity = 0.13
     this.heroGroundGlowMesh = heroGroundGlow
     this.tank.add(heroGroundGlow)
 
@@ -1414,9 +1414,9 @@ export class AdvancedAquariumScene {
       new THREE.PlaneGeometry(tankWidth * 0.34, tankHeight * 0.32),
       new THREE.MeshBasicMaterial({
         map: this.createHeroFrontFillTexture(),
-        color: new THREE.Color('#d7dfca'),
+        color: new THREE.Color('#d4d7c4'),
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.1,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -1427,7 +1427,7 @@ export class AdvancedAquariumScene {
     heroFrontFill.rotation.y = 0.08
     heroFrontFill.rotation.z = -0.04
     heroFrontFill.renderOrder = 2
-    heroFrontFill.userData.baseOpacity = 0.16
+    heroFrontFill.userData.baseOpacity = 0.13
     heroFrontFill.userData.baseX = heroFrontFillPosition.x
     heroFrontFill.userData.baseY = heroFrontFillPosition.y
     this.heroFrontFillMesh = heroFrontFill
@@ -1689,7 +1689,7 @@ export class AdvancedAquariumScene {
         new THREE.PlaneGeometry(width, depth),
         new THREE.MeshBasicMaterial({
           map: this.createHardscapeOcclusionTexture('floor'),
-          color: new THREE.Color('#102129'),
+          color: new THREE.Color('#171d1b'),
           transparent: true,
           opacity,
           depthWrite: false,
@@ -1717,7 +1717,7 @@ export class AdvancedAquariumScene {
       driftwoodAnchor,
       tankWidth * 0.24,
       tankDepth * 0.18,
-      0.14,
+      0.108,
       0.82,
       -0.02,
       0.24
@@ -1727,7 +1727,7 @@ export class AdvancedAquariumScene {
       ridgeAnchor,
       tankWidth * 0.28,
       tankDepth * 0.22,
-      0.17,
+      0.132,
       0.86,
       0.16,
       0.12
@@ -1737,9 +1737,9 @@ export class AdvancedAquariumScene {
       new THREE.PlaneGeometry(tankWidth * 0.54, tankHeight * 0.5),
       new THREE.MeshBasicMaterial({
         map: this.createHardscapeOcclusionTexture('backwall'),
-        color: new THREE.Color('#10222a'),
+        color: new THREE.Color('#181f1d'),
         transparent: true,
-        opacity: 0.115,
+        opacity: 0.094,
         depthWrite: false,
         blending: THREE.NormalBlending,
         side: THREE.DoubleSide
@@ -1748,7 +1748,7 @@ export class AdvancedAquariumScene {
     backwallOcclusion.name = 'tank-hardscape-occlusion-backwall'
     backwallOcclusion.position.set(tankWidth * 0.09, -tankHeight * 0.02, -tankDepth / 2 + 0.12)
     backwallOcclusion.renderOrder = 3
-    backwallOcclusion.userData.baseOpacity = 0.115
+    backwallOcclusion.userData.baseOpacity = 0.094
     backwallOcclusion.userData.occlusionLayer = 'backwall'
     this.tank.add(backwallOcclusion)
 
@@ -2044,7 +2044,7 @@ export class AdvancedAquariumScene {
       tankDepth + 0.6
     )
     const baseMaterial = new THREE.MeshStandardMaterial({
-      color: 0xAC9679,
+      color: 0x97856D,
       roughness: 0.7,
       metalness: 0.05
     })
@@ -2111,7 +2111,7 @@ export class AdvancedAquariumScene {
       roughnessMap: sandRoughnessTexture,
       aoMap: sandAoTexture,
       aoMapIntensity: sandAoTexture ? 0.94 : 1,
-      color: usingAuthoredSandAlbedo ? 0xE7D8C4 : 0xCCB89B,
+      color: usingAuthoredSandAlbedo ? 0xD7C4AD : 0xB7A288,
       roughness: usingAuthoredSandAlbedo ? 0.88 : 0.92,
       metalness: 0,
       transparent: false,
@@ -2145,11 +2145,11 @@ export class AdvancedAquariumScene {
       normalMap: sedimentNormalTexture,
       normalScale: new THREE.Vector2(0.2, 0.16),
       roughnessMap: sedimentRoughnessTexture,
-      color: new THREE.Color('#c39e73'),
+      color: new THREE.Color('#b7966f'),
       roughness: 0.86,
       metalness: 0,
       transparent: true,
-      opacity: 0.52,
+      opacity: 0.48,
       depthWrite: false,
       side: THREE.DoubleSide,
       polygonOffset: true,
@@ -2162,7 +2162,7 @@ export class AdvancedAquariumScene {
     sedimentDetailMesh.position.y = sandMesh.position.y + 0.035
     sedimentDetailMesh.receiveShadow = true
     sedimentDetailMesh.castShadow = false
-    sedimentDetailMesh.userData.baseOpacity = 0.58
+    sedimentDetailMesh.userData.baseOpacity = 0.52
     this.substrateDetailMesh = sedimentDetailMesh
     this.tank.add(sedimentDetailMesh)
 
@@ -2200,7 +2200,7 @@ export class AdvancedAquariumScene {
     }
 
     const sandFrontMaterial = sandMaterial.clone()
-    sandFrontMaterial.color = new THREE.Color(usingAuthoredSandAlbedo ? 0xDCCAB2 : 0xBEA78A)
+    sandFrontMaterial.color = new THREE.Color(usingAuthoredSandAlbedo ? 0xCEBBA2 : 0xAA9277)
     sandFrontMaterial.normalScale = usingAuthoredSandAlbedo
       ? new THREE.Vector2(0.38, 0.56)
       : new THREE.Vector2(0.32, 0.5)
@@ -2232,11 +2232,11 @@ export class AdvancedAquariumScene {
       normalMap: sedimentFrontNormalTexture,
       normalScale: new THREE.Vector2(0.16, 0.24),
       roughnessMap: sedimentFrontRoughnessTexture,
-      color: new THREE.Color('#b2865c'),
+      color: new THREE.Color('#a9815c'),
       roughness: 0.9,
       metalness: 0,
       transparent: true,
-      opacity: 0.56,
+      opacity: 0.5,
       depthWrite: false,
       side: THREE.DoubleSide,
       polygonOffset: true,
@@ -2252,7 +2252,7 @@ export class AdvancedAquariumScene {
       sandFrontMesh.position.z + 0.018
     )
     sedimentFrontDetailMesh.receiveShadow = true
-    sedimentFrontDetailMesh.userData.baseOpacity = 0.62
+    sedimentFrontDetailMesh.userData.baseOpacity = 0.54
     this.substrateFrontDetailMesh = sedimentFrontDetailMesh
     this.tank.add(sedimentFrontDetailMesh)
   }
@@ -2332,9 +2332,9 @@ export class AdvancedAquariumScene {
       new THREE.PlaneGeometry(tankWidth * 0.92, tankHeight * 0.88),
       new THREE.MeshBasicMaterial({
         map: this.createGlassHighlightTexture(),
-        color: new THREE.Color('#e7ece7'),
+        color: new THREE.Color('#dde2d7'),
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.088,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -2343,7 +2343,7 @@ export class AdvancedAquariumScene {
     frontHighlight.name = 'tank-glass-front-highlight'
     frontHighlight.position.set(0, 0.2, halfDepth + thickness + 0.014)
     frontHighlight.renderOrder = 4
-    frontHighlight.userData.baseOpacity = 0.12
+    frontHighlight.userData.baseOpacity = 0.088
     this.frontGlassHighlightMesh = frontHighlight
     this.tank.add(frontHighlight)
 
@@ -2352,9 +2352,9 @@ export class AdvancedAquariumScene {
         new THREE.PlaneGeometry(0.28, tankHeight * 0.84),
         new THREE.MeshBasicMaterial({
           map: this.createGlassHighlightTexture(),
-          color: new THREE.Color('#edf1ec'),
+          color: new THREE.Color('#e2e5da'),
           transparent: true,
-          opacity: 0.1,
+          opacity: 0.07,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
           side: THREE.DoubleSide
@@ -2364,7 +2364,7 @@ export class AdvancedAquariumScene {
       edgeHighlight.position.set(x, 0.12, halfDepth + thickness + 0.016)
       edgeHighlight.rotation.y = rotationY
       edgeHighlight.renderOrder = 5
-      edgeHighlight.userData.baseOpacity = 0.1
+      edgeHighlight.userData.baseOpacity = 0.07
       edgeHighlight.userData.baseY = 0.12
       this.tank.add(edgeHighlight)
       return edgeHighlight
@@ -2392,11 +2392,11 @@ export class AdvancedAquariumScene {
     this.tank.add(backGlass)
 
     const edgeMaterial = new THREE.MeshStandardMaterial({
-      color: 0xb6c5bf,
-      roughness: 0.42,
+      color: 0xaab6af,
+      roughness: 0.48,
       metalness: 0.1,
       transparent: true,
-      opacity: 0.18
+      opacity: 0.14
     })
 
     const topEdge = new THREE.Mesh(new THREE.BoxGeometry(tankWidth + 0.12, 0.08, 0.08), edgeMaterial)
@@ -2460,17 +2460,17 @@ export class AdvancedAquariumScene {
 
   private createGlassMaterial(): THREE.MeshPhysicalMaterial {
     return new THREE.MeshPhysicalMaterial({
-      color: 0xbdcec7,
+      color: 0xb7c3ba,
       transmission: 0.96,
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.12,
       roughness: 0.08,
       metalness: 0,
       thickness: 0.42,
       ior: 1.18,
       clearcoat: 1,
       clearcoatRoughness: 0.1,
-      attenuationColor: new THREE.Color('#d1ddd4'),
+      attenuationColor: new THREE.Color('#cad3c8'),
       attenuationDistance: 2.1,
       specularIntensity: 0.62,
       specularColor: new THREE.Color('#ffffff'),
@@ -2486,15 +2486,15 @@ export class AdvancedAquariumScene {
     const waterVolume = new THREE.Mesh(
       new THREE.BoxGeometry(tankWidth - 0.24, tankHeight - 0.72, tankDepth - 0.24),
       new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color('#4c675e'),
+        color: new THREE.Color('#506356'),
         transmission: 0.7,
         transparent: true,
-        opacity: 0.06,
+        opacity: 0.045,
         roughness: 0.14,
         metalness: 0,
         thickness: 2.8,
         ior: 1.335,
-        attenuationColor: new THREE.Color('#c4d4ca'),
+        attenuationColor: new THREE.Color('#c9d1c4'),
         attenuationDistance: 6.8,
         specularIntensity: 0.34,
         envMapIntensity: 0.42,
@@ -2526,15 +2526,15 @@ export class AdvancedAquariumScene {
 
     const surfaceMaterial = new THREE.MeshPhysicalMaterial({
       map: surfaceTexture,
-      color: new THREE.Color('#dbe4da'),
+      color: new THREE.Color('#d7ddd3'),
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.18,
       roughness: 0.1,
       metalness: 0,
       transmission: 0.82,
       thickness: 1.18,
       ior: 1.335,
-      attenuationColor: new THREE.Color('#b4c7bb'),
+      attenuationColor: new THREE.Color('#bdc8ba'),
       attenuationDistance: 1.5,
       specularIntensity: 0.84,
       specularColor: new THREE.Color('#ffffff'),
@@ -2544,8 +2544,8 @@ export class AdvancedAquariumScene {
       depthWrite: false,
       side: THREE.DoubleSide
     })
-    surfaceMaterial.emissive = new THREE.Color('#cad5ca')
-    surfaceMaterial.emissiveIntensity = 0.06
+    surfaceMaterial.emissive = new THREE.Color('#c8d0c4')
+    surfaceMaterial.emissiveIntensity = 0.045
 
     const surfaceMesh = new THREE.Mesh(surfaceGeometry, surfaceMaterial)
     surfaceMesh.name = 'tank-water-surface'
@@ -2558,9 +2558,9 @@ export class AdvancedAquariumScene {
       new THREE.PlaneGeometry(tankWidth - 0.56, tankDepth - 0.56),
       new THREE.MeshBasicMaterial({
         map: this.createWaterSurfaceHighlightTexture(),
-        color: new THREE.Color('#e7ece4'),
+        color: new THREE.Color('#dee4d7'),
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.12,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -2570,29 +2570,29 @@ export class AdvancedAquariumScene {
     surfaceHighlight.rotation.x = -Math.PI / 2
     surfaceHighlight.position.y = tankHeight / 2 - 0.39
     surfaceHighlight.renderOrder = 4
-    surfaceHighlight.userData.baseOpacity = 0.18
+    surfaceHighlight.userData.baseOpacity = 0.12
     this.waterSurfaceHighlightMesh = surfaceHighlight
     this.tank.add(surfaceHighlight)
 
     const waterlineTexture = this.createWaterSurfaceHighlightTexture()
     waterlineTexture.repeat.set(1.1, 0.62)
     const waterlineFront = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth - 0.84, 0.46),
+      new THREE.PlaneGeometry(tankWidth - 0.84, 0.58),
       new THREE.MeshBasicMaterial({
         map: waterlineTexture,
-        color: new THREE.Color('#edf0e7'),
+        color: new THREE.Color('#dfe4d7'),
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.082,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
       })
     )
     waterlineFront.name = 'tank-waterline-front'
-    waterlineFront.position.set(0, tankHeight / 2 - 0.5, tankDepth / 2 - 0.14)
+    waterlineFront.position.set(0, tankHeight / 2 - 0.48, tankDepth / 2 - 0.14)
     waterlineFront.renderOrder = 5
-    waterlineFront.userData.baseOpacity = 0.12
-    waterlineFront.userData.baseY = tankHeight / 2 - 0.5
+    waterlineFront.userData.baseOpacity = 0.082
+    waterlineFront.userData.baseY = tankHeight / 2 - 0.48
     this.waterlineFrontMesh = waterlineFront
     this.tank.add(waterlineFront)
   }
@@ -3010,17 +3010,17 @@ export class AdvancedAquariumScene {
       canvas.height * 0.52,
       canvas.width * 0.24
     )
-    warmCore.addColorStop(0, 'rgba(240, 251, 241, 0.3)')
-    warmCore.addColorStop(0.34, 'rgba(176, 228, 214, 0.18)')
+    warmCore.addColorStop(0, 'rgba(236, 232, 214, 0.2)')
+    warmCore.addColorStop(0.34, 'rgba(194, 188, 154, 0.12)')
     warmCore.addColorStop(1, 'rgba(255, 255, 255, 0)')
     ctx.fillStyle = warmCore
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     ctx.globalCompositeOperation = 'screen'
     ;[
-      { x: 0.28, y: 0.62, radius: 74, alpha: 0.12 },
-      { x: 0.58, y: 0.46, radius: 88, alpha: 0.22 },
-      { x: 0.76, y: 0.58, radius: 70, alpha: 0.16 }
+      { x: 0.28, y: 0.62, radius: 74, alpha: 0.08 },
+      { x: 0.58, y: 0.46, radius: 88, alpha: 0.14 },
+      { x: 0.76, y: 0.58, radius: 70, alpha: 0.1 }
     ].forEach((cluster) => {
       const glow = ctx.createRadialGradient(
         canvas.width * cluster.x,
@@ -3030,8 +3030,8 @@ export class AdvancedAquariumScene {
         canvas.height * cluster.y,
         cluster.radius
       )
-      glow.addColorStop(0, `rgba(241, 252, 243, ${cluster.alpha})`)
-      glow.addColorStop(0.5, `rgba(171, 223, 211, ${cluster.alpha * 0.45})`)
+      glow.addColorStop(0, `rgba(231, 226, 205, ${cluster.alpha})`)
+      glow.addColorStop(0.5, `rgba(187, 179, 146, ${cluster.alpha * 0.38})`)
       glow.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = glow
       ctx.fillRect(
@@ -3232,8 +3232,8 @@ export class AdvancedAquariumScene {
 
     const glow = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
     glow.addColorStop(0, 'rgba(255, 255, 255, 0)')
-    glow.addColorStop(0.42, 'rgba(226, 234, 224, 0.12)')
-    glow.addColorStop(0.7, 'rgba(195, 211, 199, 0.18)')
+    glow.addColorStop(0.42, 'rgba(219, 226, 212, 0.09)')
+    glow.addColorStop(0.7, 'rgba(186, 198, 183, 0.13)')
     glow.addColorStop(1, 'rgba(255, 255, 255, 0)')
     ctx.fillStyle = glow
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -3244,8 +3244,8 @@ export class AdvancedAquariumScene {
       const y = ((i * 67) % 280) + 84
       const radius = 28 + ((i % 3) * 14)
       const highlight = ctx.createRadialGradient(x, y, radius * 0.08, x, y, radius)
-      highlight.addColorStop(0, 'rgba(244, 246, 240, 0.2)')
-      highlight.addColorStop(0.36, 'rgba(214, 224, 214, 0.12)')
+      highlight.addColorStop(0, 'rgba(237, 238, 226, 0.14)')
+      highlight.addColorStop(0.36, 'rgba(204, 212, 199, 0.08)')
       highlight.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = highlight
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
@@ -3256,8 +3256,8 @@ export class AdvancedAquariumScene {
       const y = ((i * 89) % 240) + 120
       const radius = 70 + (i * 8)
       const shimmer = ctx.createRadialGradient(x, y, radius * 0.16, x, y, radius)
-      shimmer.addColorStop(0, 'rgba(224, 232, 224, 0.1)')
-      shimmer.addColorStop(0.52, 'rgba(190, 205, 196, 0.06)')
+      shimmer.addColorStop(0, 'rgba(217, 222, 210, 0.08)')
+      shimmer.addColorStop(0.52, 'rgba(185, 194, 180, 0.05)')
       shimmer.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = shimmer
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
@@ -3273,9 +3273,9 @@ export class AdvancedAquariumScene {
 
     const floorMaterial = new THREE.MeshBasicMaterial({
       map: this.createCausticsTexture(),
-      color: new THREE.Color('#d2d8cb'),
+      color: new THREE.Color('#c6ccbf'),
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.06,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide
@@ -3289,7 +3289,7 @@ export class AdvancedAquariumScene {
     floorCaustics.rotation.x = -Math.PI / 2
     floorCaustics.position.y = -tankHeight / 2 + 0.58
     floorCaustics.renderOrder = 2
-    floorCaustics.userData.baseOpacity = 0.08
+    floorCaustics.userData.baseOpacity = 0.06
     floorCaustics.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
     floorCaustics.userData.phaseOffset = 0.22
     floorCaustics.userData.mapRepeatX = 1.42
@@ -3301,8 +3301,8 @@ export class AdvancedAquariumScene {
 
     const backMaterial = floorMaterial.clone()
     backMaterial.map = this.createCausticsTexture()
-    backMaterial.color = new THREE.Color('#d7ddd0')
-    backMaterial.opacity = 0.055
+    backMaterial.color = new THREE.Color('#cdd3c6')
+    backMaterial.opacity = 0.042
 
     const backCaustics = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 1.02, tankHeight * 0.72),
@@ -3311,7 +3311,7 @@ export class AdvancedAquariumScene {
     backCaustics.name = 'tank-caustics-back'
     backCaustics.position.set(tankWidth * 0.08, -tankHeight * 0.06, -tankDepth / 2 + 0.12)
     backCaustics.renderOrder = 2
-    backCaustics.userData.baseOpacity = 0.055
+    backCaustics.userData.baseOpacity = 0.042
     backCaustics.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
     backCaustics.userData.phaseOffset = 0.54
     backCaustics.userData.mapRepeatX = 1.18
@@ -3348,16 +3348,16 @@ export class AdvancedAquariumScene {
     ctx.globalCompositeOperation = 'screen'
 
     const clusters = [
-      { x: 0.12, y: 0.18, radius: 94, alpha: 0.15 },
-      { x: 0.32, y: 0.16, radius: 78, alpha: 0.12 },
-      { x: 0.56, y: 0.22, radius: 108, alpha: 0.16 },
-      { x: 0.84, y: 0.18, radius: 86, alpha: 0.11 },
-      { x: 0.22, y: 0.46, radius: 112, alpha: 0.14 },
-      { x: 0.5, y: 0.38, radius: 92, alpha: 0.12 },
-      { x: 0.78, y: 0.48, radius: 124, alpha: 0.15 },
-      { x: 0.18, y: 0.78, radius: 96, alpha: 0.12 },
-      { x: 0.48, y: 0.82, radius: 88, alpha: 0.1 },
-      { x: 0.76, y: 0.72, radius: 116, alpha: 0.14 }
+      { x: 0.12, y: 0.18, radius: 94, alpha: 0.11 },
+      { x: 0.32, y: 0.16, radius: 78, alpha: 0.09 },
+      { x: 0.56, y: 0.22, radius: 108, alpha: 0.12 },
+      { x: 0.84, y: 0.18, radius: 86, alpha: 0.08 },
+      { x: 0.22, y: 0.46, radius: 112, alpha: 0.1 },
+      { x: 0.5, y: 0.38, radius: 92, alpha: 0.09 },
+      { x: 0.78, y: 0.48, radius: 124, alpha: 0.11 },
+      { x: 0.18, y: 0.78, radius: 96, alpha: 0.08 },
+      { x: 0.48, y: 0.82, radius: 88, alpha: 0.07 },
+      { x: 0.76, y: 0.72, radius: 116, alpha: 0.1 }
     ]
 
     for (const cluster of clusters) {
@@ -3372,9 +3372,9 @@ export class AdvancedAquariumScene {
         centerY,
         outerRadius
       )
-      outerGradient.addColorStop(0, `rgba(224, 241, 237, ${cluster.alpha})`)
-      outerGradient.addColorStop(0.35, `rgba(170, 221, 216, ${cluster.alpha * 0.54})`)
-      outerGradient.addColorStop(0.72, `rgba(96, 178, 182, ${cluster.alpha * 0.16})`)
+      outerGradient.addColorStop(0, `rgba(216, 226, 214, ${cluster.alpha})`)
+      outerGradient.addColorStop(0.35, `rgba(177, 198, 182, ${cluster.alpha * 0.48})`)
+      outerGradient.addColorStop(0.72, `rgba(112, 142, 129, ${cluster.alpha * 0.14})`)
       outerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = outerGradient
       ctx.fillRect(
@@ -3393,8 +3393,8 @@ export class AdvancedAquariumScene {
         centerY - outerRadius * 0.08,
         coreRadius
       )
-      coreGradient.addColorStop(0, `rgba(232, 240, 236, ${cluster.alpha * 0.62})`)
-      coreGradient.addColorStop(0.55, `rgba(167, 212, 207, ${cluster.alpha * 0.28})`)
+      coreGradient.addColorStop(0, `rgba(224, 229, 220, ${cluster.alpha * 0.54})`)
+      coreGradient.addColorStop(0.55, `rgba(171, 192, 175, ${cluster.alpha * 0.22})`)
       coreGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = coreGradient
       ctx.fillRect(
@@ -3445,9 +3445,9 @@ export class AdvancedAquariumScene {
       ctx.translate(canvas.width * pool.x, canvas.height * pool.y)
       ctx.scale(1, pool.radiusY / pool.radiusX)
       const gradient = ctx.createRadialGradient(0, 0, pool.radiusX * 0.18, 0, 0, pool.radiusX)
-      gradient.addColorStop(0, `rgba(9, 18, 22, ${pool.alpha})`)
-      gradient.addColorStop(0.58, `rgba(9, 18, 22, ${pool.alpha * 0.46})`)
-      gradient.addColorStop(1, 'rgba(9, 18, 22, 0)')
+      gradient.addColorStop(0, `rgba(19, 24, 21, ${pool.alpha})`)
+      gradient.addColorStop(0.58, `rgba(19, 24, 21, ${pool.alpha * 0.4})`)
+      gradient.addColorStop(1, 'rgba(19, 24, 21, 0)')
       ctx.fillStyle = gradient
       ctx.fillRect(-pool.radiusX, -pool.radiusX, pool.radiusX * 2, pool.radiusX * 2)
       ctx.restore()
@@ -3455,17 +3455,17 @@ export class AdvancedAquariumScene {
 
     if (layer === 'backwall') {
       const topFade = ctx.createLinearGradient(0, 0, 0, canvas.height)
-      topFade.addColorStop(0, 'rgba(7, 14, 18, 0.22)')
-      topFade.addColorStop(0.38, 'rgba(7, 14, 18, 0.08)')
-      topFade.addColorStop(1, 'rgba(7, 14, 18, 0)')
+      topFade.addColorStop(0, 'rgba(16, 20, 18, 0.18)')
+      topFade.addColorStop(0.38, 'rgba(16, 20, 18, 0.06)')
+      topFade.addColorStop(1, 'rgba(16, 20, 18, 0)')
       ctx.fillStyle = topFade
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     } else if (layer === 'shaft') {
       const topFade = ctx.createLinearGradient(0, 0, 0, canvas.height)
-      topFade.addColorStop(0, 'rgba(7, 14, 18, 0.04)')
-      topFade.addColorStop(0.3, 'rgba(7, 14, 18, 0.1)')
-      topFade.addColorStop(0.72, 'rgba(7, 14, 18, 0.24)')
-      topFade.addColorStop(1, 'rgba(7, 14, 18, 0.06)')
+      topFade.addColorStop(0, 'rgba(16, 20, 18, 0.03)')
+      topFade.addColorStop(0.3, 'rgba(16, 20, 18, 0.08)')
+      topFade.addColorStop(0.72, 'rgba(16, 20, 18, 0.18)')
+      topFade.addColorStop(1, 'rgba(16, 20, 18, 0.04)')
       ctx.fillStyle = topFade
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
@@ -3478,54 +3478,54 @@ export class AdvancedAquariumScene {
     this.ensureTankVisualLayers()
     const premiumTheme = resolvePremiumThemeValues(theme)
     const freshwaterTint = new THREE.Color(theme.waterTint).lerp(new THREE.Color('#697767'), 0.42)
-    const glassTint = new THREE.Color(premiumTheme.glassTint).lerp(new THREE.Color('#cfd8d0'), 0.36)
-    const daylightTint = freshwaterTint.clone().lerp(new THREE.Color('#eff2e7'), 0.44)
-    const depthTint = freshwaterTint.clone().lerp(new THREE.Color('#2a3531'), 0.58)
-    const shadowTint = freshwaterTint.clone().lerp(new THREE.Color('#1c2421'), 0.72)
+    const glassTint = new THREE.Color(premiumTheme.glassTint).lerp(new THREE.Color('#c8d0c3'), 0.58)
+    const daylightTint = freshwaterTint.clone().lerp(new THREE.Color('#edf0e3'), 0.38)
+    const depthTint = freshwaterTint.clone().lerp(new THREE.Color('#2b332f'), 0.64)
+    const shadowTint = freshwaterTint.clone().lerp(new THREE.Color('#202621'), 0.76)
 
     this.glassPanes.forEach((pane, index) => {
       const material = pane.material as THREE.MeshPhysicalMaterial
       material.color = glassTint.clone()
-      material.attenuationColor = glassTint.clone().lerp(new THREE.Color('#ffffff'), 0.16)
-      material.opacity = index === 0 ? 0.15 : 0.1
-      material.envMapIntensity = 0.68 + (premiumTheme.glassReflectionStrength * 1.08)
+      material.attenuationColor = glassTint.clone().lerp(new THREE.Color('#f2f3ea'), 0.12)
+      material.opacity = index === 0 ? 0.12 : 0.085
+      material.envMapIntensity = 0.6 + (premiumTheme.glassReflectionStrength * 0.92)
       material.needsUpdate = true
     })
 
     if (this.waterVolumeMesh) {
       const material = this.waterVolumeMesh.material as THREE.MeshPhysicalMaterial
       material.color = freshwaterTint.clone()
-      material.attenuationColor = freshwaterTint.clone().lerp(new THREE.Color('#d5e0d6'), 0.36)
-      material.opacity = 0.04 + (premiumTheme.glassReflectionStrength * 0.03)
-      material.envMapIntensity = 0.16 + (premiumTheme.glassReflectionStrength * 0.34)
+      material.attenuationColor = freshwaterTint.clone().lerp(new THREE.Color('#d2d8cb'), 0.32)
+      material.opacity = 0.032 + (premiumTheme.glassReflectionStrength * 0.024)
+      material.envMapIntensity = 0.12 + (premiumTheme.glassReflectionStrength * 0.28)
       material.needsUpdate = true
     }
 
     if (this.waterSurfaceMesh) {
       const material = this.waterSurfaceMesh.material as THREE.MeshPhysicalMaterial
       material.color = glassTint.clone().lerp(freshwaterTint, 0.3)
-      material.attenuationColor = glassTint.clone().lerp(new THREE.Color('#eef1e6'), 0.12)
-      material.opacity = 0.15 + (premiumTheme.surfaceGlowStrength * 0.12)
+      material.attenuationColor = glassTint.clone().lerp(new THREE.Color('#ebece1'), 0.1)
+      material.opacity = 0.12 + (premiumTheme.surfaceGlowStrength * 0.08)
       material.emissive = daylightTint.clone()
-      material.emissiveIntensity = premiumTheme.surfaceGlowStrength * 0.12
-      material.envMapIntensity = 0.62 + (premiumTheme.glassReflectionStrength * 0.74)
+      material.emissiveIntensity = premiumTheme.surfaceGlowStrength * 0.08
+      material.envMapIntensity = 0.56 + (premiumTheme.glassReflectionStrength * 0.6)
       material.needsUpdate = true
     }
 
     if (this.frontGlassHighlightMesh) {
       const material = this.frontGlassHighlightMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.07 + (premiumTheme.glassReflectionStrength * 0.18)
+      const baseOpacity = 0.05 + (premiumTheme.glassReflectionStrength * 0.12)
       this.frontGlassHighlightMesh.userData.baseOpacity = baseOpacity
-      material.color = glassTint.clone().lerp(new THREE.Color('#f3f4ed'), 0.28)
+      material.color = glassTint.clone().lerp(new THREE.Color('#d7ddcf'), 0.42)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
 
     this.glassEdgeHighlightMeshes.forEach((mesh) => {
       const material = mesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.05 + (premiumTheme.glassReflectionStrength * 0.14)
+      const baseOpacity = 0.035 + (premiumTheme.glassReflectionStrength * 0.09)
       mesh.userData.baseOpacity = baseOpacity
-      material.color = glassTint.clone().lerp(new THREE.Color('#f2f4ed'), 0.36)
+      material.color = glassTint.clone().lerp(new THREE.Color('#d9dece'), 0.36)
       material.opacity = baseOpacity
       material.needsUpdate = true
     })
@@ -3543,18 +3543,18 @@ export class AdvancedAquariumScene {
 
     if (this.waterSurfaceHighlightMesh) {
       const material = this.waterSurfaceHighlightMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.08 + (premiumTheme.surfaceGlowStrength * 0.18)
+      const baseOpacity = 0.05 + (premiumTheme.surfaceGlowStrength * 0.1)
       this.waterSurfaceHighlightMesh.userData.baseOpacity = baseOpacity
-      material.color = freshwaterTint.clone().lerp(new THREE.Color('#eef1e7'), 0.32)
+      material.color = freshwaterTint.clone().lerp(new THREE.Color('#e5e8d9'), 0.26)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
 
     if (this.waterlineFrontMesh) {
       const material = this.waterlineFrontMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.07 + (premiumTheme.surfaceGlowStrength * 0.16)
+      const baseOpacity = 0.045 + (premiumTheme.surfaceGlowStrength * 0.09)
       this.waterlineFrontMesh.userData.baseOpacity = baseOpacity
-      material.color = daylightTint.clone()
+      material.color = daylightTint.clone().lerp(new THREE.Color('#dce0d2'), 0.22)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
@@ -3579,9 +3579,9 @@ export class AdvancedAquariumScene {
 
     if (this.lightCanopyMesh) {
       const material = this.lightCanopyMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.1 + (premiumTheme.surfaceGlowStrength * 0.12) + (premiumTheme.glassReflectionStrength * 0.025)
+      const baseOpacity = 0.09 + (premiumTheme.surfaceGlowStrength * 0.09) + (premiumTheme.glassReflectionStrength * 0.018)
       this.lightCanopyMesh.userData.baseOpacity = baseOpacity
-      material.color = freshwaterTint.clone().lerp(new THREE.Color('#e4e9dc'), 0.38)
+      material.color = freshwaterTint.clone().lerp(new THREE.Color('#dbe0cf'), 0.34)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
@@ -3589,11 +3589,11 @@ export class AdvancedAquariumScene {
     this.nearSurfaceLightMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (0.075 + (premiumTheme.surfaceGlowStrength * 0.07) + (premiumTheme.causticsStrength * 0.02))
-        * (index === 2 ? 1.06 : index === 0 || index === 4 ? 0.86 : 0.94)
+        * (index === 2 ? 0.98 : index === 0 || index === 4 ? 0.82 : 0.9)
       mesh.userData.baseOpacity = baseOpacity
       material.color = freshwaterTint.clone().lerp(
-        new THREE.Color(index === 2 ? '#e7ebdd' : '#d3ddcf'),
-        0.34
+        new THREE.Color(index === 2 ? '#dde2d4' : '#cbd4c4'),
+        0.28
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
@@ -3602,14 +3602,14 @@ export class AdvancedAquariumScene {
     this.midwaterLightMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
       const baseOpacity = (
-        0.05 +
-        (premiumTheme.surfaceGlowStrength * 0.04) +
-        (premiumTheme.causticsStrength * 0.02)
+        0.04 +
+        (premiumTheme.surfaceGlowStrength * 0.03) +
+        (premiumTheme.causticsStrength * 0.015)
       ) * (index === 0 ? 1 : 1.14)
       mesh.userData.baseOpacity = baseOpacity
       material.color = freshwaterTint.clone().lerp(
         new THREE.Color(index === 0 ? '#d1dbcf' : '#dfe5d9'),
-        index === 0 ? 0.28 : 0.3
+        index === 0 ? 0.24 : 0.26
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
@@ -3617,51 +3617,51 @@ export class AdvancedAquariumScene {
 
     if (this.heroGroundGlowMesh) {
       const material = this.heroGroundGlowMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.09 + (premiumTheme.causticsStrength * 0.18)
+      const baseOpacity = 0.06 + (premiumTheme.causticsStrength * 0.12)
       this.heroGroundGlowMesh.userData.baseOpacity = baseOpacity
-      material.color = freshwaterTint.clone().lerp(new THREE.Color('#d8d9bf'), 0.36)
+      material.color = freshwaterTint.clone().lerp(new THREE.Color('#d0c8b0'), 0.3)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
 
     if (this.heroFrontFillMesh) {
       const material = this.heroFrontFillMesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = 0.1 + (premiumTheme.causticsStrength * 0.06) + (premiumTheme.surfaceGlowStrength * 0.02)
+      const baseOpacity = 0.082 + (premiumTheme.causticsStrength * 0.05) + (premiumTheme.surfaceGlowStrength * 0.018)
       this.heroFrontFillMesh.userData.baseOpacity = baseOpacity
-      material.color = freshwaterTint.clone().lerp(new THREE.Color('#e5dfcb'), 0.3)
+      material.color = freshwaterTint.clone().lerp(new THREE.Color('#ddd4bc'), 0.24)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
 
     if (this.substrateDetailMesh) {
       const material = this.substrateDetailMesh.material as THREE.MeshStandardMaterial
-      const baseOpacity = 0.38 + (premiumTheme.causticsStrength * 0.12)
+      const baseOpacity = 0.32 + (premiumTheme.causticsStrength * 0.1)
       this.substrateDetailMesh.userData.baseOpacity = baseOpacity
-      material.color = new THREE.Color('#b58e63').lerp(freshwaterTint, 0.05)
-      material.emissive = freshwaterTint.clone().lerp(new THREE.Color('#ead8af'), 0.14)
-      material.emissiveIntensity = 0.05 + (premiumTheme.causticsStrength * 0.1)
+      material.color = new THREE.Color('#a88462').lerp(freshwaterTint, 0.04)
+      material.emissive = freshwaterTint.clone().lerp(new THREE.Color('#d9caab'), 0.1)
+      material.emissiveIntensity = 0.035 + (premiumTheme.causticsStrength * 0.06)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
 
     if (this.substrateFrontDetailMesh) {
       const material = this.substrateFrontDetailMesh.material as THREE.MeshStandardMaterial
-      const baseOpacity = 0.42 + (premiumTheme.causticsStrength * 0.12)
+      const baseOpacity = 0.36 + (premiumTheme.causticsStrength * 0.1)
       this.substrateFrontDetailMesh.userData.baseOpacity = baseOpacity
-      material.color = new THREE.Color('#a97e57').lerp(freshwaterTint, 0.04)
-      material.emissive = freshwaterTint.clone().lerp(new THREE.Color('#e7d3ad'), 0.1)
-      material.emissiveIntensity = 0.04 + (premiumTheme.causticsStrength * 0.08)
+      material.color = new THREE.Color('#9f7957').lerp(freshwaterTint, 0.03)
+      material.emissive = freshwaterTint.clone().lerp(new THREE.Color('#d4c2a2'), 0.08)
+      material.emissiveIntensity = 0.03 + (premiumTheme.causticsStrength * 0.05)
       material.opacity = baseOpacity
       material.needsUpdate = true
     }
 
     this.causticsMeshes.forEach((mesh, index) => {
       const material = mesh.material as THREE.MeshBasicMaterial
-      const baseOpacity = premiumTheme.causticsStrength * (index === 0 ? 0.16 : 0.11)
+      const baseOpacity = premiumTheme.causticsStrength * (index === 0 ? 0.1 : 0.07)
       mesh.userData.baseOpacity = baseOpacity
       material.color = freshwaterTint.clone().lerp(
-        new THREE.Color(index === 0 ? '#d9ddcf' : '#cfd6c8'),
-        index === 0 ? 0.22 : 0.16
+        new THREE.Color(index === 0 ? '#cccfc1' : '#c2c8b9'),
+        index === 0 ? 0.18 : 0.14
       )
       material.opacity = baseOpacity
       material.needsUpdate = true
@@ -3673,10 +3673,10 @@ export class AdvancedAquariumScene {
       const occlusionStrength = (mesh.userData.occlusionStrength as number | undefined) ?? 1
       const baseOpacity = (
         occlusionLayer === 'backwall'
-          ? 0.09 + (premiumTheme.glassReflectionStrength * 0.06)
+          ? 0.072 + (premiumTheme.glassReflectionStrength * 0.05)
           : occlusionLayer === 'shaft'
-            ? 0.1 + (premiumTheme.glassReflectionStrength * 0.08)
-            : 0.13 + (premiumTheme.glassReflectionStrength * 0.08)
+            ? 0.082 + (premiumTheme.glassReflectionStrength * 0.06)
+            : 0.094 + (premiumTheme.glassReflectionStrength * 0.05)
       ) * occlusionStrength
       mesh.userData.baseOpacity = baseOpacity
       material.color = shadowTint.clone()
