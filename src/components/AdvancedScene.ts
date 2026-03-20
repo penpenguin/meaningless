@@ -172,76 +172,92 @@ const sampleSubstrateHeight = (
       (calculateGaussianFalloff(
         x,
         z,
-        -tankWidth * 0.28,
-        -tankDepth * 0.06,
-        tankWidth * 0.22,
-        tankDepth * 0.24
-      ) * 0.24) +
+        -tankWidth * 0.31,
+        -tankDepth * 0.08,
+        tankWidth * 0.24,
+        tankDepth * 0.28
+      ) * 0.28) +
       (calculateGaussianFalloff(
         x,
         z,
-        -tankWidth * 0.2,
-        -tankDepth * 0.22,
-        tankWidth * 0.18,
+        -tankWidth * 0.22,
+        -tankDepth * 0.24,
+        tankWidth * 0.2,
+        tankDepth * 0.2
+      ) * 0.16) +
+      (calculateGaussianFalloff(
+        x,
+        z,
+        -tankWidth * 0.18,
+        tankDepth * 0.04,
+        tankWidth * 0.16,
         tankDepth * 0.18
-      ) * 0.14) +
-      (backness * leftness * widthBlend * 0.04)
+      ) * 0.09) +
+      (backness * leftness * widthBlend * 0.05)
 
     const shoulderLift =
       calculateGaussianFalloff(
         x,
         z,
-        -tankWidth * 0.14,
+        -tankWidth * 0.12,
         -tankDepth * 0.14,
-        tankWidth * 0.16,
-        tankDepth * 0.18
-      ) * 0.08
+        tankWidth * 0.18,
+        tankDepth * 0.2
+      ) * 0.1
 
     const sandBeach =
       (calculateGaussianFalloff(
         x,
         z,
+        tankWidth * 0.3,
+        tankDepth * 0.34,
         tankWidth * 0.28,
-        tankDepth * 0.36,
-        tankWidth * 0.26,
-        tankDepth * 0.16
-      ) * -0.18) +
+        tankDepth * 0.18
+      ) * -0.2) +
       (calculateGaussianFalloff(
         x,
         z,
-        tankWidth * 0.08,
-        tankDepth * 0.22,
+        tankWidth * 0.14,
+        tankDepth * 0.18,
         tankWidth * 0.24,
-        tankDepth * 0.14
-      ) * -0.1)
+        tankDepth * 0.16
+      ) * -0.12)
 
     const curvedPath =
       (calculateGaussianFalloff(
         x,
         z,
-        -tankWidth * 0.06,
-        tankDepth * 0.18,
+        -tankWidth * 0.02,
+        tankDepth * 0.1,
         tankWidth * 0.2,
         tankDepth * 0.12
-      ) * -0.08) +
+      ) * -0.11) +
       (calculateGaussianFalloff(
         x,
         z,
         tankWidth * 0.14,
-        tankDepth * 0.08,
-        tankWidth * 0.14,
+        tankDepth * 0.18,
+        tankWidth * 0.16,
         tankDepth * 0.16
-      ) * -0.05)
+      ) * -0.085) +
+      (calculateGaussianFalloff(
+        x,
+        z,
+        tankWidth * 0.24,
+        tankDepth * 0.24,
+        tankWidth * 0.12,
+        tankDepth * 0.12
+      ) * -0.04)
 
     const shorelineBreakup =
       (calculateGaussianFalloff(
         x,
         z,
-        -tankWidth * 0.12,
+        -tankWidth * 0.1,
         tankDepth * 0.44,
         tankWidth * 0.2,
         tankDepth * 0.08
-      ) * -0.05) +
+      ) * -0.04) +
       (calculateGaussianFalloff(
         x,
         z,
@@ -250,7 +266,7 @@ const sampleSubstrateHeight = (
         tankWidth * 0.14,
         tankDepth * 0.08
       ) * -0.03) +
-      (Math.sin((x * 0.62) + 0.3) * frontness * 0.012)
+      (Math.sin((x * 0.62) + 0.3) * frontness * 0.014)
 
     const macroNoise = (
       (Math.sin((x * 0.42) + (z * 0.14) + 0.4) * 0.038) +
@@ -313,7 +329,7 @@ const sampleSubstrateHeight = (
     const edgeSettle =
       ((1 - widthBlend) * -0.018) +
       (THREE.MathUtils.clamp(frontness - 0.8, 0, 0.2) * -0.026) +
-      (rightness * frontness * -0.018)
+      (rightness * frontness * -0.028)
 
     return THREE.MathUtils.clamp(
       leftMound +
@@ -326,8 +342,8 @@ const sampleSubstrateHeight = (
         hardscapeRelief +
         plantRelief +
         edgeSettle,
-      -0.24,
-      0.48
+      -0.26,
+      0.52
     )
   }
 

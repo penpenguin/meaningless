@@ -1849,10 +1849,28 @@ describe('AdvancedAquariumScene substrate', () => {
       AQUARIUM_TANK_DIMENSIONS.width * 0.32,
       AQUARIUM_TANK_DIMENSIONS.depth * 0.34
     )
+    const curvedInnerPath = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.06,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.08
+    )
+    const curvedOuterPath = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.2,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.22
+    )
+    const leftFrontLip = getNearestTopHeight(
+      sandTop,
+      -AQUARIUM_TANK_DIMENSIONS.width * 0.18,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.2
+    )
 
-    expect(leftMound - rightFrontBeach).toBeGreaterThan(0.16)
+    expect(leftMound - rightFrontBeach).toBeGreaterThan(0.2)
     expect(leftMound).toBeGreaterThan(centerTransition + 0.06)
-    expect(centerTransition).toBeGreaterThan(rightFrontBeach + 0.02)
+    expect(centerTransition).toBeGreaterThan(rightFrontBeach + 0.03)
+    expect(curvedInnerPath).toBeLessThan(leftFrontLip - 0.03)
+    expect(curvedOuterPath).toBeLessThan(centerTransition - 0.02)
+    expect(curvedOuterPath).toBeGreaterThan(rightFrontBeach - 0.01)
   })
 })
 

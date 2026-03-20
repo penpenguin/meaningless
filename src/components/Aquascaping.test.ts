@@ -5,6 +5,7 @@ import {
   plantClusterDefinitions,
   resolveHardscapePlantAnchors,
   resolveSampledPlantPlacements,
+  resolveSubstrateHardscapeAnchors,
   resolveSubstratePlantAnchors
 } from './Aquascaping'
 import { createOpenWaterBounds } from './sceneBounds'
@@ -700,6 +701,19 @@ describe('AquascapingSystem composition', () => {
     expect(rightFrontOccupants).toEqual([])
   })
 
+  it('clusters nature-showcase hardscape anchors into a left mound foundation instead of isolated ridge contacts', () => {
+    const anchors = resolveSubstrateHardscapeAnchors('nature-showcase')
+    const leftFoundationAnchors = anchors.filter((anchor) => anchor.x < -0.12)
+    const frontTransitionAnchors = anchors.filter((anchor) => anchor.z > 0.08)
+
+    expect(anchors).toHaveLength(6)
+    expect(leftFoundationAnchors.length).toBeGreaterThanOrEqual(4)
+    expect(frontTransitionAnchors.length).toBeGreaterThanOrEqual(2)
+    expect(anchors.every((anchor) => anchor.x < 0.05)).toBe(true)
+    expect(anchors.some((anchor) => anchor.rimBiasX > 0.04)).toBe(true)
+    expect(anchors.every((anchor) => !anchor.id.startsWith('ridge-rock'))).toBe(true)
+  })
+
   it('fans the showcase driftwood from the left mound toward the upper right instead of reading as a single centered branch', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
@@ -760,6 +774,53 @@ describe('AquascapingSystem composition', () => {
     expect(Math.max(...projectedXs) - Math.min(...projectedXs)).toBeGreaterThan(0.42)
     expect(Math.max(...worldCenters.map((center) => center.x))).toBeGreaterThan((driftwood?.position.x ?? 0) + 3.6)
     expect(Math.max(...worldCenters.map((center) => center.y))).toBeGreaterThan((driftwood?.position.y ?? 0) + 2.8)
+  })
+
+  it('anchors nature-showcase driftwood deeper into the left mound and spreads premium secondary woods into a right-rising fan', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = bounds.getSize(new THREE.Vector3())
+    const driftwoodAsset = createModelAssetScene('driftwood-hero')
+    const driftwoodSecondaryA = createModelAssetScene('driftwood-secondary-a')
+    const driftwoodSecondaryB = createModelAssetScene('driftwood-secondary-b')
+    const driftwoodSecondaryC = createModelAssetScene('driftwood-secondary-c')
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null },
+        'driftwood-secondary-a': { scene: driftwoodSecondaryA, sourceMesh: null },
+        'driftwood-secondary-b': { scene: driftwoodSecondaryB, sourceMesh: null },
+        'driftwood-secondary-c': { scene: driftwoodSecondaryC, sourceMesh: null }
+      }
+    }, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    ) as THREE.Group | undefined
+    const secondaryBranches = driftwood?.children.filter(
+      (child): child is THREE.Group =>
+        child instanceof THREE.Group && child.userData.role === 'driftwood-secondary-branch'
+    ) ?? []
+    const secondaryCenters = secondaryBranches.map((branch) => getWorldBounds(branch).getCenter(new THREE.Vector3()))
+    expect(driftwood).toBeDefined()
+    expect(driftwood?.position.x ?? 0).toBeLessThan(-size.x * 0.14)
+    expect(secondaryBranches).toHaveLength(3)
+    expect(
+      Math.max(...secondaryCenters.map((center) => center.y)) -
+      Math.min(...secondaryCenters.map((center) => center.y))
+    ).toBeGreaterThan(1.2)
+    expect(secondaryCenters.filter((center) => center.x > (driftwood?.position.x ?? 0) + 1.4).length).toBeGreaterThanOrEqual(2)
+    expect(secondaryCenters.some((center) => center.y > (driftwood?.position.y ?? 0) + 2.4)).toBe(true)
   })
 
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {

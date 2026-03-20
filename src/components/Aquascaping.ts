@@ -23,6 +23,7 @@ type PlantMassRole =
   | 'front-left'
   | 'left-rear'
   | 'left-shoulder'
+  | 'left-foot'
   | 'driftwood-backfill'
   | 'mid-right-backfill'
   | 'right-rear'
@@ -401,78 +402,78 @@ export const plantClusterDefinitions: PlantClusterDefinition[] = [
 const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
   {
     id: 'left-rear',
-    x: -0.34,
-    z: -0.2,
+    x: -0.37,
+    z: -0.22,
     layer: 'background',
     massRole: 'left-rear',
     plantType: 'vallisneria-tall',
-    baseHeight: 8.84,
-    spreadX: 0.28,
-    spreadZ: 0.2,
-    hueBase: 0.24,
-    rotationY: -0.32,
-    scale: new THREE.Vector3(1.02, 2.18, 0.96),
-    heightMin: 7.92,
-    heightMax: 9.24,
+    baseHeight: 7.62,
+    spreadX: 0.24,
+    spreadZ: 0.18,
+    hueBase: 0.244,
+    rotationY: -0.4,
+    scale: new THREE.Vector3(0.94, 1.86, 0.9),
+    heightMin: 6.84,
+    heightMax: 8.18,
     coreCount: 1,
     satelliteCount: 1,
     offshootCount: 1,
     coreRadius: [0.03, 0.16],
-    satelliteRadius: [0.18, 0.42],
-    offshootRadius: [0.42, 0.72],
+    satelliteRadius: [0.16, 0.36],
+    offshootRadius: [0.34, 0.62],
     minDistance: 0.062,
     depthLaneCount: 4,
     plantMix: [
-      { plantType: 'vallisneria-tall', weight: 0.7 },
-      { plantType: 'stem-green-bush', weight: 0.3 }
+      { plantType: 'vallisneria-tall', weight: 0.54 },
+      { plantType: 'stem-green-bush', weight: 0.46 }
     ],
     assetIds: ['plant-vallisneria-tall', 'plant-stem-green-bush']
   },
   {
     id: 'left-shoulder',
-    x: -0.24,
-    z: -0.06,
+    x: -0.26,
+    z: -0.04,
     layer: 'midground',
     massRole: 'left-shoulder',
     plantType: 'javafern-large',
-    baseHeight: 5.4,
-    spreadX: 0.22,
+    baseHeight: 5.82,
+    spreadX: 0.24,
     spreadZ: 0.18,
-    hueBase: 0.286,
-    rotationY: -0.2,
-    scale: new THREE.Vector3(0.9, 1.12, 0.86),
-    heightMin: 4.52,
-    heightMax: 5.94,
+    hueBase: 0.284,
+    rotationY: -0.28,
+    scale: new THREE.Vector3(0.96, 1.18, 0.9),
+    heightMin: 4.84,
+    heightMax: 6.26,
     coreCount: 1,
-    satelliteCount: 1,
+    satelliteCount: 2,
     offshootCount: 1,
     coreRadius: [0.03, 0.12],
-    satelliteRadius: [0.16, 0.34],
-    offshootRadius: [0.32, 0.52],
+    satelliteRadius: [0.16, 0.36],
+    offshootRadius: [0.3, 0.54],
     minDistance: 0.058,
     depthLaneCount: 3,
     plantMix: [
-      { plantType: 'javafern-large', weight: 0.44 },
-      { plantType: 'javafern-narrow', weight: 0.26 },
-      { plantType: 'anubias-nana-clump', weight: 0.3 }
+      { plantType: 'javafern-large', weight: 0.38 },
+      { plantType: 'javafern-narrow', weight: 0.3 },
+      { plantType: 'anubias-nana-clump', weight: 0.32 }
     ],
     assetIds: ['plant-javafern-large', 'plant-javafern-narrow', 'plant-anubias-nana-clump']
   },
   {
-    id: 'front-center',
-    x: -0.02,
-    z: 0.12,
+    id: 'left-foot',
+    x: -0.16,
+    z: 0.14,
     layer: 'foreground',
-    massRole: 'front-center',
+    massRole: 'left-foot',
     plantType: 'anubias-petite-clump',
-    baseHeight: 1.24,
-    spreadX: 0.14,
-    spreadZ: 0.1,
-    hueBase: 0.26,
-    rotationY: 0.1,
-    scale: new THREE.Vector3(0.62, 0.56, 0.6),
-    heightMin: 0.84,
-    heightMax: 1.32,
+    baseHeight: 1.34,
+    spreadX: 0.12,
+    spreadZ: 0.08,
+    hueBase: 0.258,
+    rotationY: -0.06,
+    scale: new THREE.Vector3(0.58, 0.54, 0.56),
+    heightMin: 0.92,
+    heightMax: 1.42,
     coreCount: 1,
     satelliteCount: 1,
     offshootCount: 0,
@@ -488,20 +489,49 @@ const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
     assetIds: ['plant-anubias-petite-clump', 'plant-anubias-nana-clump']
   },
   {
+    id: 'front-center',
+    x: -0.04,
+    z: 0.1,
+    layer: 'foreground',
+    massRole: 'front-center',
+    plantType: 'anubias-petite-clump',
+    baseHeight: 1.18,
+    spreadX: 0.1,
+    spreadZ: 0.08,
+    hueBase: 0.262,
+    rotationY: 0.08,
+    scale: new THREE.Vector3(0.54, 0.5, 0.52),
+    heightMin: 0.82,
+    heightMax: 1.24,
+    coreCount: 1,
+    satelliteCount: 1,
+    offshootCount: 0,
+    coreRadius: [0.02, 0.07],
+    satelliteRadius: [0.08, 0.16],
+    offshootRadius: [0.18, 0.28],
+    minDistance: 0.048,
+    depthLaneCount: 2,
+    plantMix: [
+      { plantType: 'anubias-petite-clump', weight: 0.74 },
+      { plantType: 'anubias-nana-clump', weight: 0.26 }
+    ],
+    assetIds: ['plant-anubias-petite-clump', 'plant-anubias-nana-clump']
+  },
+  {
     id: 'mid-right-backfill',
-    x: 0.14,
-    z: -0.08,
+    x: 0.08,
+    z: -0.02,
     layer: 'midground',
     massRole: 'mid-right-backfill',
     plantType: 'crypt-brown',
-    baseHeight: 3.86,
-    spreadX: 0.16,
-    spreadZ: 0.14,
+    baseHeight: 3.42,
+    spreadX: 0.14,
+    spreadZ: 0.12,
     hueBase: 0.07,
-    rotationY: 0.22,
-    scale: new THREE.Vector3(0.72, 0.88, 0.7),
-    heightMin: 2.96,
-    heightMax: 4.62,
+    rotationY: 0.16,
+    scale: new THREE.Vector3(0.66, 0.8, 0.64),
+    heightMin: 2.72,
+    heightMax: 4.08,
     coreCount: 1,
     satelliteCount: 1,
     offshootCount: 0,
@@ -518,19 +548,19 @@ const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
   },
   {
     id: 'right-rear',
-    x: 0.18,
-    z: -0.14,
+    x: 0.12,
+    z: -0.16,
     layer: 'background',
     massRole: 'right-rear',
     plantType: 'crypt-brown',
-    baseHeight: 4.92,
-    spreadX: 0.14,
+    baseHeight: 4.46,
+    spreadX: 0.12,
     spreadZ: 0.12,
     hueBase: 0.068,
-    rotationY: 0.28,
-    scale: new THREE.Vector3(0.72, 1.04, 0.7),
-    heightMin: 4.12,
-    heightMax: 5.54,
+    rotationY: 0.22,
+    scale: new THREE.Vector3(0.66, 0.96, 0.64),
+    heightMin: 3.84,
+    heightMax: 5.04,
     coreCount: 1,
     satelliteCount: 1,
     offshootCount: 0,
@@ -953,47 +983,69 @@ export const substrateHardscapeAnchors: SubstrateHardscapeAnchor[] = [
 
 const natureShowcaseSubstrateHardscapeAnchors: SubstrateHardscapeAnchor[] = [
   {
-    id: 'driftwood-root-flare',
-    x: -0.252,
-    z: -0.026,
-    radiusX: 0.094,
-    radiusZ: 0.078,
-    sinkDepth: 0.108,
-    rimHeight: 0.056,
-    rimBiasX: 0.012,
-    rimBiasZ: 0.04
+    id: 'mound-foundation-left-rear',
+    x: -0.336,
+    z: -0.1,
+    radiusX: 0.104,
+    radiusZ: 0.088,
+    sinkDepth: 0.114,
+    rimHeight: 0.058,
+    rimBiasX: 0.018,
+    rimBiasZ: 0.034
   },
   {
-    id: 'ridge-rock-front',
-    x: -0.218,
-    z: 0.044,
-    radiusX: 0.082,
-    radiusZ: 0.066,
-    sinkDepth: 0.088,
-    rimHeight: 0.052,
-    rimBiasX: 0.02,
-    rimBiasZ: 0.04
-  },
-  {
-    id: 'ridge-rock-hero',
-    x: -0.188,
-    z: -0.022,
-    radiusX: 0.11,
+    id: 'mound-foundation-left-front',
+    x: -0.312,
+    z: 0.054,
+    radiusX: 0.098,
     radiusZ: 0.082,
-    sinkDepth: 0.098,
+    sinkDepth: 0.106,
     rimHeight: 0.054,
-    rimBiasX: 0.032,
+    rimBiasX: 0.022,
+    rimBiasZ: 0.048
+  },
+  {
+    id: 'mound-foundation-core',
+    x: -0.238,
+    z: -0.018,
+    radiusX: 0.12,
+    radiusZ: 0.088,
+    sinkDepth: 0.116,
+    rimHeight: 0.058,
+    rimBiasX: 0.038,
     rimBiasZ: 0.026
   },
   {
-    id: 'ridge-rock-tail',
-    x: -0.062,
-    z: 0.098,
+    id: 'mound-shoulder-root',
+    x: -0.162,
+    z: -0.128,
+    radiusX: 0.094,
+    radiusZ: 0.074,
+    sinkDepth: 0.09,
+    rimHeight: 0.046,
+    rimBiasX: 0.048,
+    rimBiasZ: 0.018
+  },
+  {
+    id: 'mound-transition-front',
+    x: -0.104,
+    z: 0.126,
     radiusX: 0.078,
-    radiusZ: 0.07,
-    sinkDepth: 0.068,
-    rimHeight: 0.038,
-    rimBiasX: 0.03,
+    radiusZ: 0.068,
+    sinkDepth: 0.064,
+    rimHeight: 0.036,
+    rimBiasX: 0.054,
+    rimBiasZ: 0.026
+  },
+  {
+    id: 'mound-transition-sand-edge',
+    x: 0.018,
+    z: 0.154,
+    radiusX: 0.07,
+    radiusZ: 0.06,
+    sinkDepth: 0.042,
+    rimHeight: 0.028,
+    rimBiasX: 0.058,
     rimBiasZ: 0.02
   }
 ]
@@ -1099,8 +1151,8 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     massRole: 'branch-crotch',
     layer: 'midground',
     plantType: 'anubias-petite-clump',
-    position: new THREE.Vector3(-1.46, 0.82, 0.58),
-    rotation: new THREE.Euler(-0.2, -0.2, 0.12),
+    position: new THREE.Vector3(-1.68, 0.76, 0.66),
+    rotation: new THREE.Euler(-0.24, -0.24, 0.16),
     scale: new THREE.Vector3(0.22, 0.22, 0.22),
     height: 1.22,
     hueBase: 0.268,
@@ -1112,10 +1164,10 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     massRole: 'root-flare',
     layer: 'midground',
     plantType: 'anubias-petite-clump',
-    position: new THREE.Vector3(-1.02, 0.56, -0.18),
-    rotation: new THREE.Euler(-0.24, 0.24, 0.08),
-    scale: new THREE.Vector3(0.28, 0.28, 0.28),
-    height: 1.34,
+    position: new THREE.Vector3(-1.18, 0.52, -0.06),
+    rotation: new THREE.Euler(-0.28, 0.3, 0.1),
+    scale: new THREE.Vector3(0.3, 0.3, 0.3),
+    height: 1.42,
     hueBase: 0.252,
     assetIds: ['plant-anubias-petite-clump']
   },
@@ -1125,12 +1177,25 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     massRole: 'branch-crotch',
     layer: 'midground',
     plantType: 'javafern-narrow',
-    position: new THREE.Vector3(0.18, 1.88, 0.76),
-    rotation: new THREE.Euler(-0.22, 0.46, -0.04),
+    position: new THREE.Vector3(0.42, 2.06, 0.72),
+    rotation: new THREE.Euler(-0.26, 0.56, -0.06),
     scale: new THREE.Vector3(0.26, 0.26, 0.26),
-    height: 1.8,
-    hueBase: 0.29,
+    height: 1.92,
+    hueBase: 0.294,
     assetIds: ['plant-javafern-narrow']
+  },
+  {
+    id: 'driftwood-branch-crotch-right',
+    host: 'driftwood',
+    massRole: 'branch-crotch',
+    layer: 'midground',
+    plantType: 'javafern-large',
+    position: new THREE.Vector3(1.52, 2.34, 0.3),
+    rotation: new THREE.Euler(-0.22, -0.32, 0.06),
+    scale: new THREE.Vector3(0.24, 0.24, 0.24),
+    height: 1.98,
+    hueBase: 0.286,
+    assetIds: ['plant-javafern-large']
   },
   {
     id: 'driftwood-branch-crotch-rear',
@@ -1138,10 +1203,10 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     massRole: 'branch-crotch',
     layer: 'midground',
     plantType: 'anubias-nana-clump',
-    position: new THREE.Vector3(-0.68, 1.46, 0.08),
-    rotation: new THREE.Euler(-0.16, -0.1, 0.08),
+    position: new THREE.Vector3(-0.82, 1.54, -0.04),
+    rotation: new THREE.Euler(-0.18, -0.14, 0.08),
     scale: new THREE.Vector3(0.22, 0.22, 0.22),
-    height: 1.46,
+    height: 1.52,
     hueBase: 0.262,
     assetIds: ['plant-anubias-nana-clump']
   },
@@ -1151,8 +1216,8 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     massRole: 'rock-crevice',
     layer: 'midground',
     plantType: 'anubias-petite-clump',
-    position: new THREE.Vector3(-0.12, 0.36, 0.16),
-    rotation: new THREE.Euler(-0.22, 0.16, 0.18),
+    position: new THREE.Vector3(-0.38, 0.34, 0.24),
+    rotation: new THREE.Euler(-0.24, 0.18, 0.18),
     scale: new THREE.Vector3(0.22, 0.22, 0.22),
     height: 1.18,
     hueBase: 0.258,
@@ -1164,12 +1229,25 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     massRole: 'rock-crevice',
     layer: 'midground',
     plantType: 'javafern-narrow',
-    position: new THREE.Vector3(0.52, 0.42, 0.04),
-    rotation: new THREE.Euler(-0.18, -0.22, 0.14),
+    position: new THREE.Vector3(0.12, 0.46, -0.04),
+    rotation: new THREE.Euler(-0.2, -0.26, 0.12),
     scale: new THREE.Vector3(0.2, 0.2, 0.2),
     height: 1.52,
     hueBase: 0.282,
     assetIds: ['plant-javafern-narrow']
+  },
+  {
+    id: 'rock-crevice-front',
+    host: 'rock',
+    massRole: 'rock-crevice',
+    layer: 'midground',
+    plantType: 'anubias-nana-clump',
+    position: new THREE.Vector3(-0.04, 0.28, 0.26),
+    rotation: new THREE.Euler(-0.18, 0.08, 0.14),
+    scale: new THREE.Vector3(0.18, 0.18, 0.18),
+    height: 1.18,
+    hueBase: 0.256,
+    assetIds: ['plant-anubias-nana-clump']
   }
 ]
 
@@ -2541,12 +2619,12 @@ uniform float uDriftwoodRidgeLift;`
     const driftwoodGroup = new THREE.Group()
     if (this.layoutStyle === 'nature-showcase') {
       driftwoodGroup.position.set(
-        center.x - size.x * 0.122,
-        bounds.min.y + 1.02,
-        center.z + size.z * 0.02
+        center.x - size.x * 0.164,
+        bounds.min.y + 0.94,
+        center.z - size.z * 0.02
       )
-      driftwoodGroup.rotation.set(-0.04, -0.42, 0.12)
-      driftwoodGroup.scale.set(1.82, 1.42, 1.28)
+      driftwoodGroup.rotation.set(-0.08, -0.58, 0.22)
+      driftwoodGroup.scale.set(1.74, 1.38, 1.18)
     } else {
       driftwoodGroup.position.set(
         center.x + size.x * 0.056,
@@ -3046,25 +3124,25 @@ uniform float uDriftwoodRidgeLift;`
       ? [
         {
           id: 'driftwood-secondary-a',
-          position: new THREE.Vector3(-0.24, 1.24, 0.02),
-          rotation: new THREE.Euler(-0.42, 0.56, 0.4),
-          sizeRatio: new THREE.Vector3(0.14, 0.15, 0.1),
-          buryAmount: 0.18,
+          position: new THREE.Vector3(-0.54, 1.06, 0.34),
+          rotation: new THREE.Euler(-0.56, 0.48, 0.52),
+          sizeRatio: new THREE.Vector3(0.13, 0.14, 0.1),
+          buryAmount: 0.24,
           pieceRole: 'bridge'
         },
         {
           id: 'driftwood-secondary-b',
-          position: new THREE.Vector3(1.82, 2.18, 0.52),
-          rotation: new THREE.Euler(-0.26, 0.84, -0.3),
-          sizeRatio: new THREE.Vector3(0.17, 0.17, 0.11),
-          buryAmount: 0.06,
+          position: new THREE.Vector3(2.24, 2.34, 0.58),
+          rotation: new THREE.Euler(-0.28, 0.98, -0.08),
+          sizeRatio: new THREE.Vector3(0.16, 0.17, 0.1),
+          buryAmount: 0.08,
           pieceRole: 'counter-fork'
         },
         {
           id: 'driftwood-secondary-c',
-          position: new THREE.Vector3(0.98, 2.62, -0.92),
-          rotation: new THREE.Euler(0.08, 1.12, 0.52),
-          sizeRatio: new THREE.Vector3(0.12, 0.13, 0.08),
+          position: new THREE.Vector3(1.68, 3.18, -0.38),
+          rotation: new THREE.Euler(0.22, 1.24, 0.74),
+          sizeRatio: new THREE.Vector3(0.11, 0.13, 0.08),
           buryAmount: 0.03,
           pieceRole: 'uplift-fork'
         }
@@ -3150,11 +3228,11 @@ uniform float uDriftwoodRidgeLift;`
     const ridgeGroup = new THREE.Group()
     if (this.layoutStyle === 'nature-showcase') {
       ridgeGroup.position.set(
-        center.x - size.x * 0.194,
-        bounds.min.y + 0.52,
-        center.z - size.z * 0.036
+        center.x - size.x * 0.248,
+        bounds.min.y + 0.4,
+        center.z + size.z * 0.018
       )
-      ridgeGroup.rotation.set(-0.04, 0.32, 0.02)
+      ridgeGroup.rotation.set(-0.08, 0.42, 0.08)
     } else {
       ridgeGroup.position.set(
         center.x + size.x * 0.182,
@@ -3174,9 +3252,9 @@ uniform float uDriftwoodRidgeLift;`
       ridgeAsset.position.copy(ridgeGroup.position)
       ridgeAsset.rotation.copy(ridgeGroup.rotation)
       ridgeAsset.scale.set(
-        this.layoutStyle === 'nature-showcase' ? 0.96 : 1.18,
-        this.layoutStyle === 'nature-showcase' ? 0.92 : 1.12,
-        this.layoutStyle === 'nature-showcase' ? 1 : 1.18
+        this.layoutStyle === 'nature-showcase' ? 0.82 : 1.18,
+        this.layoutStyle === 'nature-showcase' ? 0.74 : 1.12,
+        this.layoutStyle === 'nature-showcase' ? 0.88 : 1.18
       )
       this.attachHardscapePlants(ridgeAsset, 'rock')
       this.decorations.push(ridgeAsset)
@@ -3187,25 +3265,25 @@ uniform float uDriftwoodRidgeLift;`
     const ridgeRockDefinitions = this.layoutStyle === 'nature-showcase'
       ? [
         {
-          geometry: new THREE.DodecahedronGeometry(0.88, 0),
-          position: new THREE.Vector3(-0.72, 0.04, 0.3),
-          rotation: new THREE.Euler(0.22, 0.18, 0.28),
-          scale: new THREE.Vector3(1.56, 0.52, 1.02),
-          color: '#5c554d'
+          geometry: new THREE.DodecahedronGeometry(0.96, 0),
+          position: new THREE.Vector3(-0.84, -0.08, 0.28),
+          rotation: new THREE.Euler(0.18, 0.2, 0.24),
+          scale: new THREE.Vector3(1.68, 0.46, 1.1),
+          color: '#4d4742'
         },
         {
-          geometry: new THREE.IcosahedronGeometry(0.54, 0),
-          position: new THREE.Vector3(0.14, 0.14, 0.04),
-          rotation: new THREE.Euler(-0.12, 0.24, -0.14),
-          scale: new THREE.Vector3(1.2, 0.62, 0.88),
-          color: '#6d655c'
+          geometry: new THREE.IcosahedronGeometry(0.58, 0),
+          position: new THREE.Vector3(-0.02, 0.02, 0.02),
+          rotation: new THREE.Euler(-0.1, 0.26, -0.12),
+          scale: new THREE.Vector3(1.28, 0.54, 0.94),
+          color: '#5a534d'
         },
         {
-          geometry: new THREE.OctahedronGeometry(0.42, 0),
-          position: new THREE.Vector3(0.88, 0.1, -0.18),
-          rotation: new THREE.Euler(0.18, -0.24, 0.12),
-          scale: new THREE.Vector3(1.04, 0.58, 1.06),
-          color: '#4d4842'
+          geometry: new THREE.OctahedronGeometry(0.48, 0),
+          position: new THREE.Vector3(0.78, 0.02, -0.14),
+          rotation: new THREE.Euler(0.14, -0.24, 0.12),
+          scale: new THREE.Vector3(1.14, 0.5, 1.02),
+          color: '#3f3b37'
         }
       ]
       : [
@@ -3250,16 +3328,16 @@ uniform float uDriftwoodRidgeLift;`
     const ridgeSlateDefinitions = this.layoutStyle === 'nature-showcase'
       ? [
         {
-          position: new THREE.Vector3(-0.16, 0.4, 0.18),
-          rotation: new THREE.Euler(-0.22, 0.18, 0.36),
-          scale: new THREE.Vector3(1.18, 0.08, 0.32),
-          color: '#7c7265'
+          position: new THREE.Vector3(-0.22, 0.2, 0.16),
+          rotation: new THREE.Euler(-0.18, 0.16, 0.32),
+          scale: new THREE.Vector3(1.34, 0.08, 0.34),
+          color: '#686156'
         },
         {
-          position: new THREE.Vector3(0.56, 0.44, -0.04),
-          rotation: new THREE.Euler(0.1, -0.28, 0.22),
-          scale: new THREE.Vector3(1.24, 0.07, 0.28),
-          color: '#605950'
+          position: new THREE.Vector3(0.42, 0.24, -0.02),
+          rotation: new THREE.Euler(0.08, -0.26, 0.2),
+          scale: new THREE.Vector3(1.3, 0.07, 0.3),
+          color: '#575048'
         }
       ]
       : [
@@ -3300,10 +3378,11 @@ uniform float uDriftwoodRidgeLift;`
 
     const ridgeRubbleDefinitions = this.layoutStyle === 'nature-showcase'
       ? [
-        { position: new THREE.Vector3(-0.94, -0.06, 0.54), scale: 0.2, color: '#5f584f' },
-        { position: new THREE.Vector3(-0.26, -0.08, 0.62), scale: 0.16, color: '#71695e' },
-        { position: new THREE.Vector3(0.22, -0.06, 0.36), scale: 0.18, color: '#504b45' },
-        { position: new THREE.Vector3(0.74, -0.08, 0.12), scale: 0.16, color: '#7e7363' }
+        { position: new THREE.Vector3(-1.02, -0.12, 0.52), scale: 0.22, color: '#48433e' },
+        { position: new THREE.Vector3(-0.36, -0.14, 0.58), scale: 0.18, color: '#60584e' },
+        { position: new THREE.Vector3(0.12, -0.12, 0.34), scale: 0.18, color: '#49453f' },
+        { position: new THREE.Vector3(0.62, -0.14, 0.1), scale: 0.16, color: '#6c6358' },
+        { position: new THREE.Vector3(-0.56, -0.1, -0.12), scale: 0.16, color: '#544e48' }
       ]
       : [
       { position: new THREE.Vector3(-1.36, -0.06, 0.74), scale: 0.24, color: '#7a7264' },
@@ -4004,40 +4083,40 @@ uniform float uDriftwoodRidgeLift;`
       const heroRockPlacement = {
         role: 'hero-rock' as const,
         assetIds: ['rock-lava-base-cluster-a', 'rock-support-c', 'rock-support-a'],
-        position: new THREE.Vector3(center.x - size.x * 0.236, surfaceY - 0.12, center.z + size.z * 0.02),
-        rotation: new THREE.Euler(-0.14, 0.42, -0.02),
-        scale: new THREE.Vector3(1.12, 1.04, 1.08),
+        position: new THREE.Vector3(center.x - size.x * 0.284, surfaceY - 0.18, center.z - size.z * 0.018),
+        rotation: new THREE.Euler(-0.18, 0.56, -0.04),
+        scale: new THREE.Vector3(1.28, 1.14, 1.18),
         pieceDefinitions: [
           {
             geometry: 'dodecahedron' as const,
-            radius: 0.86,
+            radius: 0.94,
             detail: 1,
-            offset: new THREE.Vector3(0, 0.48, 0),
-            rotation: new THREE.Euler(0.18, 0.26, 0.12),
-            scale: new THREE.Vector3(1.42, 0.78, 1.18),
-            color: '#665d52',
+            offset: new THREE.Vector3(-0.08, 0.44, 0.02),
+            rotation: new THREE.Euler(0.16, 0.24, 0.14),
+            scale: new THREE.Vector3(1.52, 0.82, 1.24),
+            color: '#4c4640',
             seed: 9.1,
             role: 'support-rock-piece' as const
           },
           {
             geometry: 'icosahedron' as const,
-            radius: 0.4,
+            radius: 0.44,
             detail: 1,
-            offset: new THREE.Vector3(0.52, 0.18, -0.16),
-            rotation: new THREE.Euler(-0.06, 0.22, -0.08),
-            scale: new THREE.Vector3(0.96, 0.54, 0.82),
-            color: '#7a7063',
+            offset: new THREE.Vector3(0.56, 0.16, -0.14),
+            rotation: new THREE.Euler(-0.08, 0.18, -0.1),
+            scale: new THREE.Vector3(1, 0.52, 0.88),
+            color: '#60594f',
             seed: 9.6,
             role: 'support-rock-chip' as const
           },
           {
             geometry: 'octahedron' as const,
-            radius: 0.28,
+            radius: 0.3,
             detail: 1,
-            offset: new THREE.Vector3(-0.42, 0.14, 0.26),
-            rotation: new THREE.Euler(0.12, -0.24, 0.08),
-            scale: new THREE.Vector3(0.92, 0.48, 0.8),
-            color: '#5b544a',
+            offset: new THREE.Vector3(-0.54, 0.12, 0.3),
+            rotation: new THREE.Euler(0.14, -0.26, 0.08),
+            scale: new THREE.Vector3(0.96, 0.46, 0.84),
+            color: '#3f3b37',
             seed: 10.1,
             role: 'support-rock-chip' as const
           }
@@ -4056,24 +4135,24 @@ uniform float uDriftwoodRidgeLift;`
       const leftMoundClusters: SupportRockClusterDefinition[] = [
         {
           side: 'left',
-          position: new THREE.Vector3(center.x - size.x * 0.34, surfaceY, center.z + size.z * 0.06),
+          position: new THREE.Vector3(center.x - size.x * 0.38, surfaceY, center.z - size.z * 0.08),
           elements: [
             {
               role: 'support-rock',
               assetIds: ['rock-lava-base-cluster-a', 'rock-support-c'],
               offset: new THREE.Vector3(0, 0, 0),
-              rotation: new THREE.Euler(0.08, 0.52, -0.04),
-              scale: new THREE.Vector3(0.96, 0.9, 0.94),
-              burialRatio: 0.14,
+              rotation: new THREE.Euler(0.06, 0.58, -0.04),
+              scale: new THREE.Vector3(1.04, 0.96, 1),
+              burialRatio: 0.16,
               fallbackPieceDefinitions: heroRockPlacement.pieceDefinitions
             },
             {
               role: 'support-rock-chip',
               assetIds: ['rock-lava-base-cluster-b', 'rock-support-a'],
-              offset: new THREE.Vector3(0.88, 0, -0.18),
-              rotation: new THREE.Euler(-0.12, 0.24, -0.1),
-              scale: new THREE.Vector3(0.52, 0.48, 0.5),
-              burialRatio: 0.12,
+              offset: new THREE.Vector3(0.84, 0, 0.08),
+              rotation: new THREE.Euler(-0.08, 0.2, -0.08),
+              scale: new THREE.Vector3(0.58, 0.52, 0.56),
+              burialRatio: 0.16,
               fallbackPieceDefinitions: [
                 {
                   geometry: 'icosahedron',
@@ -4091,10 +4170,10 @@ uniform float uDriftwoodRidgeLift;`
             {
               role: 'support-rock-scatter',
               assetIds: ['rock-lava-transition-chips', 'rock-pebble-cluster'],
-              offset: new THREE.Vector3(-0.42, 0, 0.42),
-              rotation: new THREE.Euler(0.02, -0.18, 0.02),
-              scale: new THREE.Vector3(0.62, 0.58, 0.6),
-              burialRatio: 0.15,
+              offset: new THREE.Vector3(-0.48, 0, 0.34),
+              rotation: new THREE.Euler(0.02, -0.16, 0.02),
+              scale: new THREE.Vector3(0.68, 0.62, 0.66),
+              burialRatio: 0.18,
               fallbackPebbleSeed: 11.2,
               fallbackPebbleColors: ['#655c52', '#7d7264', '#534d46']
             }
@@ -4102,15 +4181,15 @@ uniform float uDriftwoodRidgeLift;`
         },
         {
           side: 'left',
-          position: new THREE.Vector3(center.x - size.x * 0.23, surfaceY, center.z - size.z * 0.08),
+          position: new THREE.Vector3(center.x - size.x * 0.28, surfaceY, center.z + size.z * 0.02),
           elements: [
             {
               role: 'support-rock',
               assetIds: ['rock-lava-base-cluster-b', 'rock-support-b'],
               offset: new THREE.Vector3(0.02, 0, 0),
-              rotation: new THREE.Euler(-0.08, 0.12, 0.06),
-              scale: new THREE.Vector3(0.84, 0.78, 0.86),
-              burialRatio: 0.12,
+              rotation: new THREE.Euler(-0.12, 0.18, 0.08),
+              scale: new THREE.Vector3(0.96, 0.82, 0.94),
+              burialRatio: 0.16,
               fallbackPieceDefinitions: [
                 {
                   geometry: 'dodecahedron',
@@ -4139,10 +4218,10 @@ uniform float uDriftwoodRidgeLift;`
             {
               role: 'support-rock-scatter',
               assetIds: ['rock-lava-transition-chips', 'rock-pebble-cluster'],
-              offset: new THREE.Vector3(0.62, 0, 0.34),
-              rotation: new THREE.Euler(-0.04, 0.16, 0.04),
-              scale: new THREE.Vector3(0.54, 0.48, 0.52),
-              burialRatio: 0.14,
+              offset: new THREE.Vector3(0.58, 0, 0.28),
+              rotation: new THREE.Euler(-0.02, 0.12, 0.04),
+              scale: new THREE.Vector3(0.58, 0.52, 0.56),
+              burialRatio: 0.16,
               fallbackPebbleSeed: 12.9,
               fallbackPebbleColors: ['#73685c', '#564f49', '#8a7d6e']
             }
@@ -4150,15 +4229,36 @@ uniform float uDriftwoodRidgeLift;`
         },
         {
           side: 'left',
-          position: new THREE.Vector3(center.x - size.x * 0.13, surfaceY, center.z + size.z * 0.02),
+          position: new THREE.Vector3(center.x - size.x * 0.18, surfaceY, center.z - size.z * 0.12),
           elements: [
+            {
+              role: 'support-rock',
+              assetIds: ['rock-lava-base-cluster-b', 'rock-support-c'],
+              offset: new THREE.Vector3(-0.08, 0, 0.04),
+              rotation: new THREE.Euler(-0.1, -0.18, 0.1),
+              scale: new THREE.Vector3(0.7, 0.64, 0.68),
+              burialRatio: 0.16,
+              fallbackPieceDefinitions: [
+                {
+                  geometry: 'dodecahedron',
+                  radius: 0.48,
+                  detail: 1,
+                  offset: new THREE.Vector3(0, 0.28, 0),
+                  rotation: new THREE.Euler(0.04, -0.16, 0.08),
+                  scale: new THREE.Vector3(1.14, 0.58, 0.9),
+                  color: '#524c45',
+                  seed: 13.1,
+                  role: 'support-rock-piece'
+                }
+              ]
+            },
             {
               role: 'support-rock-chip',
               assetIds: ['rock-support-a', 'rock-support-b'],
-              offset: new THREE.Vector3(0, 0, 0),
-              rotation: new THREE.Euler(-0.06, -0.22, 0.1),
-              scale: new THREE.Vector3(0.52, 0.48, 0.48),
-              burialRatio: 0.12,
+              offset: new THREE.Vector3(0.54, 0, 0.16),
+              rotation: new THREE.Euler(-0.04, -0.18, 0.08),
+              scale: new THREE.Vector3(0.56, 0.5, 0.5),
+              burialRatio: 0.14,
               fallbackPieceDefinitions: [
                 {
                   geometry: 'dodecahedron',
@@ -4176,12 +4276,49 @@ uniform float uDriftwoodRidgeLift;`
             {
               role: 'support-rock-scatter',
               assetIds: ['rock-lava-transition-chips', 'rock-pebble-cluster'],
-              offset: new THREE.Vector3(0.44, 0, 0.28),
-              rotation: new THREE.Euler(0.04, -0.12, 0.02),
-              scale: new THREE.Vector3(0.5, 0.46, 0.48),
-              burialRatio: 0.12,
+              offset: new THREE.Vector3(0.8, 0, 0.34),
+              rotation: new THREE.Euler(0.04, -0.08, 0.02),
+              scale: new THREE.Vector3(0.56, 0.52, 0.54),
+              burialRatio: 0.16,
               fallbackPebbleSeed: 13.9,
               fallbackPebbleColors: ['#6b6258', '#8d806f', '#4f4a45']
+            }
+          ]
+        },
+        {
+          side: 'left',
+          position: new THREE.Vector3(center.x - size.x * 0.08, surfaceY, center.z + size.z * 0.12),
+          elements: [
+            {
+              role: 'support-rock-scatter',
+              assetIds: ['rock-lava-transition-chips', 'rock-pebble-cluster'],
+              offset: new THREE.Vector3(0, 0, 0),
+              rotation: new THREE.Euler(0.04, -0.06, 0.02),
+              scale: new THREE.Vector3(0.62, 0.58, 0.6),
+              burialRatio: 0.18,
+              fallbackPebbleSeed: 14.3,
+              fallbackPebbleColors: ['#554f49', '#73685d', '#8d7f6d']
+            },
+            {
+              role: 'support-rock-chip',
+              assetIds: ['rock-support-a', 'rock-support-b'],
+              offset: new THREE.Vector3(-0.34, 0, -0.2),
+              rotation: new THREE.Euler(0.04, 0.08, -0.02),
+              scale: new THREE.Vector3(0.46, 0.42, 0.44),
+              burialRatio: 0.18,
+              fallbackPieceDefinitions: [
+                {
+                  geometry: 'octahedron',
+                  radius: 0.24,
+                  detail: 1,
+                  offset: new THREE.Vector3(0, 0.14, 0),
+                  rotation: new THREE.Euler(0.1, 0.16, -0.04),
+                  scale: new THREE.Vector3(0.92, 0.46, 0.74),
+                  color: '#675d52',
+                  seed: 14.8,
+                  role: 'support-rock-chip'
+                }
+              ]
             }
           ]
         }
