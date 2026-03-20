@@ -451,21 +451,25 @@ const sampleBody = (config, u, v) => {
     const bodyCream = gauss(u, 0.48, 0.22) * gauss(v, 0.54, 0.28)
     const bodyOlive = gauss(u, 0.5, 0.18) * gauss(v, 0.54, 0.22)
     const midBodyPlate = gauss(u, 0.52, 0.14) * gauss(v, 0.54, 0.18)
-    color = mixColor([0.95, 0.93, 0.76], [0.76, 0.72, 0.2], smoothstep(0.28, 0.88, v))
-    color = mixColor(color, [0.88, 0.86, 0.56], bodyCream * 0.95)
-    color = mixColor(color, [0.62, 0.78, 0.28], bodyOlive * 0.72)
-    color = mixColor(color, [0.64, 0.8, 0.28], midBodyPlate * 0.96)
-    color = mixColor(color, [0.95, 0.91, 0.74], ventralFade * 0.24)
-    color = mixColor(color, [0.82, 0.66, 0.18], dorsalWash * 0.28)
+    const bodyMint = gauss(u, 0.5, 0.2) * gauss(v, 0.54, 0.24)
+    const speciesTint = gauss(u, 0.5, 0.28) * gauss(v, 0.54, 0.26)
+    color = mixColor([0.9, 0.92, 0.84], [0.54, 0.72, 0.48], smoothstep(0.28, 0.88, v))
+    color = mixColor(color, [0.68, 0.8, 0.66], bodyCream * 0.74)
+    color = mixColor(color, [0.34, 0.62, 0.4], bodyOlive * 0.72)
+    color = mixColor(color, [0.34, 0.62, 0.44], midBodyPlate * 0.96)
+    color = mixColor(color, [0.44, 0.68, 0.48], bodyMint * 0.72)
+    color = mixColor(color, [0.94, 0.92, 0.8], ventralFade * 0.24)
+    color = mixColor(color, [0.62, 0.66, 0.4], dorsalWash * 0.28)
     color = mixColor(color, [0.56, 0.48, 0.3], dorsalSlate * 0.2)
-    color = mixColor(color, [0.24, 0.24, 0.28], eyeBand * 0.88)
+    color = mixColor(color, [0.62, 0.76, 0.46], speciesTint * 0.84)
+    color = mixColor(color, [0.18, 0.18, 0.2], eyeBand * 0.94)
     color = mixColor(color, [0.72, 0.62, 0.38], rearBand * 0.24)
-    color = mixColor(color, [0.9, 0.58, 0.16], tailAccent * 0.58)
+    color = mixColor(color, [0.98, 0.66, 0.18], tailAccent * 0.82)
     color = mixColor(color, [0.66, 0.5, 0.24], gillBand * 0.4)
-    color = mixColor(color, [0.5, 0.42, 0.24], faceMask * 0.42)
+    color = mixColor(color, [0.36, 0.3, 0.18], faceMask * 0.6)
     color = mixColor(color, [0.12, 0.12, 0.14], eyeCore)
     color = mixColor(color, [0.96, 0.95, 0.88], eyeHighlight * 0.9)
-    color = mixColor(color, [0.34, 0.3, 0.2], mouth * 0.7)
+    color = mixColor(color, [0.28, 0.2, 0.12], mouth * 0.82)
     roughness = 0.76 + (eyeBand * 0.06) + (tailAccent * 0.03) + (faceMask * 0.03)
     height += (Math.sin(u * 24 + v * 7) * 0.018) + (rearBand * 0.04) + (gillBand * 0.03) + (eyeBand * 0.06)
   } else if (config.pattern === 'goldfish') {
@@ -475,6 +479,7 @@ const sampleBody = (config, u, v) => {
     const peduncle = gauss(u, 0.14, 0.08) * gauss(v, 0.52, 0.28)
     const gillBand = gauss(u, 0.77, 0.025) * gauss(v, 0.56, 0.18)
     const mouth = gauss(u, 0.965, 0.02) * gauss(v, 0.49, 0.05)
+    const mouthShadow = gauss(u, 0.944, 0.032) * gauss(v, 0.468, 0.05)
     const midBodyWarm = gauss(u, 0.52, 0.22) * gauss(v, 0.52, 0.28)
     const eyeRing = gauss(u, 0.89, 0.026) * gauss(v, 0.585, 0.038)
     const eyeCore = gauss(u, 0.898, 0.014) * gauss(v, 0.58, 0.022)
@@ -487,12 +492,13 @@ const sampleBody = (config, u, v) => {
     color = mixColor(color, [0.98, 0.68, 0.24], headWarm * 0.42)
     color = mixColor(color, [0.86, 0.34, 0.12], peduncle * 0.5)
     color = mixColor(color, [0.72, 0.3, 0.12], gillBand * 0.7)
-    color = mixColor(color, [0.92, 0.52, 0.28], mouth * 0.52)
+    color = mixColor(color, [0.78, 0.26, 0.14], mouth * 0.82)
+    color = mixColor(color, [0.72, 0.22, 0.14], mouthShadow * 0.38)
     color = mixColor(color, [0.86, 0.58, 0.28], eyeRing * 0.6)
     color = mixColor(color, [0.08, 0.08, 0.09], eyeCore)
     color = mixColor(color, [0.98, 0.96, 0.92], eyeHighlight * 0.92)
     roughness = 0.7 - (smoothstep(0.24, 0.76, u) * 0.08) + (gillBand * 0.08) + (peduncle * 0.06)
-    height += scaleBreakup + (gillBand * 0.07) + (eyeRing * 0.16) + (peduncle * 0.04)
+    height += scaleBreakup + (gillBand * 0.07) + (eyeRing * 0.16) + (peduncle * 0.04) + (mouth * 0.04)
   } else {
     const eyeLine = smoothstep(0.74, 0.82, u) * (1 - smoothstep(0.88, 0.96, u)) * gauss(v, 0.56, 0.035)
     const finEdge = smoothstep(0.74, 1, u) * gauss(v, 0.5, 0.28)
@@ -538,22 +544,24 @@ const sampleFin = (config, finKind, u, v) => {
     const border = 1 - smoothstep(0.03, 0.14, edge)
     const warmEdge = smoothstep(0.72, 1, u) + gauss(v, 0.76, 0.18)
     const membraneAmber = smoothstep(0.16, 0.82, centerMask)
-    color = mixColor(color, [0.9, 0.82, 0.54], membraneAmber * 0.22)
+    const membraneAlpha = lerp(0.14, 0.8, centerMask)
+    color = mixColor(color, [0.92, 0.86, 0.58], membraneAmber * 0.26)
     color = mixColor(color, [0.92, 0.82, 0.34], warmEdge * 0.18)
-    color = mixColor(color, [0.28, 0.28, 0.3], border * 0.38)
+    color = mixColor(color, [0.12, 0.1, 0.1], border * 0.72)
     color = mixColor(color, [0.58, 0.48, 0.22], rayStrength * 0.26)
-    alpha *= 0.86
+    alpha = ((membraneAlpha + (rayStrength * 0.12)) * 0.9) - (border * 0.08) + (rayStrength * 0.02)
     roughness = 0.88
-    height += border * 0.03
+    height += border * 0.05 + (rayStrength * 0.06)
   } else if (config.pattern === 'goldfish') {
     const warm = smoothstep(0.12, 0.9, u)
     const edgeFade = 1 - smoothstep(0.03, 0.14, edge)
+    const membraneAlpha = lerp(0.14, 0.8, centerMask)
     color = mixColor(color, [1, 0.82, 0.5], warm * 0.46)
     color = mixColor(color, [0.98, 0.55, 0.22], rayStrength * 0.34)
     color = mixColor(color, [0.86, 0.42, 0.18], edgeFade * 0.22)
-    alpha *= 0.82
+    alpha = ((membraneAlpha + (rayStrength * 0.14)) * 0.74) - (edgeFade * 0.05) + (rayStrength * 0.04)
     roughness = 0.92
-    height += rayStrength * 0.08
+    height += rayStrength * 0.12
   } else if (config.pattern === 'neon') {
     const tailFlash = finKind === 'tail' ? smoothstep(0.3, 1, u) : gauss(v, 0.55, 0.16)
     color = mixColor(color, [0.56, 0.9, 1], tailFlash * 0.4)
@@ -567,6 +575,8 @@ const sampleFin = (config, finKind, u, v) => {
     color = mixColor(color, multiplyColor(hexToRgb(config.accent), 0.9), border * 0.24)
     alpha *= 0.88
   }
+
+  alpha = clamp01(alpha)
 
   return { color, roughness, height, alpha }
 }
@@ -832,6 +842,24 @@ export const writeFishAssets = async (config) => {
     alphaMap: makeTexture(atlas.alpha, 'linear')
   }
 
+  const materialScalars = config.pattern === 'butterflyfish'
+    ? {
+        school: { metalness: 0.01, roughness: 0.52 },
+        heroBody: { metalness: 0.01, roughness: 0.5 },
+        heroFin: { metalness: 0.01, roughness: 0.9, opacity: 0.92, alphaTest: 0.06 }
+      }
+    : config.pattern === 'goldfish'
+      ? {
+          school: { metalness: 0.02, roughness: 0.5 },
+          heroBody: { metalness: 0.02, roughness: 0.42 },
+          heroFin: { metalness: 0.01, roughness: 0.94, opacity: 0.92, alphaTest: 0.06 }
+        }
+      : {
+          school: { metalness: 0.03, roughness: 0.42 },
+          heroBody: { metalness: 0.03, roughness: 0.34 },
+          heroFin: { metalness: 0.02, roughness: 0.72, opacity: 0.96, alphaTest: 0.04 }
+        }
+
   const { body, fins } = createFishGeometries(config)
   const schoolGeometry = BufferGeometryUtils.mergeGeometries([body.clone(), fins.clone()])
   schoolGeometry.computeVertexNormals()
@@ -841,8 +869,8 @@ export const writeFishAssets = async (config) => {
     map: textures.map,
     normalMap: textures.normalMap,
     roughnessMap: textures.roughnessMap,
-    metalness: 0.03,
-    roughness: 0.42,
+    metalness: materialScalars.school.metalness,
+    roughness: materialScalars.school.roughness,
     side: THREE.FrontSide
   })
 
@@ -857,8 +885,8 @@ export const writeFishAssets = async (config) => {
     map: textures.map,
     normalMap: textures.normalMap,
     roughnessMap: textures.roughnessMap,
-    metalness: 0.03,
-    roughness: 0.34
+    metalness: materialScalars.heroBody.metalness,
+    roughness: materialScalars.heroBody.roughness
   })
   const heroFinMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -867,10 +895,10 @@ export const writeFishAssets = async (config) => {
     roughnessMap: textures.roughnessMap,
     alphaMap: textures.alphaMap,
     transparent: true,
-    opacity: 0.96,
-    alphaTest: 0.04,
-    metalness: 0.02,
-    roughness: 0.72,
+    opacity: materialScalars.heroFin.opacity,
+    alphaTest: materialScalars.heroFin.alphaTest,
+    metalness: materialScalars.heroFin.metalness,
+    roughness: materialScalars.heroFin.roughness,
     side: THREE.DoubleSide
   })
 

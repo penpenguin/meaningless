@@ -2060,22 +2060,22 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     if (variant.name === 'Butterflyfish') {
       return hero
         ? {
-            metalness: 0.02,
-            roughness: 0.46,
-            clearcoat: 0.78,
-            clearcoatRoughness: 0.34,
-            reflectivity: 0.76,
-            envMapIntensity: 0.82,
-            normalScale: new THREE.Vector2(0.28, 0.18)
+            metalness: 0.01,
+            roughness: 0.5,
+            clearcoat: 0.72,
+            clearcoatRoughness: 0.42,
+            reflectivity: 0.7,
+            envMapIntensity: 0.76,
+            normalScale: new THREE.Vector2(0.24, 0.16)
           }
         : {
-            metalness: 0.02,
-            roughness: 0.46,
-            clearcoat: 0.54,
-            clearcoatRoughness: 0.32,
-            reflectivity: 0.76,
-            envMapIntensity: 0.64,
-            normalScale: new THREE.Vector2(0.22, 0.14)
+            metalness: 0.01,
+            roughness: 0.52,
+            clearcoat: 0.48,
+            clearcoatRoughness: 0.4,
+            reflectivity: 0.66,
+            envMapIntensity: 0.56,
+            normalScale: new THREE.Vector2(0.2, 0.12)
           }
     }
 
@@ -2083,21 +2083,21 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       return hero
         ? {
             metalness: 0.03,
-            roughness: 0.32,
-            clearcoat: 0.8,
-            clearcoatRoughness: 0.3,
-            reflectivity: 0.84,
-            envMapIntensity: 0.86,
-            normalScale: new THREE.Vector2(0.34, 0.22)
+            roughness: 0.4,
+            clearcoat: 0.74,
+            clearcoatRoughness: 0.34,
+            reflectivity: 0.76,
+            envMapIntensity: 0.78,
+            normalScale: new THREE.Vector2(0.3, 0.2)
           }
         : {
             metalness: 0.03,
-            roughness: 0.42,
-            clearcoat: 0.58,
-            clearcoatRoughness: 0.28,
-            reflectivity: 0.84,
-            envMapIntensity: 0.68,
-            normalScale: new THREE.Vector2(0.28, 0.18)
+            roughness: 0.5,
+            clearcoat: 0.52,
+            clearcoatRoughness: 0.32,
+            reflectivity: 0.76,
+            envMapIntensity: 0.6,
+            normalScale: new THREE.Vector2(0.24, 0.16)
           }
     }
 
@@ -2130,47 +2130,69 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
   }> {
     if (this.layoutStyle === 'nature-showcase') {
       return [
-        { lateralOffset: -1.04, verticalOffset: 0.08, depthOffset: 1.5, scaleMultiplier: 2.02 },
-        { lateralOffset: 0.92, verticalOffset: -0.06, depthOffset: 1.34, scaleMultiplier: 1.86 },
-        { lateralOffset: 0.16, verticalOffset: 0.24, depthOffset: 1.42, scaleMultiplier: 1.72 }
+        { lateralOffset: -1.02, verticalOffset: 0.08, depthOffset: 1.42, scaleMultiplier: 1.9 },
+        { lateralOffset: 0.88, verticalOffset: -0.06, depthOffset: 1.26, scaleMultiplier: 1.74 },
+        { lateralOffset: 0.14, verticalOffset: 0.22, depthOffset: 1.34, scaleMultiplier: 1.6 }
       ]
     }
 
     return [
-      { lateralOffset: -0.92, verticalOffset: 0.08, depthOffset: 1.36, scaleMultiplier: 1.88 },
-      { lateralOffset: 0.84, verticalOffset: -0.05, depthOffset: 1.24, scaleMultiplier: 1.76 },
-      { lateralOffset: 0.14, verticalOffset: 0.22, depthOffset: 1.42, scaleMultiplier: 1.64 }
+      { lateralOffset: -0.92, verticalOffset: 0.08, depthOffset: 1.3, scaleMultiplier: 1.78 },
+      { lateralOffset: 0.82, verticalOffset: -0.05, depthOffset: 1.18, scaleMultiplier: 1.66 },
+      { lateralOffset: 0.14, verticalOffset: 0.22, depthOffset: 1.34, scaleMultiplier: 1.54 }
     ]
   }
 
   private resolveHeroPriorityMultiplier(variant?: FishVariant): number {
-    if (!variant || this.layoutStyle !== 'planted') {
+    if (!variant) {
       return 1
     }
 
-    return variant.name === 'Goldfish' || variant.name === 'Butterflyfish'
-      ? 0.84
-      : 1
+    if (variant.name !== 'Goldfish' && variant.name !== 'Butterflyfish') {
+      return 1
+    }
+
+    if (this.layoutStyle === 'nature-showcase') {
+      return 0.74
+    }
+
+    if (this.layoutStyle === 'planted') {
+      return 0.84
+    }
+
+    return 1
   }
 
   private resolveHeroAccentScaleMultiplier(variant: FishVariant): number {
-    if (this.layoutStyle !== 'planted') {
+    if (variant.name !== 'Goldfish' && variant.name !== 'Butterflyfish') {
       return 1
     }
 
-    return variant.name === 'Goldfish' || variant.name === 'Butterflyfish'
-      ? 0.92
-      : 1
+    if (this.layoutStyle === 'nature-showcase') {
+      return 0.86
+    }
+
+    if (this.layoutStyle === 'planted') {
+      return 0.92
+    }
+
+    return 1
   }
 
   private resolveHeroAccentDepthMultiplier(variant: FishVariant): number {
-    if (this.layoutStyle !== 'planted') {
+    if (variant.name !== 'Goldfish' && variant.name !== 'Butterflyfish') {
       return 1
     }
 
-    return variant.name === 'Goldfish' || variant.name === 'Butterflyfish'
-      ? 0.9
-      : 1
+    if (this.layoutStyle === 'nature-showcase') {
+      return 0.82
+    }
+
+    if (this.layoutStyle === 'planted') {
+      return 0.9
+    }
+
+    return 1
   }
 
   private createFishAssetMaterial(

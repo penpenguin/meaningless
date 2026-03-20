@@ -1067,12 +1067,90 @@ describe('DetailedFishSystem premium materials', () => {
 
     expect(schoolMaterial.map).toBe(butterflyMap)
     expect(schoolMaterial.roughness).toBeGreaterThanOrEqual(0.44)
+    expect(schoolMaterial.metalness).toBeLessThanOrEqual(0.015)
     expect(schoolMaterial.clearcoat).toBeLessThanOrEqual(0.58)
-    expect(schoolMaterial.envMapIntensity).toBeLessThanOrEqual(0.68)
+    expect(schoolMaterial.reflectivity).toBeLessThanOrEqual(0.68)
+    expect(schoolMaterial.envMapIntensity).toBeLessThanOrEqual(0.58)
     expect(heroMaterial.alphaMap).toBe(butterflyAlpha)
-    expect(heroMaterial.roughness).toBeGreaterThanOrEqual(0.42)
+    expect(heroMaterial.roughness).toBeGreaterThanOrEqual(0.48)
     expect(heroMaterial.clearcoat).toBeLessThanOrEqual(0.82)
-    expect(heroMaterial.envMapIntensity).toBeLessThanOrEqual(0.9)
+    expect(heroMaterial.reflectivity).toBeLessThanOrEqual(0.72)
+    expect(heroMaterial.envMapIntensity).toBeLessThanOrEqual(0.78)
+  })
+
+  test('keeps goldfish glossy but not mirror-like so facial and fin textures remain primary', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const goldfishMap = new THREE.Texture()
+    const goldfishNormal = new THREE.Texture()
+    const goldfishRoughness = new THREE.Texture()
+    const goldfishAlpha = new THREE.Texture()
+    type GoldfishMaterialVariant = {
+      name: string
+      primaryColor: THREE.Color
+      secondaryColor: THREE.Color
+      scale: number
+      speed: number
+      baseColorTextureId?: string
+      normalTextureId?: string
+      roughnessTextureId?: string
+      alphaTextureId?: string
+    }
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-goldfish-basecolor': goldfishMap,
+        'fish-goldfish-normal': goldfishNormal,
+        'fish-goldfish-roughness': goldfishRoughness,
+        'fish-goldfish-alpha': goldfishAlpha
+      }
+    }
+
+    const variant: GoldfishMaterialVariant = {
+      name: 'Goldfish',
+      primaryColor: new THREE.Color('#f6b03a'),
+      secondaryColor: new THREE.Color('#ffdb9b'),
+      scale: 1,
+      speed: 1,
+      baseColorTextureId: 'fish-goldfish-basecolor',
+      normalTextureId: 'fish-goldfish-normal',
+      roughnessTextureId: 'fish-goldfish-roughness',
+      alphaTextureId: 'fish-goldfish-alpha'
+    }
+
+    const { createFishAssetMaterial, createHeroFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: GoldfishMaterialVariant,
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+      createHeroFishMaterial: (
+        baseMaterial: THREE.Material,
+        variant: GoldfishMaterialVariant
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const schoolMaterial = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({ color: '#ffffff' }),
+      variant,
+      false
+    )
+    const heroMaterial = createHeroFishMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({ color: '#ffffff' }),
+      variant
+    )
+
+    expect(schoolMaterial.map).toBe(goldfishMap)
+    expect(schoolMaterial.roughness).toBeGreaterThanOrEqual(0.48)
+    expect(schoolMaterial.reflectivity).toBeLessThanOrEqual(0.78)
+    expect(schoolMaterial.envMapIntensity).toBeLessThanOrEqual(0.62)
+    expect(heroMaterial.alphaMap).toBe(goldfishAlpha)
+    expect(heroMaterial.roughness).toBeGreaterThanOrEqual(0.38)
+    expect(heroMaterial.reflectivity).toBeLessThanOrEqual(0.78)
+    expect(heroMaterial.envMapIntensity).toBeLessThanOrEqual(0.78)
   })
 })
 
@@ -2200,6 +2278,41 @@ describe('DetailedFishSystem quality scaling', () => {
     expect(placements.length).toBeGreaterThan(0)
     expect(placements.every((entry) => entry.depthOffset <= 1.45)).toBe(true)
     expect(placements.every((entry) => entry.scaleMultiplier <= 2)).toBe(true)
+  })
+
+  test('suppresses goldfish and butterflyfish hero priority and front scaling in both planted and showcase layouts', () => {
+    const planted = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(planted as unknown as { layoutStyle: 'planted' }).layoutStyle = 'planted'
+    ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+
+    const {
+      createFishVariants,
+      resolveHeroPriorityMultiplier,
+      resolveHeroAccentScaleMultiplier,
+      resolveHeroAccentDepthMultiplier
+    } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{ name: string }>
+      resolveHeroPriorityMultiplier: (variant?: { name: string }) => number
+      resolveHeroAccentScaleMultiplier: (variant: { name: string }) => number
+      resolveHeroAccentDepthMultiplier: (variant: { name: string }) => number
+    }
+
+    const goldfish = createFishVariants.bind(planted)().find((variant) => variant.name === 'Goldfish')
+    const butterflyfish = createFishVariants.bind(planted)().find((variant) => variant.name === 'Butterflyfish')
+
+    expect(goldfish).toBeDefined()
+    expect(butterflyfish).toBeDefined()
+
+    expect(resolveHeroPriorityMultiplier.bind(planted)(goldfish)).toBeLessThan(1)
+    expect(resolveHeroAccentScaleMultiplier.bind(planted)(goldfish!)).toBeLessThan(1)
+    expect(resolveHeroAccentDepthMultiplier.bind(planted)(goldfish!)).toBeLessThan(1)
+    expect(resolveHeroPriorityMultiplier.bind(showcase)(goldfish)).toBeLessThan(1)
+    expect(resolveHeroAccentScaleMultiplier.bind(showcase)(goldfish!)).toBeLessThan(1)
+    expect(resolveHeroAccentDepthMultiplier.bind(showcase)(goldfish!)).toBeLessThan(1)
+    expect(resolveHeroPriorityMultiplier.bind(showcase)(butterflyfish)).toBeLessThan(1)
+    expect(resolveHeroAccentScaleMultiplier.bind(showcase)(butterflyfish!)).toBeLessThan(1)
+    expect(resolveHeroAccentDepthMultiplier.bind(showcase)(butterflyfish!)).toBeLessThan(1)
   })
 })
 
