@@ -1270,6 +1270,51 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.emissiveIntensity).toBeGreaterThanOrEqual(0.09)
   })
 
+  it('prefers bark ao and installs cavity shading so exposed ridges stay readable above darker cavities', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const barkAo = new THREE.Texture()
+    const cavityMask = new THREE.Texture()
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { scene: THREE.Group; sourceMesh: null } | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'driftwood-bark-ao': barkAo,
+        'driftwood-bark-cavity-mask': cavityMask
+      },
+      models: {}
+    }
+
+    const createAssetBackedMaterial = (AquascapingSystem.prototype as unknown as {
+      createAssetBackedMaterial: (
+        id: string,
+        material: THREE.Material,
+        userData?: Record<string, unknown>
+      ) => THREE.Material
+    }).createAssetBackedMaterial.bind(instance)
+
+    const material = createAssetBackedMaterial(
+      'driftwood-hero',
+      new THREE.MeshPhysicalMaterial({
+        color: '#3a291e',
+        roughness: 0.84,
+        metalness: 0.04
+      }),
+      { role: 'hero-driftwood' }
+    ) as THREE.MeshPhysicalMaterial & {
+      customProgramCacheKey?: () => string
+    }
+
+    expect(material.aoMap).toBe(barkAo)
+    expect(material.userData.driftwoodCavityMask).toBe(cavityMask)
+    expect(material.userData.driftwoodCavityStrength).toBeGreaterThanOrEqual(0.15)
+    expect(material.userData.driftwoodRidgeLift).toBeGreaterThanOrEqual(0.05)
+    expect(material.customProgramCacheKey?.()).toContain('driftwood-cavity')
+  })
+
   it('supplements missing driftwood maps, adds uv2 for ao, and clamps glossy reflections on cloned hero assets', () => {
     const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
     const authoredMap = new THREE.Texture()
@@ -1545,6 +1590,9 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     const scene = new THREE.Scene()
     const bounds = createOpenWaterBounds()
     const driftwoodAsset = createModelAssetScene('driftwood-hero')
+    const driftwoodSecondaryA = createModelAssetScene('driftwood-secondary-a')
+    const driftwoodSecondaryB = createModelAssetScene('driftwood-secondary-b')
+    const driftwoodSecondaryC = createModelAssetScene('driftwood-secondary-c')
     const rockAsset = createModelAssetScene('rock-ridge-hero')
     const vallisneriaAsset = createModelAssetScene('plant-vallisneria-tall')
     const javafernAsset = createModelAssetScene('plant-javafern-large')
@@ -1558,6 +1606,9 @@ describe('AquascapingSystem asset-backed hero scape', () => {
       environment: {},
       models: {
         'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null },
+        'driftwood-secondary-a': { scene: driftwoodSecondaryA, sourceMesh: null },
+        'driftwood-secondary-b': { scene: driftwoodSecondaryB, sourceMesh: null },
+        'driftwood-secondary-c': { scene: driftwoodSecondaryC, sourceMesh: null },
         'rock-ridge-hero': { scene: rockAsset, sourceMesh: null },
         'plant-vallisneria-tall': { scene: vallisneriaAsset, sourceMesh: null },
         'plant-javafern-large': { scene: javafernAsset, sourceMesh: null },
@@ -1576,11 +1627,30 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     const plantedMassAssets = aquascapingGroup.children.filter(
       (child) => child.userData.role === 'planted-mass' && typeof child.userData.assetId === 'string'
     )
+    const secondaryBranches = heroDriftwood.children.filter(
+      (child): child is THREE.Group =>
+        child instanceof THREE.Group
+        && child.userData.role === 'driftwood-secondary-branch'
+        && typeof child.userData.assetId === 'string'
+    )
+    const secondaryAssetIds = new Set(secondaryBranches.map((child) => child.userData.assetId as string))
+    const uniqueBurialAmounts = new Set(secondaryBranches.map((child) => Number(child.userData.buryAmount).toFixed(3)))
+    const uniqueYawRotations = new Set(secondaryBranches.map((child) => child.rotation.y.toFixed(3)))
+    const uniqueScaleTriples = new Set(secondaryBranches.map((child) =>
+      `${child.scale.x.toFixed(3)}:${child.scale.y.toFixed(3)}:${child.scale.z.toFixed(3)}`
+    ))
 
     expect(heroDriftwood).toBeDefined()
     expect(heroDriftwood).not.toBe(driftwoodAsset)
     expect(heroDriftwood.userData.assetId).toBe('driftwood-hero')
     expect(heroDriftwood.children.some((child) => child.userData.assetId === 'driftwood-hero')).toBe(true)
+    expect(secondaryBranches.length).toBeGreaterThanOrEqual(2)
+    expect(secondaryBranches.length).toBeLessThanOrEqual(3)
+    expect(secondaryAssetIds.has('driftwood-secondary-a')).toBe(true)
+    expect(secondaryAssetIds.has('driftwood-secondary-b') || secondaryAssetIds.has('driftwood-secondary-c')).toBe(true)
+    expect(uniqueBurialAmounts.size).toBeGreaterThan(1)
+    expect(uniqueYawRotations.size).toBeGreaterThan(1)
+    expect(uniqueScaleTriples.size).toBeGreaterThan(1)
     expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-root-flare')).toBe(true)
     expect(heroDriftwood.children.filter((child) => child.userData.role === 'driftwood-branch-attachment').length).toBeGreaterThanOrEqual(2)
     expect(heroDriftwood.children.filter((child) => child.userData.role === 'epiphyte-cluster').length).toBeGreaterThanOrEqual(5)

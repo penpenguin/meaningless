@@ -106,6 +106,15 @@ type DriftwoodTubeDefinition = {
   barkAmplitude: number
 }
 
+type DriftwoodSecondaryAssetDefinition = {
+  id: 'driftwood-secondary-a' | 'driftwood-secondary-b' | 'driftwood-secondary-c'
+  position: THREE.Vector3
+  rotation: THREE.Euler
+  sizeRatio: THREE.Vector3
+  buryAmount: number
+  pieceRole: 'bridge' | 'counter-fork' | 'uplift-fork'
+}
+
 type RockClusterShape = 'icosahedron' | 'octahedron' | 'dodecahedron'
 
 type RockClusterPieceDefinition = {
@@ -2241,34 +2250,41 @@ export class AquascapingSystem {
     material.map = material.map ?? this.getVisualTexture('driftwood-diffuse')
     material.normalMap = material.normalMap ?? this.getVisualTexture('driftwood-normal')
     if (material.normalMap) {
-      material.normalScale = new THREE.Vector2(1.18, 0.68)
+      material.normalScale = new THREE.Vector2(1.24, 0.74)
     }
     material.roughnessMap = material.roughnessMap ?? this.getVisualTexture('driftwood-roughness')
-    material.aoMap = material.aoMap ?? this.getVisualTexture('driftwood-ao')
+    material.aoMap = material.aoMap
+      ?? this.getVisualTexture('driftwood-bark-ao')
+      ?? this.getVisualTexture('driftwood-ao')
     material.aoMapIntensity = material.aoMap
-      ? THREE.MathUtils.clamp(material.aoMapIntensity ?? 0.6, 0.54, 0.68)
+      ? THREE.MathUtils.clamp(material.aoMapIntensity ?? 0.64, 0.6, 0.76)
       : 0
     const driftwoodColor = material.color?.clone() ?? new THREE.Color('#6f5641')
     const driftwoodHsl = { h: 0, s: 0, l: 0 }
     driftwoodColor.getHSL(driftwoodHsl)
-    if (driftwoodHsl.l < 0.33) {
+    if (driftwoodHsl.l < 0.35) {
       driftwoodColor.setHSL(
         driftwoodHsl.h,
         THREE.MathUtils.clamp(driftwoodHsl.s * 0.78 + 0.025, 0.1, 0.24),
-        0.33
+        0.35
       )
     }
     material.color = driftwoodColor
     material.emissive = material.emissive ?? new THREE.Color('#000000')
-    material.emissive.lerp(new THREE.Color('#503923'), 0.24)
-    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.09)
+    material.emissive.lerp(new THREE.Color('#5f4328'), 0.28)
+    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.1)
     material.roughness = typeof material.roughness === 'number'
-      ? Math.max(material.roughness, material.roughnessMap ? 0.92 : 0.95)
-      : material.roughnessMap ? 0.93 : 0.96
+      ? Math.max(material.roughness, material.roughnessMap ? 0.9 : 0.94)
+      : material.roughnessMap ? 0.91 : 0.95
     material.metalness = typeof material.metalness === 'number'
       ? Math.min(material.metalness, 0.03)
       : 0.02
-    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.05, 0.02, 0.09)
+    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.05, 0.02, 0.08)
+
+    const cavityMask = this.getVisualTexture('driftwood-bark-cavity-mask')
+    if (cavityMask) {
+      this.installDriftwoodCavityShading(material, cavityMask)
+    }
 
     if (material instanceof THREE.MeshPhysicalMaterial) {
       material.clearcoat = Math.min(material.clearcoat ?? 0, 0.03)
@@ -2276,6 +2292,54 @@ export class AquascapingSystem {
     }
 
     return material
+  }
+
+  private installDriftwoodCavityShading(
+    material: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial,
+    cavityMask: THREE.Texture
+  ): void {
+    const cavityStrength = 0.22
+    const ridgeLift = 0.075
+    material.userData = {
+      ...material.userData,
+      driftwoodCavityMask: cavityMask,
+      driftwoodCavityStrength: cavityStrength,
+      driftwoodRidgeLift: ridgeLift
+    }
+
+    const previousOnBeforeCompile = material.onBeforeCompile.bind(material)
+    const previousProgramCacheKey = typeof material.customProgramCacheKey === 'function'
+      ? material.customProgramCacheKey.bind(material)
+      : null
+
+    material.onBeforeCompile = (shader, renderer) => {
+      previousOnBeforeCompile(shader, renderer)
+      shader.uniforms.uDriftwoodCavityMask = { value: cavityMask }
+      shader.uniforms.uDriftwoodCavityStrength = { value: cavityStrength }
+      shader.uniforms.uDriftwoodRidgeLift = { value: ridgeLift }
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <aomap_pars_fragment>',
+          `#include <aomap_pars_fragment>
+uniform sampler2D uDriftwoodCavityMask;
+uniform float uDriftwoodCavityStrength;
+uniform float uDriftwoodRidgeLift;`
+        )
+        .replace(
+          '#include <aomap_fragment>',
+          `#include <aomap_fragment>
+#ifdef USE_AOMAP
+  float driftwoodCavity = texture2D(uDriftwoodCavityMask, vAoMapUv).r;
+  float driftwoodUnderside = smoothstep(-0.32, 0.46, normal.y);
+  float driftwoodRidge = (1.0 - driftwoodCavity) * driftwoodUnderside;
+  reflectedLight.indirectDiffuse *= 1.0 - driftwoodCavity * uDriftwoodCavityStrength;
+  reflectedLight.directDiffuse *= 1.0 - driftwoodCavity * (uDriftwoodCavityStrength * 0.58);
+  diffuseColor.rgb += vec3(uDriftwoodRidgeLift * driftwoodRidge);
+#endif`
+        )
+    }
+    material.customProgramCacheKey = () => `${previousProgramCacheKey ? previousProgramCacheKey() : 'standard'}-driftwood-cavity`
+    material.needsUpdate = true
   }
 
   private createDriftwoodReplacementMaterial(material: THREE.Material): THREE.MeshPhysicalMaterial {
@@ -2510,6 +2574,10 @@ export class AquascapingSystem {
       this.fitHeroDriftwoodAssetCore(driftwoodAsset, size)
       driftwoodGroup.add(driftwoodAsset)
     }
+
+    this.createHeroDriftwoodSecondaryAssets(size).forEach((branch) => {
+      driftwoodGroup.add(branch)
+    })
 
     driftwoodGroup.add(this.createHeroDriftwoodRootFlare(driftwoodMaterial))
 
@@ -2870,6 +2938,11 @@ export class AquascapingSystem {
         position: new THREE.Vector3(-1.42, -0.08, 0.36),
         rotation: new THREE.Euler(-0.18, 0.26, -0.04),
         scale: new THREE.Vector3(0.7, 0.18, 0.42)
+      },
+      {
+        position: new THREE.Vector3(-2.46, -0.06, 0.92),
+        rotation: new THREE.Euler(-0.28, 0.42, 0.2),
+        scale: new THREE.Vector3(1.08, 0.24, 0.66)
       }
     ]
 
@@ -2965,6 +3038,106 @@ export class AquascapingSystem {
       1.16 - fittedCenter.x,
       0.58 - fittedBounds.min.y,
       0.42 - fittedCenter.z
+    )
+  }
+
+  private createHeroDriftwoodSecondaryAssets(tankSize: THREE.Vector3): THREE.Group[] {
+    const definitions: DriftwoodSecondaryAssetDefinition[] = this.layoutStyle === 'nature-showcase'
+      ? [
+        {
+          id: 'driftwood-secondary-a',
+          position: new THREE.Vector3(-0.24, 1.24, 0.02),
+          rotation: new THREE.Euler(-0.42, 0.56, 0.4),
+          sizeRatio: new THREE.Vector3(0.14, 0.15, 0.1),
+          buryAmount: 0.18,
+          pieceRole: 'bridge'
+        },
+        {
+          id: 'driftwood-secondary-b',
+          position: new THREE.Vector3(1.82, 2.18, 0.52),
+          rotation: new THREE.Euler(-0.26, 0.84, -0.3),
+          sizeRatio: new THREE.Vector3(0.17, 0.17, 0.11),
+          buryAmount: 0.06,
+          pieceRole: 'counter-fork'
+        },
+        {
+          id: 'driftwood-secondary-c',
+          position: new THREE.Vector3(0.98, 2.62, -0.92),
+          rotation: new THREE.Euler(0.08, 1.12, 0.52),
+          sizeRatio: new THREE.Vector3(0.12, 0.13, 0.08),
+          buryAmount: 0.03,
+          pieceRole: 'uplift-fork'
+        }
+      ]
+      : [
+        {
+          id: 'driftwood-secondary-a',
+          position: new THREE.Vector3(-0.38, 1.18, 0.16),
+          rotation: new THREE.Euler(-0.34, 0.34, 0.52),
+          sizeRatio: new THREE.Vector3(0.13, 0.14, 0.09),
+          buryAmount: 0.16,
+          pieceRole: 'bridge'
+        },
+        {
+          id: 'driftwood-secondary-b',
+          position: new THREE.Vector3(2.22, 1.94, 0.64),
+          rotation: new THREE.Euler(-0.44, 0.86, -0.24),
+          sizeRatio: new THREE.Vector3(0.18, 0.16, 0.12),
+          buryAmount: 0.05,
+          pieceRole: 'counter-fork'
+        },
+        {
+          id: 'driftwood-secondary-c',
+          position: new THREE.Vector3(1.24, 2.58, -0.96),
+          rotation: new THREE.Euler(0.04, 1.14, 0.46),
+          sizeRatio: new THREE.Vector3(0.11, 0.12, 0.08),
+          buryAmount: 0.02,
+          pieceRole: 'uplift-fork'
+        }
+      ]
+
+    return definitions.flatMap((definition) => {
+      const branch = this.cloneVisualModelGroup(definition.id, {
+        role: 'driftwood-secondary-branch',
+        branchRole: definition.pieceRole,
+        buryAmount: definition.buryAmount
+      })
+      if (!branch) {
+        return []
+      }
+      this.fitHeroDriftwoodSecondaryAsset(branch, definition, tankSize)
+      return [branch]
+    })
+  }
+
+  private fitHeroDriftwoodSecondaryAsset(
+    asset: THREE.Group,
+    definition: DriftwoodSecondaryAssetDefinition,
+    tankSize: THREE.Vector3
+  ): void {
+    asset.rotation.copy(definition.rotation)
+
+    const sourceBounds = new THREE.Box3().setFromObject(asset)
+    const sourceSize = sourceBounds.getSize(new THREE.Vector3())
+    const targetSize = new THREE.Vector3(
+      tankSize.x * definition.sizeRatio.x,
+      tankSize.y * definition.sizeRatio.y,
+      tankSize.z * definition.sizeRatio.z
+    )
+
+    asset.scale.set(
+      targetSize.x / Math.max(sourceSize.x, 0.001),
+      targetSize.y / Math.max(sourceSize.y, 0.001),
+      targetSize.z / Math.max(sourceSize.z, 0.001)
+    )
+
+    const fittedBounds = new THREE.Box3().setFromObject(asset)
+    const fittedCenter = fittedBounds.getCenter(new THREE.Vector3())
+    const fittedHeight = Math.max(fittedBounds.max.y - fittedBounds.min.y, 0.001)
+    asset.position.set(
+      definition.position.x - fittedCenter.x,
+      definition.position.y - fittedBounds.min.y - fittedHeight * definition.buryAmount,
+      definition.position.z - fittedCenter.z
     )
   }
 
@@ -3485,6 +3658,23 @@ export class AquascapingSystem {
       role: 'driftwood-burial-shadow'
     }
     driftwoodGroup.add(burialShadow)
+
+    const burialLip = new THREE.Mesh(
+      new THREE.SphereGeometry(0.52, 20, 14),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color('#b09a7d'),
+        roughness: 0.98,
+        metalness: 0
+      })
+    )
+    burialLip.position.set(-2.02, 0.14, 0.66)
+    burialLip.scale.set(1.96, 0.22, 1.14)
+    burialLip.rotation.set(-0.18, 0.3, 0.12)
+    burialLip.receiveShadow = true
+    burialLip.userData = {
+      role: 'driftwood-burial-lip'
+    }
+    driftwoodGroup.add(burialLip)
 
     const moundDefinitions = [
       {

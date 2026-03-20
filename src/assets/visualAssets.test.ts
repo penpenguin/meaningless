@@ -245,8 +245,12 @@ describe('public aquarium asset urls', () => {
     const manifest = createAquariumAssetManifest('/')
     const textureIds = new Set(manifest.textures.map((entry) => entry.id))
     const textureUrls = manifest.textures.map((entry) => entry.url)
+    const modelIds = new Set(manifest.models.map((entry) => entry.id))
+    const modelUrls = manifest.models.map((entry) => entry.url)
 
     expect(textureIds.has('driftwood-ao')).toBe(true)
+    expect(textureIds.has('driftwood-bark-ao')).toBe(true)
+    expect(textureIds.has('driftwood-bark-cavity-mask')).toBe(true)
     expect(textureUrls.some((url) => url.endsWith('driftwood-diffuse.svg'))).toBe(false)
     expect(textureUrls.some((url) => url.endsWith('driftwood-normal.svg'))).toBe(false)
     expect(textureUrls.some((url) => url.endsWith('driftwood-roughness.svg'))).toBe(false)
@@ -254,6 +258,14 @@ describe('public aquarium asset urls', () => {
     expect(textureUrls.some((url) => url.endsWith('driftwood-normal.png'))).toBe(true)
     expect(textureUrls.some((url) => url.endsWith('driftwood-roughness.png'))).toBe(true)
     expect(textureUrls.some((url) => url.endsWith('driftwood-ao.png'))).toBe(true)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-bark-ao.png'))).toBe(true)
+    expect(textureUrls.some((url) => url.endsWith('driftwood-bark-cavity-mask.png'))).toBe(true)
+    expect(modelIds.has('driftwood-secondary-a')).toBe(true)
+    expect(modelIds.has('driftwood-secondary-b')).toBe(true)
+    expect(modelIds.has('driftwood-secondary-c')).toBe(true)
+    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-a.glb'))).toBe(true)
+    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-b.glb'))).toBe(true)
+    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-c.glb'))).toBe(true)
   })
 
   it('uses authored png textures for shared leaf, rock, and backdrop assets while preserving stable ids', () => {
@@ -288,6 +300,15 @@ describe('public aquarium asset urls', () => {
     expect(modelUrlsById.get('rock-support-b')).toBe('/assets/aquarium/rock-support-b.glb')
     expect(modelUrlsById.get('rock-support-c')).toBe('/assets/aquarium/rock-support-c.glb')
     expect(modelUrlsById.get('rock-pebble-cluster')).toBe('/assets/aquarium/rock-pebble-cluster.glb')
+  })
+
+  it('registers nature showcase base-cluster and transition rock glbs for the left mound layout', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
+
+    expect(modelUrlsById.get('rock-lava-base-cluster-a')).toBe('/assets/aquarium/rock-lava-base-cluster-a.glb')
+    expect(modelUrlsById.get('rock-lava-base-cluster-b')).toBe('/assets/aquarium/rock-lava-base-cluster-b.glb')
+    expect(modelUrlsById.get('rock-lava-transition-chips')).toBe('/assets/aquarium/rock-lava-transition-chips.glb')
   })
 
   it('uses authored png pbr textures for substrate sand while keeping the stable texture ids', () => {
@@ -328,5 +349,14 @@ describe('public aquarium asset urls', () => {
     expect(textureUrlsById.get('substrate-sand-normal')).toBe('/meaningless/assets/aquarium/substrate-sand-normal.png')
     expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/meaningless/assets/aquarium/substrate-sand-roughness.png')
     expect(textureUrlsById.get('substrate-sand-ao')).toBe('/meaningless/assets/aquarium/substrate-sand-ao.png')
+    expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-base-cluster-a')).toBe(
+      '/meaningless/assets/aquarium/rock-lava-base-cluster-a.glb'
+    )
+    expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-base-cluster-b')).toBe(
+      '/meaningless/assets/aquarium/rock-lava-base-cluster-b.glb'
+    )
+    expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-transition-chips')).toBe(
+      '/meaningless/assets/aquarium/rock-lava-transition-chips.glb'
+    )
   })
 })
