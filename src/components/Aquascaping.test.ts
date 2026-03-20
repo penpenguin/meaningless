@@ -776,7 +776,7 @@ describe('AquascapingSystem composition', () => {
     expect(Math.max(...worldCenters.map((center) => center.y))).toBeGreaterThan((driftwood?.position.y ?? 0) + 2.8)
   })
 
-  it('anchors nature-showcase driftwood deeper into the left mound and spreads premium secondary woods into a right-rising fan', () => {
+  it('uses the showcase driftwood asset as the main core and downgrades procedural wood to short extenders', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -807,12 +807,26 @@ describe('AquascapingSystem composition', () => {
     const driftwood = aquascapingGroup.children.find(
       (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
     ) as THREE.Group | undefined
+    const assetCore = driftwood?.children.find(
+      (child): child is THREE.Group =>
+        child instanceof THREE.Group && child.userData.role === 'driftwood-asset-core'
+    )
+    const proceduralTrunks = driftwood?.children.filter(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-trunk'
+    ) ?? []
+    const extenders = driftwood?.children.filter(
+      (child): child is THREE.Mesh =>
+        child instanceof THREE.Mesh && child.userData.role === 'driftwood-trunk-extender'
+    ) ?? []
     const secondaryBranches = driftwood?.children.filter(
       (child): child is THREE.Group =>
         child instanceof THREE.Group && child.userData.role === 'driftwood-secondary-branch'
     ) ?? []
     const secondaryCenters = secondaryBranches.map((branch) => getWorldBounds(branch).getCenter(new THREE.Vector3()))
     expect(driftwood).toBeDefined()
+    expect(assetCore).toBeDefined()
+    expect(proceduralTrunks).toHaveLength(0)
+    expect(extenders.length).toBeGreaterThanOrEqual(1)
     expect(driftwood?.position.x ?? 0).toBeLessThan(-size.x * 0.14)
     expect(secondaryBranches).toHaveLength(3)
     expect(
