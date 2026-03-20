@@ -2266,13 +2266,13 @@ export class AquascapingSystem {
       driftwoodColor.setHSL(
         driftwoodHsl.h,
         THREE.MathUtils.clamp(driftwoodHsl.s * 0.78 + 0.025, 0.1, 0.24),
-        0.35
+        0.4
       )
     }
     material.color = driftwoodColor
     material.emissive = material.emissive ?? new THREE.Color('#000000')
     material.emissive.lerp(new THREE.Color('#5f4328'), 0.28)
-    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.1)
+    material.emissiveIntensity = Math.max(material.emissiveIntensity ?? 0, 0.18)
     material.roughness = typeof material.roughness === 'number'
       ? Math.max(material.roughness, material.roughnessMap ? 0.9 : 0.94)
       : material.roughnessMap ? 0.91 : 0.95
@@ -2298,8 +2298,8 @@ export class AquascapingSystem {
     material: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial,
     cavityMask: THREE.Texture
   ): void {
-    const cavityStrength = 0.22
-    const ridgeLift = 0.075
+    const cavityStrength = 0.18
+    const ridgeLift = 0.13
     material.userData = {
       ...material.userData,
       driftwoodCavityMask: cavityMask,
@@ -2985,7 +2985,7 @@ uniform float uDriftwoodRidgeLift;`
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#102026'),
         transparent: true,
-        opacity: 0.14,
+        opacity: 0.08,
         depthWrite: false
       })
     )
@@ -2998,8 +2998,8 @@ uniform float uDriftwoodRidgeLift;`
   }
 
   private createHeroDriftwoodLocalFill(): THREE.PointLight {
-    const fill = new THREE.PointLight('#f4ebd8', 2.28, 8.4, 1.9)
-    fill.position.set(0.26, 0.72, 2.06)
+    const fill = new THREE.PointLight('#f4ebd8', 3.4, 9.6, 1.8)
+    fill.position.set(0.42, 0.76, 2.34)
     fill.userData = {
       role: 'driftwood-local-fill'
     }
@@ -3007,8 +3007,8 @@ uniform float uDriftwoodRidgeLift;`
   }
 
   private createHeroDriftwoodLocalRim(): THREE.PointLight {
-    const rim = new THREE.PointLight('#adc0b8', 0.72, 5.2, 1.9)
-    rim.position.set(-1.04, 1.72, -0.96)
+    const rim = new THREE.PointLight('#adc0b8', 1.04, 6.1, 1.8)
+    rim.position.set(-1.18, 1.96, -1.08)
     rim.userData = {
       role: 'driftwood-local-rim'
     }
@@ -3648,7 +3648,7 @@ uniform float uDriftwoodRidgeLift;`
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#102026'),
         transparent: true,
-        opacity: 0.24,
+        opacity: 0.18,
         depthWrite: false
       })
     )

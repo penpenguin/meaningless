@@ -153,6 +153,9 @@ describe('AquascapingSystem composition', () => {
     const localFill = driftwood?.children.find(
       (child): child is THREE.PointLight => child instanceof THREE.PointLight && child.userData.role === 'driftwood-local-fill'
     )
+    const localRim = driftwood?.children.find(
+      (child): child is THREE.PointLight => child instanceof THREE.PointLight && child.userData.role === 'driftwood-local-rim'
+    )
     const localShadow = driftwood?.children.find(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-local-shadow'
     )
@@ -190,6 +193,10 @@ describe('AquascapingSystem composition', () => {
     expect(epiphytes.length).toBeGreaterThanOrEqual(5)
     expect(epiphyteLeaves.length).toBeGreaterThan(0)
     expect(localFill).toBeDefined()
+    expect(localFill?.intensity).toBeGreaterThanOrEqual(3.2)
+    expect(localRim).toBeDefined()
+    expect(localRim?.intensity).toBeGreaterThanOrEqual(1)
+    expect((localShadow?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 1).toBeLessThanOrEqual(0.1)
     expect(localShadow).toBeDefined()
   })
 
@@ -572,6 +579,7 @@ describe('AquascapingSystem composition', () => {
 
     expect(burialShadow).toBeDefined()
     expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.transparent).toBe(true)
+    expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 1).toBeLessThanOrEqual(0.2)
     expect(burialShadow?.position.x ?? 0).toBeLessThanOrEqual(-1.74)
     expect(burialShadow?.position.z ?? 0).toBeGreaterThanOrEqual(0.62)
     expect(detritusMounds.length).toBeGreaterThanOrEqual(4)
@@ -1263,11 +1271,11 @@ describe('AquascapingSystem premium materials', () => {
       { role: 'hero-driftwood' }
     ) as THREE.MeshPhysicalMaterial
 
-    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.32)
+    expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.39)
     expect(material.roughness).toBeGreaterThanOrEqual(0.9)
     expect(material.metalness).toBeLessThanOrEqual(0.03)
     expect(material.clearcoat).toBeLessThanOrEqual(0.03)
-    expect(material.emissiveIntensity).toBeGreaterThanOrEqual(0.09)
+    expect(material.emissiveIntensity).toBeGreaterThanOrEqual(0.16)
   })
 
   it('prefers bark ao and installs cavity shading so exposed ridges stay readable above darker cavities', () => {
@@ -1311,7 +1319,8 @@ describe('AquascapingSystem premium materials', () => {
     expect(material.aoMap).toBe(barkAo)
     expect(material.userData.driftwoodCavityMask).toBe(cavityMask)
     expect(material.userData.driftwoodCavityStrength).toBeGreaterThanOrEqual(0.15)
-    expect(material.userData.driftwoodRidgeLift).toBeGreaterThanOrEqual(0.05)
+    expect(material.userData.driftwoodCavityStrength).toBeLessThanOrEqual(0.18)
+    expect(material.userData.driftwoodRidgeLift).toBeGreaterThanOrEqual(0.12)
     expect(material.customProgramCacheKey?.()).toContain('driftwood-cavity')
   })
 
@@ -1634,6 +1643,7 @@ describe('AquascapingSystem asset-backed hero scape', () => {
         && typeof child.userData.assetId === 'string'
     )
     const secondaryAssetIds = new Set(secondaryBranches.map((child) => child.userData.assetId as string))
+    const secondaryBranchRoles = new Set(secondaryBranches.map((child) => child.userData.branchRole as string))
     const uniqueBurialAmounts = new Set(secondaryBranches.map((child) => Number(child.userData.buryAmount).toFixed(3)))
     const uniqueYawRotations = new Set(secondaryBranches.map((child) => child.rotation.y.toFixed(3)))
     const uniqueScaleTriples = new Set(secondaryBranches.map((child) =>
@@ -1648,6 +1658,9 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     expect(secondaryBranches.length).toBeLessThanOrEqual(3)
     expect(secondaryAssetIds.has('driftwood-secondary-a')).toBe(true)
     expect(secondaryAssetIds.has('driftwood-secondary-b') || secondaryAssetIds.has('driftwood-secondary-c')).toBe(true)
+    expect(secondaryBranchRoles.has('bridge')).toBe(true)
+    expect(secondaryBranchRoles.has('counter-fork')).toBe(true)
+    expect(secondaryBranchRoles.has('uplift-fork')).toBe(true)
     expect(uniqueBurialAmounts.size).toBeGreaterThan(1)
     expect(uniqueYawRotations.size).toBeGreaterThan(1)
     expect(uniqueScaleTriples.size).toBeGreaterThan(1)
