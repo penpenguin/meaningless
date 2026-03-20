@@ -1696,10 +1696,12 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
 
       const heroSlots = Math.min(normalizedCount, normalizedCount >= 6 ? 2 : 1)
       for (let slotIndex = 0; slotIndex < heroSlots; slotIndex++) {
+        const variant = this.variants[variantIndex]
+        const priorityMultiplier = this.resolveHeroPriorityMultiplier(variant)
         candidates.push({
           boidIndex: boidStartIndex + Math.min(slotIndex * 2, normalizedCount - 1),
           variantIndex,
-          priority: normalizedCount - (slotIndex * 1.25),
+          priority: (normalizedCount - (slotIndex * 1.25)) * priorityMultiplier,
           slotIndex
         })
       }
@@ -1707,11 +1709,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       boidStartIndex += normalizedCount
     })
 
-    const placements = [
-      { lateralOffset: -1.25, verticalOffset: 0.12, depthOffset: 1.75, scaleMultiplier: 2.4 },
-      { lateralOffset: 1.05, verticalOffset: -0.08, depthOffset: 1.42, scaleMultiplier: 2.1 },
-      { lateralOffset: 0.18, verticalOffset: 0.32, depthOffset: 1.92, scaleMultiplier: 1.9 }
-    ]
+    const placements = this.resolveHeroPlacements()
 
     candidates
       .sort((left, right) => right.priority - left.priority)
@@ -1731,14 +1729,19 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
 
         const placement = placements[index] ?? placements[placements.length - 1]
         const isSlenderVariant = variant.name === 'Neon'
-        const heroScaleMultiplier = placement.scaleMultiplier * (isSlenderVariant ? 1.28 : 1)
+        const accentPlacementScale = this.resolveHeroAccentScaleMultiplier(variant)
+        const accentDepthScale = this.resolveHeroAccentDepthMultiplier(variant)
+        const heroScaleMultiplier = Math.min(
+          1.98,
+          placement.scaleMultiplier * accentPlacementScale * (isSlenderVariant ? 1.18 : 1)
+        )
         this.heroAssignments.set(candidate.boidIndex, {
           object: heroObject,
           body: (heroObject.userData.motionNodes as { body?: THREE.Object3D } | undefined)?.body ?? heroObject,
           tail: (heroObject.userData.motionNodes as { tail?: THREE.Object3D | null } | undefined)?.tail ?? null,
           lateralOffset: placement.lateralOffset,
           verticalOffset: placement.verticalOffset,
-          depthOffset: placement.depthOffset,
+          depthOffset: placement.depthOffset * accentDepthScale,
           scaleMultiplier: heroScaleMultiplier,
           fishSafeExtents: this.resolveFishSafeExtents(variant, 'hero', heroScaleMultiplier * 1.04)
         })
@@ -1874,8 +1877,6 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     variant: FishVariant
   ): THREE.MeshPhysicalMaterial {
     const heroMaterial = this.createFishAssetMaterial(baseMaterial, variant, true)
-    heroMaterial.envMapIntensity = Math.min(1.12, (heroMaterial.envMapIntensity ?? 0.95) + 0.12)
-    heroMaterial.clearcoat = Math.min(1, (heroMaterial.clearcoat ?? 0.84) + 0.08)
     heroMaterial.emissive.set(0x000000)
     heroMaterial.emissiveIntensity = 0
     return heroMaterial
@@ -2044,6 +2045,134 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     return this.getVisualTexture(kind === 'normal' ? 'fish-scale-normal' : 'fish-scale-roughness')
   }
 
+  private resolveFishMaterialResponse(
+    variant: FishVariant,
+    hero: boolean
+  ): {
+    metalness: number
+    roughness: number
+    clearcoat: number
+    clearcoatRoughness: number
+    reflectivity: number
+    envMapIntensity: number
+    normalScale: THREE.Vector2
+  } {
+    if (variant.name === 'Butterflyfish') {
+      return hero
+        ? {
+            metalness: 0.02,
+            roughness: 0.46,
+            clearcoat: 0.78,
+            clearcoatRoughness: 0.34,
+            reflectivity: 0.76,
+            envMapIntensity: 0.82,
+            normalScale: new THREE.Vector2(0.28, 0.18)
+          }
+        : {
+            metalness: 0.02,
+            roughness: 0.46,
+            clearcoat: 0.54,
+            clearcoatRoughness: 0.32,
+            reflectivity: 0.76,
+            envMapIntensity: 0.64,
+            normalScale: new THREE.Vector2(0.22, 0.14)
+          }
+    }
+
+    if (variant.name === 'Goldfish') {
+      return hero
+        ? {
+            metalness: 0.03,
+            roughness: 0.32,
+            clearcoat: 0.8,
+            clearcoatRoughness: 0.3,
+            reflectivity: 0.84,
+            envMapIntensity: 0.86,
+            normalScale: new THREE.Vector2(0.34, 0.22)
+          }
+        : {
+            metalness: 0.03,
+            roughness: 0.42,
+            clearcoat: 0.58,
+            clearcoatRoughness: 0.28,
+            reflectivity: 0.84,
+            envMapIntensity: 0.68,
+            normalScale: new THREE.Vector2(0.28, 0.18)
+          }
+    }
+
+    return hero
+      ? {
+          metalness: 0.04,
+          roughness: 0.24,
+          clearcoat: 0.84,
+          clearcoatRoughness: 0.2,
+          reflectivity: 0.9,
+          envMapIntensity: 0.95,
+          normalScale: new THREE.Vector2(0.4, 0.24)
+        }
+      : {
+          metalness: 0.04,
+          roughness: 0.38,
+          clearcoat: 0.64,
+          clearcoatRoughness: 0.2,
+          reflectivity: 0.9,
+          envMapIntensity: 0.78,
+          normalScale: new THREE.Vector2(0.3, 0.18)
+        }
+  }
+
+  private resolveHeroPlacements(): Array<{
+    lateralOffset: number
+    verticalOffset: number
+    depthOffset: number
+    scaleMultiplier: number
+  }> {
+    if (this.layoutStyle === 'nature-showcase') {
+      return [
+        { lateralOffset: -1.04, verticalOffset: 0.08, depthOffset: 1.5, scaleMultiplier: 2.02 },
+        { lateralOffset: 0.92, verticalOffset: -0.06, depthOffset: 1.34, scaleMultiplier: 1.86 },
+        { lateralOffset: 0.16, verticalOffset: 0.24, depthOffset: 1.42, scaleMultiplier: 1.72 }
+      ]
+    }
+
+    return [
+      { lateralOffset: -0.92, verticalOffset: 0.08, depthOffset: 1.36, scaleMultiplier: 1.88 },
+      { lateralOffset: 0.84, verticalOffset: -0.05, depthOffset: 1.24, scaleMultiplier: 1.76 },
+      { lateralOffset: 0.14, verticalOffset: 0.22, depthOffset: 1.42, scaleMultiplier: 1.64 }
+    ]
+  }
+
+  private resolveHeroPriorityMultiplier(variant?: FishVariant): number {
+    if (!variant || this.layoutStyle !== 'planted') {
+      return 1
+    }
+
+    return variant.name === 'Goldfish' || variant.name === 'Butterflyfish'
+      ? 0.84
+      : 1
+  }
+
+  private resolveHeroAccentScaleMultiplier(variant: FishVariant): number {
+    if (this.layoutStyle !== 'planted') {
+      return 1
+    }
+
+    return variant.name === 'Goldfish' || variant.name === 'Butterflyfish'
+      ? 0.92
+      : 1
+  }
+
+  private resolveHeroAccentDepthMultiplier(variant: FishVariant): number {
+    if (this.layoutStyle !== 'planted') {
+      return 1
+    }
+
+    return variant.name === 'Goldfish' || variant.name === 'Butterflyfish'
+      ? 0.9
+      : 1
+  }
+
   private createFishAssetMaterial(
     baseMaterial: THREE.Material,
     variant: FishVariant,
@@ -2068,6 +2197,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       texturedMaterial.roughnessMap ??
       this.getVisualTexture(variant.roughnessTextureId) ??
       this.getGenericFishDetailTexture('roughness')
+    const materialResponse = this.resolveFishMaterialResponse(variant, hero)
     const resolvedAlphaTest = Math.max(texturedMaterial.alphaTest ?? 0, resolvedAlphaMap ? 0.05 : 0)
     const transparent = hero
       ? texturedMaterial.transparent || !!resolvedAlphaMap
@@ -2077,17 +2207,17 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       map: resolvedMap,
       alphaMap: resolvedAlphaMap,
       normalMap: resolvedNormalMap,
-      normalScale: new THREE.Vector2(hero ? 0.4 : 0.3, hero ? 0.24 : 0.18),
+      normalScale: materialResponse.normalScale,
       roughnessMap: resolvedRoughnessMap,
       color: texturedMaterial.color?.clone() ?? new THREE.Color(0xffffff),
-      metalness: typeof texturedMaterial.metalness === 'number' ? texturedMaterial.metalness : 0.04,
-      roughness: hero ? 0.24 : 0.38,
-      clearcoat: Math.max(hero ? 0.84 : 0.64, texturedMaterial.clearcoat ?? 0),
-      clearcoatRoughness: Math.min(0.28, texturedMaterial.clearcoatRoughness ?? 0.2),
-      reflectivity: 0.9,
+      metalness: typeof texturedMaterial.metalness === 'number' ? texturedMaterial.metalness : materialResponse.metalness,
+      roughness: materialResponse.roughness,
+      clearcoat: Math.max(materialResponse.clearcoat, texturedMaterial.clearcoat ?? 0),
+      clearcoatRoughness: Math.min(materialResponse.clearcoatRoughness, texturedMaterial.clearcoatRoughness ?? materialResponse.clearcoatRoughness),
+      reflectivity: materialResponse.reflectivity,
       envMapIntensity: hero
-        ? 0.95
-        : Math.min(0.78, Math.max(0.62, texturedMaterial.envMapIntensity ?? 0)),
+        ? materialResponse.envMapIntensity
+        : Math.min(materialResponse.envMapIntensity, Math.max(0.52, texturedMaterial.envMapIntensity ?? materialResponse.envMapIntensity)),
       transparent,
       alphaTest: resolvedAlphaTest,
       side: texturedMaterial.side ?? THREE.FrontSide
@@ -2413,6 +2543,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     const speciesAlphaTexture = this.getVisualTexture(variant.alphaTextureId)
     const legacyPatternTexture = this.getVisualTexture(variant.patternTextureId)
     const resolvedMap = speciesBaseColorTexture ?? legacyPatternTexture
+    const materialResponse = this.resolveFishMaterialResponse(variant, false)
     if (resolvedMap) {
       const alphaTest = speciesAlphaTexture ? 0.05 : 0
       const materialOptions: THREE.MeshPhysicalMaterialParameters = {
@@ -2421,18 +2552,18 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         roughnessMap: speciesRoughnessTexture,
         alphaMap: speciesAlphaTexture,
         color: 0xffffff,
-        metalness: 0.04,
-        roughness: 0.28,
-        clearcoat: 0.82,
-        clearcoatRoughness: 0.18,
-        reflectivity: 0.9,
-        envMapIntensity: 0.7,
+        metalness: materialResponse.metalness,
+        roughness: materialResponse.roughness,
+        clearcoat: materialResponse.clearcoat,
+        clearcoatRoughness: materialResponse.clearcoatRoughness,
+        reflectivity: materialResponse.reflectivity,
+        envMapIntensity: materialResponse.envMapIntensity,
         transparent: false,
         alphaTest,
         side: THREE.FrontSide
       }
       if (speciesNormalTexture) {
-        materialOptions.normalScale = new THREE.Vector2(0.3, 0.18)
+        materialOptions.normalScale = materialResponse.normalScale
       }
       return new THREE.MeshPhysicalMaterial(materialOptions)
     }

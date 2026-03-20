@@ -999,6 +999,81 @@ describe('DetailedFishSystem premium materials', () => {
     expect(material.emissiveIntensity).toBe(0)
     expect(material.emissive.getHex()).toBe(0x000000)
   })
+
+  test('keeps butterflyfish asset materials subdued so authored markings do not read as chrome', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const butterflyMap = new THREE.Texture()
+    const butterflyNormal = new THREE.Texture()
+    const butterflyRoughness = new THREE.Texture()
+    const butterflyAlpha = new THREE.Texture()
+    type ButterflyMaterialVariant = {
+      name: string
+      primaryColor: THREE.Color
+      secondaryColor: THREE.Color
+      scale: number
+      speed: number
+      baseColorTextureId?: string
+      normalTextureId?: string
+      roughnessTextureId?: string
+      alphaTextureId?: string
+    }
+
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {
+        'fish-butterflyfish-basecolor': butterflyMap,
+        'fish-butterflyfish-normal': butterflyNormal,
+        'fish-butterflyfish-roughness': butterflyRoughness,
+        'fish-butterflyfish-alpha': butterflyAlpha
+      }
+    }
+
+    const variant: ButterflyMaterialVariant = {
+      name: 'Butterflyfish',
+      primaryColor: new THREE.Color('#f2cf63'),
+      secondaryColor: new THREE.Color('#f6eed1'),
+      scale: 1,
+      speed: 1,
+      baseColorTextureId: 'fish-butterflyfish-basecolor',
+      normalTextureId: 'fish-butterflyfish-normal',
+      roughnessTextureId: 'fish-butterflyfish-roughness',
+      alphaTextureId: 'fish-butterflyfish-alpha'
+    }
+
+    const { createFishAssetMaterial, createHeroFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishAssetMaterial: (
+        baseMaterial: THREE.Material,
+        variant: ButterflyMaterialVariant,
+        hero: boolean
+      ) => THREE.MeshPhysicalMaterial
+      createHeroFishMaterial: (
+        baseMaterial: THREE.Material,
+        variant: ButterflyMaterialVariant
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const schoolMaterial = createFishAssetMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({ color: '#ffffff' }),
+      variant,
+      false
+    )
+    const heroMaterial = createHeroFishMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({ color: '#ffffff' }),
+      variant
+    )
+
+    expect(schoolMaterial.map).toBe(butterflyMap)
+    expect(schoolMaterial.roughness).toBeGreaterThanOrEqual(0.44)
+    expect(schoolMaterial.clearcoat).toBeLessThanOrEqual(0.58)
+    expect(schoolMaterial.envMapIntensity).toBeLessThanOrEqual(0.68)
+    expect(heroMaterial.alphaMap).toBe(butterflyAlpha)
+    expect(heroMaterial.roughness).toBeGreaterThanOrEqual(0.42)
+    expect(heroMaterial.clearcoat).toBeLessThanOrEqual(0.82)
+    expect(heroMaterial.envMapIntensity).toBeLessThanOrEqual(0.9)
+  })
 })
 
 describe('DetailedFishSystem asset-backed models', () => {
@@ -2100,6 +2175,31 @@ describe('DetailedFishSystem quality scaling', () => {
     system.update(0, 0)
 
     expect(heroAssignment.object.position.z).toBeLessThanOrEqual(bounds.max.z - heroAssignment.fishSafeExtents.noseExtent + 0.0001)
+  })
+
+  test('uses restrained planted hero placements so accent fish do not dominate the front glass', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const system = new DetailedFishSystem(scene, bounds, null, { layoutStyle: 'planted' })
+
+    system.setFishGroups([
+      { speciesId: 'neon-tetra', count: 10 },
+      { speciesId: 'goldfish', count: 4 },
+      { speciesId: 'butterflyfish', count: 4 }
+    ])
+
+    const internals = system as unknown as {
+      heroAssignments: Map<number, {
+        depthOffset: number
+        scaleMultiplier: number
+      }>
+    }
+
+    const placements = Array.from(internals.heroAssignments.values())
+
+    expect(placements.length).toBeGreaterThan(0)
+    expect(placements.every((entry) => entry.depthOffset <= 1.45)).toBe(true)
+    expect(placements.every((entry) => entry.scaleMultiplier <= 2)).toBe(true)
   })
 })
 
