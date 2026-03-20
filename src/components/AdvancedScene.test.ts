@@ -16,9 +16,10 @@ import type { Theme } from '../types/aquarium'
 
 type CreateSubstrateFn = (dimensions: AquariumTankDimensions) => void
 
-const createSubstrateTestScene = () => {
+const createSubstrateTestScene = (layoutStyle: Theme['layoutStyle'] = 'planted') => {
   const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
   const internals = instance as unknown as {
+    scene: THREE.Scene
     tank: THREE.Group
     createSandTexture: () => THREE.CanvasTexture
     createSandNormalTexture: () => THREE.CanvasTexture
@@ -26,6 +27,20 @@ const createSubstrateTestScene = () => {
     createSandAoTexture: () => THREE.CanvasTexture
   }
 
+  internals.scene = new THREE.Scene()
+  internals.scene.userData.theme = {
+    waterTint: '#0e3d4e',
+    fogDensity: 0.4,
+    particleDensity: 0.4,
+    waveStrength: 0.7,
+    waveSpeed: 0.8,
+    layoutStyle,
+    glassFrameStrength: 0.6,
+    glassTint: '#c3dde3',
+    glassReflectionStrength: 0.32,
+    surfaceGlowStrength: 0.45,
+    causticsStrength: 0.3
+  } satisfies Theme
   internals.tank = new THREE.Group()
   internals.createSandTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
   internals.createSandNormalTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
@@ -624,16 +639,21 @@ describe('AdvancedAquariumScene tank backdrop', () => {
 
     createAdvancedTank()
 
+    const frontHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-front-highlight') as THREE.Mesh | undefined
     const leftEdgeHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-edge-highlight-left') as THREE.Mesh | undefined
     const rightEdgeHighlight = internals.tank.children.find((child) => child.name === 'tank-glass-edge-highlight-right') as THREE.Mesh | undefined
     const waterlineFront = internals.tank.children.find((child) => child.name === 'tank-waterline-front') as THREE.Mesh | undefined
 
+    const frontHighlightMaterial = frontHighlight?.material as THREE.MeshBasicMaterial | undefined
     expect(leftEdgeHighlight).toBeDefined()
     expect(rightEdgeHighlight).toBeDefined()
     expect(waterlineFront).toBeDefined()
     expect(leftEdgeHighlight?.position.z).toBeCloseTo((AQUARIUM_TANK_DIMENSIONS.depth / 2) + 0.076)
     expect(rightEdgeHighlight?.position.x).toBeCloseTo((AQUARIUM_TANK_DIMENSIONS.width / 2) - 0.12)
     expect((waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
+    expect(frontHighlightMaterial?.opacity).toBeLessThan(0.15)
+    expect((waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.16)
+    expect((waterlineFront?.geometry as THREE.PlaneGeometry).parameters.height).toBeGreaterThan(0.4)
   })
 
   it('adds interior wall response layers so the tank walls catch light instead of reading as empty planes', () => {
@@ -868,6 +888,9 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(heroGroundGlow).toBeDefined()
     expect(getTopClearanceRatio(lightCanopy!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(0.11)
     expect(getTopClearanceRatio(lightCanopy!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(0.118)
+    expect((lightCanopy?.geometry as THREE.PlaneGeometry | undefined)?.parameters.width).toBeGreaterThan(
+      AQUARIUM_TANK_DIMENSIONS.width * 0.7
+    )
     expect(getBottomClearanceRatio(heroGroundGlow!.position, AQUARIUM_TANK_DIMENSIONS)).toBeGreaterThan(0.055)
     expect(getBottomClearanceRatio(heroGroundGlow!.position, AQUARIUM_TANK_DIMENSIONS)).toBeLessThan(0.062)
     expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
@@ -1051,6 +1074,9 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(driftwoodOcclusion?.renderOrder).toBeGreaterThan(midwaterBreakup?.renderOrder ?? 0)
     expect(ridgeOcclusion?.renderOrder).toBeGreaterThan(midwaterBreakup?.renderOrder ?? 0)
     expect((driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.NormalBlending)
+    expect((driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.15)
+    expect((ridgeOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.18)
+    expect((backwallOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.12)
   })
 
   it('adds a rear hero rim light panel to separate the hardscape silhouette from the backdrop', () => {
@@ -1109,7 +1135,8 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(getBottomClearanceRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.16)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.08)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.18)
-    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThanOrEqual(0.15)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThanOrEqual(0.1)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.14)
     expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
 })
@@ -1406,8 +1433,8 @@ describe('AdvancedAquariumScene substrate', () => {
     const baseMaterial = baseMesh.material as THREE.MeshStandardMaterial
     const sandMaterial = sandMesh.material as THREE.MeshStandardMaterial
 
-    expect(baseMaterial.color.getHexString()).toBe('b59e84')
-    expect(sandMaterial.color.getHexString()).toBe('d2bb9b')
+    expect(baseMaterial.color.getHexString()).toBe('ac9679')
+    expect(sandMaterial.color.getHexString()).toBe('ccb89b')
   })
 
   it('adds a textured front face so the substrate reads deeper from the viewing angle', () => {
@@ -1801,6 +1828,29 @@ describe('AdvancedAquariumScene substrate', () => {
     expect(driftwoodRing - driftwoodContact).toBeGreaterThan(0.02)
     expect(rockRing - rockContact).toBeGreaterThan(0.02)
   })
+
+  it('builds a left mound and open right-front beach for nature-showcase substrate', () => {
+    const { sandTop } = createSubstrateTestScene('nature-showcase')
+    const leftMound = getNearestTopHeight(
+      sandTop,
+      -AQUARIUM_TANK_DIMENSIONS.width * 0.29,
+      -AQUARIUM_TANK_DIMENSIONS.depth * 0.04
+    )
+    const centerTransition = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.04,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.14
+    )
+    const rightFrontBeach = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.32,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.34
+    )
+
+    expect(leftMound - rightFrontBeach).toBeGreaterThan(0.16)
+    expect(leftMound).toBeGreaterThan(centerTransition + 0.06)
+    expect(centerTransition).toBeGreaterThan(rightFrontBeach + 0.02)
+  })
 })
 
 describe('AdvancedAquariumScene quality scaling', () => {
@@ -1910,7 +1960,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     )) as THREE.Mesh | undefined
     const simpleOpacity = (heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
 
-    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.27, 5)
+    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.33, 5)
     expect(heroFrontFill?.visible).toBe(true)
     expect(simpleOpacity).toBeGreaterThan(0)
 
@@ -1918,7 +1968,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
 
     const standardOpacity = (heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
 
-    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.36, 5)
+    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.44, 5)
     expect(standardOpacity).toBeGreaterThan(simpleOpacity)
   })
 
@@ -2493,6 +2543,45 @@ describe('AdvancedAquariumScene backdrop textures', () => {
     expect(stats.radialGradientCalls).toBeGreaterThanOrEqual(2)
     expect(stats.fillCalls).toBeGreaterThan(2)
     expect(stats.strokeCalls).toBeGreaterThan(0)
+  })
+
+  it('uses a charcoal-olive palette in the backdrop instead of bright marine cyan', () => {
+    const stops: string[] = []
+
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = {
+          addColorStop: (_offset: number, color: string) => {
+            stops.push(color)
+          }
+        }
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => ({ addColorStop: vi.fn() }),
+          fillRect: vi.fn(),
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          bezierCurveTo: vi.fn(),
+          stroke: vi.fn(),
+          fillStyle: '',
+          strokeStyle: '',
+          globalCompositeOperation: 'source-over',
+          lineWidth: 0
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const createBackdropTexture = (AdvancedAquariumScene.prototype as unknown as {
+      createBackdropTexture: () => THREE.CanvasTexture
+    }).createBackdropTexture.bind(instance)
+
+    createBackdropTexture()
+
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(150, 165, 145, 0.24)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(26, 34, 31, 0.82)')
+    expect(stops.some((stop) => stop.includes('207, 219'))).toBe(false)
   })
 
   it('creates diffuse caustics clusters instead of repeated stripe strokes', () => {
