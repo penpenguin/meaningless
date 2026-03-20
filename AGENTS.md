@@ -8,18 +8,19 @@
 
 ## プロジェクト構成
 - `src/main.ts`: Vite エントリ。シーン初期化と UI トグルを束ねる。
-- `src/components/`: 水面・魚群・泡・サウンドなど主要クラス群（例: `AdvancedScene`, `Water`, `Fish`, `AudioManager`）。
+- `src/components/`: 水槽表示・水面・魚群・aquascape など主要クラス群（例: `AdvancedScene`, `Aquascaping`, `DetailedFish`, `Water`）。
 - `src/shaders/`: GLSL 資産。`vite-plugin-glsl` 経由でインポート。
 - `src/utils/`, `src/types/`: 共通処理と型定義。
-- `public/`: 静的ファイルと `index.html`。`dist/` はビルド成果物なので直接編集しない。
+- `public/`: 静的ファイルと `index.html`。水景・魚・hardscape 用の asset は主に `public/assets/aquarium/` に置く。`dist/` はビルド成果物なので直接編集しない。
 
 ## ビルド・テスト・開発コマンド
 - `npm run dev` — 開発サーバー起動（デフォルト http://localhost:5173）。
 - `npm run build` — TypeScript コンパイル後に Vite ビルドし、`dist/` へ出力。
 - `npm run preview` — ビルド済み成果物をローカルで確認。
+- `npm run test` — Vitest テストスイートを実行。
 - `npm run lint` — ESLint（ts/tsx）を実行。警告ゼロが前提。
 - `npm run typecheck` — `tsc --noEmit` による型検証。
-- 単体テスト導入時は `npm run test` を追加し、CI でも同じコマンドを使う。
+- 主要な回帰確認は `npm run test && npm run typecheck && npm run build`。
 
 ## コーディングスタイル・命名
 - TypeScript ES Modules、2 スペースインデント、セミコロンなし（既存ファイルに合わせる）。
@@ -29,9 +30,9 @@
 
 ## テスト指針（t-wada TDD）
 - すべて Red → Green → Refactor を最小ステップで実施。バグ修正前に必ず失敗するテストを追加。
-- 推奨スタック: Vitest + jsdom。セットアップ例: `npm install -D vitest jsdom @testing-library/dom`.
+- 既定スタックは Vitest + jsdom。
 - 配置: `src/__tests__/` もしくは対象モジュール横の `*.test.ts`。`describe` に対象名を明示。
-- 目安カバレッジ: Boids 挙動・水面シェーダー・オーディオ制御で statement/branch 80% 以上を狙う。
+- 目安カバレッジ: Boids 挙動・水面/照明・aquascape/fish presentation の回帰で statement/branch 80% 以上を狙う。
 
 ## コミット & PR ガイド
 - Conventional Commits を推奨（例: `feat: add quality selector`, `fix: resolve audio crackle`）。本文は日本語でも可。
@@ -43,8 +44,11 @@
 - `vite.config.ts` で alias や plugin を追加する際は開発・本番の両方で動作確認し、必要なら設定を README に追記。
 
 ## Active Technologies
-- TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, TailwindCSS 3.4, DaisyUI 4.6, vite-plugin-glsl 1.5
+- TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, Vitest 4, TailwindCSS 3.4, DaisyUI 4.6, vite-plugin-glsl 1.5
 - localStorage（ゲーム保存/旧保存形式マイグレーション）、インメモリ（カレント状態）
 
 ## Recent Changes
 - Removed legacy editor/store modules, unused rendering classes, stale aquarium-editor specs, and the unused `tweakpane` dependency
+- Added `nature-showcase` as the hero planted layout with a left-heavy rock mound, curved pale sand beach, multipiece driftwood fan, and species-layered planted composition.
+- Retuned `AdvancedScene` toward a freshwater planted showcase look with broader daylight canopy lighting, darker natural backdrops, softer caustics, and reduced blue-box/panel feel.
+- Rebalanced `DetailedFishSystem` for `nature-showcase` so fish read as supporting cast: lower default density, subtler accent heroes, and lane/depth bias that preserves hardscape readability.
