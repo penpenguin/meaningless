@@ -2172,42 +2172,42 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         return hero
           ? {
               metalness: 0.01,
-              roughness: 0.6,
-              clearcoat: 0.52,
-              clearcoatRoughness: 0.54,
-              reflectivity: 0.58,
-              envMapIntensity: 0.52,
-              normalScale: new THREE.Vector2(0.22, 0.14)
+              roughness: 0.64,
+              clearcoat: 0.42,
+              clearcoatRoughness: 0.58,
+              reflectivity: 0.54,
+              envMapIntensity: 0.44,
+              normalScale: new THREE.Vector2(0.18, 0.12)
             }
           : {
               metalness: 0.01,
-              roughness: 0.6,
-              clearcoat: 0.36,
-              clearcoatRoughness: 0.5,
-              reflectivity: 0.54,
-              envMapIntensity: 0.4,
-              normalScale: new THREE.Vector2(0.18, 0.11)
+              roughness: 0.66,
+              clearcoat: 0.28,
+              clearcoatRoughness: 0.56,
+              reflectivity: 0.5,
+              envMapIntensity: 0.34,
+              normalScale: new THREE.Vector2(0.15, 0.1)
             }
       }
 
       return hero
         ? {
             metalness: 0.01,
-            roughness: 0.5,
-            clearcoat: 0.72,
-            clearcoatRoughness: 0.42,
-            reflectivity: 0.7,
-            envMapIntensity: 0.76,
-            normalScale: new THREE.Vector2(0.24, 0.16)
+            roughness: 0.58,
+            clearcoat: 0.58,
+            clearcoatRoughness: 0.48,
+            reflectivity: 0.62,
+            envMapIntensity: 0.62,
+            normalScale: new THREE.Vector2(0.2, 0.13)
           }
         : {
             metalness: 0.01,
-            roughness: 0.52,
-            clearcoat: 0.48,
-            clearcoatRoughness: 0.4,
-            reflectivity: 0.66,
-            envMapIntensity: 0.56,
-            normalScale: new THREE.Vector2(0.2, 0.12)
+            roughness: 0.62,
+            clearcoat: 0.34,
+            clearcoatRoughness: 0.54,
+            reflectivity: 0.52,
+            envMapIntensity: 0.42,
+            normalScale: new THREE.Vector2(0.16, 0.1)
           }
     }
 
@@ -2215,43 +2215,43 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       if (showcaseAccent) {
         return hero
           ? {
-              metalness: 0.03,
-              roughness: 0.56,
-              clearcoat: 0.56,
-              clearcoatRoughness: 0.46,
-              reflectivity: 0.62,
-              envMapIntensity: 0.54,
-              normalScale: new THREE.Vector2(0.26, 0.18)
-            }
-          : {
-              metalness: 0.03,
-              roughness: 0.6,
-              clearcoat: 0.38,
-              clearcoatRoughness: 0.44,
-              reflectivity: 0.58,
+              metalness: 0.01,
+              roughness: 0.62,
+              clearcoat: 0.44,
+              clearcoatRoughness: 0.5,
+              reflectivity: 0.56,
               envMapIntensity: 0.42,
               normalScale: new THREE.Vector2(0.22, 0.14)
+            }
+          : {
+              metalness: 0.01,
+              roughness: 0.64,
+              clearcoat: 0.3,
+              clearcoatRoughness: 0.52,
+              reflectivity: 0.52,
+              envMapIntensity: 0.36,
+              normalScale: new THREE.Vector2(0.18, 0.12)
             }
       }
 
       return hero
         ? {
-            metalness: 0.03,
-            roughness: 0.4,
-            clearcoat: 0.74,
-            clearcoatRoughness: 0.34,
-            reflectivity: 0.76,
-            envMapIntensity: 0.78,
-            normalScale: new THREE.Vector2(0.3, 0.2)
+            metalness: 0.01,
+            roughness: 0.5,
+            clearcoat: 0.62,
+            clearcoatRoughness: 0.42,
+            reflectivity: 0.66,
+            envMapIntensity: 0.62,
+            normalScale: new THREE.Vector2(0.24, 0.16)
           }
         : {
-            metalness: 0.03,
-            roughness: 0.5,
-            clearcoat: 0.52,
-            clearcoatRoughness: 0.32,
-            reflectivity: 0.76,
-            envMapIntensity: 0.6,
-            normalScale: new THREE.Vector2(0.24, 0.16)
+            metalness: 0.01,
+            roughness: 0.58,
+            clearcoat: 0.38,
+            clearcoatRoughness: 0.46,
+            reflectivity: 0.58,
+            envMapIntensity: 0.46,
+            normalScale: new THREE.Vector2(0.2, 0.14)
           }
     }
 

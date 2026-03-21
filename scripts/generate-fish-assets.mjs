@@ -396,189 +396,375 @@ const writeRegion = (pixels, rect, painter) => {
   }
 }
 
-const sampleBody = (config, u, v) => {
-  const primary = hexToRgb(config.primary)
-  const secondary = hexToRgb(config.secondary)
-  const accent = hexToRgb(config.accent)
-  const belly = mixColor([0.95, 0.94, 0.9], secondary, 0.24)
-  const dorsal = multiplyColor(primary, 0.56)
-  let color = mixColor(dorsal, belly, smoothstep(0.12, 0.72, v))
-  let roughness = 0.62
-  let height = 0.46 + (Math.sin(u * 34) * 0.014) + (Math.sin(v * 58) * 0.01)
+const countershading = (dorsalColor, bellyColor, v, edge0 = 0.16, edge1 = 0.8) => {
+  return mixColor(bellyColor, dorsalColor, smoothstep(edge0, edge1, v))
+}
 
-  if (config.pattern === 'neon') {
-    const cyanStripe = gauss(v, 0.58, 0.09)
-    const redStripe = gauss(v, 0.33, 0.085) * smoothstep(0.18, 0.42, u) * (1 - smoothstep(0.82, 0.96, u))
-    color = mixColor(color, [0.34, 0.9, 1], cyanStripe * 0.95)
-    color = mixColor(color, [0.87, 0.23, 0.33], redStripe * 0.92)
-    color = mixColor(color, [0.14, 0.2, 0.42], smoothstep(0.82, 1, u) * 0.7)
-    color = mixColor(color, [0.08, 0.12, 0.2], gauss(u, 0.9, 0.04) * gauss(v, 0.52, 0.08) * 0.9)
-    roughness = 0.34 - (cyanStripe * 0.08)
-    height += (cyanStripe * 0.08) + (redStripe * 0.05)
-  } else if (config.pattern === 'angelfish') {
-    const bandA = gauss(u, 0.3, 0.05)
-    const bandB = gauss(u, 0.56, 0.06)
-    const bandC = gauss(u, 0.76, 0.055)
-    const bandStrength = Math.max(bandA, bandB, bandC)
-    const eyeRing = gauss(u, 0.86, 0.028) * gauss(v, 0.58, 0.04)
-    const eyeCore = gauss(u, 0.868, 0.014) * gauss(v, 0.578, 0.023)
-    const eyeHighlight = gauss(u, 0.853, 0.008) * gauss(v, 0.594, 0.013)
-    const gillBand = gauss(u, 0.77, 0.024) * gauss(v, 0.56, 0.18)
-    const headVeil = gauss(u, 0.86, 0.09) * gauss(v, 0.58, 0.24)
-    const dorsalOlive = gauss(v, 0.78, 0.12) * smoothstep(0.2, 0.82, u)
-    color = mixColor(color, [0.98, 0.97, 0.92], smoothstep(0.1, 0.34, v) * 0.26)
-    color = mixColor(color, [0.54, 0.48, 0.4], bandStrength * 0.7)
-    color = mixColor(color, [0.72, 0.7, 0.58], headVeil * 0.32)
-    color = mixColor(color, [0.6, 0.62, 0.46], dorsalOlive * 0.28)
-    color = mixColor(color, [0.52, 0.44, 0.34], gillBand * 0.6)
-    color = mixColor(color, [0.78, 0.62, 0.42], eyeRing * 0.72)
-    color = mixColor(color, [0.1, 0.1, 0.12], eyeCore)
-    color = mixColor(color, [0.96, 0.96, 0.92], eyeHighlight * 0.9)
-    roughness = 0.68 + (bandStrength * 0.06) + (gillBand * 0.05)
-    height += (Math.sin(u * 26 + v * 8) * 0.02) + (bandStrength * 0.05) + (gillBand * 0.05) + (eyeRing * 0.12)
-  } else if (config.pattern === 'butterflyfish') {
-    const eyeBand = gauss(u, 0.84, 0.045) * gauss(v, 0.56, 0.13)
-    const rearBand = gauss(u, 0.58, 0.055) * gauss(v, 0.58, 0.3)
-    const tailAccent = smoothstep(0.03, 0.18, u) * gauss(v, 0.54, 0.26)
-    const dorsalWash = gauss(v, 0.8, 0.12) * smoothstep(0.12, 0.9, u)
-    const ventralFade = 1 - smoothstep(0.18, 0.52, v)
-    const eyeCore = gauss(u, 0.872, 0.016) * gauss(v, 0.57, 0.024)
-    const eyeHighlight = gauss(u, 0.858, 0.008) * gauss(v, 0.588, 0.012)
-    const mouth = gauss(u, 0.965, 0.022) * gauss(v, 0.49, 0.05)
-    const gillBand = gauss(u, 0.74, 0.024) * gauss(v, 0.56, 0.16)
-    const faceMask = gauss(u, 0.9, 0.07) * gauss(v, 0.57, 0.18)
-    const dorsalSlate = gauss(v, 0.84, 0.14) * smoothstep(0.1, 0.82, u)
-    const bodyCream = gauss(u, 0.48, 0.22) * gauss(v, 0.54, 0.28)
-    const bodyOlive = gauss(u, 0.5, 0.18) * gauss(v, 0.54, 0.22)
-    const midBodyPlate = gauss(u, 0.52, 0.14) * gauss(v, 0.54, 0.18)
-    const bodyMint = gauss(u, 0.5, 0.2) * gauss(v, 0.54, 0.24)
-    const speciesTint = gauss(u, 0.5, 0.28) * gauss(v, 0.54, 0.26)
-    color = mixColor([0.9, 0.92, 0.84], [0.54, 0.72, 0.48], smoothstep(0.28, 0.88, v))
-    color = mixColor(color, [0.68, 0.8, 0.66], bodyCream * 0.74)
-    color = mixColor(color, [0.34, 0.62, 0.4], bodyOlive * 0.72)
-    color = mixColor(color, [0.34, 0.62, 0.44], midBodyPlate * 0.96)
-    color = mixColor(color, [0.44, 0.68, 0.48], bodyMint * 0.72)
-    color = mixColor(color, [0.94, 0.92, 0.8], ventralFade * 0.24)
-    color = mixColor(color, [0.62, 0.66, 0.4], dorsalWash * 0.28)
-    color = mixColor(color, [0.56, 0.48, 0.3], dorsalSlate * 0.2)
-    color = mixColor(color, [0.62, 0.76, 0.46], speciesTint * 0.84)
-    color = mixColor(color, [0.18, 0.18, 0.2], eyeBand * 0.94)
-    color = mixColor(color, [0.72, 0.62, 0.38], rearBand * 0.24)
-    color = mixColor(color, [0.98, 0.66, 0.18], tailAccent * 0.82)
-    color = mixColor(color, [0.66, 0.5, 0.24], gillBand * 0.4)
-    color = mixColor(color, [0.36, 0.3, 0.18], faceMask * 0.6)
-    color = mixColor(color, [0.12, 0.12, 0.14], eyeCore)
-    color = mixColor(color, [0.96, 0.95, 0.88], eyeHighlight * 0.9)
-    color = mixColor(color, [0.28, 0.2, 0.12], mouth * 0.82)
-    roughness = 0.76 + (eyeBand * 0.06) + (tailAccent * 0.03) + (faceMask * 0.03)
-    height += (Math.sin(u * 24 + v * 7) * 0.018) + (rearBand * 0.04) + (gillBand * 0.03) + (eyeBand * 0.06)
-  } else if (config.pattern === 'goldfish') {
-    const dorsalBand = gauss(v, 0.8, 0.14) * smoothstep(0.18, 0.86, u)
-    const bellyLight = 1 - smoothstep(0.18, 0.52, v)
-    const headWarm = gauss(u, 0.84, 0.11) * gauss(v, 0.58, 0.22)
-    const peduncle = gauss(u, 0.14, 0.08) * gauss(v, 0.52, 0.28)
-    const gillBand = gauss(u, 0.77, 0.025) * gauss(v, 0.56, 0.18)
-    const mouth = gauss(u, 0.965, 0.02) * gauss(v, 0.49, 0.05)
-    const mouthShadow = gauss(u, 0.944, 0.032) * gauss(v, 0.468, 0.05)
-    const midBodyWarm = gauss(u, 0.52, 0.22) * gauss(v, 0.52, 0.28)
-    const eyeRing = gauss(u, 0.89, 0.026) * gauss(v, 0.585, 0.038)
-    const eyeCore = gauss(u, 0.898, 0.014) * gauss(v, 0.58, 0.022)
-    const eyeHighlight = gauss(u, 0.884, 0.008) * gauss(v, 0.598, 0.012)
-    const scaleBreakup = (Math.sin(u * 44) * Math.sin(v * 76)) * 0.022
-    color = mixColor([0.98, 0.84, 0.56], [0.82, 0.41, 0.16], smoothstep(0.18, 0.84, v))
-    color = mixColor(color, [1, 0.5, 0.14], midBodyWarm * 0.42)
-    color = mixColor(color, [1, 0.91, 0.64], bellyLight * 0.34)
-    color = mixColor(color, [0.72, 0.28, 0.12], dorsalBand * 0.5)
-    color = mixColor(color, [0.98, 0.68, 0.24], headWarm * 0.42)
-    color = mixColor(color, [0.86, 0.34, 0.12], peduncle * 0.5)
-    color = mixColor(color, [0.72, 0.3, 0.12], gillBand * 0.7)
-    color = mixColor(color, [0.78, 0.26, 0.14], mouth * 0.82)
-    color = mixColor(color, [0.72, 0.22, 0.14], mouthShadow * 0.38)
-    color = mixColor(color, [0.86, 0.58, 0.28], eyeRing * 0.6)
-    color = mixColor(color, [0.08, 0.08, 0.09], eyeCore)
-    color = mixColor(color, [0.98, 0.96, 0.92], eyeHighlight * 0.92)
-    roughness = 0.7 - (smoothstep(0.24, 0.76, u) * 0.08) + (gillBand * 0.08) + (peduncle * 0.06)
-    height += scaleBreakup + (gillBand * 0.07) + (eyeRing * 0.16) + (peduncle * 0.04) + (mouth * 0.04)
-  } else {
-    const eyeLine = smoothstep(0.74, 0.82, u) * (1 - smoothstep(0.88, 0.96, u)) * gauss(v, 0.56, 0.035)
-    const finEdge = smoothstep(0.74, 1, u) * gauss(v, 0.5, 0.28)
-    const dorsalBand = gauss(v, 0.72, 0.11)
-    const eyeAccent = gauss(u, 0.84, 0.05) * gauss(v, 0.62, 0.05)
-    color = mixColor(color, [0.99, 0.83, 0.34], smoothstep(0.2, 0.78, u) * 0.48)
-    color = mixColor(color, [0.16, 0.22, 0.22], eyeLine * 0.95)
-    color = mixColor(color, [0.2, 0.64, 0.61], eyeAccent * 0.92)
-    color = mixColor(color, multiplyColor(accent, 0.9), finEdge * 0.35)
-    color = mixColor(color, [0.92, 0.55, 0.24], dorsalBand * 0.3)
-    roughness = 0.37 - (dorsalBand * 0.04)
-    height += (eyeLine * 0.09) + (eyeAccent * 0.05) + (gauss(u, 0.6, 0.1) * 0.03)
+const createGillMask = (u, v, centerU = 0.77, widthU = 0.026, centerV = 0.56, widthV = 0.18) => {
+  return gauss(u, centerU, widthU) * gauss(v, centerV, widthV)
+}
+
+const createMouthMask = (u, v, centerU = 0.965, widthU = 0.022, centerV = 0.49, widthV = 0.05) => {
+  return gauss(u, centerU, widthU) * gauss(v, centerV, widthV)
+}
+
+const createPeduncleMask = (u, v, centerU = 0.14, widthU = 0.08, centerV = 0.52, widthV = 0.28) => {
+  return gauss(u, centerU, widthU) * gauss(v, centerV, widthV)
+}
+
+const createEyeMasks = (u, v, options = {}) => {
+  const centerU = options.centerU ?? 0.89
+  const centerV = options.centerV ?? 0.58
+  const ring = gauss(u, centerU - 0.008, options.ringWidthU ?? 0.028) * gauss(v, centerV + 0.005, options.ringWidthV ?? 0.04)
+  const core = gauss(u, centerU, options.coreWidthU ?? 0.014) * gauss(v, centerV, options.coreWidthV ?? 0.022)
+  const highlight = gauss(u, centerU - 0.015, options.highlightWidthU ?? 0.008) * gauss(v, centerV + 0.017, options.highlightWidthV ?? 0.012)
+  const lidShadow = gauss(u, centerU - 0.018, 0.028) * gauss(v, centerV + 0.03, 0.018)
+  return { ring, core, highlight, lidShadow }
+}
+
+const createFinRayMask = (u, positions = [0.18, 0.34, 0.5, 0.66, 0.82], width = 0.028) => {
+  return clamp01(positions.reduce((sum, position) => sum + gauss(u, position, width), 0))
+}
+
+const createMembraneAlphaProfile = (edge, centerAlpha = 0.78, edgeAlpha = 0.08, power = 1) => {
+  const centerMask = smoothstep(0.02, 0.26, edge)
+  return lerp(edgeAlpha, centerAlpha, Math.pow(centerMask, power))
+}
+
+const createMicroMottling = (u, v, amplitude = 0.02, freqU = 42, freqV = 74) => {
+  const primary = Math.sin(u * freqU) * Math.sin(v * freqV)
+  const secondary = Math.sin((u * (freqU * 0.55)) + 1.3) * Math.sin((v * (freqV * 0.62)) + 0.8)
+  return (primary * 0.65 + secondary * 0.35) * amplitude
+}
+
+const createFinSurface = (config, finKind, u, v, options = {}) => {
+  const primary = options.primary ?? hexToRgb(config.primary)
+  const secondary = options.secondary ?? hexToRgb(config.secondary)
+  const edge = Math.min(u, 1 - u, v, 1 - v)
+  const rayPositions = options.rayPositions ?? (
+    finKind === 'tail'
+      ? [0.16, 0.28, 0.38, 0.5, 0.62, 0.76, 0.88]
+      : [0.18, 0.34, 0.5, 0.66, 0.82]
+  )
+  const rayMask = createFinRayMask(u, rayPositions, options.rayWidth ?? 0.026)
+  const edgeMask = 1 - smoothstep(0.03, 0.16, edge)
+  const centerMask = smoothstep(0.03, 0.26, edge)
+  const membraneAlpha = createMembraneAlphaProfile(edge, options.centerAlpha ?? 0.8, options.edgeAlpha ?? 0.08, options.alphaPower ?? 1.05)
+  const membraneTint = options.membraneTint ?? mixColor([0.98, 0.97, 0.93], mixColor(primary, secondary, 0.42), 0.45)
+  const rayTint = options.rayTint ?? mixColor(primary, secondary, 0.28)
+  const rimTint = options.rimTint ?? mixColor(rayTint, [0.34, 0.28, 0.24], 0.38)
+  const verticalWash = options.verticalWash ?? gauss(v, 0.58, finKind === 'tail' ? 0.24 : 0.18)
+  const dorsalWarm = options.dorsalWarm ?? gauss(v, 0.78, 0.18)
+  let color = membraneTint
+  color = mixColor(color, options.centerTint ?? mixColor(primary, secondary, 0.56), centerMask * (options.centerTintStrength ?? 0.18))
+  color = mixColor(color, rayTint, rayMask * (options.rayTintStrength ?? 0.26))
+  color = mixColor(color, rimTint, edgeMask * (options.rimTintStrength ?? 0.28))
+  color = mixColor(color, options.verticalTint ?? mixColor(secondary, primary, 0.32), verticalWash * (options.verticalTintStrength ?? 0.14))
+  color = mixColor(color, options.dorsalTint ?? [1, 0.82, 0.56], dorsalWarm * (options.dorsalTintStrength ?? 0.08))
+
+  let roughness = (options.membraneRoughness ?? 0.84) + (edgeMask * (options.edgeRoughnessBoost ?? 0.02))
+  roughness += rayMask * (options.rayRoughnessBoost ?? 0.05)
+
+  const rayHeight = rayMask * ((options.rayHeight ?? 0.08) + (Math.sin((u * (options.heightFrequency ?? 164)) + (v * 17)) * (options.heightJitter ?? 0.02)))
+  const membraneHeight = centerMask * (options.membraneHeight ?? 0.02)
+  const edgeHeight = edgeMask * (options.edgeHeight ?? 0.02)
+  const height = 0.48 + membraneHeight + edgeHeight + rayHeight
+  const alpha = clamp01(membraneAlpha + (rayMask * (options.rayAlphaBoost ?? 0.12)) - (edgeMask * (options.edgeAlphaPenalty ?? 0.03)))
+
+  return {
+    color,
+    roughness: clamp01(roughness),
+    height,
+    alpha
   }
+}
+
+const sampleGoldfishBody = (config, u, v) => {
+  const base = countershading([0.78, 0.3, 0.14], [1, 0.88, 0.58], v, 0.14, 0.8)
+  const cheek = gauss(u, 0.83, 0.09) * gauss(v, 0.58, 0.22)
+  const gillMask = createGillMask(u, v, 0.77, 0.026, 0.57, 0.18)
+  const mouth = createMouthMask(u, v, 0.965, 0.022, 0.49, 0.05)
+  const mouthShadow = gauss(u, 0.944, 0.03) * gauss(v, 0.468, 0.05)
+  const peduncle = createPeduncleMask(u, v, 0.14, 0.09, 0.52, 0.28)
+  const dorsalBand = gauss(v, 0.82, 0.12) * smoothstep(0.16, 0.84, u)
+  const bellyLift = 1 - smoothstep(0.18, 0.5, v)
+  const midBody = gauss(u, 0.52, 0.22) * gauss(v, 0.54, 0.24)
+  const scaleBreakup = createMicroMottling(u, v, 0.028, 48, 82)
+  const eye = createEyeMasks(u, v, { centerU: 0.898, centerV: 0.58, ringWidthU: 0.027, ringWidthV: 0.04 })
+
+  let color = base
+  color = mixColor(color, [1, 0.52, 0.16], midBody * 0.34)
+  color = mixColor(color, [1, 0.9, 0.66], bellyLift * 0.24)
+  color = mixColor(color, [0.62, 0.22, 0.1], dorsalBand * 0.5)
+  color = mixColor(color, [0.99, 0.72, 0.28], cheek * 0.28)
+  color = mixColor(color, [0.66, 0.26, 0.12], gillMask * 0.76)
+  color = mixColor(color, [0.72, 0.22, 0.14], mouth * 0.84)
+  color = mixColor(color, [0.62, 0.16, 0.12], mouthShadow * 0.48)
+  color = mixColor(color, [0.64, 0.18, 0.1], peduncle * 0.74)
+  color = mixColor(color, [0.78, 0.54, 0.28], eye.ring * 0.56)
+  color = mixColor(color, [0.08, 0.08, 0.1], eye.core)
+  color = mixColor(color, [0.98, 0.96, 0.92], eye.highlight * 0.94)
+
+  const roughness = clamp01(
+    0.62
+      - (midBody * 0.06)
+      + (gillMask * 0.1)
+      + (peduncle * 0.14)
+      + (dorsalBand * 0.04)
+      + (Math.max(0, scaleBreakup) * 0.08)
+  )
+  const height =
+    0.46
+    + scaleBreakup
+    + (midBody * 0.02)
+    + (gillMask * (0.04 + ((u - 0.735) * 1.6) + (Math.sin((u * 210) + (v * 18)) * 0.018)))
+    + (peduncle * (0.04 + (Math.sin((u * 120) + (v * 17)) * 0.015)))
+    + (mouth * (0.03 + ((u - 0.94) * 0.12)))
+    + (eye.ring * (0.13 + ((u - 0.872) * 0.82) - ((v - 0.58) * 0.32)))
+    - (eye.core * 0.04)
 
   return { color, roughness, height, alpha: 1 }
 }
 
-const sampleFin = (config, finKind, u, v) => {
+const sampleGoldfishFin = (config, finKind, u, v) => {
+  const tailSoftness = finKind === 'tail' ? 0.84 : 0.78
+  return createFinSurface(config, finKind, u, v, {
+    membraneTint: mixColor([1, 0.97, 0.9], [1, 0.76, 0.46], 0.5),
+    centerTint: [1, 0.78, 0.5],
+    rayTint: [0.98, 0.54, 0.22],
+    rimTint: [0.82, 0.36, 0.16],
+    centerAlpha: finKind === 'tail' ? 0.72 : 0.76,
+    edgeAlpha: finKind === 'tail' ? 0.03 : 0.06,
+    alphaPower: finKind === 'tail' ? 1.18 : 1.04,
+    membraneRoughness: 0.82,
+    rayRoughnessBoost: 0.08,
+    edgeRoughnessBoost: 0.04,
+    rayHeight: finKind === 'tail' ? 0.12 : 0.08,
+    membraneHeight: tailSoftness * 0.02,
+    rayPositions: finKind === 'tail' ? [0.14, 0.26, 0.38, 0.5, 0.62, 0.76, 0.9] : [0.18, 0.36, 0.52, 0.7, 0.86],
+    rayWidth: finKind === 'tail' ? 0.024 : 0.026,
+    rayAlphaBoost: finKind === 'tail' ? 0.16 : 0.12,
+    edgeAlphaPenalty: finKind === 'tail' ? 0.05 : 0.03,
+    rimTintStrength: 0.18,
+    centerTintStrength: 0.22
+  })
+}
+
+const sampleButterflyfishBody = (config, u, v) => {
+  const base = countershading([0.64, 0.4, 0.24], [0.99, 0.84, 0.74], v, 0.14, 0.8)
+  const bodyGlow = gauss(u, 0.5, 0.24) * gauss(v, 0.54, 0.25)
+  const faceBand = gauss(u, 0.84, 0.055) * gauss(v, 0.56, 0.13)
+  const faceMask = gauss(u, 0.9, 0.07) * gauss(v, 0.57, 0.18)
+  const faceBandShadow = gauss(u, 0.83, 0.065) * gauss(v, 0.56, 0.16)
+  const mouth = createMouthMask(u, v, 0.965, 0.022, 0.49, 0.05)
+  const rearAccent = smoothstep(0.03, 0.18, u) * gauss(v, 0.54, 0.26)
+  const tailSaddle = gauss(u, 0.12, 0.06) * gauss(v, 0.54, 0.24)
+  const gillMask = createGillMask(u, v, 0.74, 0.024, 0.56, 0.16)
+  const dorsalShadow = gauss(v, 0.84, 0.14) * smoothstep(0.12, 0.88, u)
+  const eye = createEyeMasks(u, v, { centerU: 0.872, centerV: 0.57, ringWidthU: 0.024, ringWidthV: 0.034 })
+  const pearlyBreakup = createMicroMottling(u, v, 0.018, 34, 58)
+
+  let color = base
+  color = mixColor(color, [0.98, 0.68, 0.64], bodyGlow * 0.58)
+  color = mixColor(color, [0.98, 0.88, 0.68], (1 - smoothstep(0.18, 0.52, v)) * 0.18)
+  color = mixColor(color, [0.62, 0.46, 0.22], dorsalShadow * 0.32)
+  color = mixColor(color, [0.02, 0.02, 0.03], faceBand * 1)
+  color = mixColor(color, [0.04, 0.04, 0.05], faceBandShadow * 0.34)
+  color = mixColor(color, [0.1, 0.08, 0.06], faceMask * 0.84)
+  color = mixColor(color, [0.9, 0.62, 0.24], rearAccent * 0.8)
+  color = mixColor(color, [0.72, 0.48, 0.18], tailSaddle * 0.72)
+  color = mixColor(color, [0.54, 0.36, 0.16], gillMask * 0.44)
+  color = mixColor(color, [0.26, 0.18, 0.12], mouth * 0.84)
+  color = mixColor(color, [0.78, 0.6, 0.34], eye.ring * 0.52)
+  color = mixColor(color, [0.12, 0.12, 0.13], eye.core)
+  color = mixColor(color, [0.96, 0.95, 0.88], eye.highlight * 0.92)
+
+  const roughness = clamp01(
+    0.62
+      + (faceBand * 0.08)
+      + (rearAccent * 0.03)
+      + (tailSaddle * 0.04)
+      + (dorsalShadow * 0.04)
+      + (Math.max(0, pearlyBreakup) * 0.06)
+  )
+  const height =
+    0.45
+    + pearlyBreakup
+    + (bodyGlow * 0.02)
+    + (gillMask * (0.04 + ((u - 0.72) * 0.28)))
+    + (faceBand * (0.06 + ((u - 0.81) * 0.84) + (Math.sin((u * 144) + (v * 14) + 1.6) * 0.02)))
+    + (rearAccent * 0.04)
+    + (tailSaddle * 0.05)
+    + (eye.ring * (0.1 + ((u - 0.84) * 0.7) - ((v - 0.57) * 0.28)))
+    - (eye.core * 0.03)
+
+  return { color, roughness, height, alpha: 1 }
+}
+
+const sampleButterflyfishFin = (config, finKind, u, v) => {
+  return createFinSurface(config, finKind, u, v, {
+    membraneTint: [0.96, 0.9, 0.7],
+    centerTint: [0.95, 0.84, 0.48],
+    rayTint: [0.6, 0.48, 0.22],
+    rimTint: [0.08, 0.08, 0.06],
+    centerAlpha: finKind === 'tail' ? 0.78 : 0.74,
+    edgeAlpha: 0.05,
+    rayAlphaBoost: 0.16,
+    membraneRoughness: 0.78,
+    rayRoughnessBoost: 0.07,
+    edgeRoughnessBoost: 0.05,
+    rayHeight: 0.09,
+    rimTintStrength: 0.78,
+    centerTintStrength: 0.16,
+    dorsalTintStrength: 0.12
+  })
+}
+
+const sampleAngelfishBody = (config, u, v) => {
+  const base = countershading([0.56, 0.52, 0.46], [0.95, 0.93, 0.86], v, 0.18, 0.82)
+  const bandA = gauss(u, 0.3, 0.05)
+  const bandB = gauss(u, 0.56, 0.06)
+  const bandC = gauss(u, 0.76, 0.055)
+  const bandStrength = clamp01((bandA * 0.9) + (bandB * 0.92) + bandC)
+  const gillMask = createGillMask(u, v, 0.77, 0.024, 0.56, 0.18)
+  const headVeil = gauss(u, 0.86, 0.09) * gauss(v, 0.58, 0.24)
+  const cheekLight = gauss(u, 0.91, 0.05) * gauss(v, 0.42, 0.08)
+  const dorsalOlive = gauss(v, 0.78, 0.12) * smoothstep(0.2, 0.82, u)
+  const eye = createEyeMasks(u, v, { centerU: 0.868, centerV: 0.578, ringWidthU: 0.022, ringWidthV: 0.03 })
+  const veilBreakup = createMicroMottling(u, v, 0.014, 28, 44)
+
+  let color = base
+  color = mixColor(color, [0.52, 0.46, 0.38], bandStrength * 0.78)
+  color = mixColor(color, [0.72, 0.7, 0.58], headVeil * 0.34)
+  color = mixColor(color, [0.84, 0.82, 0.74], cheekLight * 0.26)
+  color = mixColor(color, [0.58, 0.6, 0.44], dorsalOlive * 0.22)
+  color = mixColor(color, [0.46, 0.38, 0.28], gillMask * 0.52)
+  color = mixColor(color, [0.78, 0.62, 0.42], eye.ring * 0.62)
+  color = mixColor(color, [0.1, 0.1, 0.12], eye.core)
+  color = mixColor(color, [0.96, 0.96, 0.92], eye.highlight * 0.9)
+
+  const roughness = clamp01(0.68 + (bandStrength * 0.06) + (gillMask * 0.05))
+  const height =
+    0.45
+    + veilBreakup
+    + (bandStrength * 0.06)
+    + (gillMask * (0.04 + ((u - 0.74) * 0.18)))
+    + (eye.ring * (0.09 + ((u - 0.84) * 0.42)))
+
+  return { color, roughness, height, alpha: 1 }
+}
+
+const sampleAngelfishFin = (config, finKind, u, v) => {
+  return createFinSurface(config, finKind, u, v, {
+    membraneTint: [0.88, 0.86, 0.8],
+    centerTint: [0.8, 0.78, 0.7],
+    rayTint: [0.7, 0.64, 0.5],
+    rimTint: [0.44, 0.4, 0.32],
+    centerAlpha: finKind === 'dorsal' || finKind === 'ventral' ? 0.7 : 0.74,
+    edgeAlpha: 0.08,
+    membraneRoughness: 0.82,
+    rayRoughnessBoost: 0.06,
+    edgeRoughnessBoost: 0.04,
+    rayHeight: 0.08,
+    verticalTint: [0.84, 0.82, 0.74],
+    verticalTintStrength: 0.18,
+    rimTintStrength: 0.24
+  })
+}
+
+const sampleNeonBody = (config, u, v) => {
   const primary = hexToRgb(config.primary)
   const secondary = hexToRgb(config.secondary)
-  let color = mixColor([0.96, 0.95, 0.92], mixColor(primary, secondary, 0.45), 0.42)
-  let height = 0.5 + (Math.sin(u * 32) * 0.012)
-  let roughness = 0.8
-  const edge = Math.min(u, 1 - u, v, 1 - v)
-  const centerMask = smoothstep(0.02, 0.24, edge)
-  const rayA = gauss(u, 0.2, 0.04)
-  const rayB = gauss(u, 0.38, 0.04)
-  const rayC = gauss(u, 0.56, 0.04)
-  const rayD = gauss(u, 0.74, 0.04)
-  const rayStrength = clamp01(rayA + rayB + rayC + rayD)
-  let alpha = lerp(0.16, 0.8, centerMask) + (rayStrength * 0.08)
+  const darkBack = countershading([0.08, 0.12, 0.2], [0.28, 0.34, 0.42], v, 0.2, 0.72)
+  const cyanStripe = gauss(v, 0.58, 0.065) * smoothstep(0.12, 0.82, u)
+  const redStripe = gauss(v, 0.33, 0.08) * smoothstep(0.18, 0.44, u) * (1 - smoothstep(0.82, 0.96, u))
+  const headShadow = gauss(u, 0.88, 0.05) * gauss(v, 0.56, 0.09)
+  const dorsalShadow = gauss(v, 0.78, 0.11) * smoothstep(0.16, 0.86, u)
+  const tailShadow = smoothstep(0.82, 1, u) * gauss(v, 0.52, 0.12)
+  const stripeBreakup = createMicroMottling(u, v, 0.01, 24, 46)
 
-  if (config.pattern === 'angelfish') {
-    const smoke = gauss(v, 0.64, 0.18) * smoothstep(0.1, 0.92, u)
-    const edgeRim = 1 - smoothstep(0.03, 0.16, edge)
-    color = mixColor(color, [0.84, 0.82, 0.74], smoke * 0.22)
-    color = mixColor(color, [0.52, 0.46, 0.38], edgeRim * 0.3)
-    color = mixColor(color, [0.75, 0.66, 0.44], rayStrength * 0.18)
-    alpha *= 0.9
-    roughness = 0.86
-    height += rayStrength * 0.05
-  } else if (config.pattern === 'butterflyfish') {
-    const border = 1 - smoothstep(0.03, 0.14, edge)
-    const warmEdge = smoothstep(0.72, 1, u) + gauss(v, 0.76, 0.18)
-    const membraneAmber = smoothstep(0.16, 0.82, centerMask)
-    const membraneAlpha = lerp(0.14, 0.8, centerMask)
-    color = mixColor(color, [0.92, 0.86, 0.58], membraneAmber * 0.26)
-    color = mixColor(color, [0.92, 0.82, 0.34], warmEdge * 0.18)
-    color = mixColor(color, [0.12, 0.1, 0.1], border * 0.72)
-    color = mixColor(color, [0.58, 0.48, 0.22], rayStrength * 0.26)
-    alpha = ((membraneAlpha + (rayStrength * 0.12)) * 0.9) - (border * 0.08) + (rayStrength * 0.02)
-    roughness = 0.88
-    height += border * 0.05 + (rayStrength * 0.06)
-  } else if (config.pattern === 'goldfish') {
-    const warm = smoothstep(0.12, 0.9, u)
-    const edgeFade = 1 - smoothstep(0.03, 0.14, edge)
-    const membraneAlpha = lerp(0.14, 0.8, centerMask)
-    color = mixColor(color, [1, 0.82, 0.5], warm * 0.46)
-    color = mixColor(color, [0.98, 0.55, 0.22], rayStrength * 0.34)
-    color = mixColor(color, [0.86, 0.42, 0.18], edgeFade * 0.22)
-    alpha = ((membraneAlpha + (rayStrength * 0.14)) * 0.74) - (edgeFade * 0.05) + (rayStrength * 0.04)
-    roughness = 0.92
-    height += rayStrength * 0.12
-  } else if (config.pattern === 'neon') {
-    const tailFlash = finKind === 'tail' ? smoothstep(0.3, 1, u) : gauss(v, 0.55, 0.16)
-    color = mixColor(color, [0.56, 0.9, 1], tailFlash * 0.4)
-    alpha *= 0.84
-    roughness = 0.74
-  } else {
-    const edgeRim = smoothstep(0.78, 1, u)
-    const border = 1 - smoothstep(0.02, 0.14, edge)
-    color = mixColor(color, [0.18, 0.62, 0.61], edgeRim * 0.32)
-    color = mixColor(color, [0.98, 0.7, 0.32], gauss(v, 0.54, 0.16) * 0.25)
-    color = mixColor(color, multiplyColor(hexToRgb(config.accent), 0.9), border * 0.24)
-    alpha *= 0.88
-  }
+  let color = darkBack
+  color = mixColor(color, mixColor(primary, [0.28, 0.86, 1], 0.5), cyanStripe * 0.96)
+  color = mixColor(color, mixColor(secondary, [0.9, 0.24, 0.32], 0.56), redStripe * 0.94)
+  color = mixColor(color, [0.05, 0.08, 0.14], headShadow * 0.92)
+  color = mixColor(color, [0.06, 0.1, 0.16], dorsalShadow * 0.8)
+  color = mixColor(color, [0.12, 0.18, 0.28], tailShadow * 0.76)
 
-  alpha = clamp01(alpha)
+  const roughness = clamp01(0.34 - (cyanStripe * 0.03) + (dorsalShadow * 0.03))
+  const height = 0.45 + stripeBreakup + (cyanStripe * 0.06) + (redStripe * 0.04) + (headShadow * 0.03)
 
-  return { color, roughness, height, alpha }
+  return { color, roughness, height, alpha: 1 }
+}
+
+const sampleNeonFin = (config, finKind, u, v) => {
+  return createFinSurface(config, finKind, u, v, {
+    membraneTint: [0.76, 0.8, 0.86],
+    centerTint: finKind === 'tail' ? [0.56, 0.88, 1] : [0.76, 0.82, 0.9],
+    rayTint: [0.56, 0.74, 0.88],
+    rimTint: [0.22, 0.32, 0.42],
+    centerAlpha: 0.72,
+    edgeAlpha: 0.08,
+    membraneRoughness: 0.74,
+    rayRoughnessBoost: 0.04,
+    edgeRoughnessBoost: 0.03,
+    rayHeight: 0.06,
+    centerTintStrength: finKind === 'tail' ? 0.28 : 0.12
+  })
+}
+
+const sampleTropicalBody = (config, u, v) => {
+  const accent = hexToRgb(config.accent)
+  const base = countershading([0.52, 0.28, 0.14], [0.98, 0.84, 0.56], v, 0.16, 0.82)
+  const dorsalBand = gauss(v, 0.8, 0.12) * smoothstep(0.16, 0.9, u)
+  const bellyLift = 1 - smoothstep(0.18, 0.48, v)
+  const faceMask = gauss(u, 0.84, 0.05) * gauss(v, 0.58, 0.08)
+  const eyeLine = smoothstep(0.74, 0.82, u) * (1 - smoothstep(0.88, 0.96, u)) * gauss(v, 0.56, 0.035)
+  const finAccent = smoothstep(0.74, 1, u) * gauss(v, 0.52, 0.24)
+  const scaleBreakup = createMicroMottling(u, v, 0.016, 36, 62)
+
+  let color = base
+  color = mixColor(color, [0.98, 0.78, 0.32], smoothstep(0.22, 0.78, u) * 0.42)
+  color = mixColor(color, [0.94, 0.88, 0.66], bellyLift * 0.24)
+  color = mixColor(color, [0.74, 0.32, 0.16], dorsalBand * 0.38)
+  color = mixColor(color, [0.18, 0.2, 0.18], eyeLine * 0.94)
+  color = mixColor(color, [0.16, 0.28, 0.22], faceMask * 0.74)
+  color = mixColor(color, multiplyColor(accent, 0.9), finAccent * 0.32)
+
+  const roughness = clamp01(0.42 - (dorsalBand * 0.03) + (faceMask * 0.04))
+  const height = 0.45 + scaleBreakup + (eyeLine * 0.08) + (faceMask * 0.05) + (finAccent * 0.03)
+
+  return { color, roughness, height, alpha: 1 }
+}
+
+const sampleTropicalFin = (config, finKind, u, v) => {
+  return createFinSurface(config, finKind, u, v, {
+    membraneTint: [0.98, 0.92, 0.76],
+    centerTint: [0.96, 0.74, 0.38],
+    rayTint: [0.18, 0.54, 0.5],
+    rimTint: [0.18, 0.38, 0.36],
+    centerAlpha: 0.74,
+    edgeAlpha: 0.08,
+    membraneRoughness: 0.78,
+    rayRoughnessBoost: 0.05,
+    edgeRoughnessBoost: 0.03,
+    rayHeight: 0.07
+  })
+}
+
+const sampleBody = (config, u, v) => {
+  if (config.pattern === 'goldfish') return sampleGoldfishBody(config, u, v)
+  if (config.pattern === 'butterflyfish') return sampleButterflyfishBody(config, u, v)
+  if (config.pattern === 'angelfish') return sampleAngelfishBody(config, u, v)
+  if (config.pattern === 'neon') return sampleNeonBody(config, u, v)
+  return sampleTropicalBody(config, u, v)
+}
+
+const sampleFin = (config, finKind, u, v) => {
+  if (config.pattern === 'goldfish') return sampleGoldfishFin(config, finKind, u, v)
+  if (config.pattern === 'butterflyfish') return sampleButterflyfishFin(config, finKind, u, v)
+  if (config.pattern === 'angelfish') return sampleAngelfishFin(config, finKind, u, v)
+  if (config.pattern === 'neon') return sampleNeonFin(config, finKind, u, v)
+  return sampleTropicalFin(config, finKind, u, v)
 }
 
 export const createAtlas = (config) => {
@@ -844,20 +1030,20 @@ export const writeFishAssets = async (config) => {
 
   const materialScalars = config.pattern === 'butterflyfish'
     ? {
-        school: { metalness: 0.01, roughness: 0.52 },
-        heroBody: { metalness: 0.01, roughness: 0.5 },
-        heroFin: { metalness: 0.01, roughness: 0.9, opacity: 0.92, alphaTest: 0.06 }
+        school: { metalness: 0.01, roughness: 0.6 },
+        heroBody: { metalness: 0.01, roughness: 0.56 },
+        heroFin: { metalness: 0.01, roughness: 0.88, opacity: 0.94, alphaTest: 0.06 }
       }
     : config.pattern === 'goldfish'
       ? {
-          school: { metalness: 0.02, roughness: 0.5 },
-          heroBody: { metalness: 0.02, roughness: 0.42 },
-          heroFin: { metalness: 0.01, roughness: 0.94, opacity: 0.92, alphaTest: 0.06 }
+          school: { metalness: 0.01, roughness: 0.58 },
+          heroBody: { metalness: 0.01, roughness: 0.5 },
+          heroFin: { metalness: 0.01, roughness: 0.9, opacity: 0.94, alphaTest: 0.06 }
         }
       : {
-          school: { metalness: 0.03, roughness: 0.42 },
-          heroBody: { metalness: 0.03, roughness: 0.34 },
-          heroFin: { metalness: 0.02, roughness: 0.72, opacity: 0.96, alphaTest: 0.04 }
+          school: { metalness: 0.02, roughness: 0.46 },
+          heroBody: { metalness: 0.02, roughness: 0.4 },
+          heroFin: { metalness: 0.01, roughness: 0.76, opacity: 0.96, alphaTest: 0.04 }
         }
 
   const { body, fins } = createFishGeometries(config)

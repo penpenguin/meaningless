@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:fish-assets": "node scripts/generate-fish-assets.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
