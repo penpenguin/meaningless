@@ -451,6 +451,40 @@ describe('AquascapingSystem composition', () => {
     expect(Math.max(...fanRotations) - Math.min(...fanRotations)).toBeGreaterThan(2.2)
   })
 
+  it('renders crypt-brown fallback as a low rosette mass instead of a tall strap bundle', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    ;(instance as unknown as { visualAssets: null }).visualAssets = null
+
+    const createCryptRosettePlant = (AquascapingSystem.prototype as unknown as {
+      createCryptRosettePlant: (
+        seaweedGroup: THREE.Group,
+        layer: 'foreground' | 'background' | 'midground',
+        height: number,
+        hue: number
+      ) => void
+    }).createCryptRosettePlant.bind(instance)
+
+    const cryptGroup = new THREE.Group()
+    createCryptRosettePlant(cryptGroup, 'midground', 4.2, 0.064)
+
+    const cryptMeshes = cryptGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
+    const cryptDepthLanes = new Set(cryptMeshes.map((child) => child.userData.depthLane))
+    const cryptBounds = getWorldBounds(cryptGroup)
+    const cryptSize = new THREE.Vector3()
+    cryptBounds.getSize(cryptSize)
+    const cryptRotations = cryptMeshes.map((child) => child.rotation.y)
+
+    expect(cryptMeshes.length).toBeGreaterThanOrEqual(10)
+    expect(cryptDepthLanes.size).toBeGreaterThanOrEqual(5)
+    expect(cryptSize.x).toBeGreaterThan(1)
+    expect(cryptSize.y).toBeLessThan(3.1)
+    expect(Math.max(...cryptRotations) - Math.min(...cryptRotations)).toBeGreaterThan(4)
+  })
+
   it('replaces the planted blanket with a bounded set of planted masses', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
@@ -696,8 +730,10 @@ describe('AquascapingSystem composition', () => {
     expect(heroRockCenter.x).toBeLessThan(-size.x * 0.08)
     expect(ridgeCenter.x).toBeLessThan(-size.x * 0.06)
     expect(heroRockCenter.distanceTo(ridgeCenter)).toBeLessThan(size.x * 0.22)
-    expect(supportClusters.length).toBeGreaterThanOrEqual(2)
+    expect(supportClusters.length).toBeGreaterThanOrEqual(3)
     expect(supportClusters.every((cluster) => cluster.position.x < size.x * 0.02)).toBe(true)
+    expect(supportClusters.filter((cluster) => cluster.position.x > -size.x * 0.24).length).toBeGreaterThanOrEqual(2)
+    expect(supportClusters.filter((cluster) => cluster.position.z < 0).length).toBeGreaterThanOrEqual(2)
     expect(rightFrontOccupants).toEqual([])
   })
 
@@ -736,6 +772,7 @@ describe('AquascapingSystem composition', () => {
     const transitionPebbles = aquascapingGroup.children.filter((child) => child.userData.role === 'hardscape-transition-pebble')
     const detritusMounds = aquascapingGroup.children.filter((child) => child.userData.role === 'hardscape-transition-detritus')
     const burialDetails = aquascapingGroup.children.filter((child) => child.userData.role === 'hardscape-partial-burial')
+    const sandRipples = aquascapingGroup.children.filter((child) => child.userData.role === 'sand-ripple')
     const rightFrontOccupants = [
       ...transitionPebbles,
       ...detritusMounds,
@@ -744,12 +781,24 @@ describe('AquascapingSystem composition', () => {
       const center = getWorldBounds(child).getCenter(new THREE.Vector3())
       return center.x > size.x * 0.18 && center.z > size.z * 0.14
     })
+    const transitionCenters = [
+      ...transitionPebbles,
+      ...detritusMounds,
+      ...burialDetails
+    ].map((child) => getWorldBounds(child).getCenter(new THREE.Vector3()))
+    const rightFrontRipples = sandRipples.filter((child) => {
+      const center = getWorldBounds(child).getCenter(new THREE.Vector3())
+      return center.x > size.x * 0.16 && center.z > size.z * 0.12
+    })
 
     expect(transitionBerm).toBeUndefined()
-    expect(transitionPebbles.length).toBeGreaterThanOrEqual(7)
+    expect(transitionPebbles.length).toBeGreaterThanOrEqual(9)
     expect(detritusMounds.length).toBeGreaterThanOrEqual(3)
     expect(burialDetails.length).toBeGreaterThanOrEqual(3)
-    expect(rightFrontOccupants.length).toBeLessThanOrEqual(2)
+    expect(transitionCenters.every((center) => center.x < size.x * 0.08)).toBe(true)
+    expect(rightFrontOccupants.length).toBe(0)
+    expect(sandRipples.length).toBeLessThanOrEqual(5)
+    expect(rightFrontRipples.length).toBe(sandRipples.length)
   })
 
   it('clusters nature-showcase hardscape anchors into a left mound foundation instead of isolated ridge contacts', () => {
@@ -822,9 +871,10 @@ describe('AquascapingSystem composition', () => {
     expect(driftwood).toBeDefined()
     expect(driftwood?.position.x ?? 0).toBeLessThan(-0.6)
     expect(woodSpokes.length).toBeGreaterThanOrEqual(4)
-    expect(Math.max(...projectedXs) - Math.min(...projectedXs)).toBeGreaterThan(0.42)
-    expect(Math.max(...worldCenters.map((center) => center.x))).toBeGreaterThan((driftwood?.position.x ?? 0) + 3.6)
-    expect(Math.max(...worldCenters.map((center) => center.y))).toBeGreaterThan((driftwood?.position.y ?? 0) + 2.8)
+    expect(Math.max(...projectedXs) - Math.min(...projectedXs)).toBeGreaterThan(0.32)
+    expect(Math.max(...worldCenters.map((center) => center.x))).toBeGreaterThan((driftwood?.position.x ?? 0) + 1.8)
+    expect(Math.max(...worldCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 3.1)
+    expect(Math.max(...worldCenters.map((center) => center.y))).toBeGreaterThan((driftwood?.position.y ?? 0) + 2.72)
   })
 
   it('uses the showcase driftwood asset as the main core and downgrades procedural wood to short extenders', () => {
@@ -873,6 +923,7 @@ describe('AquascapingSystem composition', () => {
       (child): child is THREE.Group =>
         child instanceof THREE.Group && child.userData.role === 'driftwood-secondary-branch'
     ) ?? []
+    const extenderCenters = extenders.map((extender) => getWorldBounds(extender).getCenter(new THREE.Vector3()))
     const secondaryCenters = secondaryBranches.map((branch) => getWorldBounds(branch).getCenter(new THREE.Vector3()))
     expect(driftwood).toBeDefined()
     expect(assetCore).toBeDefined()
@@ -884,7 +935,9 @@ describe('AquascapingSystem composition', () => {
       Math.max(...secondaryCenters.map((center) => center.y)) -
       Math.min(...secondaryCenters.map((center) => center.y))
     ).toBeGreaterThan(1.2)
-    expect(secondaryCenters.filter((center) => center.x > (driftwood?.position.x ?? 0) + 1.4).length).toBeGreaterThanOrEqual(2)
+    expect(secondaryCenters.filter((center) => center.x > (driftwood?.position.x ?? 0) + 1.4).length).toBeLessThanOrEqual(1)
+    expect(Math.max(...secondaryCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 3.2)
+    expect(Math.max(...extenderCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 2.9)
     expect(secondaryCenters.some((center) => center.y > (driftwood?.position.y ?? 0) + 2.4)).toBe(true)
   })
 
@@ -933,7 +986,9 @@ describe('AquascapingSystem composition', () => {
     expect(counterFork?.userData.buryAmount).toBeGreaterThanOrEqual(0.1)
     expect(upliftFork?.userData.buryAmount).toBeLessThanOrEqual(0.04)
     expect((bridge?.position.x ?? 0)).toBeLessThan(0)
-    expect((counterFork?.position.x ?? 0)).toBeGreaterThan(1.8)
+    expect((counterFork?.position.x ?? 0)).toBeLessThanOrEqual(1.3)
+    expect((counterFork?.position.x ?? 0)).toBeGreaterThanOrEqual(0.2)
+    expect((upliftFork?.position.x ?? 0)).toBeLessThanOrEqual(1.2)
     expect((upliftFork?.position.y ?? 0) - (counterFork?.position.y ?? 0)).toBeGreaterThan(0.9)
     expect(Math.abs((upliftFork?.rotation.z ?? 0) - (counterFork?.rotation.z ?? 0))).toBeGreaterThan(0.9)
 
@@ -959,14 +1014,15 @@ describe('AquascapingSystem composition', () => {
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('hygrophila-rear')).toBe(true)
     expect(backgroundVallisPlacements.length).toBeLessThanOrEqual(1)
     expect(backgroundVallisPlacements.every((placement) => placement.zoneId === 'left-rear')).toBe(true)
-    expect(leftShoulderPlacements.length).toBeGreaterThanOrEqual(4)
-    expect(centerHardscapePlacements.length).toBeGreaterThanOrEqual(4)
+    expect(leftShoulderPlacements.length).toBeGreaterThanOrEqual(5)
+    expect(centerHardscapePlacements.length).toBeGreaterThanOrEqual(6)
     expect(centerHardscapePlacements.every((placement) => placement.layer === 'midground')).toBe(true)
     expect(broadleafTypes.has('javafern-large')).toBe(true)
     expect(broadleafTypes.has('javafern-narrow')).toBe(true)
     expect(broadleafTypes.has('anubias-nana-clump')).toBe(true)
+    expect(broadleafTypes.has('anubias-petite-clump')).toBe(true)
     expect(rightAccentTypes.has('crypt-brown')).toBe(true)
-    expect(rightAccentTypes.size).toBeGreaterThanOrEqual(2)
+    expect(rightAccentTypes.has('hygrophila-rear')).toBe(false)
     expect(foregroundPlacements.every((placement) => placement.x < -0.02)).toBe(true)
     expect(foregroundPlacements.every((placement) => placement.plantType === 'anubias-petite-clump')).toBe(true)
   })
@@ -980,13 +1036,13 @@ describe('AquascapingSystem composition', () => {
     const driftwoodTypes = new Set(driftwoodAnchors.map((anchor) => anchor.plantType))
     const rockTypes = new Set(rockAnchors.map((anchor) => anchor.plantType))
 
-    expect(hardscapePlantAnchors.length).toBeGreaterThanOrEqual(22)
+    expect(hardscapePlantAnchors.length).toBeGreaterThanOrEqual(28)
     expect([...driftwoodAnchorIds].some((id) => id.includes('fork'))).toBe(true)
     expect([...driftwoodAnchorIds].some((id) => id.includes('root'))).toBe(true)
     expect([...rockAnchorIds].some((id) => id.includes('junction'))).toBe(true)
     expect([...rockAnchorIds].some((id) => id.includes('crevice'))).toBe(true)
-    expect(driftwoodAnchors.length).toBeGreaterThanOrEqual(14)
-    expect(rockAnchors.length).toBeGreaterThanOrEqual(8)
+    expect(driftwoodAnchors.length).toBeGreaterThanOrEqual(18)
+    expect(rockAnchors.length).toBeGreaterThanOrEqual(10)
     expect(driftwoodTypes.has('anubias-petite-clump')).toBe(true)
     expect(driftwoodTypes.has('anubias-nana-clump')).toBe(true)
     expect(driftwoodTypes.has('javafern-narrow')).toBe(true)
@@ -1020,14 +1076,20 @@ describe('AquascapingSystem composition', () => {
     const fernCanopies = canopyPlants.filter((plant) =>
       plant.userData.plantType === 'javafern-large' || plant.userData.plantType === 'javafern-narrow'
     )
+    const anubiasCanopies = canopyPlants.filter((plant) =>
+      plant.userData.plantType === 'anubias-nana-clump' || plant.userData.plantType === 'anubias-petite-clump'
+    )
 
-    expect(canopyPlants.length).toBeGreaterThanOrEqual(4)
-    expect(canopyPlants.length).toBeLessThanOrEqual(4)
+    expect(canopyPlants.length).toBeGreaterThanOrEqual(5)
+    expect(canopyPlants.length).toBeLessThanOrEqual(5)
     expect(vallisCanopies).toHaveLength(1)
     expect(vallisCanopies.every((plant) => plant.position.x < center.x - size.x * 0.18)).toBe(true)
+    expect(vallisCanopies.every((plant) => plant.scale.y <= 1.4)).toBe(true)
+    expect(fernCanopies.length).toBeGreaterThanOrEqual(2)
     expect(fernCanopies.some((plant) =>
       plant.position.x < center.x - size.x * 0.04 && plant.position.z <= center.z - size.z * 0.06
     )).toBe(true)
+    expect(anubiasCanopies.length).toBeGreaterThanOrEqual(1)
     expect(cryptCanopies).toHaveLength(1)
     expect(cryptCanopies[0]?.position.x).toBeGreaterThan(center.x + size.x * 0.08)
   })
@@ -1270,10 +1332,10 @@ describe('AquascapingSystem premium materials', () => {
     const backgroundHygro = getPlantTint('background', 'hygrophila-rear')
     const backgroundCrypt = getPlantTint('background', 'crypt-brown')
 
-    expect(backgroundVallis.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.45)
-    expect(backgroundStem.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.47)
-    expect(backgroundHygro.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.47)
-    expect(backgroundCrypt.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.41)
+    expect(backgroundVallis.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.46)
+    expect(backgroundStem.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.48)
+    expect(backgroundHygro.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.48)
+    expect(backgroundCrypt.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.42)
   })
 
   it('renders background broad-leaf foliage as solid tinted shapes instead of narrow alpha cutouts', () => {

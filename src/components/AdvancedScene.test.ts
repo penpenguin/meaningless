@@ -1168,7 +1168,7 @@ describe('AdvancedAquariumScene tank backdrop', () => {
     expect(getBottomClearanceRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.16)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeGreaterThan(0.08)
     expect(getDepthRatio(heroFrontFill!.position, EXPANDED_TANK_DIMENSIONS)).toBeLessThan(0.18)
-    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThanOrEqual(0.088)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThanOrEqual(0.082)
     expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.12)
     expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.blending).toBe(THREE.AdditiveBlending)
   })
@@ -1205,17 +1205,17 @@ describe('AdvancedAquariumScene lighting', () => {
     expect(fillLight).toBeDefined()
     expect(bounceLight).toBeDefined()
     expect(rearRimLight).toBeDefined()
-    expect(ambientLight?.intensity).toBeGreaterThan(0.45)
-    expect(hemisphereLight?.intensity).toBeGreaterThan(1.04)
+    expect(ambientLight?.intensity).toBeGreaterThan(0.48)
+    expect(hemisphereLight?.intensity).toBeGreaterThan(1.1)
     const sunLight = strongestLight!
     const frontFillLight = fillLight!
     const substrateBounceLight = bounceLight!
     const rimLight = rearRimLight!
 
-    expect(sunLight.intensity).toBeGreaterThan(1.95)
-    expect(frontFillLight.intensity).toBeLessThan(0.64)
-    expect(substrateBounceLight.intensity).toBeGreaterThan(0.44)
-    expect(rimLight.intensity).toBeLessThan(0.1)
+    expect(sunLight.intensity).toBeGreaterThan(2.04)
+    expect(frontFillLight.intensity).toBeLessThan(0.6)
+    expect(substrateBounceLight.intensity).toBeGreaterThan(0.42)
+    expect(rimLight.intensity).toBeLessThan(0.085)
     expectRatioInRange(getWidthRatio(sunLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.x)
     expectRatioInRange(getHeightRatio(sunLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.y)
     expectRatioInRange(getDepthRatio(sunLight.position, AQUARIUM_TANK_DIMENSIONS), AQUARIUM_MAIN_LIGHT_RIG.positions.sun.z)
@@ -1928,15 +1928,17 @@ describe('AdvancedAquariumScene substrate', () => {
     expect(leftMound - rightFrontBeach).toBeGreaterThan(0.2)
     expect(leftMound).toBeGreaterThan(centerTransition + 0.06)
     expect(centerTransition).toBeGreaterThan(rightFrontBeach + 0.03)
-    expect(centerRightPedestal).toBeLessThan(centerTransition - 0.015)
+    expect(centerRightPedestal).toBeLessThan(centerTransition - 0.045)
     expect(centerRightPedestal).toBeLessThan(leftMound - 0.1)
     expect(centerRightPedestal).toBeGreaterThan(rightFrontBeach + 0.02)
     expect(curvedInnerPath).toBeLessThan(leftFrontLip - 0.03)
-    expect(curvedOuterPath).toBeLessThan(centerTransition - 0.02)
+    expect(curvedOuterPath).toBeLessThan(centerTransition - 0.03)
     expect(curvedOuterPath).toBeGreaterThan(rightFrontBeach - 0.01)
-    expect(leftFrontShoulder).toBeGreaterThan(rightFrontBeach + 0.06)
+    expect(centerRightPedestal).toBeLessThan(curvedOuterPath - 0.02)
+    expect(leftFrontLip).toBeGreaterThan(rightFrontBeach + 0.025)
+    expect(leftFrontShoulder).toBeGreaterThan(rightFrontBeach + 0.08)
     expect(shorelineRise).toBeGreaterThan(shorelineDipA + 0.012)
-    expect(shorelineRise).toBeGreaterThan(shorelineDipB + 0.01)
+    expect(shorelineRise).toBeGreaterThan(shorelineDipB + 0.02)
   })
 })
 
@@ -2445,18 +2447,118 @@ describe('AdvancedAquariumScene theme application', () => {
     expect(midgroundMaterial?.color.g ?? 0).toBeGreaterThan(midgroundMaterial?.color.b ?? 0)
     expect(foregroundMaterial?.color.g ?? 0).toBeGreaterThan(foregroundMaterial?.color.b ?? 0)
     expect(frontHighlightMaterial?.color.g ?? 0).toBeGreaterThan(frontHighlightMaterial?.color.b ?? 0)
-    expect((waterSurfaceHighlight?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0.12)
-    expect((waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0.08)
+    expect((waterSurfaceHighlight?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0.132)
+    expect((waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0.089)
     expect((waterSurfaceHighlight?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(
       (waterlineFront?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
     )
-    expect((lightCanopy?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0.165)
-    expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.085)
-    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.09)
-    expect((backWallPanel?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.16)
+    expect((lightCanopy?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeGreaterThan(0.175)
+    expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.08)
+    expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.086)
+    expect((backWallPanel?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.13)
     expect((driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.12)
     expect((ridgeOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.13)
     expect((backwallOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.1)
+    expect((driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.color.g ?? 0).toBeGreaterThan(
+      (driftwoodOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.color.b ?? 0
+    )
+    expect((ridgeOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.color.g ?? 0).toBeGreaterThan(
+      (ridgeOcclusion?.material as THREE.MeshBasicMaterial | undefined)?.color.b ?? 0
+    )
+  })
+
+  it('keeps nature-showcase front sand and caustics subdued instead of stage-lighting the beach', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => {
+        const gradient = { addColorStop: vi.fn() }
+
+        return {
+          createLinearGradient: () => gradient,
+          createRadialGradient: () => ({ addColorStop: vi.fn() }),
+          fillRect: vi.fn(),
+          clearRect: vi.fn(),
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          lineTo: vi.fn(),
+          bezierCurveTo: vi.fn(),
+          quadraticCurveTo: vi.fn(),
+          closePath: vi.fn(),
+          stroke: vi.fn(),
+          fill: vi.fn(),
+          ellipse: vi.fn(),
+          arc: vi.fn(),
+          save: vi.fn(),
+          restore: vi.fn(),
+          translate: vi.fn(),
+          scale: vi.fn(),
+          rotate: vi.fn(),
+          createImageData: vi.fn(),
+          putImageData: vi.fn(),
+          fillStyle: '',
+          strokeStyle: '',
+          globalCompositeOperation: 'source-over',
+          globalAlpha: 1,
+          lineWidth: 0
+        } as unknown as CanvasRenderingContext2D
+      })
+
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const internals = instance as unknown as {
+      tank: THREE.Group
+      createBackdropTexture: () => THREE.CanvasTexture
+      scene: THREE.Scene
+      renderer: { capabilities: { getMaxAnisotropy: () => number } }
+      godRaysEffect: { applyTheme: (theme: Theme) => void } | null
+    }
+
+    const nextTheme: Theme = {
+      waterTint: '#225577',
+      fogDensity: 0.24,
+      particleDensity: 0.2,
+      waveStrength: 0.4,
+      waveSpeed: 0.3,
+      layoutStyle: 'nature-showcase',
+      glassFrameStrength: 0.5,
+      glassTint: '#a8dcea',
+      glassReflectionStrength: 0.45,
+      surfaceGlowStrength: 0.5,
+      causticsStrength: 0.36
+    }
+
+    internals.tank = new THREE.Group()
+    internals.createBackdropTexture = () => new THREE.CanvasTexture(document.createElement('canvas'))
+    internals.scene = new THREE.Scene()
+    internals.renderer = { capabilities: { getMaxAnisotropy: () => 1 } }
+    internals.godRaysEffect = { applyTheme: vi.fn() }
+
+    const createAdvancedTank = (AdvancedAquariumScene.prototype as unknown as {
+      createAdvancedTank: () => void
+    }).createAdvancedTank.bind(instance)
+    const applyTankTheme = (AdvancedAquariumScene.prototype as unknown as {
+      applyTankTheme: (theme: Theme) => void
+    }).applyTankTheme.bind(instance)
+
+    try {
+      createAdvancedTank()
+      applyTankTheme(nextTheme)
+
+      const heroGroundGlow = internals.tank.children.find((child) => child.name === 'tank-hero-ground-glow') as THREE.Mesh | undefined
+      const heroFrontFill = internals.tank.children.find((child) => child.name === 'tank-hero-front-fill') as THREE.Mesh | undefined
+      const substrateDetail = internals.tank.children.find((child) => child.name === 'tank-substrate-detail') as THREE.Mesh | undefined
+      const substrateFrontDetail = internals.tank.children.find((child) => child.name === 'tank-substrate-front-detail') as THREE.Mesh | undefined
+      const floorCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
+      const backCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-back') as THREE.Mesh | undefined
+
+      expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.054)
+      expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.072)
+      expect((substrateDetail?.material as THREE.MeshStandardMaterial | undefined)?.opacity).toBeLessThan(0.236)
+      expect((substrateFrontDetail?.material as THREE.MeshStandardMaterial | undefined)?.opacity).toBeLessThan(0.248)
+      expect((floorCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.021)
+      expect((backCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.0138)
+    } finally {
+      getContextSpy.mockRestore()
+    }
   })
 
   it('forwards the active theme to god rays when applying a theme to the scene', () => {
@@ -2640,7 +2742,8 @@ describe('AdvancedAquariumScene water textures', () => {
 
     createWaterSurfaceHighlightTexture()
 
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(202, 208, 188, 0.1)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(196, 202, 180, 0.12)')
+    expect(stops.some((stop) => stop.includes('202, 208, 188'))).toBe(false)
     expect(stops.some((stop) => stop.includes('214, 220, 205'))).toBe(false)
   })
 })
@@ -2733,8 +2836,9 @@ describe('AdvancedAquariumScene backdrop textures', () => {
 
     createBackdropTexture()
 
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(104, 114, 97, 0.18)')
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(18, 23, 22, 0.9)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(96, 106, 89, 0.16)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(17, 22, 19, 0.92)')
+    expect(stops.some((stop) => stop.includes('104, 114, 97'))).toBe(false)
     expect(stops.some((stop) => stop.includes('118, 128, 114'))).toBe(false)
     expect(stops.some((stop) => stop.includes('151, 164, 154'))).toBe(false)
     expect(stops.some((stop) => stop.includes('207, 219'))).toBe(false)
@@ -2774,7 +2878,8 @@ describe('AdvancedAquariumScene backdrop textures', () => {
 
     createWallPanelTexture()
 
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(176, 183, 169, 0.14)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(163, 171, 151, 0.12)')
+    expect(stops.some((stop) => stop.includes('176, 183, 169'))).toBe(false)
     expect(stops.some((stop) => stop.includes('192, 201, 190'))).toBe(false)
     expect(stops.some((stop) => stop.includes('211, 220, 208'))).toBe(false)
   })
