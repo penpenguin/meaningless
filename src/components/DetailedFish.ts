@@ -2163,20 +2163,20 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         return hero
           ? {
               metalness: 0.01,
-              roughness: 0.54,
-              clearcoat: 0.64,
-              clearcoatRoughness: 0.46,
-              reflectivity: 0.68,
-              envMapIntensity: 0.68,
+              roughness: 0.58,
+              clearcoat: 0.58,
+              clearcoatRoughness: 0.5,
+              reflectivity: 0.62,
+              envMapIntensity: 0.58,
               normalScale: new THREE.Vector2(0.22, 0.14)
             }
           : {
               metalness: 0.01,
-              roughness: 0.56,
-              clearcoat: 0.42,
-              clearcoatRoughness: 0.44,
-              reflectivity: 0.62,
-              envMapIntensity: 0.5,
+              roughness: 0.58,
+              clearcoat: 0.4,
+              clearcoatRoughness: 0.46,
+              reflectivity: 0.58,
+              envMapIntensity: 0.44,
               normalScale: new THREE.Vector2(0.18, 0.11)
             }
       }
@@ -2207,20 +2207,20 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         return hero
           ? {
               metalness: 0.03,
-              roughness: 0.48,
-              clearcoat: 0.68,
-              clearcoatRoughness: 0.38,
-              reflectivity: 0.72,
-              envMapIntensity: 0.7,
+              roughness: 0.52,
+              clearcoat: 0.62,
+              clearcoatRoughness: 0.42,
+              reflectivity: 0.66,
+              envMapIntensity: 0.6,
               normalScale: new THREE.Vector2(0.26, 0.18)
             }
           : {
               metalness: 0.03,
-              roughness: 0.56,
-              clearcoat: 0.46,
-              clearcoatRoughness: 0.36,
-              reflectivity: 0.68,
-              envMapIntensity: 0.52,
+              roughness: 0.58,
+              clearcoat: 0.42,
+              clearcoatRoughness: 0.4,
+              reflectivity: 0.62,
+              envMapIntensity: 0.46,
               normalScale: new THREE.Vector2(0.22, 0.14)
             }
       }

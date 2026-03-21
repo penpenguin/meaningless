@@ -1087,6 +1087,7 @@ describe('DetailedFishSystem premium materials', () => {
         variant: { name: string },
         hero: boolean
       ) => {
+        clearcoat: number
         roughness: number
         reflectivity: number
         envMapIntensity: number
@@ -1096,12 +1097,14 @@ describe('DetailedFishSystem premium materials', () => {
     const heroResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Butterflyfish' }, true)
     const schoolResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Butterflyfish' }, false)
 
-    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.56)
-    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.62)
-    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.5)
-    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.54)
-    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.68)
-    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.68)
+    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.58)
+    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.58)
+    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.44)
+    expect(schoolResponse.clearcoat).toBeLessThanOrEqual(0.4)
+    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.58)
+    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.62)
+    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.58)
+    expect(heroResponse.clearcoat).toBeLessThanOrEqual(0.58)
   })
 
   test('keeps goldfish glossy but not mirror-like so facial and fin textures remain primary', () => {
@@ -1188,6 +1191,7 @@ describe('DetailedFishSystem premium materials', () => {
         variant: { name: string },
         hero: boolean
       ) => {
+        clearcoat: number
         roughness: number
         reflectivity: number
         envMapIntensity: number
@@ -1197,12 +1201,14 @@ describe('DetailedFishSystem premium materials', () => {
     const heroResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Goldfish' }, true)
     const schoolResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Goldfish' }, false)
 
-    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.56)
-    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.68)
-    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.52)
-    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.48)
-    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.72)
-    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.7)
+    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.58)
+    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.62)
+    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.46)
+    expect(schoolResponse.clearcoat).toBeLessThanOrEqual(0.42)
+    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.52)
+    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.66)
+    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.6)
+    expect(heroResponse.clearcoat).toBeLessThanOrEqual(0.62)
   })
 })
 
