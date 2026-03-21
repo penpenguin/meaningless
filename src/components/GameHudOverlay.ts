@@ -14,6 +14,16 @@ type GameHudOverlayOptions = {
   store: GameStore
 }
 
+type GameHudOverlayHandle = {
+  element: HTMLDivElement
+  dispose: () => void
+}
+
+type HudPanelHandle = {
+  element: HTMLDivElement
+  render: (state: GameAppState) => void
+}
+
 type GuideContent = {
   title: string
   body: string
@@ -245,7 +255,7 @@ const getNextUnlockCopy = (state: GameAppState): string => {
     : `Next unlock: ${nextUnlock.label} in ${coinsNeeded} coins.`
 }
 
-const createTankPanel = (store: GameStore): HTMLDivElement => {
+const createTankPanel = (store: GameStore): HudPanelHandle => {
   const panel = document.createElement('div')
   panel.className = 'hud-panel hud-panel--tank'
   panel.dataset.panel = 'tank'
@@ -309,12 +319,13 @@ const createTankPanel = (store: GameStore): HTMLDivElement => {
     }
   }
 
-  store.subscribe(({ state }) => render(state))
-  render(store.getState())
-  return panel
+  return {
+    element: panel,
+    render
+  }
 }
 
-const createShopPanel = (store: GameStore): HTMLDivElement => {
+const createShopPanel = (store: GameStore): HudPanelHandle => {
   const panel = document.createElement('div')
   panel.className = 'hud-panel hud-panel--shop'
   panel.dataset.panel = 'shop'
@@ -395,12 +406,13 @@ const createShopPanel = (store: GameStore): HTMLDivElement => {
     })
   }
 
-  store.subscribe(({ state }) => render(state))
-  render(store.getState())
-  return panel
+  return {
+    element: panel,
+    render
+  }
 }
 
-const createLayoutPanel = (store: GameStore): HTMLDivElement => {
+const createLayoutPanel = (store: GameStore): HudPanelHandle => {
   const panel = document.createElement('div')
   panel.className = 'hud-panel hud-panel--layout hud-layout-panel'
   panel.dataset.panel = 'layout'
@@ -581,12 +593,13 @@ const createLayoutPanel = (store: GameStore): HTMLDivElement => {
     })
   }
 
-  store.subscribe(({ state }) => render(state))
-  render(store.getState())
-  return panel
+  return {
+    element: panel,
+    render
+  }
 }
 
-const createProgressPanel = (store: GameStore): HTMLDivElement => {
+const createProgressPanel = (): HudPanelHandle => {
   const panel = document.createElement('div')
   panel.className = 'hud-panel hud-panel--progress'
   panel.dataset.panel = 'progress'
@@ -641,12 +654,13 @@ const createProgressPanel = (store: GameStore): HTMLDivElement => {
     callout.textContent = getNextUnlockCopy(state)
   }
 
-  store.subscribe(({ state }) => render(state))
-  render(store.getState())
-  return panel
+  return {
+    element: panel,
+    render
+  }
 }
 
-const createSettingsPanel = (store: GameStore): HTMLDivElement => {
+const createSettingsPanel = (store: GameStore): HudPanelHandle => {
   const panel = document.createElement('div')
   panel.className = 'hud-panel hud-panel--settings'
   panel.dataset.panel = 'settings'
@@ -731,7 +745,7 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
   settingsHint.textContent = '簡易でも shadow と texture は維持しつつ、描画負荷の高い演出だけを抑えます。'
   panel.appendChild(settingsHint)
 
-  store.subscribe(({ state }) => {
+  const render = (state: GameAppState): void => {
     const soundEnabled = state.game.profile.preferences.soundEnabled
     const motionEnabled = state.game.profile.preferences.motionEnabled
     const photoModeEnabled = state.game.profile.preferences.photoModeEnabled
@@ -755,30 +769,15 @@ const createSettingsPanel = (store: GameStore): HTMLDivElement => {
       button.classList.toggle('is-active', isActive)
       button.setAttribute('aria-pressed', String(isActive))
     })
-  })
+  }
 
-  const initial = store.getState()
-  const initialSound = initial.game.profile.preferences.soundEnabled
-  const initialMotion = initial.game.profile.preferences.motionEnabled
-  const initialPhotoMode = initial.game.profile.preferences.photoModeEnabled
-  soundButton.textContent = initialSound ? 'On' : 'Off'
-  soundButton.classList.toggle('is-on', initialSound)
-  soundButton.setAttribute('aria-pressed', String(initialSound))
-  motionButton.textContent = initialMotion ? 'On' : 'Off'
-  motionButton.classList.toggle('is-on', initialMotion)
-  motionButton.setAttribute('aria-pressed', String(initialMotion))
-  photoModeButton.textContent = initialPhotoMode ? 'On' : 'Off'
-  photoModeButton.classList.toggle('is-on', initialPhotoMode)
-  photoModeButton.setAttribute('aria-pressed', String(initialPhotoMode))
-  qualityButtons.forEach((button, index) => {
-    const isActive = qualityOptions[index]?.value === initial.game.profile.preferences.quality
-    button.classList.toggle('is-active', isActive)
-    button.setAttribute('aria-pressed', String(isActive))
-  })
-  return panel
+  return {
+    element: panel,
+    render
+  }
 }
 
-export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivElement => {
+export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): GameHudOverlayHandle => {
   const root = document.createElement('div')
   root.className = 'hud-overlay'
   root.dataset.visible = 'true'
@@ -873,19 +872,19 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   const tankPanel = createTankPanel(store)
   const shopPanel = createShopPanel(store)
   const layoutPanel = createLayoutPanel(store)
-  const progressPanel = createProgressPanel(store)
+  const progressPanel = createProgressPanel()
   const settingsPanel = createSettingsPanel(store)
 
-  const panels: Array<{ mode: GameUiMode; element: HTMLDivElement }> = [
-    { mode: 'tank', element: tankPanel },
-    { mode: 'shop', element: shopPanel },
-    { mode: 'layout', element: layoutPanel },
-    { mode: 'progress', element: progressPanel },
-    { mode: 'settings', element: settingsPanel }
+  const panels: Array<{ mode: GameUiMode; panel: HudPanelHandle }> = [
+    { mode: 'tank', panel: tankPanel },
+    { mode: 'shop', panel: shopPanel },
+    { mode: 'layout', panel: layoutPanel },
+    { mode: 'progress', panel: progressPanel },
+    { mode: 'settings', panel: settingsPanel }
   ]
 
   panelContainer.appendChild(guide)
-  panels.forEach(({ element }) => panelContainer.appendChild(element))
+  panels.forEach(({ panel }) => panelContainer.appendChild(panel.element))
 
   rail.appendChild(topBar)
   rail.appendChild(panelContainer)
@@ -893,10 +892,10 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
   root.appendChild(revealTab)
 
   const applyMode = (mode: GameUiMode): void => {
-    panels.forEach(({ mode: panelMode, element }) => {
+    panels.forEach(({ mode: panelMode, panel }) => {
       const isActive = panelMode === mode
-      element.hidden = !isActive
-      element.classList.toggle('is-active', isActive)
+      panel.element.hidden = !isActive
+      panel.element.classList.toggle('is-active', isActive)
     })
 
     modeButtons.forEach((button) => {
@@ -927,12 +926,19 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): HTMLDivE
     guideBody.textContent = guideContent.body
     guideHint.textContent = guideContent.hint
     revealTab.textContent = state.game.profile.preferences.photoModeEnabled ? 'Exit Photo Mode' : 'Show HUD'
+    panels.forEach(({ panel }) => panel.render(state))
     applyMode(state.ui.mode)
     applyVisibility(state.game.profile.preferences.hudVisible)
   }
 
-  store.subscribe(({ state }) => renderOverlay(state))
+  const unsubscribe = store.subscribe(({ state }) => renderOverlay(state))
   renderOverlay(store.getState())
 
-  return root
+  return {
+    element: root,
+    dispose: () => {
+      unsubscribe()
+      root.remove()
+    }
+  }
 }

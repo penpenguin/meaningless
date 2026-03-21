@@ -4754,15 +4754,7 @@ export class AdvancedAquariumScene {
     const previousAutoRotate = this.controls.autoRotate
     const previousAutoRotateSpeed = this.controls.autoRotateSpeed
 
-    this.godRaysEffect?.dispose()
-    this.godRaysEffect = null
-    this.composer.dispose()
-    this.controls.dispose()
-    this.renderer.dispose()
-
-    if (previousDomElement.parentElement) {
-      previousDomElement.parentElement.removeChild(previousDomElement)
-    }
+    this.disposeRendererPipeline(previousDomElement)
 
     this.setupRenderer(this.container)
     this.setupComposer()
@@ -4951,6 +4943,18 @@ export class AdvancedAquariumScene {
     })
   }
 
+  private disposeRendererPipeline(rendererElement = this.renderer.domElement): void {
+    this.godRaysEffect?.dispose()
+    this.godRaysEffect = null
+    this.composer.dispose()
+    this.controls.dispose()
+    this.renderer.dispose()
+
+    if (rendererElement?.parentElement) {
+      rendererElement.parentElement.removeChild(rendererElement)
+    }
+  }
+
   public dispose(): void {
     this.stop()
     window.removeEventListener('resize', this.handleResize)
@@ -4958,20 +4962,8 @@ export class AdvancedAquariumScene {
     if (this.spiralDecorations) {
       this.spiralDecorations.dispose()
     }
-    
-    if (this.godRaysEffect) {
-      this.godRaysEffect.dispose()
-    }
 
     disposeSceneResources(this.scene)
-    
-    const rendererElement = this.renderer.domElement
-    if (rendererElement?.parentElement) {
-      rendererElement.parentElement.removeChild(rendererElement)
-    }
-
-    this.renderer.dispose()
-    this.controls.dispose()
-    this.composer.dispose()
+    this.disposeRendererPipeline()
   }
 }

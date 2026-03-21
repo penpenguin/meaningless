@@ -96,12 +96,10 @@ const getActiveTank = (state: GameAppState): GameTank => {
   return state.game.tanks.find((tank) => tank.id === state.game.activeTankId) ?? state.game.tanks[0]
 }
 
-export const createAquariumRenderModel = (state: GameAppState): AquariumRenderModel => {
+export const createAquariumTheme = (state: GameAppState): Theme => {
   const tank = getActiveTank(state)
   const quality = tank.progression.waterQuality
   const comfort = tank.progression.comfort
-  const laneCounts = getLaneCounts(tank)
-  const totalFish = Math.max(1, tank.fishSchools.reduce((sum, school) => sum + school.count, 0))
   const fogDensity = Number((0.018 + ((100 - quality) / 1800)).toFixed(3))
   const clarity = quality / 100
   const comfortBlend = Math.min(1, comfort / 100)
@@ -120,32 +118,45 @@ export const createAquariumRenderModel = (state: GameAppState): AquariumRenderMo
   const causticsStrength = Number((0.12 + (clarity * 0.27) + (comfortBlend * 0.09)).toFixed(2))
 
   return {
-    theme: {
-      glassFrameStrength: 0.78,
-      waterTint: tint,
-      fogDensity,
-      particleDensity: Number((0.24 + (comfort / 250)).toFixed(2)),
-      waveStrength: Number((0.42 + (comfort / 280)).toFixed(2)),
-      waveSpeed: state.game.profile.preferences.motionEnabled ? 0.72 : 0.24,
-      layoutStyle: 'planted',
-      glassTint,
-      glassReflectionStrength,
-      surfaceGlowStrength,
-      causticsStrength
-    },
-    fishGroups: tank.fishSchools.map((school) => {
-      const laneShare = laneCounts[school.lane] / totalFish
-      const schoolMood = getSchoolMood(tank, laneShare, school)
-      const moodTuning = getMoodTuning(schoolMood, school.lane, comfort)
+    glassFrameStrength: 0.78,
+    waterTint: tint,
+    fogDensity,
+    particleDensity: Number((0.24 + (comfort / 250)).toFixed(2)),
+    waveStrength: Number((0.42 + (comfort / 280)).toFixed(2)),
+    waveSpeed: state.game.profile.preferences.motionEnabled ? 0.72 : 0.24,
+    layoutStyle: 'planted',
+    glassTint,
+    glassReflectionStrength,
+    surfaceGlowStrength,
+    causticsStrength
+  }
+}
 
-      return {
-        speciesId: school.speciesId,
-        count: school.count,
-        tuning: {
-          ...moodTuning,
-          schoolMood
-        }
+export const createAquariumFishGroups = (state: GameAppState): FishGroup[] => {
+  const tank = getActiveTank(state)
+  const comfort = tank.progression.comfort
+  const laneCounts = getLaneCounts(tank)
+  const totalFish = Math.max(1, tank.fishSchools.reduce((sum, school) => sum + school.count, 0))
+
+  return tank.fishSchools.map((school) => {
+    const laneShare = laneCounts[school.lane] / totalFish
+    const schoolMood = getSchoolMood(tank, laneShare, school)
+    const moodTuning = getMoodTuning(schoolMood, school.lane, comfort)
+
+    return {
+      speciesId: school.speciesId,
+      count: school.count,
+      tuning: {
+        ...moodTuning,
+        schoolMood
       }
-    })
+    }
+  })
+}
+
+export const createAquariumRenderModel = (state: GameAppState): AquariumRenderModel => {
+  return {
+    theme: createAquariumTheme(state),
+    fishGroups: createAquariumFishGroups(state)
   }
 }

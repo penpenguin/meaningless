@@ -2782,6 +2782,21 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       uniform.value = elapsedTime
     })
 
+    this.applyBehaviorForces(bounds, boundsSize, behavior, elapsedTime, safeDeltaTime)
+    this.boids.update(safeDeltaTime)
+    this.syncInstancedMeshes(bounds, behavior, elapsedTime, safeDeltaTime)
+  }
+
+  private applyBehaviorForces(
+    bounds: THREE.Box3,
+    boundsSize: THREE.Vector3,
+    behavior: BehaviorProfile,
+    elapsedTime: number,
+    safeDeltaTime: number
+  ): void {
+    const depthForce = this.tempDepthForce ?? new THREE.Vector3()
+    const interestForce = this.tempInterestForce ?? new THREE.Vector3()
+
     this.boids.boids.forEach((boid, index) => {
       if (index >= this.wanderTargets.length) return
 
@@ -2866,9 +2881,16 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         .add(interestForce)
         .add(depthForce)
     })
+  }
 
-    this.boids.update(safeDeltaTime)
-
+  private syncInstancedMeshes(
+    bounds: THREE.Box3,
+    behavior: BehaviorProfile,
+    elapsedTime: number,
+    safeDeltaTime: number
+  ): void {
+    const horizontalDirection = this.tempHorizontalDirection ?? new THREE.Vector3()
+    const horizontalPreviousDirection = this.tempHorizontalPreviousDirection ?? new THREE.Vector3()
     let boidIndex = 0
 
     this.instancedMeshes.forEach((mesh, meshIndex) => {

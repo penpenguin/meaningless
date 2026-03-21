@@ -14,11 +14,13 @@ import { loadTankState } from './utils/tankStorage'
 import { loadVisualAssets, type VisualAssetBundle } from './assets/visualAssets'
 import type { QualityLevel } from './types/settings'
 
+type HudOverlayHandle = ReturnType<typeof createGameHudOverlay>
+
 export class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
   private audioManager: AudioManager
   private store: GameStore
-  private overlay: HTMLDivElement | null = null
+  private overlay: HudOverlayHandle | null = null
   private storeUnsubscribe: (() => void) | null = null
   private motionMediaQuery: MediaQueryList
   private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
@@ -96,10 +98,10 @@ export class AdvancedAquariumApp {
 
   private setupHudOverlay(): void {
     if (this.overlay) {
-      this.overlay.remove()
+      this.overlay.dispose()
     }
     this.overlay = createGameHudOverlay({ store: this.store })
-    document.body.appendChild(this.overlay)
+    document.body.appendChild(this.overlay.element)
   }
 
   private applyQualitySettings(quality: QualityLevel): void {
@@ -166,7 +168,7 @@ export class AdvancedAquariumApp {
     this.store.destroy()
 
     if (this.overlay) {
-      this.overlay.remove()
+      this.overlay.dispose()
       this.overlay = null
     }
 

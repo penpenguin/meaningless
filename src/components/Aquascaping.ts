@@ -1954,74 +1954,24 @@ export class AquascapingSystem {
   }
 
   private createPlantedMasses(bounds: THREE.Box3, layoutSeed: number): void {
-    const size = new THREE.Vector3()
-    bounds.getSize(size)
-    const substrateY = bounds.min.y + 0.42
-    const placements = resolveSampledPlantPlacements('planted', layoutSeed)
-
-    placements.forEach((placement) => {
-      const x = THREE.MathUtils.clamp(
-        placement.x * size.x,
-        bounds.min.x + 0.34,
-        bounds.max.x - 0.34
-      )
-      const z = THREE.MathUtils.clamp(
-        placement.z * size.z,
-        bounds.min.z + 0.28,
-        bounds.max.z - 0.28
-      )
-      const height = placement.baseHeight
-      const hue = placement.hueBase
-      const userData = {
-        role: 'planted-mass',
-        massRole: placement.massRole,
-        anchorId: placement.id,
-        zoneId: placement.zoneId,
-        clusterKind: placement.clusterKind,
-        depthLane: placement.depthLane,
-        layer: placement.layer,
-        plantType: placement.plantType
-      }
-
-      const assetMass = placement.layer !== 'foreground'
-        ? this.cloneFirstAvailableVisualModelGroup(placement.assetIds ?? [], userData)
-        : null
-      const massGroup = assetMass ?? new THREE.Group()
-      massGroup.position.set(x, substrateY, z)
-      massGroup.rotation.set(placement.tiltX, placement.rotationY, placement.tiltZ)
-      massGroup.scale.copy(placement.scale)
-
-      if (assetMass) {
-        this.addPlantMassFiller(
-          massGroup,
-          placement.layer,
-          height * (placement.layer === 'background' ? 0.94 : 0.86),
-          hue,
-          placement.plantType,
-          placement.layer !== 'foreground'
-        )
-      } else {
-        massGroup.userData = userData
-        this.addPlantMassFiller(
-          massGroup,
-          placement.layer,
-          height,
-          hue,
-          placement.plantType,
-          placement.layer === 'background'
-        )
-      }
-
-      this.plants.push(massGroup)
-      this.group.add(massGroup)
-    })
+    this.createPlantMassesForLayout(bounds, layoutSeed, 'planted')
   }
 
   private createNatureShowcasePlanting(bounds: THREE.Box3, layoutSeed: number): void {
+    this.createPlantMassesForLayout(bounds, layoutSeed, 'nature-showcase')
+  }
+
+  private createPlantMassesForLayout(
+    bounds: THREE.Box3,
+    layoutSeed: number,
+    layoutStyle: 'planted' | 'nature-showcase'
+  ): void {
     const size = new THREE.Vector3()
     bounds.getSize(size)
     const substrateY = bounds.min.y + 0.42
-    const placements = resolveSampledPlantPlacements('nature-showcase', layoutSeed)
+    const placements = resolveSampledPlantPlacements(layoutStyle, layoutSeed)
+    const backgroundAssetScale = layoutStyle === 'nature-showcase' ? 0.9 : 0.94
+    const midgroundAssetScale = layoutStyle === 'nature-showcase' ? 0.84 : 0.86
 
     placements.forEach((placement) => {
       const x = THREE.MathUtils.clamp(
@@ -2056,7 +2006,7 @@ export class AquascapingSystem {
         this.addPlantMassFiller(
           massGroup,
           placement.layer,
-          placement.baseHeight * (placement.layer === 'background' ? 0.9 : 0.84),
+          placement.baseHeight * (placement.layer === 'background' ? backgroundAssetScale : midgroundAssetScale),
           placement.hueBase,
           placement.plantType,
           placement.layer !== 'foreground'

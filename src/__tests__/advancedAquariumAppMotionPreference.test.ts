@@ -52,7 +52,10 @@ vi.mock('../components/GameHudOverlay', () => {
     createGameHudOverlay: () => {
       const overlay = document.createElement('div')
       overlay.className = 'hud-overlay'
-      return overlay
+      return {
+        element: overlay,
+        dispose: vi.fn()
+      }
     }
   }
 })

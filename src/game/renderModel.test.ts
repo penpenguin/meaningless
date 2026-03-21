@@ -45,7 +45,7 @@ describe('createAquariumRenderModel', () => {
     expect(renderModel.theme.causticsStrength).toBeCloseTo(0.43, 2)
   })
 
-  it('defaults the render theme to the planted layout', () => {
+  it('keeps the planted layout when the active tank theme is planted', () => {
     const renderModel = createAquariumRenderModel(createStateWithWaterQuality(100))
 
     expect(renderModel.theme.layoutStyle).toBe('planted')
