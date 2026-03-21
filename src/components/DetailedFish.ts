@@ -5,7 +5,11 @@ import type { AquascapeLayoutStyle, FishGroup, SchoolMood, Tuning } from '../typ
 import { getFishContent, getFishContentList } from '../content/registry'
 import type { LoadedModelAsset, VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
-import { resolveSubstrateHardscapeAnchors, resolveSubstratePlantAnchors } from './Aquascaping'
+import {
+  resolveRuntimeLayoutSeed,
+  resolveSubstrateHardscapeAnchors,
+  resolveSubstratePlantAnchors
+} from './Aquascaping'
 import {
   createFishSafeBounds,
   resolveFishAxisExtents,
@@ -140,6 +144,7 @@ const DEFAULT_BEHAVIOR_PROFILE: BehaviorProfile = {
 }
 
 const DEFAULT_FORWARD_AXIS: [number, number, number] = [1, 0, 0]
+const ANGELFISH_GLB_CORRECTION: QuaternionTuple = [-0.70710678, 0, 0, 0.70710678]
 const DEFAULT_ORIENTATION_CORRECTION: Required<OrientationCorrection> = {
   modelForwardAxis: DEFAULT_FORWARD_AXIS,
   correctionQuaternion: [0, 0, 0, 1]
@@ -356,6 +361,7 @@ export class DetailedFishSystem {
   private currentQuality: QualityLevel = 'standard'
   private visualAssets: VisualAssetBundle | null
   private layoutStyle: AquascapeLayoutStyle
+  private layoutSeed: number
   private boidVariantIndices: number[] = []
   private heroAssignments = new Map<number, {
     object: THREE.Object3D
@@ -372,11 +378,12 @@ export class DetailedFishSystem {
     scene: THREE.Scene,
     bounds: THREE.Box3,
     visualAssets: VisualAssetBundle | null = null,
-    options: { layoutStyle?: AquascapeLayoutStyle } = {}
+    options: { layoutStyle?: AquascapeLayoutStyle; layoutSeed?: number } = {}
   ) {
     this.group = new THREE.Group()
     this.visualAssets = visualAssets
     this.layoutStyle = options.layoutStyle ?? 'planted'
+    this.layoutSeed = resolveRuntimeLayoutSeed(scene, this.layoutStyle, options.layoutSeed)
     scene.add(this.group)
 
     this.bounds = bounds
@@ -483,6 +490,8 @@ export class DetailedFishSystem {
         proceduralForwardAxis: [1, 0, 0],
         schoolForwardAxis: [1, 0, 0],
         heroForwardAxis: [1, 0, 0],
+        schoolCorrectionQuaternion: ANGELFISH_GLB_CORRECTION,
+        heroCorrectionQuaternion: ANGELFISH_GLB_CORRECTION,
         patternTextureId: 'fish-angelfish',
         baseColorTextureId: 'fish-angelfish-basecolor',
         normalTextureId: 'fish-angelfish-normal',
@@ -1113,7 +1122,7 @@ export class DetailedFishSystem {
             : 0.18
       }))
 
-    const plantPoints = resolveSubstratePlantAnchors(this.layoutStyle)
+    const plantPoints = resolveSubstratePlantAnchors(this.layoutStyle, this.layoutSeed)
       .filter((anchor) => anchor.layer !== 'foreground' || Math.abs(anchor.x) < 0.32)
       .map((anchor) => ({
         kind: 'plant' as const,
@@ -2163,20 +2172,20 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         return hero
           ? {
               metalness: 0.01,
-              roughness: 0.58,
-              clearcoat: 0.58,
-              clearcoatRoughness: 0.5,
-              reflectivity: 0.62,
-              envMapIntensity: 0.58,
+              roughness: 0.6,
+              clearcoat: 0.52,
+              clearcoatRoughness: 0.54,
+              reflectivity: 0.58,
+              envMapIntensity: 0.52,
               normalScale: new THREE.Vector2(0.22, 0.14)
             }
           : {
               metalness: 0.01,
-              roughness: 0.58,
-              clearcoat: 0.4,
-              clearcoatRoughness: 0.46,
-              reflectivity: 0.58,
-              envMapIntensity: 0.44,
+              roughness: 0.6,
+              clearcoat: 0.36,
+              clearcoatRoughness: 0.5,
+              reflectivity: 0.54,
+              envMapIntensity: 0.4,
               normalScale: new THREE.Vector2(0.18, 0.11)
             }
       }
@@ -2207,20 +2216,20 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         return hero
           ? {
               metalness: 0.03,
-              roughness: 0.52,
-              clearcoat: 0.62,
-              clearcoatRoughness: 0.42,
-              reflectivity: 0.66,
-              envMapIntensity: 0.6,
+              roughness: 0.56,
+              clearcoat: 0.56,
+              clearcoatRoughness: 0.46,
+              reflectivity: 0.62,
+              envMapIntensity: 0.54,
               normalScale: new THREE.Vector2(0.26, 0.18)
             }
           : {
               metalness: 0.03,
-              roughness: 0.58,
-              clearcoat: 0.42,
-              clearcoatRoughness: 0.4,
-              reflectivity: 0.62,
-              envMapIntensity: 0.46,
+              roughness: 0.6,
+              clearcoat: 0.38,
+              clearcoatRoughness: 0.44,
+              reflectivity: 0.58,
+              envMapIntensity: 0.42,
               normalScale: new THREE.Vector2(0.22, 0.14)
             }
       }

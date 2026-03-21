@@ -147,6 +147,50 @@ describe('DetailedFishSystem locomotion profiles', () => {
     expect(tropical?.proceduralCorrectionQuaternion).toBeUndefined()
     expect(tropical?.schoolCorrectionQuaternion).toBeUndefined()
     expect(tropical?.heroCorrectionQuaternion).toBeUndefined()
+
+    const angelfishCorrection = [-Math.sin(Math.PI / 4), 0, 0, Math.cos(Math.PI / 4)] as [number, number, number, number]
+    expect(angelfish?.proceduralForwardAxis).toEqual([1, 0, 0])
+    expect(angelfish?.schoolForwardAxis).toEqual([1, 0, 0])
+    expect(angelfish?.heroForwardAxis).toEqual([1, 0, 0])
+    angelfishCorrection.forEach((value, index) => {
+      expect(angelfish?.schoolCorrectionQuaternion?.[index]).toBeCloseTo(value, 6)
+      expect(angelfish?.heroCorrectionQuaternion?.[index]).toBeCloseTo(value, 6)
+    })
+  })
+
+  test('Angelfish school and hero corrections keep nose forward while rotating dorsal upward', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        schoolForwardAxis?: [number, number, number]
+        heroForwardAxis?: [number, number, number]
+        schoolCorrectionQuaternion?: [number, number, number, number]
+        heroCorrectionQuaternion?: [number, number, number, number]
+      }>
+    }
+
+    const angelfish = createFishVariants.bind(instance)().find((variant) => variant.name === 'Angelfish')
+    expect(angelfish).toBeDefined()
+
+    const modelDorsalAxis = new THREE.Vector3(0, 0, 1)
+    const modelVentralAxis = new THREE.Vector3(0, 0, -1)
+    const schoolCorrection = new THREE.Quaternion(...angelfish!.schoolCorrectionQuaternion!)
+    const heroCorrection = new THREE.Quaternion(...angelfish!.heroCorrectionQuaternion!)
+
+    const schoolForward = new THREE.Vector3(...angelfish!.schoolForwardAxis!).applyQuaternion(schoolCorrection).normalize()
+    const heroForward = new THREE.Vector3(...angelfish!.heroForwardAxis!).applyQuaternion(heroCorrection).normalize()
+    const schoolDorsal = modelDorsalAxis.clone().applyQuaternion(schoolCorrection).normalize()
+    const heroDorsal = modelDorsalAxis.clone().applyQuaternion(heroCorrection).normalize()
+    const schoolVentral = modelVentralAxis.clone().applyQuaternion(schoolCorrection).normalize()
+    const heroVentral = modelVentralAxis.clone().applyQuaternion(heroCorrection).normalize()
+
+    expect(schoolForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
+    expect(heroForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
+    expect(schoolDorsal.angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
+    expect(heroDorsal.angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
+    expect(schoolVentral.angleTo(new THREE.Vector3(0, -1, 0))).toBeLessThan(1e-5)
+    expect(heroVentral.angleTo(new THREE.Vector3(0, -1, 0))).toBeLessThan(1e-5)
   })
 
   test('resolveHeadingQuaternion aligns corrected per-asset forward axes with velocity', () => {
@@ -1097,14 +1141,14 @@ describe('DetailedFishSystem premium materials', () => {
     const heroResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Butterflyfish' }, true)
     const schoolResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Butterflyfish' }, false)
 
-    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.58)
-    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.58)
-    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.44)
-    expect(schoolResponse.clearcoat).toBeLessThanOrEqual(0.4)
-    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.58)
-    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.62)
-    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.58)
-    expect(heroResponse.clearcoat).toBeLessThanOrEqual(0.58)
+    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.6)
+    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.54)
+    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.4)
+    expect(schoolResponse.clearcoat).toBeLessThanOrEqual(0.36)
+    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.6)
+    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.58)
+    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.52)
+    expect(heroResponse.clearcoat).toBeLessThanOrEqual(0.52)
   })
 
   test('keeps goldfish glossy but not mirror-like so facial and fin textures remain primary', () => {
@@ -1201,14 +1245,14 @@ describe('DetailedFishSystem premium materials', () => {
     const heroResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Goldfish' }, true)
     const schoolResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Goldfish' }, false)
 
-    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.58)
-    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.62)
-    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.46)
-    expect(schoolResponse.clearcoat).toBeLessThanOrEqual(0.42)
-    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.52)
-    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.66)
-    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.6)
-    expect(heroResponse.clearcoat).toBeLessThanOrEqual(0.62)
+    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.6)
+    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.58)
+    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.42)
+    expect(schoolResponse.clearcoat).toBeLessThanOrEqual(0.38)
+    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.56)
+    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.62)
+    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.54)
+    expect(heroResponse.clearcoat).toBeLessThanOrEqual(0.56)
   })
 })
 
@@ -2502,6 +2546,38 @@ describe('DetailedFishSystem nature-showcase composition bias', () => {
       .reduce((total, point) => total + point.weight, 0)
 
     expect(leftHardscapeWeight).toBeGreaterThan(rightHardscapeWeight)
+  })
+
+  test('reuses the scene aquascaping layout seed for showcase habitat plant points', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -4, -5), new THREE.Vector3(5, 4, 5))
+    const sceneA = new THREE.Scene()
+    const sceneB = new THREE.Scene()
+    const sceneC = new THREE.Scene()
+
+    sceneA.userData.aquascapingLayoutSeeds = { 'nature-showcase': 0x51ac20dd }
+    sceneB.userData.aquascapingLayoutSeeds = { 'nature-showcase': 0x51ac20dd }
+    sceneC.userData.aquascapingLayoutSeeds = { 'nature-showcase': 0x98bc40aa }
+
+    const systemA = new DetailedFishSystem(sceneA, bounds, null, { layoutStyle: 'nature-showcase' })
+    const systemB = new DetailedFishSystem(sceneB, bounds, null, { layoutStyle: 'nature-showcase' })
+    const systemC = new DetailedFishSystem(sceneC, bounds, null, { layoutStyle: 'nature-showcase' })
+
+    const getPlantPointKeys = (system: DetailedFishSystem): string[] => (
+      (system as unknown as {
+        habitatInterestPoints: Array<{
+          kind: 'hardscape' | 'plant' | 'open-lane'
+          position: THREE.Vector3
+          weight: number
+        }>
+      }).habitatInterestPoints
+        .filter((point) => point.kind === 'plant')
+        .map((point) =>
+          `${point.position.x.toFixed(3)}:${point.position.z.toFixed(3)}:${point.weight.toFixed(3)}`
+        )
+    )
+
+    expect(getPlantPointKeys(systemA)).toEqual(getPlantPointKeys(systemB))
+    expect(getPlantPointKeys(systemA)).not.toEqual(getPlantPointKeys(systemC))
   })
 
   test('keeps showcase wander targets away from the front-left glass cluster', () => {

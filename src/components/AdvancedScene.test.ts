@@ -16,7 +16,10 @@ import type { Theme } from '../types/aquarium'
 
 type CreateSubstrateFn = (dimensions: AquariumTankDimensions) => void
 
-const createSubstrateTestScene = (layoutStyle: Theme['layoutStyle'] = 'planted') => {
+const createSubstrateTestScene = (
+  layoutStyle: Theme['layoutStyle'] = 'planted',
+  layoutSeed?: number
+) => {
   const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
   const internals = instance as unknown as {
     scene: THREE.Scene
@@ -28,6 +31,12 @@ const createSubstrateTestScene = (layoutStyle: Theme['layoutStyle'] = 'planted')
   }
 
   internals.scene = new THREE.Scene()
+  const resolvedLayoutSeed = layoutSeed ?? (
+    layoutStyle === 'nature-showcase' ? 0x51ac20dd : 0x24ac51dd
+  )
+  internals.scene.userData.aquascapingLayoutSeeds = {
+    [layoutStyle]: resolvedLayoutSeed
+  }
   internals.scene.userData.theme = {
     waterTint: '#0e3d4e',
     fogDensity: 0.4,
@@ -1925,20 +1934,35 @@ describe('AdvancedAquariumScene substrate', () => {
       AQUARIUM_TANK_DIMENSIONS.depth * 0.18
     )
 
-    expect(leftMound - rightFrontBeach).toBeGreaterThan(0.22)
+    expect(leftMound - rightFrontBeach).toBeGreaterThan(0.24)
     expect(leftMound).toBeGreaterThan(centerTransition + 0.08)
-    expect(centerTransition).toBeGreaterThan(rightFrontBeach + 0.02)
-    expect(centerRightPedestal).toBeLessThan(centerTransition - 0.06)
+    expect(centerTransition).toBeGreaterThan(rightFrontBeach + 0.03)
+    expect(centerRightPedestal).toBeLessThan(centerTransition - 0.075)
     expect(centerRightPedestal).toBeLessThan(leftMound - 0.1)
     expect(centerRightPedestal).toBeGreaterThan(rightFrontBeach + 0.02)
     expect(curvedInnerPath).toBeLessThan(leftFrontLip - 0.03)
-    expect(curvedOuterPath).toBeLessThan(centerTransition - 0.045)
+    expect(curvedOuterPath).toBeLessThan(centerTransition - 0.05)
     expect(curvedOuterPath).toBeGreaterThan(rightFrontBeach - 0.01)
-    expect(centerRightPedestal).toBeLessThan(curvedOuterPath - 0.03)
+    expect(centerRightPedestal).toBeLessThan(curvedOuterPath - 0.04)
     expect(leftFrontLip).toBeGreaterThan(rightFrontBeach + 0.04)
     expect(leftFrontShoulder).toBeGreaterThan(rightFrontBeach + 0.11)
     expect(shorelineRise).toBeGreaterThan(shorelineDipA + 0.018)
     expect(shorelineRise).toBeGreaterThan(shorelineDipB + 0.026)
+  })
+
+  it('reuses the scene aquascaping layout seed for nature-showcase substrate relief', () => {
+    const sharedA = createSubstrateTestScene('nature-showcase', 0x51ac20dd)
+    const sharedB = createSubstrateTestScene('nature-showcase', 0x51ac20dd)
+    const alternate = createSubstrateTestScene('nature-showcase', 0x98bc40aa)
+
+    const sampleProfile = (sandTop: THREE.Mesh) => ([
+      getNearestTopHeight(sandTop, -2.7, -1.05),
+      getNearestTopHeight(sandTop, -1.3, -0.38),
+      getNearestTopHeight(sandTop, 0.62, 0.54)
+    ].map((value) => value.toFixed(4)))
+
+    expect(sampleProfile(sharedA.sandTop)).toEqual(sampleProfile(sharedB.sandTop))
+    expect(sampleProfile(sharedA.sandTop)).not.toEqual(sampleProfile(alternate.sandTop))
   })
 })
 
@@ -2049,7 +2073,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
     )) as THREE.Mesh | undefined
     const simpleOpacity = (heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
 
-    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.33, 5)
+    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.29, 5)
     expect(heroFrontFill?.visible).toBe(true)
     expect(simpleOpacity).toBeGreaterThan(0)
 
@@ -2057,7 +2081,7 @@ describe('AdvancedAquariumScene quality scaling', () => {
 
     const standardOpacity = (heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 0
 
-    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.44, 5)
+    expect(internals.renderer.toneMappingExposure).toBeCloseTo(1.4, 5)
     expect(standardOpacity).toBeGreaterThan(simpleOpacity)
   })
 
@@ -2550,12 +2574,12 @@ describe('AdvancedAquariumScene theme application', () => {
       const floorCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-floor') as THREE.Mesh | undefined
       const backCaustics = internals.tank.children.find((child) => child.name === 'tank-caustics-back') as THREE.Mesh | undefined
 
-      expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.042)
-      expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.058)
-      expect((substrateDetail?.material as THREE.MeshStandardMaterial | undefined)?.opacity).toBeLessThan(0.216)
-      expect((substrateFrontDetail?.material as THREE.MeshStandardMaterial | undefined)?.opacity).toBeLessThan(0.226)
-      expect((floorCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.015)
-      expect((backCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.01)
+      expect((heroGroundGlow?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.032)
+      expect((heroFrontFill?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.048)
+      expect((substrateDetail?.material as THREE.MeshStandardMaterial | undefined)?.opacity).toBeLessThan(0.205)
+      expect((substrateFrontDetail?.material as THREE.MeshStandardMaterial | undefined)?.opacity).toBeLessThan(0.215)
+      expect((floorCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.013)
+      expect((backCaustics?.material as THREE.MeshBasicMaterial | undefined)?.opacity).toBeLessThan(0.009)
     } finally {
       getContextSpy.mockRestore()
     }
@@ -2742,9 +2766,10 @@ describe('AdvancedAquariumScene water textures', () => {
 
     createWaterSurfaceHighlightTexture()
 
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(202, 208, 188, 0.14)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(204, 207, 186, 0.13)')
     expect(stops.some((stop) => stop.includes('196, 202, 180'))).toBe(false)
     expect(stops.some((stop) => stop.includes('214, 220, 205'))).toBe(false)
+    expect(stops.some((stop) => stop.includes('202, 208, 188'))).toBe(false)
   })
 })
 
@@ -2878,10 +2903,11 @@ describe('AdvancedAquariumScene backdrop textures', () => {
 
     createWallPanelTexture()
 
-    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(151, 159, 138, 0.11)')
+    expect(stops.map((stop) => stop.toLowerCase())).toContain('rgba(149, 155, 135, 0.1)')
     expect(stops.some((stop) => stop.includes('176, 183, 169'))).toBe(false)
     expect(stops.some((stop) => stop.includes('192, 201, 190'))).toBe(false)
     expect(stops.some((stop) => stop.includes('211, 220, 208'))).toBe(false)
+    expect(stops.some((stop) => stop.includes('151, 159, 138'))).toBe(false)
   })
 
   it('creates diffuse caustics clusters instead of repeated stripe strokes', () => {

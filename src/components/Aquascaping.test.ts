@@ -4,6 +4,7 @@ import {
   AquascapingSystem,
   plantClusterDefinitions,
   resolveHardscapePlantAnchors,
+  resolveRuntimeLayoutSeed,
   resolveSampledPlantPlacements,
   resolveSubstrateHardscapeAnchors,
   resolveSubstratePlantAnchors
@@ -362,6 +363,30 @@ describe('AquascapingSystem composition', () => {
     )).toBe(true)
   })
 
+  it('stores a scene-scoped runtime layout seed instead of reusing a fixed showcase placement seed', () => {
+    const sceneA = new THREE.Scene()
+    const sceneB = new THREE.Scene()
+    const realRandom = Math.random
+    const randomSpy = vi.spyOn(Math, 'random')
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_710_000_000_000)
+
+    randomSpy.mockImplementationOnce(() => 0.11)
+    randomSpy.mockImplementationOnce(() => 0.87)
+    randomSpy.mockImplementation(realRandom)
+
+    const sceneASeed = resolveRuntimeLayoutSeed(sceneA, 'nature-showcase')
+    const repeatedSceneASeed = resolveRuntimeLayoutSeed(sceneA, 'nature-showcase')
+    const sceneBSeed = resolveRuntimeLayoutSeed(sceneB, 'nature-showcase')
+
+    expect(sceneASeed).toBe(repeatedSceneASeed)
+    expect(sceneA.userData.aquascapingLayoutSeeds?.['nature-showcase']).toBe(sceneASeed)
+    expect(sceneB.userData.aquascapingLayoutSeeds?.['nature-showcase']).toBe(sceneBSeed)
+    expect(sceneASeed).not.toBe(sceneBSeed)
+
+    randomSpy.mockRestore()
+    nowSpy.mockRestore()
+  })
+
   it('derives substrate plant anchors from sampled placements instead of fixed zone centers', () => {
     const sampledPlantPlacements = resolveSampledPlantPlacements('planted', 0x53a9d2f1)
     const substratePlantAnchors = resolveSubstratePlantAnchors('planted', 0x53a9d2f1)
@@ -379,6 +404,50 @@ describe('AquascapingSystem composition', () => {
     expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.moundHeight)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.moundHeight))).toBeGreaterThan(0.004)
     expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.scoopDepth)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.scoopDepth))).toBeGreaterThan(0.002)
     expect(substratePlantAnchors.some((anchor) => Math.abs(anchor.scoopBiasX) > 0.01)).toBe(true)
+  })
+
+  it('uses the showcase runtime seed for planted masses and substrate anchors instead of the fixed default placements', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const sceneA = new THREE.Scene()
+    const sceneB = new THREE.Scene()
+    const sceneC = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const sharedSeed = 0x5120acdd
+    const alternateSeed = 0x9a40bc11
+
+    new AquascapingSystem(sceneA, bounds, null, {
+      layoutStyle: 'nature-showcase',
+      layoutSeed: sharedSeed
+    })
+    new AquascapingSystem(sceneB, bounds, null, {
+      layoutStyle: 'nature-showcase',
+      layoutSeed: sharedSeed
+    })
+    new AquascapingSystem(sceneC, bounds, null, {
+      layoutStyle: 'nature-showcase',
+      layoutSeed: alternateSeed
+    })
+
+    const getMassKeys = (scene: THREE.Scene): string[] => {
+      const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+      return aquascapingGroup.children
+        .filter((child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'planted-mass')
+        .map((plant) => `${plant.userData.anchorId}:${positionKey(plant.position.x, plant.position.z)}`)
+    }
+
+    const sharedAnchorKeys = resolveSubstratePlantAnchors('nature-showcase', sharedSeed)
+      .map((anchor) => `${anchor.id}:${positionKey(anchor.x, anchor.z)}`)
+    const defaultAnchorKeys = resolveSubstratePlantAnchors('nature-showcase')
+      .map((anchor) => `${anchor.id}:${positionKey(anchor.x, anchor.z)}`)
+
+    expect(getMassKeys(sceneA)).toEqual(getMassKeys(sceneB))
+    expect(getMassKeys(sceneA)).not.toEqual(getMassKeys(sceneC))
+    expect(sharedAnchorKeys).not.toEqual(defaultAnchorKeys)
+    expect(sceneA.userData.aquascapingLayoutSeeds?.['nature-showcase']).toBe(sharedSeed)
+    expect(sceneB.userData.aquascapingLayoutSeeds?.['nature-showcase']).toBe(sharedSeed)
   })
 
   it('adds hardscape plant anchors for branch crotches, root flares, and rock crevices', () => {
@@ -455,34 +524,39 @@ describe('AquascapingSystem composition', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.75)
 
-    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
-    ;(instance as unknown as { visualAssets: null }).visualAssets = null
+    try {
+      const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+      ;(instance as unknown as { visualAssets: null }).visualAssets = null
 
-    const createCryptRosettePlant = (AquascapingSystem.prototype as unknown as {
-      createCryptRosettePlant: (
-        seaweedGroup: THREE.Group,
-        layer: 'foreground' | 'background' | 'midground',
-        height: number,
-        hue: number
-      ) => void
-    }).createCryptRosettePlant.bind(instance)
+      const createCryptRosettePlant = (AquascapingSystem.prototype as unknown as {
+        createCryptRosettePlant: (
+          seaweedGroup: THREE.Group,
+          layer: 'foreground' | 'background' | 'midground',
+          height: number,
+          hue: number
+        ) => void
+      }).createCryptRosettePlant.bind(instance)
 
-    const cryptGroup = new THREE.Group()
-    createCryptRosettePlant(cryptGroup, 'midground', 4.2, 0.064)
+      const cryptGroup = new THREE.Group()
+      createCryptRosettePlant(cryptGroup, 'midground', 4.2, 0.064)
 
-    const cryptMeshes = cryptGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
-    const cryptDepthLanes = new Set(cryptMeshes.map((child) => child.userData.depthLane))
-    const cryptBounds = getWorldBounds(cryptGroup)
-    const cryptSize = new THREE.Vector3()
-    cryptBounds.getSize(cryptSize)
-    const cryptRotations = cryptMeshes.map((child) => child.rotation.y)
+      const cryptMeshes = cryptGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
+      const cryptDepthLanes = new Set(cryptMeshes.map((child) => child.userData.depthLane))
+      const cryptBounds = getWorldBounds(cryptGroup)
+      const cryptSize = new THREE.Vector3()
+      cryptBounds.getSize(cryptSize)
+      const cryptRotations = cryptMeshes.map((child) => child.rotation.y)
 
-    expect(cryptMeshes.length).toBeGreaterThanOrEqual(10)
-    expect(cryptDepthLanes.size).toBeGreaterThanOrEqual(5)
-    expect(cryptSize.x).toBeGreaterThan(1)
-    expect(cryptSize.y).toBeLessThan(3.1)
-    expect(Math.max(...cryptRotations) - Math.min(...cryptRotations)).toBeGreaterThan(4)
+      expect(cryptMeshes.length).toBeGreaterThanOrEqual(10)
+      expect(cryptDepthLanes.size).toBeGreaterThanOrEqual(5)
+      expect(cryptSize.x).toBeGreaterThan(1)
+      expect(cryptSize.y).toBeLessThan(3.1)
+      expect(Math.max(...cryptRotations) - Math.min(...cryptRotations)).toBeGreaterThan(4)
+    } finally {
+      randomSpy.mockRestore()
+    }
   })
 
   it('replaces the planted blanket with a bounded set of planted masses', () => {
@@ -727,13 +801,13 @@ describe('AquascapingSystem composition', () => {
 
     expect(heroRock).toBeDefined()
     expect(ridge).toBeDefined()
-    expect(heroRockCenter.x).toBeLessThan(-size.x * 0.12)
-    expect(ridgeCenter.x).toBeLessThan(-size.x * 0.12)
-    expect(heroRockCenter.distanceTo(ridgeCenter)).toBeLessThan(size.x * 0.18)
+    expect(heroRockCenter.x).toBeLessThan(-size.x * 0.16)
+    expect(ridgeCenter.x).toBeLessThan(-size.x * 0.16)
+    expect(heroRockCenter.distanceTo(ridgeCenter)).toBeLessThan(size.x * 0.14)
     expect(supportClusters.length).toBeGreaterThanOrEqual(4)
     expect(supportClusters.every((cluster) => cluster.position.x < size.x * 0.02)).toBe(true)
     expect(supportClusters.filter((cluster) => cluster.position.x < -size.x * 0.18).length).toBeGreaterThanOrEqual(3)
-    expect(supportClusters.filter((cluster) => cluster.position.x > -size.x * 0.2).length).toBeGreaterThanOrEqual(1)
+    expect(supportClusters.filter((cluster) => cluster.position.x > -size.x * 0.18).length).toBeGreaterThanOrEqual(1)
     expect(supportClusters.filter((cluster) => cluster.position.z < 0).length).toBeGreaterThanOrEqual(3)
     expect(rightFrontOccupants).toEqual([])
   })
@@ -796,9 +870,9 @@ describe('AquascapingSystem composition', () => {
     expect(transitionPebbles.length).toBeGreaterThanOrEqual(9)
     expect(detritusMounds.length).toBeGreaterThanOrEqual(3)
     expect(burialDetails.length).toBeGreaterThanOrEqual(3)
-    expect(transitionCenters.every((center) => center.x < size.x * 0.08)).toBe(true)
+    expect(transitionCenters.every((center) => center.x < size.x * 0.04)).toBe(true)
     expect(rightFrontOccupants.length).toBe(0)
-    expect(sandRipples.length).toBeLessThanOrEqual(5)
+    expect(sandRipples.length).toBeLessThanOrEqual(4)
     expect(rightFrontRipples.length).toBe(sandRipples.length)
   })
 
@@ -874,7 +948,7 @@ describe('AquascapingSystem composition', () => {
     expect(woodSpokes.length).toBeGreaterThanOrEqual(4)
     expect(Math.max(...projectedXs) - Math.min(...projectedXs)).toBeGreaterThan(0.32)
     expect(Math.max(...worldCenters.map((center) => center.x))).toBeGreaterThan((driftwood?.position.x ?? 0) + 1.8)
-    expect(Math.max(...worldCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 2.72)
+    expect(Math.max(...worldCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 2.48)
     expect(Math.max(...worldCenters.map((center) => center.y))).toBeGreaterThan((driftwood?.position.y ?? 0) + 2.42)
   })
 
@@ -937,8 +1011,8 @@ describe('AquascapingSystem composition', () => {
       Math.min(...secondaryCenters.map((center) => center.y))
     ).toBeGreaterThan(1.2)
     expect(secondaryCenters.filter((center) => center.x > (driftwood?.position.x ?? 0) + 1.2).length).toBeLessThanOrEqual(1)
-    expect(Math.max(...secondaryCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 2.72)
-    expect(Math.max(...extenderCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 2.28)
+    expect(Math.max(...secondaryCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 2.44)
+    expect(Math.max(...extenderCenters.map((center) => center.x))).toBeLessThan((driftwood?.position.x ?? 0) + 2.04)
     expect(secondaryCenters.some((center) => center.y > (driftwood?.position.y ?? 0) + 2.4)).toBe(true)
   })
 
@@ -987,9 +1061,9 @@ describe('AquascapingSystem composition', () => {
     expect(counterFork?.userData.buryAmount).toBeGreaterThanOrEqual(0.1)
     expect(upliftFork?.userData.buryAmount).toBeLessThanOrEqual(0.04)
     expect((bridge?.position.x ?? 0)).toBeLessThan(-0.3)
-    expect((counterFork?.position.x ?? 0)).toBeLessThanOrEqual(0.92)
+    expect((counterFork?.position.x ?? 0)).toBeLessThanOrEqual(0.76)
     expect((counterFork?.position.x ?? 0)).toBeGreaterThanOrEqual(0.12)
-    expect((upliftFork?.position.x ?? 0)).toBeLessThanOrEqual(0.82)
+    expect((upliftFork?.position.x ?? 0)).toBeLessThanOrEqual(0.62)
     expect((upliftFork?.position.y ?? 0) - (counterFork?.position.y ?? 0)).toBeGreaterThan(0.9)
     expect(Math.abs((upliftFork?.rotation.z ?? 0) - (counterFork?.rotation.z ?? 0))).toBeGreaterThan(0.9)
 
@@ -1013,10 +1087,11 @@ describe('AquascapingSystem composition', () => {
 
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('stem-green-bush')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('hygrophila-rear')).toBe(true)
+    expect(leftRearPlacements.length).toBeLessThanOrEqual(3)
     expect(backgroundVallisPlacements.length).toBeLessThanOrEqual(1)
     expect(backgroundVallisPlacements.every((placement) => placement.zoneId === 'left-rear')).toBe(true)
-    expect(leftShoulderPlacements.length).toBeGreaterThanOrEqual(6)
-    expect(centerHardscapePlacements.length).toBeGreaterThanOrEqual(7)
+    expect(leftShoulderPlacements.length).toBeGreaterThanOrEqual(8)
+    expect(centerHardscapePlacements.length).toBeGreaterThanOrEqual(9)
     expect(centerHardscapePlacements.every((placement) => placement.layer === 'midground')).toBe(true)
     expect(broadleafTypes.has('javafern-large')).toBe(true)
     expect(broadleafTypes.has('javafern-narrow')).toBe(true)
@@ -1038,13 +1113,13 @@ describe('AquascapingSystem composition', () => {
     const driftwoodTypes = new Set(driftwoodAnchors.map((anchor) => anchor.plantType))
     const rockTypes = new Set(rockAnchors.map((anchor) => anchor.plantType))
 
-    expect(hardscapePlantAnchors.length).toBeGreaterThanOrEqual(40)
+    expect(hardscapePlantAnchors.length).toBeGreaterThanOrEqual(48)
     expect([...driftwoodAnchorIds].some((id) => id.includes('fork'))).toBe(true)
     expect([...driftwoodAnchorIds].some((id) => id.includes('root'))).toBe(true)
     expect([...rockAnchorIds].some((id) => id.includes('junction'))).toBe(true)
     expect([...rockAnchorIds].some((id) => id.includes('crevice'))).toBe(true)
-    expect(driftwoodAnchors.length).toBeGreaterThanOrEqual(24)
-    expect(rockAnchors.length).toBeGreaterThanOrEqual(14)
+    expect(driftwoodAnchors.length).toBeGreaterThanOrEqual(28)
+    expect(rockAnchors.length).toBeGreaterThanOrEqual(18)
     expect(driftwoodTypes.has('anubias-petite-clump')).toBe(true)
     expect(driftwoodTypes.has('anubias-nana-clump')).toBe(true)
     expect(driftwoodTypes.has('javafern-narrow')).toBe(true)
@@ -1086,7 +1161,7 @@ describe('AquascapingSystem composition', () => {
     expect(canopyPlants.length).toBeLessThanOrEqual(6)
     expect(vallisCanopies).toHaveLength(1)
     expect(vallisCanopies.every((plant) => plant.position.x < center.x - size.x * 0.18)).toBe(true)
-    expect(vallisCanopies.every((plant) => plant.scale.y <= 1.0)).toBe(true)
+    expect(vallisCanopies.every((plant) => plant.scale.y <= 0.92)).toBe(true)
     expect(fernCanopies.length).toBeGreaterThanOrEqual(2)
     expect(fernCanopies.some((plant) =>
       plant.position.x < center.x - size.x * 0.04 && plant.position.z <= center.z - size.z * 0.06
@@ -1094,7 +1169,7 @@ describe('AquascapingSystem composition', () => {
     expect(anubiasCanopies.length).toBeGreaterThanOrEqual(2)
     expect(cryptCanopies).toHaveLength(1)
     expect(cryptCanopies[0]?.position.x).toBeGreaterThan(center.x + size.x * 0.08)
-    expect(cryptCanopies[0]?.scale.y ?? 0).toBeLessThanOrEqual(0.88)
+    expect(cryptCanopies[0]?.scale.y ?? 0).toBeLessThanOrEqual(0.8)
   })
 
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
