@@ -1078,6 +1078,32 @@ describe('DetailedFishSystem premium materials', () => {
     expect(heroMaterial.envMapIntensity).toBeLessThanOrEqual(0.78)
   })
 
+  test('keeps butterflyfish subdued in nature-showcase so facial mask and fin edges stay secondary', () => {
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+
+    const { resolveFishMaterialResponse } = DetailedFishSystem.prototype as unknown as {
+      resolveFishMaterialResponse: (
+        variant: { name: string },
+        hero: boolean
+      ) => {
+        roughness: number
+        reflectivity: number
+        envMapIntensity: number
+      }
+    }
+
+    const heroResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Butterflyfish' }, true)
+    const schoolResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Butterflyfish' }, false)
+
+    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.56)
+    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.62)
+    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.5)
+    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.54)
+    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.68)
+    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.68)
+  })
+
   test('keeps goldfish glossy but not mirror-like so facial and fin textures remain primary', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const goldfishMap = new THREE.Texture()
@@ -1151,6 +1177,32 @@ describe('DetailedFishSystem premium materials', () => {
     expect(heroMaterial.roughness).toBeGreaterThanOrEqual(0.38)
     expect(heroMaterial.reflectivity).toBeLessThanOrEqual(0.78)
     expect(heroMaterial.envMapIntensity).toBeLessThanOrEqual(0.78)
+  })
+
+  test('keeps goldfish subdued in nature-showcase so face and fin membrane read before gloss', () => {
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+
+    const { resolveFishMaterialResponse } = DetailedFishSystem.prototype as unknown as {
+      resolveFishMaterialResponse: (
+        variant: { name: string },
+        hero: boolean
+      ) => {
+        roughness: number
+        reflectivity: number
+        envMapIntensity: number
+      }
+    }
+
+    const heroResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Goldfish' }, true)
+    const schoolResponse = resolveFishMaterialResponse.bind(showcase)({ name: 'Goldfish' }, false)
+
+    expect(schoolResponse.roughness).toBeGreaterThanOrEqual(0.56)
+    expect(schoolResponse.reflectivity).toBeLessThanOrEqual(0.68)
+    expect(schoolResponse.envMapIntensity).toBeLessThanOrEqual(0.52)
+    expect(heroResponse.roughness).toBeGreaterThanOrEqual(0.48)
+    expect(heroResponse.reflectivity).toBeLessThanOrEqual(0.72)
+    expect(heroResponse.envMapIntensity).toBeLessThanOrEqual(0.7)
   })
 })
 
@@ -1973,7 +2025,18 @@ describe('DetailedFishSystem wander target timing', () => {
     const system = new DetailedFishSystem(scene, bounds, null, { layoutStyle: 'nature-showcase' })
     const internals = system as unknown as { fishCount: number }
 
-    expect(internals.fishCount).toBe(32)
+    expect(internals.fishCount).toBe(24)
+  })
+
+  test('uses a leaner mobile fallback school count for nature-showcase', () => {
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+
+    const { resolveDefaultFishCount } = DetailedFishSystem.prototype as unknown as {
+      resolveDefaultFishCount: (isMobile: boolean) => number
+    }
+
+    expect(resolveDefaultFishCount.bind(showcase)(true)).toBe(14)
   })
 
   test('scheduleNextRetargetTime keeps gait-specific cadence inside the 4-14 second window', () => {
@@ -2316,12 +2379,21 @@ describe('DetailedFishSystem quality scaling', () => {
     expect(resolveHeroPriorityMultiplier.bind(planted)(goldfish)).toBeLessThan(1)
     expect(resolveHeroAccentScaleMultiplier.bind(planted)(goldfish!)).toBeLessThan(1)
     expect(resolveHeroAccentDepthMultiplier.bind(planted)(goldfish!)).toBeLessThan(1)
-    expect(resolveHeroPriorityMultiplier.bind(showcase)(goldfish)).toBeLessThan(1)
-    expect(resolveHeroAccentScaleMultiplier.bind(showcase)(goldfish!)).toBeLessThan(1)
-    expect(resolveHeroAccentDepthMultiplier.bind(showcase)(goldfish!)).toBeLessThan(1)
-    expect(resolveHeroPriorityMultiplier.bind(showcase)(butterflyfish)).toBeLessThan(1)
-    expect(resolveHeroAccentScaleMultiplier.bind(showcase)(butterflyfish!)).toBeLessThan(1)
-    expect(resolveHeroAccentDepthMultiplier.bind(showcase)(butterflyfish!)).toBeLessThan(1)
+    expect(resolveHeroPriorityMultiplier.bind(showcase)(goldfish)).toBeLessThan(
+      resolveHeroPriorityMultiplier.bind(planted)(goldfish)
+    )
+    expect(resolveHeroAccentScaleMultiplier.bind(showcase)(goldfish!)).toBeLessThan(
+      resolveHeroAccentScaleMultiplier.bind(planted)(goldfish!)
+    )
+    expect(resolveHeroAccentDepthMultiplier.bind(showcase)(goldfish!)).toBeLessThan(
+      resolveHeroAccentDepthMultiplier.bind(planted)(goldfish!)
+    )
+    expect(resolveHeroPriorityMultiplier.bind(showcase)(goldfish)).toBeLessThanOrEqual(0.4)
+    expect(resolveHeroAccentScaleMultiplier.bind(showcase)(goldfish!)).toBeLessThanOrEqual(0.62)
+    expect(resolveHeroAccentDepthMultiplier.bind(showcase)(goldfish!)).toBeLessThanOrEqual(0.58)
+    expect(resolveHeroPriorityMultiplier.bind(showcase)(butterflyfish)).toBeLessThanOrEqual(0.4)
+    expect(resolveHeroAccentScaleMultiplier.bind(showcase)(butterflyfish!)).toBeLessThanOrEqual(0.62)
+    expect(resolveHeroAccentDepthMultiplier.bind(showcase)(butterflyfish!)).toBeLessThanOrEqual(0.58)
   })
 
   test('uses more recessed and smaller hero placements in nature-showcase than planted', () => {
@@ -2347,11 +2419,14 @@ describe('DetailedFishSystem quality scaling', () => {
       .toBeLessThan(Math.max(...plantedPlacements.map((placement) => placement.depthOffset)))
     expect(Math.max(...showcasePlacements.map((placement) => placement.scaleMultiplier)))
       .toBeLessThan(Math.max(...plantedPlacements.map((placement) => placement.scaleMultiplier)))
+    expect(Math.max(...showcasePlacements.map((placement) => placement.depthOffset))).toBeLessThanOrEqual(0.9)
+    expect(Math.max(...showcasePlacements.map((placement) => placement.scaleMultiplier))).toBeLessThanOrEqual(1.24)
+    expect(Math.min(...showcasePlacements.map((placement) => placement.lateralOffset))).toBeGreaterThanOrEqual(-0.58)
   })
 })
 
 describe('DetailedFishSystem nature-showcase composition bias', () => {
-  test('biases showcase lane and depth preferences toward left/center and mid/upper water', () => {
+  test('biases showcase lane and depth preferences toward center/right lanes and mid/upper water', () => {
     const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     ;(showcase as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
     const { pickPreferredLateralLane, pickPreferredDepthBand, getLocomotionProfile, createFishVariants } = DetailedFishSystem.prototype as unknown as {
@@ -2375,9 +2450,13 @@ describe('DetailedFishSystem nature-showcase composition bias', () => {
     expect(pickPreferredLateralLane.bind(showcase)()).toBe('left')
     leftLane.mockRestore()
 
-    const centerLane = vi.spyOn(Math, 'random').mockReturnValueOnce(0.72)
+    const centerLane = vi.spyOn(Math, 'random').mockReturnValueOnce(0.6)
     expect(pickPreferredLateralLane.bind(showcase)()).toBe('center')
     centerLane.mockRestore()
+
+    const rightLane = vi.spyOn(Math, 'random').mockReturnValueOnce(0.9)
+    expect(pickPreferredLateralLane.bind(showcase)()).toBe('right')
+    rightLane.mockRestore()
 
     const upperDepth = vi.spyOn(Math, 'random').mockReturnValueOnce(0.24)
     expect(pickPreferredDepthBand.bind(showcase)(profile)).toBe('upper')
@@ -2404,8 +2483,9 @@ describe('DetailedFishSystem nature-showcase composition bias', () => {
     const points = buildHabitatInterestPoints.bind(showcase)(bounds)
 
     const openLanePoints = points.filter((point) => point.kind === 'open-lane')
-    expect(openLanePoints).toHaveLength(2)
-    expect(openLanePoints.some((point) => point.position.x < 0 && point.position.z < 0.5)).toBe(true)
+    expect(openLanePoints).toHaveLength(3)
+    expect(openLanePoints.some((point) => point.position.x < 0 && point.position.z < 0)).toBe(true)
+    expect(openLanePoints.some((point) => Math.abs(point.position.x) < 0.35 && Math.abs(point.position.z) < 0.35)).toBe(true)
     expect(openLanePoints.some((point) => point.position.x > 0 && point.position.z > 0)).toBe(true)
 
     const leftHardscapeWeight = points
@@ -2416,6 +2496,68 @@ describe('DetailedFishSystem nature-showcase composition bias', () => {
       .reduce((total, point) => total + point.weight, 0)
 
     expect(leftHardscapeWeight).toBeGreaterThan(rightHardscapeWeight)
+  })
+
+  test('keeps showcase wander targets away from the front-left glass cluster', () => {
+    const showcase = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = showcase as unknown as {
+      layoutStyle: 'nature-showcase'
+      gaitStates: Array<'cruise' | 'inspect' | 'glide' | 'burst' | 'hover'>
+      preferredDepthBands: Array<'upper' | 'mid' | 'hardscape-near'>
+      preferredLateralLanes: Array<'left' | 'center' | 'right'>
+      interestSeeds: Float32Array
+      activeInterestPoints: Array<unknown>
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      pickInterestPoint?: (index: number) => null
+    }
+    internals.layoutStyle = 'nature-showcase'
+    internals.gaitStates = ['cruise']
+    internals.preferredDepthBands = ['mid']
+    internals.preferredLateralLanes = ['left']
+    internals.interestSeeds = new Float32Array([1])
+    internals.activeInterestPoints = []
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+    internals.pickInterestPoint = () => null
+
+    const { resolveWanderTarget, getLocomotionProfile, createFishVariants } = DetailedFishSystem.prototype as unknown as {
+      resolveWanderTarget: (
+        index: number,
+        profile: { inspectCuriosity: number },
+        boidPosition: THREE.Vector3,
+        bounds: THREE.Box3,
+        boundsSize: THREE.Vector3
+      ) => THREE.Vector3
+      getLocomotionProfile: (variant: { locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser' }) => {
+        inspectCuriosity: number
+      }
+      createFishVariants: () => Array<{ name: string; locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser' }>
+    }
+
+    const neon = createFishVariants.bind(showcase)().find((variant) => variant.name === 'Neon')
+    expect(neon).toBeDefined()
+    const profile = getLocomotionProfile.bind(showcase)(neon!)
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -4, -5), new THREE.Vector3(5, 4, 5))
+    const boundsSize = bounds.getSize(new THREE.Vector3())
+
+    const randomSpy = vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(1)
+
+    const target = resolveWanderTarget.bind(showcase)(
+      0,
+      profile,
+      new THREE.Vector3(-1, 0.2, 0.4),
+      bounds,
+      boundsSize
+    )
+
+    expect(target.z).toBeLessThanOrEqual(1.8)
+
+    randomSpy.mockRestore()
   })
 })
 

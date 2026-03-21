@@ -398,7 +398,7 @@ export class DetailedFishSystem {
 
   private resolveDefaultFishCount(isMobile: boolean): number {
     if (this.layoutStyle === 'nature-showcase') {
-      return isMobile ? 18 : 32
+      return isMobile ? 14 : 24
     }
 
     return isMobile ? 25 : 66
@@ -983,8 +983,8 @@ export class DetailedFishSystem {
   private pickPreferredLateralLane(): PreferredLateralLane {
     const roll = Math.random()
     if (this.layoutStyle === 'nature-showcase') {
-      if (roll < 0.36) return 'left'
-      if (roll < 0.76) return 'center'
+      if (roll < 0.24) return 'left'
+      if (roll < 0.68) return 'center'
       return 'right'
     }
 
@@ -1062,12 +1062,12 @@ export class DetailedFishSystem {
     const lane = this.preferredLateralLanes[index] ?? 'center'
     if (this.layoutStyle === 'nature-showcase') {
       if (lane === 'left') {
-        return bounds.min.x + (boundsSize.x * 0.31)
+        return bounds.min.x + (boundsSize.x * 0.27)
       }
       if (lane === 'right') {
-        return bounds.max.x - (boundsSize.x * 0.22)
+        return bounds.max.x - (boundsSize.x * 0.2)
       }
-      return bounds.min.x + (boundsSize.x * 0.46)
+      return bounds.min.x + (boundsSize.x * 0.5)
     }
 
     if (lane === 'left') {
@@ -1104,10 +1104,10 @@ export class DetailedFishSystem {
             : ['center'] as PreferredLateralLane[],
         weight: showcaseLayout
           ? anchor.id === 'driftwood-root-flare'
-            ? 0.34
+            ? 0.28
             : anchor.x < -0.08
-              ? 0.24
-              : 0.14
+              ? 0.18
+              : 0.13
           : anchor.id === 'driftwood-root-flare'
             ? 0.3
             : 0.18
@@ -1142,8 +1142,8 @@ export class DetailedFishSystem {
             : ['center'] as PreferredLateralLane[],
         weight: showcaseLayout
           ? anchor.layer === 'background'
-            ? 0.2
-            : 0.15
+            ? 0.16
+            : 0.12
           : anchor.layer === 'background'
             ? 0.22
             : 0.17
@@ -1153,17 +1153,24 @@ export class DetailedFishSystem {
       ? [
         {
           kind: 'open-lane',
-          position: new THREE.Vector3(center.x - (size.x * 0.08), midLaneY, center.z - (size.z * 0.06)),
+          position: new THREE.Vector3(center.x - (size.x * 0.12), midLaneY, center.z - (size.z * 0.08)),
           preferredDepthBands: ['mid', 'upper'] as PreferredDepthBand[],
           preferredLateralLanes: ['left', 'center'] as PreferredLateralLane[],
+          weight: 0.16
+        },
+        {
+          kind: 'open-lane',
+          position: new THREE.Vector3(center.x, midLaneY + (size.y * 0.02), center.z - (size.z * 0.01)),
+          preferredDepthBands: ['mid', 'upper'] as PreferredDepthBand[],
+          preferredLateralLanes: ['center', 'right'] as PreferredLateralLane[],
           weight: 0.2
         },
         {
           kind: 'open-lane',
-          position: new THREE.Vector3(center.x + (size.x * 0.22), upperLaneY, center.z + (size.z * 0.06)),
+          position: new THREE.Vector3(center.x + (size.x * 0.24), upperLaneY - (size.y * 0.02), center.z + (size.z * 0.08)),
           preferredDepthBands: ['upper', 'mid'] as PreferredDepthBand[],
           preferredLateralLanes: ['right', 'center'] as PreferredLateralLane[],
-          weight: 0.18
+          weight: 0.19
         }
       ]
       : [
@@ -1246,22 +1253,22 @@ export class DetailedFishSystem {
       laneX,
       depthY,
       THREE.MathUtils.lerp(
-        bounds.min.z + (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.28 : 0.26)),
-        bounds.max.z - (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.36 : 0.28)),
+        bounds.min.z + (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.3 : 0.26)),
+        bounds.max.z - (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.42 : 0.28)),
         0.5 + ((this.interestSeeds[index] ?? 0.5) - 0.5) * (this.layoutStyle === 'nature-showcase' ? 0.62 : 0.8)
       )
     )
     const lateralSpread = gaitState === 'glide'
-      ? boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.15 : 0.18)
+      ? boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.13 : 0.18)
       : gaitState === 'hover'
         ? boundsSize.x * 0.04
-        : boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.1 : 0.12)
+        : boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.08 : 0.12)
     const verticalSpread = gaitState === 'hover'
       ? boundsSize.y * 0.03
       : boundsSize.y * (this.layoutStyle === 'nature-showcase' ? 0.07 : 0.08)
     const depthSpread = gaitState === 'inspect'
-      ? boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.04 : 0.05)
-      : boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.06 : 0.08)
+      ? boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.03 : 0.05)
+      : boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.04 : 0.08)
 
     wanderDirection.set(
       (Math.random() - 0.5) * 2,
@@ -1290,8 +1297,8 @@ export class DetailedFishSystem {
     )
     wanderTarget.z = THREE.MathUtils.clamp(
       wanderTarget.z,
-      bounds.min.z + boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.22 : 0.2),
-      bounds.max.z - boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.28 : 0.2)
+      bounds.min.z + boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.24 : 0.2),
+      bounds.max.z - boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.32 : 0.2)
     )
 
     return wanderTarget.clone()
@@ -2149,7 +2156,31 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     envMapIntensity: number
     normalScale: THREE.Vector2
   } {
+    const showcaseAccent = this.layoutStyle === 'nature-showcase'
+
     if (variant.name === 'Butterflyfish') {
+      if (showcaseAccent) {
+        return hero
+          ? {
+              metalness: 0.01,
+              roughness: 0.54,
+              clearcoat: 0.64,
+              clearcoatRoughness: 0.46,
+              reflectivity: 0.68,
+              envMapIntensity: 0.68,
+              normalScale: new THREE.Vector2(0.22, 0.14)
+            }
+          : {
+              metalness: 0.01,
+              roughness: 0.56,
+              clearcoat: 0.42,
+              clearcoatRoughness: 0.44,
+              reflectivity: 0.62,
+              envMapIntensity: 0.5,
+              normalScale: new THREE.Vector2(0.18, 0.11)
+            }
+      }
+
       return hero
         ? {
             metalness: 0.01,
@@ -2172,6 +2203,28 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     if (variant.name === 'Goldfish') {
+      if (showcaseAccent) {
+        return hero
+          ? {
+              metalness: 0.03,
+              roughness: 0.48,
+              clearcoat: 0.68,
+              clearcoatRoughness: 0.38,
+              reflectivity: 0.72,
+              envMapIntensity: 0.7,
+              normalScale: new THREE.Vector2(0.26, 0.18)
+            }
+          : {
+              metalness: 0.03,
+              roughness: 0.56,
+              clearcoat: 0.46,
+              clearcoatRoughness: 0.36,
+              reflectivity: 0.68,
+              envMapIntensity: 0.52,
+              normalScale: new THREE.Vector2(0.22, 0.14)
+            }
+      }
+
       return hero
         ? {
             metalness: 0.03,
@@ -2222,9 +2275,9 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
   }> {
     if (this.layoutStyle === 'nature-showcase') {
       return [
-        { lateralOffset: -0.88, verticalOffset: 0.04, depthOffset: 1.08, scaleMultiplier: 1.46 },
-        { lateralOffset: 0.58, verticalOffset: 0.02, depthOffset: 0.98, scaleMultiplier: 1.34 },
-        { lateralOffset: -0.08, verticalOffset: 0.18, depthOffset: 1.02, scaleMultiplier: 1.22 }
+        { lateralOffset: -0.58, verticalOffset: 0.08, depthOffset: 0.9, scaleMultiplier: 1.24 },
+        { lateralOffset: 0.34, verticalOffset: 0.05, depthOffset: 0.84, scaleMultiplier: 1.14 },
+        { lateralOffset: 0, verticalOffset: 0.18, depthOffset: 0.88, scaleMultiplier: 1.06 }
       ]
     }
 
@@ -2245,7 +2298,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     if (this.layoutStyle === 'nature-showcase') {
-      return 0.58
+      return 0.38
     }
 
     if (this.layoutStyle === 'planted') {
@@ -2261,7 +2314,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     if (this.layoutStyle === 'nature-showcase') {
-      return 0.74
+      return 0.62
     }
 
     if (this.layoutStyle === 'planted') {
@@ -2277,7 +2330,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     if (this.layoutStyle === 'nature-showcase') {
-      return 0.72
+      return 0.58
     }
 
     if (this.layoutStyle === 'planted') {
