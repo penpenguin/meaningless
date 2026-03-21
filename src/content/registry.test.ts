@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createContentRegistry, getFishContent, getStarterDecorContentIds, getStarterFishContentIds } from './registry'
+import {
+  createContentRegistry,
+  getDecorContent,
+  getFishContent,
+  getStarterDecorContentIds,
+  getStarterFishContentIds
+} from './registry'
 import type { FishContentDefinition } from './types'
 
 describe('content registry', () => {
@@ -22,6 +28,32 @@ describe('content registry', () => {
   it('derives starter content ids from registered entries', () => {
     expect(getStarterFishContentIds()).toEqual(['neon-tetra'])
     expect(getStarterDecorContentIds()).toEqual(['plant'])
+  })
+
+  it('keeps decor definitions aligned with the shipped freshwater asset families', () => {
+    expect(getDecorContent('plant')).toMatchObject({
+      displayName: 'Plant Cluster',
+      visual: {
+        assetFamily: 'plant',
+        shortLabel: 'PL'
+      }
+    })
+
+    expect(getDecorContent('coral')).toMatchObject({
+      displayName: 'Driftwood Branch',
+      visual: {
+        assetFamily: 'driftwood',
+        shortLabel: 'DW'
+      }
+    })
+
+    expect(getDecorContent('cave')).toMatchObject({
+      displayName: 'River Rock',
+      visual: {
+        assetFamily: 'rock',
+        shortLabel: 'RK'
+      }
+    })
   })
 
   it('rejects duplicate fish ids while building a registry', () => {

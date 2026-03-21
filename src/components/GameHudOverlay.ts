@@ -1,6 +1,12 @@
 import type { GameStore } from '../game/createGameStore'
 import type { FishContentDefinition } from '../content/types'
 import { getDecorContent, getDecorContentList, getFishContentList } from '../content/registry'
+import {
+  getDecorCellLabel,
+  getDecorLibrarySummary,
+  getDecorPlacementAssetById,
+  getDecorPlacementAssetGroups
+} from '../content/decorVisuals'
 import type { GameAppState, GameUiMode } from '../game/types'
 import { createAquariumRenderModel } from '../game/renderModel'
 import type { QualityLevel } from '../types/settings'
@@ -416,6 +422,7 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
   const panel = document.createElement('div')
   panel.className = 'hud-panel hud-panel--layout hud-layout-panel'
   panel.dataset.panel = 'layout'
+  let selectedDecorAssetId: string | null = null
 
   panel.appendChild(createPanelHeader('Layout', 'Blueprint'))
 
@@ -429,7 +436,11 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
   fishSection.className = 'hud-list'
   panel.appendChild(fishSection)
 
-  panel.appendChild(createSectionLabel('Decor tools'))
+  panel.appendChild(createSectionLabel('Placement Library'))
+
+  const decorSummary = document.createElement('div')
+  decorSummary.className = 'hud-decor-summary'
+  panel.appendChild(decorSummary)
 
   const palette = document.createElement('div')
   palette.className = 'hud-decor-palette'
@@ -448,13 +459,31 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
 
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
+    const decorLibrary = getDecorContentList()
+    const placementGroups = getDecorPlacementAssetGroups(decorLibrary)
+    const fallbackSelectedAssetId = state.ui.selectedDecorId
+      ? placementGroups
+          .find((group) => group.decorId === state.ui.selectedDecorId)
+          ?.assets[0]
+          ?.assetId ?? null
+      : null
+    const effectiveSelectedAssetId = state.ui.selectedDecorId === null
+      ? null
+      : selectedDecorAssetId ?? fallbackSelectedAssetId
+    const selectedAssetCandidate = getDecorPlacementAssetById(effectiveSelectedAssetId, decorLibrary)
+    const selectedAsset = selectedAssetCandidate?.decorId === state.ui.selectedDecorId
+      ? selectedAssetCandidate
+      : getDecorPlacementAssetById(fallbackSelectedAssetId, decorLibrary)
     const selectedDecor = state.ui.selectedDecorId
       ? getDecorContent(state.ui.selectedDecorId)
       : null
 
-    status.textContent = selectedDecor
-      ? `Tool: ${selectedDecor.displayName} · click blueprint cells to place it`
+    status.textContent = selectedAsset && selectedDecor
+      ? `Tool: ${selectedAsset.displayName} · ${selectedDecor.displayName} family · click blueprint cells to place it`
       : 'Tool: Eraser · click blueprint cells to clear the tank'
+
+    const decorLibrarySummary = getDecorLibrarySummary(decorLibrary)
+    decorSummary.textContent = `${decorLibrarySummary.modelCount} placeable assets · ${placementGroups.length} families · ${decorLibrarySummary.textureCount} shared textures`
 
     boardCaption.textContent = `${tank.layout.columns} × ${tank.layout.rows} blueprint · front-left to back-right`
     fishSection.innerHTML = ''
@@ -545,22 +574,42 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
     eraser.textContent = 'Eraser'
     eraser.className = `hud-action-button ${state.ui.selectedDecorId === null ? 'is-active' : ''}`.trim()
     eraser.addEventListener('click', () => {
+      selectedDecorAssetId = null
       store.dispatch({ type: 'UI/SELECT_DECOR', payload: { decorId: null } })
     })
     palette.appendChild(eraser)
 
-    getDecorContentList()
-      .filter((decor) => state.game.profile.unlockedDecorIds.includes(decor.decorId))
-      .forEach((decor) => {
+    placementGroups.forEach((group) => {
+      const familySection = document.createElement('section')
+      familySection.className = 'hud-decor-family'
+      familySection.dataset.decorFamily = group.family
+
+      const familyHeader = document.createElement('div')
+      familyHeader.className = 'hud-decor-family-header'
+      familyHeader.innerHTML = `<strong class="hud-decor-family-title">${group.title}</strong><span class="hud-decor-family-meta">${group.assets.length} assets · ${group.sharedTextureCount} shared textures</span>`
+      familySection.appendChild(familyHeader)
+
+      const familyGrid = document.createElement('div')
+      familyGrid.className = 'hud-decor-family-grid'
+      const isUnlocked = state.game.profile.unlockedDecorIds.includes(group.decorId)
+
+      group.assets.forEach((asset) => {
         const button = document.createElement('button')
         button.type = 'button'
-        button.textContent = decor.displayName
-        button.className = `hud-action-button ${state.ui.selectedDecorId === decor.decorId ? 'is-active' : ''}`.trim()
+        button.dataset.decorAsset = asset.assetId
+        button.className = `hud-action-button hud-decor-tool ${effectiveSelectedAssetId === asset.assetId ? 'is-active' : ''}`.trim()
+        button.innerHTML = `<strong class="hud-decor-tool-label">${asset.displayName}</strong><span class="hud-decor-tool-status">${isUnlocked ? 'Ready' : 'Locked'}</span>`
+        button.disabled = !isUnlocked
         button.addEventListener('click', () => {
-          store.dispatch({ type: 'UI/SELECT_DECOR', payload: { decorId: decor.decorId } })
+          if (!isUnlocked) return
+          selectedDecorAssetId = asset.assetId
+          store.dispatch({ type: 'UI/SELECT_DECOR', payload: { decorId: asset.decorId } })
         })
-        palette.appendChild(button)
+        familyGrid.appendChild(button)
       })
+      familySection.appendChild(familyGrid)
+      palette.appendChild(familySection)
+    })
 
     Array.from({ length: tank.layout.rows }).forEach((_, y) => {
       Array.from({ length: tank.layout.columns }).forEach((__, x) => {
@@ -573,7 +622,7 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
         if (decor) {
           cell.classList.add('is-occupied')
         }
-        cell.textContent = decor ? decor.decorId.slice(0, 2).toUpperCase() : '·'
+        cell.textContent = decor ? getDecorCellLabel(getDecorContent(decor.decorId)) : '·'
         cell.addEventListener('click', () => {
           if (state.ui.selectedDecorId) {
             store.dispatch({

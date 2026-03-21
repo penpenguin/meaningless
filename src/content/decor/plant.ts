@@ -2,7 +2,7 @@ import { createDecorContent } from '../types'
 
 export const plant = createDecorContent({
   decorId: 'plant',
-  displayName: 'Floating Plant',
+  displayName: 'Plant Cluster',
   gameplay: {
     unlockCost: 0,
     comfortBonus: 6,
@@ -10,5 +10,9 @@ export const plant = createDecorContent({
     laneAffinity: 'top',
     adjacencyBonus: 2,
     hideoutScore: 1
+  },
+  visual: {
+    assetFamily: 'plant',
+    shortLabel: 'PL'
   }
 })

@@ -581,9 +581,65 @@ body {
 }
 
 .hud-decor-palette {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.hud-decor-summary {
+  font-size: 0.74rem;
+  color: rgba(216, 244, 249, 0.62);
+}
+
+.hud-decor-family {
+  display: grid;
   gap: 0.45rem;
+}
+
+.hud-decor-family-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.hud-decor-family-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.hud-decor-family-meta {
+  font-size: 0.69rem;
+  color: rgba(216, 244, 249, 0.58);
+}
+
+.hud-decor-family-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.8rem, 1fr));
+  gap: 0.45rem;
+}
+
+.hud-decor-tool {
+  display: grid;
+  justify-items: flex-start;
+  gap: 0.16rem;
+  min-width: 0;
+  border-radius: 16px;
+}
+
+.hud-decor-tool-label,
+.hud-decor-tool-status {
+  line-height: 1.15;
+}
+
+.hud-decor-tool-meta,
+.hud-decor-tool-status {
+  font-size: 0.69rem;
+  color: rgba(216, 244, 249, 0.62);
+}
+
+.hud-decor-tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .hud-board-shell {

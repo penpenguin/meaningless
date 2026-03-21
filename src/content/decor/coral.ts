@@ -2,7 +2,7 @@ import { createDecorContent } from '../types'
 
 export const coral = createDecorContent({
   decorId: 'coral',
-  displayName: 'Coral Shelf',
+  displayName: 'Driftwood Branch',
   gameplay: {
     unlockCost: 16,
     comfortBonus: 8,
@@ -10,5 +10,9 @@ export const coral = createDecorContent({
     laneAffinity: 'middle',
     adjacencyBonus: 3,
     hideoutScore: 2
+  },
+  visual: {
+    assetFamily: 'driftwood',
+    shortLabel: 'DW'
   }
 })

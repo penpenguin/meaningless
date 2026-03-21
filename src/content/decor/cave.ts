@@ -2,7 +2,7 @@ import { createDecorContent } from '../types'
 
 export const cave = createDecorContent({
   decorId: 'cave',
-  displayName: 'Stone Cave',
+  displayName: 'River Rock',
   gameplay: {
     unlockCost: 24,
     comfortBonus: 10,
@@ -10,5 +10,9 @@ export const cave = createDecorContent({
     laneAffinity: 'bottom',
     adjacencyBonus: 4,
     hideoutScore: 4
+  },
+  visual: {
+    assetFamily: 'rock',
+    shortLabel: 'RK'
   }
 })

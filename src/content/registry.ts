@@ -25,7 +25,8 @@ const cloneFishContent = (definition: FishContentDefinition): FishContentDefinit
 
 const cloneDecorContent = (definition: DecorContentDefinition): DecorContentDefinition => ({
   ...definition,
-  gameplay: { ...definition.gameplay }
+  gameplay: { ...definition.gameplay },
+  visual: { ...definition.visual }
 })
 
 const cloneContent = <T extends ContentType>(type: T, definition: ContentDefinitionMap[T]): ContentDefinitionMap[T] => {

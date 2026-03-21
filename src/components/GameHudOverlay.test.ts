@@ -230,7 +230,7 @@ describe('createGameHudOverlay', () => {
     }
   })
 
-  it('shows layout status and lane chips instead of native selects', () => {
+  it('replaces decor tools with a family-grouped placement library', () => {
     const store = createGameStore({ tickIntervalMs: 60_000 })
 
     try {
@@ -242,11 +242,50 @@ describe('createGameHudOverlay', () => {
       const layoutPanel = overlay.querySelector('[data-panel="layout"]') as HTMLDivElement
       const status = layoutPanel.querySelector('.hud-layout-status')
       const boardCaption = layoutPanel.querySelector('.hud-board-caption')
+      const librarySummary = layoutPanel.querySelector('.hud-decor-summary')
+      const familyTitles = Array.from(layoutPanel.querySelectorAll('.hud-decor-family-title')).map((element) => element.textContent?.trim())
+      const plantButtons = Array.from(layoutPanel.querySelectorAll('[data-decor-family="plant"] [data-decor-asset]')) as HTMLButtonElement[]
+      const rockButtons = Array.from(layoutPanel.querySelectorAll('[data-decor-family="rock"] [data-decor-asset]')) as HTMLButtonElement[]
+      const woodButtons = Array.from(layoutPanel.querySelectorAll('[data-decor-family="driftwood"] [data-decor-asset]')) as HTMLButtonElement[]
 
       expect(layoutPanel.querySelectorAll('select').length).toBe(0)
       expect(layoutPanel.querySelectorAll('.hud-lane-chip').length).toBeGreaterThanOrEqual(3)
       expect(status?.textContent).toContain('Tool')
       expect(boardCaption?.textContent).toContain('blueprint')
+      expect(layoutPanel.textContent).not.toContain('Decor tools')
+      expect(layoutPanel.textContent).toContain('Placement Library')
+      expect(librarySummary?.textContent).toContain('22 placeable assets')
+      expect(librarySummary?.textContent).toContain('3 families')
+      expect(familyTitles).toEqual(['Plants', 'Rocks', 'Wood'])
+      expect(plantButtons).toHaveLength(10)
+      expect(rockButtons).toHaveLength(8)
+      expect(woodButtons).toHaveLength(4)
+      expect(plantButtons.every((button) => !button.disabled)).toBe(true)
+      expect(rockButtons.every((button) => button.disabled)).toBe(true)
+      expect(woodButtons.every((button) => button.disabled)).toBe(true)
+    } finally {
+      document.body.innerHTML = ''
+      store.destroy()
+    }
+  })
+
+  it('tracks the active placement asset inside the grouped library', () => {
+    const store = createGameStore({ tickIntervalMs: 60_000 })
+
+    try {
+      const { overlay } = mountOverlay(store)
+
+      const layoutButton = overlay.querySelector('[data-mode="layout"]') as HTMLButtonElement
+      layoutButton.click()
+
+      const assetButton = overlay.querySelector('[data-decor-asset="plant-javafern-large"]') as HTMLButtonElement
+      assetButton.click()
+
+      const status = overlay.querySelector('.hud-layout-status')
+      const activeAssetButton = overlay.querySelector('[data-decor-asset="plant-javafern-large"]') as HTMLButtonElement
+
+      expect(status?.textContent).toContain('Javafern Large')
+      expect(activeAssetButton.classList.contains('is-active')).toBe(true)
     } finally {
       document.body.innerHTML = ''
       store.destroy()

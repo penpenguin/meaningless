@@ -23,11 +23,19 @@ export type DecorGameplayDefinition = {
   hideoutScore?: number
 }
 
+export type DecorAssetFamily = 'plant' | 'driftwood' | 'rock'
+
+export type DecorVisualDefinition = {
+  assetFamily: DecorAssetFamily
+  shortLabel: string
+}
+
 export type DecorContentDefinition = {
   type: 'decor'
   decorId: string
   displayName: string
   gameplay: DecorGameplayDefinition
+  visual: DecorVisualDefinition
 }
 
 export type ContentType = 'fish' | 'decor'
