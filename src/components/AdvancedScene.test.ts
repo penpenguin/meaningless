@@ -1884,6 +1884,11 @@ describe('AdvancedAquariumScene substrate', () => {
       AQUARIUM_TANK_DIMENSIONS.width * 0.32,
       AQUARIUM_TANK_DIMENSIONS.depth * 0.34
     )
+    const centerRightPedestal = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.12,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.18
+    )
     const curvedInnerPath = getNearestTopHeight(
       sandTop,
       AQUARIUM_TANK_DIMENSIONS.width * 0.06,
@@ -1899,13 +1904,39 @@ describe('AdvancedAquariumScene substrate', () => {
       -AQUARIUM_TANK_DIMENSIONS.width * 0.18,
       AQUARIUM_TANK_DIMENSIONS.depth * 0.2
     )
+    const leftFrontShoulder = getNearestTopHeight(
+      sandTop,
+      -AQUARIUM_TANK_DIMENSIONS.width * 0.24,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.18
+    )
+    const shorelineDipA = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.02,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.14
+    )
+    const shorelineDipB = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.14,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.22
+    )
+    const shorelineRise = getNearestTopHeight(
+      sandTop,
+      AQUARIUM_TANK_DIMENSIONS.width * 0.08,
+      AQUARIUM_TANK_DIMENSIONS.depth * 0.18
+    )
 
     expect(leftMound - rightFrontBeach).toBeGreaterThan(0.2)
     expect(leftMound).toBeGreaterThan(centerTransition + 0.06)
     expect(centerTransition).toBeGreaterThan(rightFrontBeach + 0.03)
+    expect(centerRightPedestal).toBeLessThan(centerTransition - 0.015)
+    expect(centerRightPedestal).toBeLessThan(leftMound - 0.1)
+    expect(centerRightPedestal).toBeGreaterThan(rightFrontBeach + 0.02)
     expect(curvedInnerPath).toBeLessThan(leftFrontLip - 0.03)
     expect(curvedOuterPath).toBeLessThan(centerTransition - 0.02)
     expect(curvedOuterPath).toBeGreaterThan(rightFrontBeach - 0.01)
+    expect(leftFrontShoulder).toBeGreaterThan(rightFrontBeach + 0.06)
+    expect(shorelineRise).toBeGreaterThan(shorelineDipA + 0.012)
+    expect(shorelineRise).toBeGreaterThan(shorelineDipB + 0.01)
   })
 })
 

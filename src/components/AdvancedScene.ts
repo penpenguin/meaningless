@@ -193,6 +193,14 @@ const sampleSubstrateHeight = (
         tankWidth * 0.16,
         tankDepth * 0.18
       ) * 0.09) +
+      (calculateGaussianFalloff(
+        x,
+        z,
+        -tankWidth * 0.24,
+        tankDepth * 0.16,
+        tankWidth * 0.16,
+        tankDepth * 0.14
+      ) * 0.068) +
       (backness * leftness * widthBlend * 0.05)
 
     const shoulderLift =
@@ -209,45 +217,63 @@ const sampleSubstrateHeight = (
       (calculateGaussianFalloff(
         x,
         z,
-        tankWidth * 0.3,
+        tankWidth * 0.32,
         tankDepth * 0.34,
-        tankWidth * 0.28,
-        tankDepth * 0.18
+        tankWidth * 0.22,
+        tankDepth * 0.16
       ) * -0.2) +
       (calculateGaussianFalloff(
         x,
         z,
-        tankWidth * 0.14,
-        tankDepth * 0.18,
-        tankWidth * 0.24,
-        tankDepth * 0.16
-      ) * -0.12)
+        tankWidth * 0.22,
+        tankDepth * 0.22,
+        tankWidth * 0.18,
+        tankDepth * 0.12
+      ) * -0.07)
 
     const curvedPath =
       (calculateGaussianFalloff(
         x,
         z,
-        -tankWidth * 0.02,
-        tankDepth * 0.1,
-        tankWidth * 0.2,
-        tankDepth * 0.12
-      ) * -0.11) +
+        tankWidth * 0.01,
+        tankDepth * 0.11,
+        tankWidth * 0.16,
+        tankDepth * 0.1
+      ) * -0.082) +
       (calculateGaussianFalloff(
         x,
         z,
-        tankWidth * 0.14,
+        tankWidth * 0.12,
         tankDepth * 0.18,
-        tankWidth * 0.16,
-        tankDepth * 0.16
-      ) * -0.085) +
+        tankWidth * 0.12,
+        tankDepth * 0.11
+      ) * -0.052) +
       (calculateGaussianFalloff(
         x,
         z,
         tankWidth * 0.24,
-        tankDepth * 0.24,
-        tankWidth * 0.12,
+        tankDepth * 0.28,
+        tankWidth * 0.1,
+        tankDepth * 0.1
+      ) * -0.03)
+
+    const transitionLift =
+      (calculateGaussianFalloff(
+        x,
+        z,
+        -tankWidth * 0.08,
+        tankDepth * 0.16,
+        tankWidth * 0.16,
         tankDepth * 0.12
-      ) * -0.04)
+      ) * 0.046) +
+      (calculateGaussianFalloff(
+        x,
+        z,
+        tankWidth * 0.08,
+        tankDepth * 0.18,
+        tankWidth * 0.12,
+        tankDepth * 0.1
+      ) * 0.064)
 
     const shorelineBreakup =
       (calculateGaussianFalloff(
@@ -266,6 +292,22 @@ const sampleSubstrateHeight = (
         tankWidth * 0.14,
         tankDepth * 0.08
       ) * -0.03) +
+      (calculateGaussianFalloff(
+        x,
+        z,
+        tankWidth * 0.02,
+        tankDepth * 0.14,
+        tankWidth * 0.06,
+        tankDepth * 0.06
+      ) * -0.018) +
+      (calculateGaussianFalloff(
+        x,
+        z,
+        tankWidth * 0.08,
+        tankDepth * 0.18,
+        tankWidth * 0.08,
+        tankDepth * 0.06
+      ) * 0.02) +
       (Math.sin((x * 0.62) + 0.3) * frontness * 0.014)
 
     const macroNoise = (
@@ -329,13 +371,15 @@ const sampleSubstrateHeight = (
     const edgeSettle =
       ((1 - widthBlend) * -0.018) +
       (THREE.MathUtils.clamp(frontness - 0.8, 0, 0.2) * -0.026) +
-      (rightness * frontness * -0.028)
+      (rightness * frontness * -0.016) +
+      (leftness * frontness * 0.012)
 
     return THREE.MathUtils.clamp(
       leftMound +
         shoulderLift +
         sandBeach +
         curvedPath +
+        transitionLift +
         shorelineBreakup +
         macroNoise +
         microNoise +
@@ -2051,6 +2095,7 @@ export class AdvancedAquariumScene {
     const layoutStyle = this.scene instanceof THREE.Scene
       ? resolveTheme(this.scene).layoutStyle
       : defaultTheme.layoutStyle
+    const isNatureShowcase = layoutStyle === 'nature-showcase'
 
     const baseHeight = 0.68
     const baseBottomY = -tankHeight / 2
@@ -2127,7 +2172,9 @@ export class AdvancedAquariumScene {
       roughnessMap: sandRoughnessTexture,
       aoMap: sandAoTexture,
       aoMapIntensity: sandAoTexture ? 0.94 : 1,
-      color: usingAuthoredSandAlbedo ? 0xD7C4AD : 0xB7A288,
+      color: isNatureShowcase
+        ? (usingAuthoredSandAlbedo ? 0xCFBBA3 : 0xAC967D)
+        : (usingAuthoredSandAlbedo ? 0xD7C4AD : 0xB7A288),
       roughness: usingAuthoredSandAlbedo ? 0.88 : 0.92,
       metalness: 0,
       transparent: false,
@@ -2161,11 +2208,11 @@ export class AdvancedAquariumScene {
       normalMap: sedimentNormalTexture,
       normalScale: new THREE.Vector2(0.2, 0.16),
       roughnessMap: sedimentRoughnessTexture,
-      color: new THREE.Color('#b7966f'),
+      color: new THREE.Color(isNatureShowcase ? '#8f7457' : '#b7966f'),
       roughness: 0.86,
       metalness: 0,
       transparent: true,
-      opacity: 0.48,
+      opacity: isNatureShowcase ? 0.42 : 0.48,
       depthWrite: false,
       side: THREE.DoubleSide,
       polygonOffset: true,
@@ -2178,7 +2225,7 @@ export class AdvancedAquariumScene {
     sedimentDetailMesh.position.y = sandMesh.position.y + 0.035
     sedimentDetailMesh.receiveShadow = true
     sedimentDetailMesh.castShadow = false
-    sedimentDetailMesh.userData.baseOpacity = 0.52
+    sedimentDetailMesh.userData.baseOpacity = isNatureShowcase ? 0.46 : 0.52
     this.substrateDetailMesh = sedimentDetailMesh
     this.tank.add(sedimentDetailMesh)
 
@@ -2216,7 +2263,11 @@ export class AdvancedAquariumScene {
     }
 
     const sandFrontMaterial = sandMaterial.clone()
-    sandFrontMaterial.color = new THREE.Color(usingAuthoredSandAlbedo ? 0xCEBBA2 : 0xAA9277)
+    sandFrontMaterial.color = new THREE.Color(
+      isNatureShowcase
+        ? (usingAuthoredSandAlbedo ? 0xC4B198 : 0x9C856D)
+        : (usingAuthoredSandAlbedo ? 0xCEBBA2 : 0xAA9277)
+    )
     sandFrontMaterial.normalScale = usingAuthoredSandAlbedo
       ? new THREE.Vector2(0.38, 0.56)
       : new THREE.Vector2(0.32, 0.5)
@@ -2248,11 +2299,11 @@ export class AdvancedAquariumScene {
       normalMap: sedimentFrontNormalTexture,
       normalScale: new THREE.Vector2(0.16, 0.24),
       roughnessMap: sedimentFrontRoughnessTexture,
-      color: new THREE.Color('#a9815c'),
+      color: new THREE.Color(isNatureShowcase ? '#846247' : '#a9815c'),
       roughness: 0.9,
       metalness: 0,
       transparent: true,
-      opacity: 0.5,
+      opacity: isNatureShowcase ? 0.44 : 0.5,
       depthWrite: false,
       side: THREE.DoubleSide,
       polygonOffset: true,
@@ -2268,7 +2319,7 @@ export class AdvancedAquariumScene {
       sandFrontMesh.position.z + 0.018
     )
     sedimentFrontDetailMesh.receiveShadow = true
-    sedimentFrontDetailMesh.userData.baseOpacity = 0.54
+    sedimentFrontDetailMesh.userData.baseOpacity = isNatureShowcase ? 0.48 : 0.54
     this.substrateFrontDetailMesh = sedimentFrontDetailMesh
     this.tank.add(sedimentFrontDetailMesh)
   }

@@ -701,6 +701,57 @@ describe('AquascapingSystem composition', () => {
     expect(rightFrontOccupants).toEqual([])
   })
 
+  it('removes the nature-showcase transition berm and replaces it with irregular detritus and burial scatter', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = bounds.getSize(new THREE.Vector3())
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': null,
+        'rock-ridge-hero': null,
+        'rock-support-a': null,
+        'rock-support-b': null,
+        'rock-support-c': null,
+        'rock-pebble-cluster': null,
+        'rock-lava-base-cluster-a': null,
+        'rock-lava-base-cluster-b': null,
+        'rock-lava-transition-chips': null,
+        'plant-sword-cluster': null,
+        'plant-fan-cluster': null
+      }
+    }, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const transitionBerm = aquascapingGroup.children.find((child) => child.userData.role === 'hardscape-transition-berm')
+    const transitionPebbles = aquascapingGroup.children.filter((child) => child.userData.role === 'hardscape-transition-pebble')
+    const detritusMounds = aquascapingGroup.children.filter((child) => child.userData.role === 'hardscape-transition-detritus')
+    const burialDetails = aquascapingGroup.children.filter((child) => child.userData.role === 'hardscape-partial-burial')
+    const rightFrontOccupants = [
+      ...transitionPebbles,
+      ...detritusMounds,
+      ...burialDetails
+    ].filter((child) => {
+      const center = getWorldBounds(child).getCenter(new THREE.Vector3())
+      return center.x > size.x * 0.18 && center.z > size.z * 0.14
+    })
+
+    expect(transitionBerm).toBeUndefined()
+    expect(transitionPebbles.length).toBeGreaterThanOrEqual(7)
+    expect(detritusMounds.length).toBeGreaterThanOrEqual(3)
+    expect(burialDetails.length).toBeGreaterThanOrEqual(3)
+    expect(rightFrontOccupants.length).toBeLessThanOrEqual(2)
+  })
+
   it('clusters nature-showcase hardscape anchors into a left mound foundation instead of isolated ridge contacts', () => {
     const anchors = resolveSubstrateHardscapeAnchors('nature-showcase')
     const leftFoundationAnchors = anchors.filter((anchor) => anchor.x < -0.12)
@@ -892,10 +943,10 @@ describe('AquascapingSystem composition', () => {
   it('layers nature-showcase plants into species-driven colonies instead of a vallis wall', () => {
     const sampledPlantPlacements = resolveSampledPlantPlacements('nature-showcase', 0x53a9d2f1)
     const leftRearPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-rear')
-    const leftShoulderPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-shoulder')
-    const centerHardscapePlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'front-center')
+    const leftShoulderPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-mid-broadleaf')
+    const centerHardscapePlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'center-left-fern-mass')
     const rightAccentPlacements = sampledPlantPlacements.filter((placement) =>
-      placement.zoneId === 'mid-right-backfill' || placement.zoneId === 'right-rear'
+      placement.zoneId === 'right-mid-crypt' || placement.zoneId === 'right-rear'
     )
     const foregroundPlacements = sampledPlantPlacements.filter((placement) => placement.layer === 'foreground')
     const backgroundVallisPlacements = sampledPlantPlacements.filter((placement) => placement.plantType === 'vallisneria-tall')
@@ -906,14 +957,17 @@ describe('AquascapingSystem composition', () => {
 
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('stem-green-bush')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('hygrophila-rear')).toBe(true)
-    expect(backgroundVallisPlacements.length).toBeLessThanOrEqual(2)
-    expect(centerHardscapePlacements.length).toBeGreaterThanOrEqual(3)
+    expect(backgroundVallisPlacements.length).toBeLessThanOrEqual(1)
+    expect(backgroundVallisPlacements.every((placement) => placement.zoneId === 'left-rear')).toBe(true)
+    expect(leftShoulderPlacements.length).toBeGreaterThanOrEqual(4)
+    expect(centerHardscapePlacements.length).toBeGreaterThanOrEqual(4)
     expect(centerHardscapePlacements.every((placement) => placement.layer === 'midground')).toBe(true)
     expect(broadleafTypes.has('javafern-large')).toBe(true)
     expect(broadleafTypes.has('javafern-narrow')).toBe(true)
     expect(broadleafTypes.has('anubias-nana-clump')).toBe(true)
     expect(rightAccentTypes.has('crypt-brown')).toBe(true)
-    expect(foregroundPlacements.every((placement) => placement.x < 0.08)).toBe(true)
+    expect(rightAccentTypes.size).toBeGreaterThanOrEqual(2)
+    expect(foregroundPlacements.every((placement) => placement.x < -0.02)).toBe(true)
     expect(foregroundPlacements.every((placement) => placement.plantType === 'anubias-petite-clump')).toBe(true)
   })
 
@@ -924,15 +978,58 @@ describe('AquascapingSystem composition', () => {
     const driftwoodAnchorIds = new Set(driftwoodAnchors.map((anchor) => anchor.id))
     const rockAnchorIds = new Set(rockAnchors.map((anchor) => anchor.id))
     const driftwoodTypes = new Set(driftwoodAnchors.map((anchor) => anchor.plantType))
+    const rockTypes = new Set(rockAnchors.map((anchor) => anchor.plantType))
 
-    expect(hardscapePlantAnchors.length).toBeGreaterThanOrEqual(10)
+    expect(hardscapePlantAnchors.length).toBeGreaterThanOrEqual(22)
     expect([...driftwoodAnchorIds].some((id) => id.includes('fork'))).toBe(true)
+    expect([...driftwoodAnchorIds].some((id) => id.includes('root'))).toBe(true)
     expect([...rockAnchorIds].some((id) => id.includes('junction'))).toBe(true)
-    expect(rockAnchors.length).toBeGreaterThanOrEqual(4)
+    expect([...rockAnchorIds].some((id) => id.includes('crevice'))).toBe(true)
+    expect(driftwoodAnchors.length).toBeGreaterThanOrEqual(14)
+    expect(rockAnchors.length).toBeGreaterThanOrEqual(8)
     expect(driftwoodTypes.has('anubias-petite-clump')).toBe(true)
     expect(driftwoodTypes.has('anubias-nana-clump')).toBe(true)
     expect(driftwoodTypes.has('javafern-narrow')).toBe(true)
     expect(driftwoodTypes.has('javafern-large')).toBe(true)
+    expect(rockTypes.has('anubias-nana-clump')).toBe(true)
+    expect(rockTypes.has('javafern-large')).toBe(true)
+  })
+
+  it('uses nature-showcase hero canopy as a localized backdrop and broadleaf shoulder instead of a full vallis wall', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = new THREE.Vector3()
+    const center = new THREE.Vector3()
+    bounds.getSize(size)
+    bounds.getCenter(center)
+
+    new AquascapingSystem(scene, bounds, null, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const canopyPlants = aquascapingGroup.children.filter(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-canopy'
+    )
+    const vallisCanopies = canopyPlants.filter((plant) => plant.userData.plantType === 'vallisneria-tall')
+    const cryptCanopies = canopyPlants.filter((plant) => plant.userData.plantType === 'crypt-brown')
+    const fernCanopies = canopyPlants.filter((plant) =>
+      plant.userData.plantType === 'javafern-large' || plant.userData.plantType === 'javafern-narrow'
+    )
+
+    expect(canopyPlants.length).toBeGreaterThanOrEqual(4)
+    expect(canopyPlants.length).toBeLessThanOrEqual(4)
+    expect(vallisCanopies).toHaveLength(1)
+    expect(vallisCanopies.every((plant) => plant.position.x < center.x - size.x * 0.18)).toBe(true)
+    expect(fernCanopies.some((plant) =>
+      plant.position.x < center.x - size.x * 0.04 && plant.position.z <= center.z - size.z * 0.06
+    )).toBe(true)
+    expect(cryptCanopies).toHaveLength(1)
+    expect(cryptCanopies[0]?.position.x).toBeGreaterThan(center.x + size.x * 0.08)
   })
 
   it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
@@ -1155,6 +1252,28 @@ describe('AquascapingSystem premium materials', () => {
     expect(backgroundSword.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.39)
     expect(backgroundFan.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.4)
     expect(backgroundRibbon.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.38)
+  })
+
+  it('keeps nature-showcase background foliage above a dark-line tint floor', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+
+    const getPlantTint = (AquascapingSystem.prototype as unknown as {
+      getPlantTint: (
+        layer: 'foreground' | 'background' | 'midground',
+        plantType: 'vallisneria-tall' | 'stem-green-bush' | 'hygrophila-rear' | 'crypt-brown',
+        role?: 'repeated' | 'hero'
+      ) => THREE.Color
+    }).getPlantTint.bind(instance)
+
+    const backgroundVallis = getPlantTint('background', 'vallisneria-tall')
+    const backgroundStem = getPlantTint('background', 'stem-green-bush')
+    const backgroundHygro = getPlantTint('background', 'hygrophila-rear')
+    const backgroundCrypt = getPlantTint('background', 'crypt-brown')
+
+    expect(backgroundVallis.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.45)
+    expect(backgroundStem.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.47)
+    expect(backgroundHygro.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.47)
+    expect(backgroundCrypt.getHSL({ h: 0, s: 0, l: 0 }).l).toBeGreaterThanOrEqual(0.41)
   })
 
   it('renders background broad-leaf foliage as solid tinted shapes instead of narrow alpha cutouts', () => {
@@ -1898,8 +2017,10 @@ describe('AquascapingSystem asset-backed hero scape', () => {
     expect(heroDriftwood.children.some((child) => child.userData.role === 'driftwood-burial-shadow')).toBe(true)
     expect(heroRockRidge).toBeDefined()
     expect(heroRockRidge.userData.assetId).toBe('rock-ridge-hero')
-    expect(heroCanopyAssets.length).toBeGreaterThanOrEqual(2)
-    expect(heroCanopyAssets.some((child) => child.userData.assetId === 'plant-vallisneria-tall')).toBe(true)
+    expect(heroCanopyAssets.length).toBeGreaterThanOrEqual(4)
+    expect(heroCanopyAssets.filter((child) => child.userData.assetId === 'plant-vallisneria-tall')).toHaveLength(1)
+    expect(heroCanopyAssets.some((child) => child.userData.assetId === 'plant-javafern-large')).toBe(true)
+    expect(heroCanopyAssets.some((child) => child.userData.assetId === 'plant-stem-green-bush')).toBe(true)
     expect(plantedMassAssets.length).toBeGreaterThanOrEqual(3)
     expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-javafern-large')).toBe(true)
     expect(plantedMassAssets.some((child) => child.userData.assetId === 'plant-crypt-brown')).toBe(true)
