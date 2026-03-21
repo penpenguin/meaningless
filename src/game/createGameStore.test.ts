@@ -22,7 +22,7 @@ describe('createGameStore', () => {
     store.destroy()
   })
 
-  it('spends coins to unlock species and improve income by changing layout', () => {
+  it('spends coins to unlock species and improve income by stocking fish', () => {
     const seeded = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
     const store = createGameStore({
       initialState: {
@@ -42,13 +42,20 @@ describe('createGameStore', () => {
 
     store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: 'clownfish' } })
     store.dispatch({ type: 'GAME/SET_FISH_COUNT', payload: { speciesId: 'clownfish', count: 4 } })
-    store.dispatch({ type: 'GAME/UNLOCK_DECOR', payload: { decorId: 'coral' } })
-    store.dispatch({ type: 'GAME/PLACE_DECOR', payload: { decorId: 'coral', x: 2, y: 2 } })
 
     const state = store.getState()
     expect(state.game.profile.unlockedFishIds).toContain('clownfish')
-    expect(state.game.profile.unlockedDecorIds).toContain('coral')
     expect(state.game.tanks[0]?.progression.incomePerMinute).toBeGreaterThan(1)
+
+    store.destroy()
+  })
+
+  it('hydrates ui without decor placement selection state', () => {
+    const store = createGameStore({
+      initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
+    })
+
+    expect(store.getState().ui).not.toHaveProperty('selectedDecorId')
 
     store.destroy()
   })

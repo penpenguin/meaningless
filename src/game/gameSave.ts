@@ -298,7 +298,6 @@ export const createHydratedGameAppState = (options: {
     game: simulated.save,
     ui: {
       mode: 'tank',
-      selectedDecorId: simulated.save.profile.unlockedDecorIds[0] ?? null,
       lastOfflineResult: simulated.offlineResult
     }
   }

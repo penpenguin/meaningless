@@ -1,12 +1,6 @@
 import type { GameStore } from '../game/createGameStore'
 import type { FishContentDefinition } from '../content/types'
-import { getDecorContent, getDecorContentList, getFishContentList } from '../content/registry'
-import {
-  getDecorCellLabel,
-  getDecorLibrarySummary,
-  getDecorPlacementAssetById,
-  getDecorPlacementAssetGroups
-} from '../content/decorVisuals'
+import { getDecorContentList, getFishContentList } from '../content/registry'
 import type { GameAppState, GameUiMode } from '../game/types'
 import { createAquariumRenderModel } from '../game/renderModel'
 import type { QualityLevel } from '../types/settings'
@@ -82,14 +76,14 @@ const getGuideContent = (state: GameAppState): GuideContent => {
     case 'shop':
       return {
         title: 'Build the habitat',
-        body: 'Unlock species and decor that support the depth balance you want before switching to Layout.',
-        hint: 'Hideouts matter more once schools start crowding the same lane.'
+        body: 'Unlock species and decor, then switch to Layout when you want to rebalance where schools gather.',
+        hint: 'A few well-chosen species usually reads better than stacking every lane at once.'
       }
     case 'layout':
       return {
         title: 'Shape the water column',
-        body: 'Spread schools across depths, then place hideouts where fish cluster to keep the tank readable.',
-        hint: 'Lane chips shift fish depth instantly, and Eraser clears the selected cell.'
+        body: 'Adjust fish counts and lane balance so each school occupies a clearer slice of the tank.',
+        hint: 'Lane chips shift fish depth instantly, so use them before adding more fish.'
       }
     case 'progress':
       return {
@@ -422,9 +416,8 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
   const panel = document.createElement('div')
   panel.className = 'hud-panel hud-panel--layout hud-layout-panel'
   panel.dataset.panel = 'layout'
-  let selectedDecorAssetId: string | null = null
 
-  panel.appendChild(createPanelHeader('Layout', 'Blueprint'))
+  panel.appendChild(createPanelHeader('Layout', 'School Balance'))
 
   const status = document.createElement('div')
   status.className = 'hud-layout-status'
@@ -436,59 +429,10 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
   fishSection.className = 'hud-list'
   panel.appendChild(fishSection)
 
-  panel.appendChild(createSectionLabel('Placement Library'))
-
-  const decorSummary = document.createElement('div')
-  decorSummary.className = 'hud-decor-summary'
-  panel.appendChild(decorSummary)
-
-  const palette = document.createElement('div')
-  palette.className = 'hud-decor-palette'
-  panel.appendChild(palette)
-
-  const boardShell = document.createElement('div')
-  boardShell.className = 'hud-board-shell'
-  const boardCaption = document.createElement('div')
-  boardCaption.className = 'hud-board-caption'
-  boardShell.appendChild(boardCaption)
-
-  const board = document.createElement('div')
-  board.className = 'hud-board'
-  boardShell.appendChild(board)
-  panel.appendChild(boardShell)
-
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
-    const decorLibrary = getDecorContentList()
-    const placementGroups = getDecorPlacementAssetGroups(decorLibrary)
-    const fallbackSelectedAssetId = state.ui.selectedDecorId
-      ? placementGroups
-          .find((group) => group.decorId === state.ui.selectedDecorId)
-          ?.assets[0]
-          ?.assetId ?? null
-      : null
-    const effectiveSelectedAssetId = state.ui.selectedDecorId === null
-      ? null
-      : selectedDecorAssetId ?? fallbackSelectedAssetId
-    const selectedAssetCandidate = getDecorPlacementAssetById(effectiveSelectedAssetId, decorLibrary)
-    const selectedAsset = selectedAssetCandidate?.decorId === state.ui.selectedDecorId
-      ? selectedAssetCandidate
-      : getDecorPlacementAssetById(fallbackSelectedAssetId, decorLibrary)
-    const selectedDecor = state.ui.selectedDecorId
-      ? getDecorContent(state.ui.selectedDecorId)
-      : null
-
-    status.textContent = selectedAsset && selectedDecor
-      ? `Tool: ${selectedAsset.displayName} · ${selectedDecor.displayName} family · click blueprint cells to place it`
-      : 'Tool: Eraser · click blueprint cells to clear the tank'
-
-    const decorLibrarySummary = getDecorLibrarySummary(decorLibrary)
-    decorSummary.textContent = `${decorLibrarySummary.modelCount} placeable assets · ${placementGroups.length} families · ${decorLibrarySummary.textureCount} shared textures`
-
-    boardCaption.textContent = `${tank.layout.columns} × ${tank.layout.rows} blueprint · front-left to back-right`
+    status.textContent = 'Adjust fish counts and lanes to spread schools across the water column.'
     fishSection.innerHTML = ''
-    palette.innerHTML = ''
-    board.innerHTML = ''
 
     getFishContentList()
       .filter((fish) => state.game.profile.unlockedFishIds.includes(fish.speciesId))
@@ -568,78 +512,6 @@ const createLayoutPanel = (store: GameStore): HudPanelHandle => {
         row.appendChild(controls)
         fishSection.appendChild(row)
       })
-
-    const eraser = document.createElement('button')
-    eraser.type = 'button'
-    eraser.textContent = 'Eraser'
-    eraser.className = `hud-action-button ${state.ui.selectedDecorId === null ? 'is-active' : ''}`.trim()
-    eraser.addEventListener('click', () => {
-      selectedDecorAssetId = null
-      store.dispatch({ type: 'UI/SELECT_DECOR', payload: { decorId: null } })
-    })
-    palette.appendChild(eraser)
-
-    placementGroups.forEach((group) => {
-      const familySection = document.createElement('section')
-      familySection.className = 'hud-decor-family'
-      familySection.dataset.decorFamily = group.family
-
-      const familyHeader = document.createElement('div')
-      familyHeader.className = 'hud-decor-family-header'
-      familyHeader.innerHTML = `<strong class="hud-decor-family-title">${group.title}</strong><span class="hud-decor-family-meta">${group.assets.length} assets · ${group.sharedTextureCount} shared textures</span>`
-      familySection.appendChild(familyHeader)
-
-      const familyGrid = document.createElement('div')
-      familyGrid.className = 'hud-decor-family-grid'
-      const isUnlocked = state.game.profile.unlockedDecorIds.includes(group.decorId)
-
-      group.assets.forEach((asset) => {
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.dataset.decorAsset = asset.assetId
-        button.className = `hud-action-button hud-decor-tool ${effectiveSelectedAssetId === asset.assetId ? 'is-active' : ''}`.trim()
-        button.innerHTML = `<strong class="hud-decor-tool-label">${asset.displayName}</strong><span class="hud-decor-tool-status">${isUnlocked ? 'Ready' : 'Locked'}</span>`
-        button.disabled = !isUnlocked
-        button.addEventListener('click', () => {
-          if (!isUnlocked) return
-          selectedDecorAssetId = asset.assetId
-          store.dispatch({ type: 'UI/SELECT_DECOR', payload: { decorId: asset.decorId } })
-        })
-        familyGrid.appendChild(button)
-      })
-      familySection.appendChild(familyGrid)
-      palette.appendChild(familySection)
-    })
-
-    Array.from({ length: tank.layout.rows }).forEach((_, y) => {
-      Array.from({ length: tank.layout.columns }).forEach((__, x) => {
-        const cell = document.createElement('button')
-        cell.type = 'button'
-        cell.className = 'hud-grid-cell'
-        cell.setAttribute('aria-label', `Blueprint ${x + 1},${y + 1}`)
-
-        const decor = tank.decor.find((item) => item.x === x && item.y === y)
-        if (decor) {
-          cell.classList.add('is-occupied')
-        }
-        cell.textContent = decor ? getDecorCellLabel(getDecorContent(decor.decorId)) : '·'
-        cell.addEventListener('click', () => {
-          if (state.ui.selectedDecorId) {
-            store.dispatch({
-              type: 'GAME/PLACE_DECOR',
-              payload: {
-                decorId: state.ui.selectedDecorId,
-                x,
-                y
-              }
-            })
-            return
-          }
-          store.dispatch({ type: 'GAME/REMOVE_DECOR', payload: { x, y } })
-        })
-        board.appendChild(cell)
-      })
-    })
   }
 
   return {

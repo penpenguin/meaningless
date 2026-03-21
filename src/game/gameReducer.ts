@@ -1,5 +1,4 @@
 import { getDecorContent, getFishContent } from '../content/registry'
-import { getDecorAt } from './catalog'
 import { simulateGameSave, refreshTankProgression } from './simulation'
 import { isFishUnlockRequirementMet } from './unlocks'
 import type { GameAction, GameAppState, GameSave, GameTank } from './types'
@@ -205,61 +204,6 @@ const handleSetFishLane = (
   return updateGameState(state, () => refreshGame(nextGame))
 }
 
-const handlePlaceDecor = (
-  state: GameAppState,
-  payload: Extract<GameAction, { type: 'GAME/PLACE_DECOR' }>['payload']
-): GameAppState => {
-  if (!state.game.profile.unlockedDecorIds.includes(payload.decorId)) return state
-  const activeTank = state.game.tanks.find((tank) => tank.id === state.game.activeTankId)
-  if (!activeTank) return state
-  if (
-    payload.x < 0 ||
-    payload.y < 0 ||
-    payload.x >= activeTank.layout.columns ||
-    payload.y >= activeTank.layout.rows
-  ) {
-    return state
-  }
-
-  const nextGame = withActiveTank(state.game, (tank) => {
-    const existing = getDecorAt(tank, payload.x, payload.y)
-    const decor = existing
-      ? tank.decor.map((item) =>
-          item.id === existing.id
-            ? { ...item, decorId: payload.decorId }
-            : item
-        )
-      : [
-          ...tank.decor,
-          {
-            id: `decor-${payload.x}-${payload.y}`,
-            decorId: payload.decorId,
-            x: payload.x,
-            y: payload.y
-          }
-        ]
-
-    return refreshTankProgression({
-      ...tank,
-      decor
-    })
-  })
-
-  return updateGameState(state, () => refreshGame(nextGame))
-}
-
-const handleRemoveDecor = (
-  state: GameAppState,
-  payload: Extract<GameAction, { type: 'GAME/REMOVE_DECOR' }>['payload']
-): GameAppState => {
-  const nextGame = withActiveTank(state.game, (tank) => refreshTankProgression({
-    ...tank,
-    decor: tank.decor.filter((item) => item.x !== payload.x || item.y !== payload.y)
-  }))
-
-  return updateGameState(state, () => refreshGame(nextGame))
-}
-
 const handleCleanTank = (state: GameAppState): GameAppState => {
   const activeTank = state.game.tanks.find((tank) => tank.id === state.game.activeTankId)
   if (!activeTank) return state
@@ -294,11 +238,6 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
         ...ui,
         mode: action.payload.mode
       }))
-    case 'UI/SELECT_DECOR':
-      return updateUiState(state, (ui) => ({
-        ...ui,
-        selectedDecorId: action.payload.decorId
-      }))
     case 'GAME/CLEAR_OFFLINE_RESULT':
       return updateUiState(state, (ui) => ({
         ...ui,
@@ -314,10 +253,6 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
       return handleSetFishCount(state, action.payload)
     case 'GAME/SET_FISH_LANE':
       return handleSetFishLane(state, action.payload)
-    case 'GAME/PLACE_DECOR':
-      return handlePlaceDecor(state, action.payload)
-    case 'GAME/REMOVE_DECOR':
-      return handleRemoveDecor(state, action.payload)
     case 'GAME/CLEAN_TANK':
       return handleCleanTank(state)
     case 'SETTINGS/SET_SOUND':

@@ -22,7 +22,6 @@ const createStateWithWaterQuality = (waterQuality: number): GameAppState => {
     },
     ui: {
       mode: 'tank',
-      selectedDecorId: null,
       lastOfflineResult: null
     }
   }

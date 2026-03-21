@@ -93,7 +93,6 @@ export type GameUiMode = 'tank' | 'shop' | 'layout' | 'progress' | 'settings'
 
 export type GameUiState = {
   mode: GameUiMode
-  selectedDecorId: string | null
   lastOfflineResult: OfflineSimulationResult | null
 }
 
@@ -104,15 +103,12 @@ export type GameAppState = {
 
 export type GameAction =
   | { type: 'UI/SET_MODE'; payload: { mode: GameUiMode } }
-  | { type: 'UI/SELECT_DECOR'; payload: { decorId: string | null } }
   | { type: 'GAME/TICK'; payload: { nowIso: string } }
   | { type: 'GAME/CLEAR_OFFLINE_RESULT' }
   | { type: 'GAME/UNLOCK_FISH'; payload: { speciesId: string } }
   | { type: 'GAME/UNLOCK_DECOR'; payload: { decorId: string } }
   | { type: 'GAME/SET_FISH_COUNT'; payload: { speciesId: string; count: number } }
   | { type: 'GAME/SET_FISH_LANE'; payload: { speciesId: string; lane: Lane } }
-  | { type: 'GAME/PLACE_DECOR'; payload: { decorId: string; x: number; y: number } }
-  | { type: 'GAME/REMOVE_DECOR'; payload: { x: number; y: number } }
   | { type: 'GAME/CLEAN_TANK' }
   | { type: 'SETTINGS/SET_SOUND'; payload: { enabled: boolean } }
   | { type: 'SETTINGS/SET_MOTION'; payload: { enabled: boolean } }
