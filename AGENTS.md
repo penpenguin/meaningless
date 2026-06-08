@@ -11,7 +11,7 @@
 - `src/components/`: 水槽表示・水面・魚群・aquascape など主要クラス群（例: `AdvancedScene`, `Aquascaping`, `DetailedFish`, `Water`）。
 - `src/shaders/`: GLSL 資産。`vite-plugin-glsl` 経由でインポート。
 - `src/utils/`, `src/types/`: 共通処理と型定義。
-- `public/`: 静的ファイルと `index.html`。水景・魚・hardscape 用の asset は主に `public/assets/aquarium/` に置く。`dist/` はビルド成果物なので直接編集しない。
+- `public/`: 静的ファイルと `index.html`。水景・魚・hardscape 用の asset は主に `public/assets/` に置く。`dist/` はビルド成果物なので直接編集しない。
 
 ## ビルド・テスト・開発コマンド
 - `npm run dev` — 開発サーバー起動（デフォルト http://localhost:5173）。

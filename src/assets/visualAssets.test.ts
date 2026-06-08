@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
 import {
   createAquariumAssetManifest,
@@ -35,6 +36,12 @@ const createMultiMeshScene = (): THREE.Group => {
   return scene
 }
 
+const readGlbJson = (relativePath: string): Record<string, unknown> => {
+  const buffer = readFileSync(relativePath)
+  const jsonLength = buffer.readUInt32LE(12)
+  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8')) as Record<string, unknown>
+}
+
 describe('loadVisualAssets', () => {
   it('loads textures, models, and hdri assets by id and falls back to null on failure', async () => {
     const textureLoader = {
@@ -64,16 +71,16 @@ describe('loadVisualAssets', () => {
 
     const manifest: AssetManifest = {
       textures: [
-        { id: 'leaf-diffuse', url: '/assets/aquarium/textures/plants/leaf-diffuse.svg', usageTag: 'plant', lod: 'high' },
-        { id: 'missing-texture', url: '/assets/aquarium/missing.svg', usageTag: 'fish', lod: 'medium' }
+        { id: 'leaf-diffuse', url: '/assets/textures/plants/leaf-diffuse.svg', usageTag: 'plant', lod: 'high' },
+        { id: 'missing-texture', url: '/assets/missing.svg', usageTag: 'fish', lod: 'medium' }
       ],
       models: [
-        { id: 'fish-neon-school', url: '/assets/aquarium/models/fish/fish-neon-school.glb', usageTag: 'fish', lod: 'high' },
-        { id: 'missing-model', url: '/assets/aquarium/missing.glb', usageTag: 'fish', lod: 'medium' }
+        { id: 'fish-neon-school', url: '/assets/models/fish/fish-neon-school.glb', usageTag: 'fish', lod: 'high' },
+        { id: 'missing-model', url: '/assets/missing.glb', usageTag: 'fish', lod: 'medium' }
       ],
       environment: [
-        { id: 'aquarium-hdri', url: '/assets/aquarium/environment/aquarium-hdri.hdr', usageTag: 'environment', lod: 'high' },
-        { id: 'missing-hdri', url: '/assets/aquarium/missing.hdr', usageTag: 'environment', lod: 'medium' }
+        { id: 'aquarium-hdri', url: '/assets/environment/aquarium-hdri.hdr', usageTag: 'environment', lod: 'high' },
+        { id: 'missing-hdri', url: '/assets/missing.hdr', usageTag: 'environment', lod: 'medium' }
       ]
     }
 
@@ -98,7 +105,7 @@ describe('loadVisualAssets', () => {
     const assets = await loadVisualAssets({
       textures: [],
       models: [
-        { id: 'fish-angelfish-school', url: '/assets/aquarium/models/fish/fish-angelfish-school.glb', usageTag: 'fish', lod: 'high' }
+        { id: 'fish-angelfish-school', url: '/assets/models/fish/fish-angelfish-school.glb', usageTag: 'fish', lod: 'high' }
       ],
       environment: []
     }, {
@@ -122,7 +129,7 @@ describe('loadVisualAssets', () => {
     const assets = await loadVisualAssets({
       textures: [],
       models: [
-        { id: 'fish-clownfish-school', url: '/assets/aquarium/models/fish/fish-clownfish-school.glb', usageTag: 'fish', lod: 'high' }
+        { id: 'fish-clownfish-school', url: '/assets/models/fish/fish-clownfish-school.glb', usageTag: 'fish', lod: 'high' }
       ],
       environment: []
     }, {
@@ -143,7 +150,7 @@ describe('loadVisualAssets', () => {
     const assets = await loadVisualAssets({
       textures: [],
       models: [
-        { id: 'fish-angelfish-hero', url: '/assets/aquarium/models/fish/fish-angelfish-hero.glb', usageTag: 'fish', lod: 'high' }
+        { id: 'fish-angelfish-hero', url: '/assets/models/fish/fish-angelfish-hero.glb', usageTag: 'fish', lod: 'high' }
       ],
       environment: []
     }, {
@@ -164,8 +171,8 @@ describe('loadVisualAssets', () => {
     const assets = await loadVisualAssets({
       textures: [],
       models: [
-        { id: 'driftwood-hero', url: '/assets/aquarium/models/driftwood/driftwood-hero.glb', usageTag: 'wood', lod: 'high' },
-        { id: 'plant-matsumo', url: '/assets/aquarium/models/plants/plant-matsumo.glb', usageTag: 'plant', lod: 'high' }
+        { id: 'driftwood-hero', url: '/assets/models/driftwood/driftwood-hero.glb', usageTag: 'wood', lod: 'high' },
+        { id: 'plant-matsumo', url: '/assets/models/plants/plant-matsumo.glb', usageTag: 'plant', lod: 'high' }
       ],
       environment: []
     }, {
@@ -190,10 +197,10 @@ describe('loadVisualAssets', () => {
 
     const assets = await loadVisualAssets({
       textures: [
-        { id: 'substrate-sand-albedo', url: '/assets/aquarium/textures/substrate/substrate-sand-albedo.png', usageTag: 'rock', lod: 'high' },
-        { id: 'substrate-sand-normal', url: '/assets/aquarium/textures/substrate/substrate-sand-normal.png', usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
-        { id: 'substrate-sand-roughness', url: '/assets/aquarium/textures/substrate/substrate-sand-roughness.png', usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
-        { id: 'substrate-sand-ao', url: '/assets/aquarium/textures/substrate/substrate-sand-ao.png', usageTag: 'rock', lod: 'medium', colorSpace: 'linear' }
+        { id: 'substrate-sand-albedo', url: '/assets/textures/substrate/substrate-sand-albedo.png', usageTag: 'rock', lod: 'high' },
+        { id: 'substrate-sand-normal', url: '/assets/textures/substrate/substrate-sand-normal.png', usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
+        { id: 'substrate-sand-roughness', url: '/assets/textures/substrate/substrate-sand-roughness.png', usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
+        { id: 'substrate-sand-ao', url: '/assets/textures/substrate/substrate-sand-ao.png', usageTag: 'rock', lod: 'medium', colorSpace: 'linear' }
       ],
       models: [],
       environment: []
@@ -281,6 +288,7 @@ describe('public aquarium asset urls', () => {
     expect(modelIds.has('plant-matsumo')).toBe(true)
     expect(modelIds.has('plant-willow-moss')).toBe(true)
     expect(modelIds.has('plant-hygrophila-rear')).toBe(true)
+    expect(modelIds.has('plant-vallisneria-tall')).toBe(true)
 
     expect(modelUrls.some((url) => url.endsWith('fish-clownfish-school.glb'))).toBe(true)
     expect(modelUrls.some((url) => url.endsWith('fish-clownfish-hero.glb'))).toBe(true)
@@ -302,6 +310,7 @@ describe('public aquarium asset urls', () => {
     expect(modelUrls.some((url) => url.endsWith('plant-matsumo.glb'))).toBe(true)
     expect(modelUrls.some((url) => url.endsWith('plant-willow-moss.glb'))).toBe(true)
     expect(modelUrls.some((url) => url.endsWith('plant-hygrophila-rear.glb'))).toBe(true)
+    expect(modelUrls.some((url) => url.endsWith('plant-vallisneria-tall.glb'))).toBe(true)
   })
 
   it('does not register removed procedural plant fallback glbs', () => {
@@ -316,8 +325,7 @@ describe('public aquarium asset urls', () => {
       'plant-javafern-large',
       'plant-javafern-narrow',
       'plant-stem-green-bush',
-      'plant-sword-cluster',
-      'plant-vallisneria-tall'
+      'plant-sword-cluster'
     ]
 
     removedPlantIds.forEach((id) => {
@@ -351,20 +359,23 @@ describe('public aquarium asset urls', () => {
     expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-a.glb'))).toBe(true)
     expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-b.glb'))).toBe(true)
     expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-c.glb'))).toBe(true)
+
+    const driftwoodHero = readGlbJson('public/assets/models/driftwood/driftwood-hero.glb')
+    expect((driftwoodHero.images as unknown[] | undefined)?.length ?? 0).toBeGreaterThanOrEqual(3)
   })
 
   it('uses authored png textures for shared leaf, rock, and backdrop assets while preserving stable ids', () => {
     const manifest = createAquariumAssetManifest('/')
     const textureUrlsById = new Map(manifest.textures.map((entry) => [entry.id, entry.url]))
 
-    expect(textureUrlsById.get('leaf-diffuse')).toBe('/assets/aquarium/textures/plants/leaf-diffuse.png')
-    expect(textureUrlsById.get('leaf-alpha')).toBe('/assets/aquarium/textures/plants/leaf-alpha.png')
-    expect(textureUrlsById.get('leaf-normal')).toBe('/assets/aquarium/textures/plants/leaf-normal.png')
-    expect(textureUrlsById.get('leaf-roughness')).toBe('/assets/aquarium/textures/plants/leaf-roughness.png')
-    expect(textureUrlsById.get('rock-diffuse')).toBe('/assets/aquarium/textures/rocks/rock-diffuse.png')
-    expect(textureUrlsById.get('rock-normal')).toBe('/assets/aquarium/textures/rocks/rock-normal.png')
-    expect(textureUrlsById.get('rock-roughness')).toBe('/assets/aquarium/textures/rocks/rock-roughness.png')
-    expect(textureUrlsById.get('backdrop-depth')).toBe('/assets/aquarium/textures/backdrop/backdrop-depth.png')
+    expect(textureUrlsById.get('leaf-diffuse')).toBe('/assets/textures/plants/leaf-diffuse.png')
+    expect(textureUrlsById.get('leaf-alpha')).toBe('/assets/textures/plants/leaf-alpha.png')
+    expect(textureUrlsById.get('leaf-normal')).toBe('/assets/textures/plants/leaf-normal.png')
+    expect(textureUrlsById.get('leaf-roughness')).toBe('/assets/textures/plants/leaf-roughness.png')
+    expect(textureUrlsById.get('rock-diffuse')).toBe('/assets/textures/rocks/rock-diffuse.png')
+    expect(textureUrlsById.get('rock-normal')).toBe('/assets/textures/rocks/rock-normal.png')
+    expect(textureUrlsById.get('rock-roughness')).toBe('/assets/textures/rocks/rock-roughness.png')
+    expect(textureUrlsById.get('backdrop-depth')).toBe('/assets/textures/backdrop/backdrop-depth.png')
 
     expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('leaf-diffuse.svg'))).toBe(false)
     expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('leaf-alpha.svg'))).toBe(false)
@@ -380,30 +391,33 @@ describe('public aquarium asset urls', () => {
     const manifest = createAquariumAssetManifest('/')
     const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
 
-    expect(modelUrlsById.get('rock-ridge-hero')).toBe('/assets/aquarium/models/rocks/rock-ridge-hero.glb')
-    expect(modelUrlsById.get('rock-support-a')).toBe('/assets/aquarium/models/rocks/rock-support-a.glb')
-    expect(modelUrlsById.get('rock-support-b')).toBe('/assets/aquarium/models/rocks/rock-support-b.glb')
-    expect(modelUrlsById.get('rock-support-c')).toBe('/assets/aquarium/models/rocks/rock-support-c.glb')
-    expect(modelUrlsById.get('rock-pebble-cluster')).toBe('/assets/aquarium/models/rocks/rock-pebble-cluster.glb')
+    expect(modelUrlsById.get('rock-ridge-hero')).toBe('/assets/models/rocks/rock-ridge-hero.glb')
+    expect(modelUrlsById.get('rock-support-a')).toBe('/assets/models/rocks/rock-support-a.glb')
+    expect(modelUrlsById.get('rock-support-b')).toBe('/assets/models/rocks/rock-support-b.glb')
+    expect(modelUrlsById.get('rock-support-c')).toBe('/assets/models/rocks/rock-support-c.glb')
+    expect(modelUrlsById.get('rock-pebble-cluster')).toBe('/assets/models/rocks/rock-pebble-cluster.glb')
+
+    const rockRidgeHero = readGlbJson('public/assets/models/rocks/rock-ridge-hero.glb')
+    expect((rockRidgeHero.images as unknown[] | undefined)?.length ?? 0).toBeGreaterThanOrEqual(3)
   })
 
   it('registers nature showcase base-cluster and transition rock glbs for the left mound layout', () => {
     const manifest = createAquariumAssetManifest('/')
     const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
 
-    expect(modelUrlsById.get('rock-lava-base-cluster-a')).toBe('/assets/aquarium/models/rocks/rock-lava-base-cluster-a.glb')
-    expect(modelUrlsById.get('rock-lava-base-cluster-b')).toBe('/assets/aquarium/models/rocks/rock-lava-base-cluster-b.glb')
-    expect(modelUrlsById.get('rock-lava-transition-chips')).toBe('/assets/aquarium/models/rocks/rock-lava-transition-chips.glb')
+    expect(modelUrlsById.get('rock-lava-base-cluster-a')).toBe('/assets/models/rocks/rock-lava-base-cluster-a.glb')
+    expect(modelUrlsById.get('rock-lava-base-cluster-b')).toBe('/assets/models/rocks/rock-lava-base-cluster-b.glb')
+    expect(modelUrlsById.get('rock-lava-transition-chips')).toBe('/assets/models/rocks/rock-lava-transition-chips.glb')
   })
 
   it('uses authored png pbr textures for substrate sand while keeping the stable texture ids', () => {
     const manifest = createAquariumAssetManifest('/')
     const textureUrlsById = new Map(manifest.textures.map((entry) => [entry.id, entry.url]))
 
-    expect(textureUrlsById.get('substrate-sand-albedo')).toBe('/assets/aquarium/textures/substrate/substrate-sand-albedo.png')
-    expect(textureUrlsById.get('substrate-sand-normal')).toBe('/assets/aquarium/textures/substrate/substrate-sand-normal.png')
-    expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/assets/aquarium/textures/substrate/substrate-sand-roughness.png')
-    expect(textureUrlsById.get('substrate-sand-ao')).toBe('/assets/aquarium/textures/substrate/substrate-sand-ao.png')
+    expect(textureUrlsById.get('substrate-sand-albedo')).toBe('/assets/textures/substrate/substrate-sand-albedo.png')
+    expect(textureUrlsById.get('substrate-sand-normal')).toBe('/assets/textures/substrate/substrate-sand-normal.png')
+    expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/assets/textures/substrate/substrate-sand-roughness.png')
+    expect(textureUrlsById.get('substrate-sand-ao')).toBe('/assets/textures/substrate/substrate-sand-ao.png')
 
     expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('substrate-sand-albedo.svg'))).toBe(false)
     expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('substrate-sand-normal.svg'))).toBe(false)
@@ -412,36 +426,36 @@ describe('public aquarium asset urls', () => {
   })
 
   it('resolves public asset urls through BASE_URL without hardcoding a leading slash', () => {
-    expect(resolvePublicAssetUrl('assets/aquarium/models/fish/fish-neon-school.glb', '/meaningless/')).toBe(
-      '/meaningless/assets/aquarium/models/fish/fish-neon-school.glb'
+    expect(resolvePublicAssetUrl('assets/models/fish/fish-neon-school.glb', '/meaningless/')).toBe(
+      '/meaningless/assets/models/fish/fish-neon-school.glb'
     )
 
     const manifest = createAquariumAssetManifest('/meaningless/')
     const textureUrlsById = new Map(manifest.textures.map((entry) => [entry.id, entry.url]))
 
-    expect(manifest.textures[0]?.url.startsWith('/meaningless/assets/aquarium/')).toBe(true)
-    expect(manifest.models[0]?.url.startsWith('/meaningless/assets/aquarium/')).toBe(true)
-    expect(manifest.environment[0]?.url).toBe('/meaningless/assets/aquarium/environment/aquarium-hdri.hdr')
-    expect(textureUrlsById.get('leaf-diffuse')).toBe('/meaningless/assets/aquarium/textures/plants/leaf-diffuse.png')
-    expect(textureUrlsById.get('leaf-alpha')).toBe('/meaningless/assets/aquarium/textures/plants/leaf-alpha.png')
-    expect(textureUrlsById.get('leaf-normal')).toBe('/meaningless/assets/aquarium/textures/plants/leaf-normal.png')
-    expect(textureUrlsById.get('leaf-roughness')).toBe('/meaningless/assets/aquarium/textures/plants/leaf-roughness.png')
-    expect(textureUrlsById.get('rock-diffuse')).toBe('/meaningless/assets/aquarium/textures/rocks/rock-diffuse.png')
-    expect(textureUrlsById.get('rock-normal')).toBe('/meaningless/assets/aquarium/textures/rocks/rock-normal.png')
-    expect(textureUrlsById.get('rock-roughness')).toBe('/meaningless/assets/aquarium/textures/rocks/rock-roughness.png')
-    expect(textureUrlsById.get('backdrop-depth')).toBe('/meaningless/assets/aquarium/textures/backdrop/backdrop-depth.png')
-    expect(textureUrlsById.get('substrate-sand-albedo')).toBe('/meaningless/assets/aquarium/textures/substrate/substrate-sand-albedo.png')
-    expect(textureUrlsById.get('substrate-sand-normal')).toBe('/meaningless/assets/aquarium/textures/substrate/substrate-sand-normal.png')
-    expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/meaningless/assets/aquarium/textures/substrate/substrate-sand-roughness.png')
-    expect(textureUrlsById.get('substrate-sand-ao')).toBe('/meaningless/assets/aquarium/textures/substrate/substrate-sand-ao.png')
+    expect(manifest.textures[0]?.url.startsWith('/meaningless/assets/')).toBe(true)
+    expect(manifest.models[0]?.url.startsWith('/meaningless/assets/')).toBe(true)
+    expect(manifest.environment[0]?.url).toBe('/meaningless/assets/environment/aquarium-hdri.hdr')
+    expect(textureUrlsById.get('leaf-diffuse')).toBe('/meaningless/assets/textures/plants/leaf-diffuse.png')
+    expect(textureUrlsById.get('leaf-alpha')).toBe('/meaningless/assets/textures/plants/leaf-alpha.png')
+    expect(textureUrlsById.get('leaf-normal')).toBe('/meaningless/assets/textures/plants/leaf-normal.png')
+    expect(textureUrlsById.get('leaf-roughness')).toBe('/meaningless/assets/textures/plants/leaf-roughness.png')
+    expect(textureUrlsById.get('rock-diffuse')).toBe('/meaningless/assets/textures/rocks/rock-diffuse.png')
+    expect(textureUrlsById.get('rock-normal')).toBe('/meaningless/assets/textures/rocks/rock-normal.png')
+    expect(textureUrlsById.get('rock-roughness')).toBe('/meaningless/assets/textures/rocks/rock-roughness.png')
+    expect(textureUrlsById.get('backdrop-depth')).toBe('/meaningless/assets/textures/backdrop/backdrop-depth.png')
+    expect(textureUrlsById.get('substrate-sand-albedo')).toBe('/meaningless/assets/textures/substrate/substrate-sand-albedo.png')
+    expect(textureUrlsById.get('substrate-sand-normal')).toBe('/meaningless/assets/textures/substrate/substrate-sand-normal.png')
+    expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/meaningless/assets/textures/substrate/substrate-sand-roughness.png')
+    expect(textureUrlsById.get('substrate-sand-ao')).toBe('/meaningless/assets/textures/substrate/substrate-sand-ao.png')
     expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-base-cluster-a')).toBe(
-      '/meaningless/assets/aquarium/models/rocks/rock-lava-base-cluster-a.glb'
+      '/meaningless/assets/models/rocks/rock-lava-base-cluster-a.glb'
     )
     expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-base-cluster-b')).toBe(
-      '/meaningless/assets/aquarium/models/rocks/rock-lava-base-cluster-b.glb'
+      '/meaningless/assets/models/rocks/rock-lava-base-cluster-b.glb'
     )
     expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-transition-chips')).toBe(
-      '/meaningless/assets/aquarium/models/rocks/rock-lava-transition-chips.glb'
+      '/meaningless/assets/models/rocks/rock-lava-transition-chips.glb'
     )
   })
 })
