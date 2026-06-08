@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom'
 import * as THREE from 'three'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
-const outputPath = path.resolve('public/assets/aquarium/models/driftwood/driftwood-hero.glb')
+const outputPath = path.resolve('public/assets/models/driftwood/driftwood-hero.glb')
 
 const installExporterPolyfills = () => {
   const { window } = new JSDOM('')
