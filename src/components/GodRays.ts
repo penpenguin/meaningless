@@ -4,7 +4,9 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import type { Theme } from '../types/aquarium'
+import type { QualityLevel } from '../types/settings'
 import { defaultTheme } from '../utils/stateSchema'
+import { ScreenSpaceWaterHazeShader, syncScreenSpaceWaterHazePass } from './screenSpaceWaterHaze'
 
 type GodRayThemeValues = {
   rayTint: THREE.Color
@@ -53,8 +55,14 @@ export const resolveSuspendedMoteScatter = (scene: THREE.Scene): number => {
   return THREE.MathUtils.clamp(opacityScale * (0.62 + densityFactor * 0.9), 0, 0.35)
 }
 
+const usesOpenWaterPresentation = (theme: Theme): boolean => (
+  theme.layoutStyle === 'nature-showcase' ||
+  (theme.layoutStyle === 'planted' && theme.fogDensity <= 0.08 && theme.glassFrameStrength >= 0.7)
+)
+
 export const resolveGodRayThemeValues = (theme?: Theme): GodRayThemeValues => {
   const resolvedTheme = theme ?? defaultTheme
+  const openWaterPresentation = usesOpenWaterPresentation(resolvedTheme)
   const baseWater = new THREE.Color(resolvedTheme.waterTint)
   const fogDensity = THREE.MathUtils.clamp(resolvedTheme.fogDensity, 0, 1)
   const particleDensity = THREE.MathUtils.clamp(resolvedTheme.particleDensity, 0, 1)
@@ -81,9 +89,15 @@ export const resolveGodRayThemeValues = (theme?: Theme): GodRayThemeValues => {
       0.68,
       1.4
     ),
-    bloomStrength: THREE.MathUtils.clamp(0.18 + surfaceGlow * 0.22 + clarity * 0.08, 0.14, 0.38),
-    bloomRadius: THREE.MathUtils.clamp(0.12 + (1 - clarity) * 0.18 + particleDensity * 0.06, 0.1, 0.38),
-    bloomThreshold: THREE.MathUtils.clamp(0.78 - surfaceGlow * 0.12 + particleDensity * 0.08, 0.58, 0.88)
+    bloomStrength: openWaterPresentation
+      ? THREE.MathUtils.clamp(0.1 + surfaceGlow * 0.04 + causticsStrength * 0.025, 0.1, 0.16)
+      : THREE.MathUtils.clamp(0.18 + surfaceGlow * 0.22 + clarity * 0.08, 0.14, 0.38),
+    bloomRadius: openWaterPresentation
+      ? THREE.MathUtils.clamp(0.1 + particleDensity * 0.05, 0.1, 0.16)
+      : THREE.MathUtils.clamp(0.12 + (1 - clarity) * 0.18 + particleDensity * 0.06, 0.1, 0.38),
+    bloomThreshold: openWaterPresentation
+      ? THREE.MathUtils.clamp(0.86 + clarity * 0.08 - surfaceGlow * 0.02, 0.86, 0.94)
+      : THREE.MathUtils.clamp(0.78 - surfaceGlow * 0.12 + particleDensity * 0.08, 0.58, 0.88)
   }
 }
 
@@ -235,6 +249,7 @@ export const GodRaysShader = {
 export class GodRaysEffect {
   private composer: EffectComposer
   private godRaysPass: ShaderPass
+  private waterHazePass: ShaderPass
   private bloomPass: UnrealBloomPass
   private depthMaterial: THREE.MeshDepthMaterial
   private depthRenderTarget: THREE.WebGLRenderTarget
@@ -287,7 +302,12 @@ export class GodRaysEffect {
     // Add god rays pass
     this.godRaysPass = new ShaderPass(GodRaysShader)
     this.composer.addPass(this.godRaysPass)
-    
+
+    this.waterHazePass = new ShaderPass(ScreenSpaceWaterHazeShader)
+    this.waterHazePass.enabled = false
+    this.waterHazePass.uniforms.aspect.value = size.height > 0 ? size.width / size.height : 16 / 9
+    this.composer.addPass(this.waterHazePass)
+
     // Create invisible sun position for GodRay calculation only
     const sunGroup = new THREE.Group()
     this.sunMesh = sunGroup
@@ -296,7 +316,13 @@ export class GodRaysEffect {
     
     // Set initial parameters for underwater effect
     this.setUnderwaterParameters()
-    this.applyTheme((scene.userData.theme as Theme | undefined) ?? defaultTheme)
+    const initialTheme = (scene.userData.theme as Theme | undefined) ?? defaultTheme
+    this.applyTheme(initialTheme)
+    this.configureScreenSpaceWaterHaze(
+      initialTheme,
+      'standard',
+      size.height > 0 ? size.width / size.height : 16 / 9
+    )
   }
   
   private setUnderwaterParameters(): void {
@@ -316,7 +342,15 @@ export class GodRaysEffect {
     this.bloomPass.radius = this.themeValues.bloomRadius
     this.bloomPass.threshold = this.themeValues.bloomThreshold
   }
-  
+
+  public configureScreenSpaceWaterHaze(
+    theme: Theme,
+    quality: QualityLevel = 'standard',
+    aspect?: number
+  ): void {
+    syncScreenSpaceWaterHazePass(this.waterHazePass, theme, quality, aspect)
+  }
+
   private renderDepth(): void {
     // Store original materials
     const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>()
@@ -391,6 +425,7 @@ export class GodRaysEffect {
     this.composer.setSize(width, height)
     this.bloomPass.setSize(width, height)
     this.depthRenderTarget.setSize(width * 0.5, height * 0.5)
+    this.waterHazePass.uniforms.aspect.value = height > 0 ? width / height : 16 / 9
   }
   
   dispose(): void {

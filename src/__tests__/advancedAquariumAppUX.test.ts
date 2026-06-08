@@ -24,7 +24,7 @@ vi.mock('../components/AdvancedScene', () => {
       setMotionEnabled = vi.fn()
       setPhotoMode = vi.fn()
       setAdvancedEffects = vi.fn()
-      setWaterQuality = vi.fn()
+      setVisualQuality = vi.fn()
       applyTheme = vi.fn()
       applyFishGroups = vi.fn(() => true)
       start = vi.fn()

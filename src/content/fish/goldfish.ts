@@ -20,6 +20,5 @@ export const goldfish = createFishContent({
     purchaseCostPerFish: 4,
     baseIncomePerMinute: 0.55,
     preferredLane: 'bottom',
-    pollutionPerFish: 0.8
   }
 })

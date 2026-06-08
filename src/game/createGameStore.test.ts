@@ -22,6 +22,43 @@ describe('createGameStore', () => {
     store.destroy()
   })
 
+  it('throttles automatic tick persistence to once per minute', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-08T00:00:00.000Z'))
+    const onGameStateChange = vi.fn()
+    const store = createGameStore({
+      initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' }),
+      tickIntervalMs: 1000,
+      onGameStateChange
+    })
+
+    await vi.advanceTimersByTimeAsync(59_000)
+    expect(onGameStateChange).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(onGameStateChange).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(59_000)
+    expect(onGameStateChange).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(onGameStateChange).toHaveBeenCalledTimes(2)
+    store.destroy()
+  })
+
+  it('persists direct player actions immediately', () => {
+    const onGameStateChange = vi.fn()
+    const store = createGameStore({
+      initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' }),
+      onGameStateChange
+    })
+
+    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: false } })
+
+    expect(onGameStateChange).toHaveBeenCalledTimes(1)
+    store.destroy()
+  })
+
   it('spends coins to unlock species and improve income by stocking fish', () => {
     const seeded = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
     const store = createGameStore({
@@ -111,27 +148,6 @@ describe('createGameStore', () => {
     expect(store.getState().game.profile.stats.totalViewedSeconds).toBe(60)
     expect(store.getState().game.profile.stats.totalOfflineSeconds).toBe(0)
     expect(store.getState().ui.lastOfflineResult).toBeNull()
-    store.destroy()
-  })
-
-  it('cleans the active tank and resets water quality', () => {
-    const store = createGameStore({
-      initialState: createHydratedGameAppState({
-        save: {
-          ...createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' }).game,
-          lastSimulatedAt: '2026-03-08T00:00:00.000Z'
-        },
-        nowIso: '2026-03-08T04:00:00.000Z'
-      })
-    })
-
-    const before = store.getState().game.tanks[0]?.progression.waterQuality ?? 100
-    store.dispatch({ type: 'GAME/CLEAN_TANK' })
-    const after = store.getState().game.tanks[0]?.progression.waterQuality ?? 0
-
-    expect(before).toBeLessThan(100)
-    expect(after).toBe(100)
-
     store.destroy()
   })
 

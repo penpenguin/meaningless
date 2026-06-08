@@ -15,7 +15,6 @@ export type FishDefinition = {
   purchaseCostPerFish: number
   baseIncomePerMinute: number
   preferredLane: Lane
-  pollutionPerFish: number
 }
 
 export type DecorDefinition = {
@@ -23,7 +22,6 @@ export type DecorDefinition = {
   displayName: string
   unlockCost: number
   comfortBonus: number
-  waterQualityBonus: number
   laneAffinity: Lane | 'any'
   adjacencyBonus: number
 }
@@ -38,8 +36,7 @@ const toFishDefinition = (speciesId: string): FishDefinition | null => {
     unlockCost: fish.gameplay.unlockCost,
     purchaseCostPerFish: fish.gameplay.purchaseCostPerFish,
     baseIncomePerMinute: fish.gameplay.baseIncomePerMinute,
-    preferredLane: fish.gameplay.preferredLane,
-    pollutionPerFish: fish.gameplay.pollutionPerFish
+    preferredLane: fish.gameplay.preferredLane
   }
 }
 
@@ -52,7 +49,6 @@ const toDecorDefinition = (decorId: string): DecorDefinition | null => {
     displayName: decor.displayName,
     unlockCost: decor.gameplay.unlockCost,
     comfortBonus: decor.gameplay.comfortBonus,
-    waterQualityBonus: decor.gameplay.waterQualityBonus,
     laneAffinity: decor.gameplay.laneAffinity,
     adjacencyBonus: decor.gameplay.adjacencyBonus
   }

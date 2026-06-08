@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom'
 import * as THREE from 'three'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
-const outputDir = path.resolve('public/assets/aquarium')
+const outputDir = path.resolve('public/assets/aquarium/models/rocks')
 const textureSize = 256
 
 const crcTable = new Uint32Array(256)

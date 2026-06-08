@@ -13,7 +13,7 @@ import { refreshTankProgression, simulateGameSave } from './simulation'
 import type { GameAppState, GameSave, Lane } from './types'
 import type { QualityLevel } from '../types/settings'
 
-export const CURRENT_GAME_SCHEMA_VERSION = 1
+export const CURRENT_GAME_SCHEMA_VERSION = 2
 
 const migrateQuality = (value: unknown, fallback: QualityLevel): QualityLevel => {
   if (value === 'simple' || value === 'standard') return value
@@ -32,7 +32,6 @@ const createDefaultProfile = () => ({
   stats: {
     totalEarnedCoins: 0,
     totalOfflineSeconds: 0,
-    totalMaintenanceActions: 0,
     totalViewedSeconds: 0
   },
   preferences: {
@@ -71,7 +70,6 @@ const createDefaultTank = () => refreshTankProgression({
   decor: [],
   progression: {
     comfort: 0,
-    waterQuality: 100,
     incomePerMinute: 0,
     lastCollectedAt: null
   }
@@ -213,7 +211,6 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
         decor,
         progression: {
           comfort: typeof progression.comfort === 'number' ? Math.max(0, Math.floor(progression.comfort)) : 0,
-          waterQuality: typeof progression.waterQuality === 'number' ? Math.max(0, Math.min(100, Math.floor(progression.waterQuality))) : 100,
           incomePerMinute: typeof progression.incomePerMinute === 'number' ? Math.max(1, Math.floor(progression.incomePerMinute)) : 1,
           lastCollectedAt: typeof progression.lastCollectedAt === 'string' ? progression.lastCollectedAt : null
         }
@@ -255,9 +252,6 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
         totalOfflineSeconds: isRecord(profileSource.stats) && typeof profileSource.stats.totalOfflineSeconds === 'number'
           ? Math.max(0, Math.floor(profileSource.stats.totalOfflineSeconds))
           : fallback.profile.stats.totalOfflineSeconds,
-        totalMaintenanceActions: isRecord(profileSource.stats) && typeof profileSource.stats.totalMaintenanceActions === 'number'
-          ? Math.max(0, Math.floor(profileSource.stats.totalMaintenanceActions))
-          : fallback.profile.stats.totalMaintenanceActions,
         totalViewedSeconds: isRecord(profileSource.stats) && typeof profileSource.stats.totalViewedSeconds === 'number'
           ? Math.max(0, Math.floor(profileSource.stats.totalViewedSeconds))
           : fallback.profile.stats.totalViewedSeconds

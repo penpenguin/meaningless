@@ -6,7 +6,6 @@ export const coral = createDecorContent({
   gameplay: {
     unlockCost: 16,
     comfortBonus: 8,
-    waterQualityBonus: 0.5,
     laneAffinity: 'middle',
     adjacencyBonus: 3,
     hideoutScore: 2

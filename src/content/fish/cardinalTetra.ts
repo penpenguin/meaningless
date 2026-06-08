@@ -19,6 +19,5 @@ export const cardinalTetra = createFishContent({
     purchaseCostPerFish: 2,
     baseIncomePerMinute: 0.28,
     preferredLane: 'middle',
-    pollutionPerFish: 0.48
   }
 })

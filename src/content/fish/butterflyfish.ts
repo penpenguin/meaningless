@@ -20,6 +20,5 @@ export const butterflyfish = createFishContent({
     purchaseCostPerFish: 4,
     baseIncomePerMinute: 0.48,
     preferredLane: 'middle',
-    pollutionPerFish: 0.7
   }
 })

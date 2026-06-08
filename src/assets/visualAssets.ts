@@ -45,6 +45,7 @@ export type AssetManifest = {
 export type LoadedModelAsset = {
   scene: THREE.Group
   sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> | null
+  animations?: THREE.AnimationClip[]
 }
 
 export type VisualAssetBundle = {
@@ -56,7 +57,7 @@ export type VisualAssetBundle = {
 
 type TextureLoaderLike = Pick<THREE.TextureLoader, 'loadAsync'>
 type GLTFLoaderLike = {
-  loadAsync(url: string): Promise<{ scene: THREE.Object3D | THREE.Group }>
+  loadAsync(url: string): Promise<{ scene: THREE.Object3D | THREE.Group; animations?: THREE.AnimationClip[] }>
 }
 type HDRILoaderLike = Pick<RGBELoader, 'loadAsync'>
 
@@ -121,7 +122,8 @@ const wrapAsGroup = (root: THREE.Object3D | THREE.Group): THREE.Group => {
 }
 
 const extractSingleSourceMesh = (
-  root: THREE.Object3D
+  root: THREE.Object3D,
+  options: { allowSkinnedMesh?: boolean } = {}
 ): THREE.Mesh<THREE.BufferGeometry, THREE.Material> | null => {
   const meshes: Array<THREE.Mesh<THREE.BufferGeometry, THREE.Material>> = []
 
@@ -129,7 +131,7 @@ const extractSingleSourceMesh = (
     const mesh = object as THREE.Mesh
     const material = (mesh as { material?: THREE.Material | THREE.Material[] }).material
     if (!(mesh instanceof THREE.Mesh) || Array.isArray(material)) return
-    if ((mesh as THREE.Mesh & { isSkinnedMesh?: boolean }).isSkinnedMesh) return
+    if ((mesh as THREE.Mesh & { isSkinnedMesh?: boolean }).isSkinnedMesh && !options.allowSkinnedMesh) return
     meshes.push(mesh as THREE.Mesh<THREE.BufferGeometry, THREE.Material>)
   })
 
@@ -166,7 +168,9 @@ const loadModelAsset = async (
     const scene = wrapAsGroup(gltf.scene)
     markSharedObjectResources(scene)
 
-    const sourceMesh = extractSingleSourceMesh(scene)
+    const sourceMesh = extractSingleSourceMesh(scene, {
+      allowSkinnedMesh: requiresSingleSourceMesh(entry.id)
+    })
     if (requiresSingleSourceMesh(entry.id) && !sourceMesh) {
       return null
     }
@@ -176,7 +180,8 @@ const loadModelAsset = async (
 
     return {
       scene,
-      sourceMesh
+      sourceMesh,
+      animations: gltf.animations ?? []
     }
   } catch {
     return null
@@ -196,83 +201,87 @@ export const createAquariumAssetManifest = (
   baseUrl: string = import.meta.env.BASE_URL ?? '/'
 ): AssetManifest => ({
   textures: [
-    { id: 'leaf-diffuse', url: resolvePublicAssetUrl('assets/aquarium/leaf-diffuse.png', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'leaf-alpha', url: resolvePublicAssetUrl('assets/aquarium/leaf-alpha.png', baseUrl), usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
-    { id: 'leaf-normal', url: resolvePublicAssetUrl('assets/aquarium/leaf-normal.png', baseUrl), usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
-    { id: 'leaf-roughness', url: resolvePublicAssetUrl('assets/aquarium/leaf-roughness.png', baseUrl), usageTag: 'plant', lod: 'medium', colorSpace: 'linear' },
-    { id: 'rock-diffuse', url: resolvePublicAssetUrl('assets/aquarium/rock-diffuse.png', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-normal', url: resolvePublicAssetUrl('assets/aquarium/rock-normal.png', baseUrl), usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
-    { id: 'rock-roughness', url: resolvePublicAssetUrl('assets/aquarium/rock-roughness.png', baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
-    { id: 'driftwood-diffuse', url: resolvePublicAssetUrl('assets/aquarium/driftwood-diffuse.png', baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-normal', url: resolvePublicAssetUrl('assets/aquarium/driftwood-normal.png', baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
-    { id: 'driftwood-roughness', url: resolvePublicAssetUrl('assets/aquarium/driftwood-roughness.png', baseUrl), usageTag: 'wood', lod: 'medium', colorSpace: 'linear' },
-    { id: 'driftwood-ao', url: resolvePublicAssetUrl('assets/aquarium/driftwood-ao.png', baseUrl), usageTag: 'wood', lod: 'medium', colorSpace: 'linear' },
-    { id: 'driftwood-bark-ao', url: resolvePublicAssetUrl('assets/aquarium/driftwood-bark-ao.png', baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
-    { id: 'driftwood-bark-cavity-mask', url: resolvePublicAssetUrl('assets/aquarium/driftwood-bark-cavity-mask.png', baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
-    { id: 'backdrop-depth', url: resolvePublicAssetUrl('assets/aquarium/backdrop-depth.png', baseUrl), usageTag: 'backdrop', lod: 'high' },
-    { id: 'fish-tropical-basecolor', url: resolvePublicAssetUrl('assets/aquarium/fish-tropical-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-tropical-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-tropical-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-tropical-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-tropical-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-tropical-alpha', url: resolvePublicAssetUrl('assets/aquarium/fish-tropical-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-angelfish-basecolor', url: resolvePublicAssetUrl('assets/aquarium/fish-angelfish-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-angelfish-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-angelfish-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-angelfish-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-angelfish-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-angelfish-alpha', url: resolvePublicAssetUrl('assets/aquarium/fish-angelfish-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-butterflyfish-basecolor', url: resolvePublicAssetUrl('assets/aquarium/fish-butterflyfish-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-butterflyfish-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-butterflyfish-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-butterflyfish-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-butterflyfish-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-butterflyfish-alpha', url: resolvePublicAssetUrl('assets/aquarium/fish-butterflyfish-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-neon-basecolor', url: resolvePublicAssetUrl('assets/aquarium/fish-neon-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-neon-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-neon-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-neon-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-neon-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-neon-alpha', url: resolvePublicAssetUrl('assets/aquarium/fish-neon-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-goldfish-basecolor', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-goldfish-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-goldfish-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-goldfish-alpha', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-scale-normal', url: resolvePublicAssetUrl('assets/aquarium/fish-scale-normal.svg', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-scale-roughness', url: resolvePublicAssetUrl('assets/aquarium/fish-scale-roughness.svg', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'substrate-sand-albedo', url: resolvePublicAssetUrl('assets/aquarium/substrate-sand-albedo.png', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'substrate-sand-normal', url: resolvePublicAssetUrl('assets/aquarium/substrate-sand-normal.png', baseUrl), usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
-    { id: 'substrate-sand-roughness', url: resolvePublicAssetUrl('assets/aquarium/substrate-sand-roughness.png', baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
-    { id: 'substrate-sand-ao', url: resolvePublicAssetUrl('assets/aquarium/substrate-sand-ao.png', baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' }
+    { id: 'leaf-diffuse', url: resolvePublicAssetUrl('assets/aquarium/textures/plants/leaf-diffuse.png', baseUrl), usageTag: 'plant', lod: 'high' },
+    { id: 'leaf-alpha', url: resolvePublicAssetUrl('assets/aquarium/textures/plants/leaf-alpha.png', baseUrl), usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
+    { id: 'leaf-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/plants/leaf-normal.png', baseUrl), usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
+    { id: 'leaf-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/plants/leaf-roughness.png', baseUrl), usageTag: 'plant', lod: 'medium', colorSpace: 'linear' },
+    { id: 'rock-diffuse', url: resolvePublicAssetUrl('assets/aquarium/textures/rocks/rock-diffuse.png', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/rocks/rock-normal.png', baseUrl), usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
+    { id: 'rock-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/rocks/rock-roughness.png', baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
+    { id: 'driftwood-diffuse', url: resolvePublicAssetUrl('assets/aquarium/textures/driftwood/driftwood-diffuse.png', baseUrl), usageTag: 'wood', lod: 'high' },
+    { id: 'driftwood-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/driftwood/driftwood-normal.png', baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
+    { id: 'driftwood-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/driftwood/driftwood-roughness.png', baseUrl), usageTag: 'wood', lod: 'medium', colorSpace: 'linear' },
+    { id: 'driftwood-ao', url: resolvePublicAssetUrl('assets/aquarium/textures/driftwood/driftwood-ao.png', baseUrl), usageTag: 'wood', lod: 'medium', colorSpace: 'linear' },
+    { id: 'driftwood-bark-ao', url: resolvePublicAssetUrl('assets/aquarium/textures/driftwood/driftwood-bark-ao.png', baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
+    { id: 'driftwood-bark-cavity-mask', url: resolvePublicAssetUrl('assets/aquarium/textures/driftwood/driftwood-bark-cavity-mask.png', baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
+    { id: 'backdrop-depth', url: resolvePublicAssetUrl('assets/aquarium/textures/backdrop/backdrop-depth.png', baseUrl), usageTag: 'backdrop', lod: 'high' },
+    { id: 'fish-tropical-basecolor', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-tropical-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-tropical-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-tropical-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-tropical-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-tropical-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-tropical-alpha', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-tropical-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-angelfish-basecolor', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-angelfish-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-angelfish-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-angelfish-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-angelfish-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-angelfish-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-angelfish-alpha', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-angelfish-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-butterflyfish-basecolor', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-butterflyfish-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-butterflyfish-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-butterflyfish-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-butterflyfish-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-butterflyfish-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-butterflyfish-alpha', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-butterflyfish-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-neon-basecolor', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-neon-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-neon-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-neon-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-neon-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-neon-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-neon-alpha', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-neon-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-goldfish-basecolor', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-goldfish-basecolor.png', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-goldfish-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-goldfish-normal.png', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-goldfish-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-goldfish-roughness.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-goldfish-alpha', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-goldfish-alpha.png', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'fish-scale-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-scale-normal.svg', baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
+    { id: 'fish-scale-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/fish/fish-scale-roughness.svg', baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
+    { id: 'substrate-sand-albedo', url: resolvePublicAssetUrl('assets/aquarium/textures/substrate/substrate-sand-albedo.png', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'substrate-sand-normal', url: resolvePublicAssetUrl('assets/aquarium/textures/substrate/substrate-sand-normal.png', baseUrl), usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
+    { id: 'substrate-sand-roughness', url: resolvePublicAssetUrl('assets/aquarium/textures/substrate/substrate-sand-roughness.png', baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
+    { id: 'substrate-sand-ao', url: resolvePublicAssetUrl('assets/aquarium/textures/substrate/substrate-sand-ao.png', baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' }
   ],
   models: [
-    { id: 'fish-tropical-school', url: resolvePublicAssetUrl('assets/aquarium/fish-tropical-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-tropical-hero', url: resolvePublicAssetUrl('assets/aquarium/fish-tropical-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-angelfish-school', url: resolvePublicAssetUrl('assets/aquarium/fish-angelfish-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-angelfish-hero', url: resolvePublicAssetUrl('assets/aquarium/fish-angelfish-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-butterflyfish-school', url: resolvePublicAssetUrl('assets/aquarium/fish-butterflyfish-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-butterflyfish-hero', url: resolvePublicAssetUrl('assets/aquarium/fish-butterflyfish-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-neon-school', url: resolvePublicAssetUrl('assets/aquarium/fish-neon-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-neon-hero', url: resolvePublicAssetUrl('assets/aquarium/fish-neon-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-goldfish-school', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-goldfish-hero', url: resolvePublicAssetUrl('assets/aquarium/fish-goldfish-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'plant-sword-cluster', url: resolvePublicAssetUrl('assets/aquarium/plant-sword-cluster.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-fan-cluster', url: resolvePublicAssetUrl('assets/aquarium/plant-fan-cluster.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-javafern-large', url: resolvePublicAssetUrl('assets/aquarium/plant-javafern-large.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-javafern-narrow', url: resolvePublicAssetUrl('assets/aquarium/plant-javafern-narrow.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-anubias-nana-clump', url: resolvePublicAssetUrl('assets/aquarium/plant-anubias-nana-clump.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-anubias-petite-clump', url: resolvePublicAssetUrl('assets/aquarium/plant-anubias-petite-clump.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-crypt-brown', url: resolvePublicAssetUrl('assets/aquarium/plant-crypt-brown.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-stem-green-bush', url: resolvePublicAssetUrl('assets/aquarium/plant-stem-green-bush.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-vallisneria-tall', url: resolvePublicAssetUrl('assets/aquarium/plant-vallisneria-tall.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'plant-hygrophila-rear', url: resolvePublicAssetUrl('assets/aquarium/plant-hygrophila-rear.glb', baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'driftwood-hero', url: resolvePublicAssetUrl('assets/aquarium/driftwood-hero.glb', baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-secondary-a', url: resolvePublicAssetUrl('assets/aquarium/driftwood-secondary-a.glb', baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-secondary-b', url: resolvePublicAssetUrl('assets/aquarium/driftwood-secondary-b.glb', baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-secondary-c', url: resolvePublicAssetUrl('assets/aquarium/driftwood-secondary-c.glb', baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl('assets/aquarium/rock-ridge-hero.glb', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-support-a', url: resolvePublicAssetUrl('assets/aquarium/rock-support-a.glb', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-support-b', url: resolvePublicAssetUrl('assets/aquarium/rock-support-b.glb', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-support-c', url: resolvePublicAssetUrl('assets/aquarium/rock-support-c.glb', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-pebble-cluster', url: resolvePublicAssetUrl('assets/aquarium/rock-pebble-cluster.glb', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-lava-base-cluster-a', url: resolvePublicAssetUrl('assets/aquarium/rock-lava-base-cluster-a.glb', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-lava-base-cluster-b', url: resolvePublicAssetUrl('assets/aquarium/rock-lava-base-cluster-b.glb', baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-lava-transition-chips', url: resolvePublicAssetUrl('assets/aquarium/rock-lava-transition-chips.glb', baseUrl), usageTag: 'rock', lod: 'high' }
+    { id: 'fish-clownfish-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-clownfish-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-clownfish-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-clownfish-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-angelfish-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-angelfish-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-angelfish-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-angelfish-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-butterflyfish-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-butterflyfish-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-butterflyfish-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-butterflyfish-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-neon-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-neon-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-neon-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-neon-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-goldfish-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-goldfish-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-goldfish-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-goldfish-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-abeni-puffer-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-abeni-puffer-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-abeni-puffer-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-abeni-puffer-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-corydoras-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-corydoras-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-corydoras-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-corydoras-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-african-lampeye-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-african-lampeye-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-african-lampeye-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-african-lampeye-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-rasbora-heteromorpha-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-rasbora-heteromorpha-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-rasbora-heteromorpha-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-rasbora-heteromorpha-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-yamato-shrimp-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-yamato-shrimp-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-yamato-shrimp-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-yamato-shrimp-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'plant-amazon-sword', url: resolvePublicAssetUrl('assets/aquarium/models/plants/plant-amazon-sword.glb', baseUrl), usageTag: 'plant', lod: 'high' },
+    { id: 'plant-matsumo', url: resolvePublicAssetUrl('assets/aquarium/models/plants/plant-matsumo.glb', baseUrl), usageTag: 'plant', lod: 'high' },
+    { id: 'plant-willow-moss', url: resolvePublicAssetUrl('assets/aquarium/models/plants/plant-willow-moss.glb', baseUrl), usageTag: 'plant', lod: 'high' },
+    { id: 'plant-hygrophila-rear', url: resolvePublicAssetUrl('assets/aquarium/models/plants/plant-hygrophila-rear.glb', baseUrl), usageTag: 'plant', lod: 'high' },
+    { id: 'driftwood-hero', url: resolvePublicAssetUrl('assets/aquarium/models/driftwood/driftwood-hero.glb', baseUrl), usageTag: 'wood', lod: 'high' },
+    { id: 'driftwood-secondary-a', url: resolvePublicAssetUrl('assets/aquarium/models/driftwood/driftwood-secondary-a.glb', baseUrl), usageTag: 'wood', lod: 'high' },
+    { id: 'driftwood-secondary-b', url: resolvePublicAssetUrl('assets/aquarium/models/driftwood/driftwood-secondary-b.glb', baseUrl), usageTag: 'wood', lod: 'high' },
+    { id: 'driftwood-secondary-c', url: resolvePublicAssetUrl('assets/aquarium/models/driftwood/driftwood-secondary-c.glb', baseUrl), usageTag: 'wood', lod: 'high' },
+    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-ridge-hero.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-support-a', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-support-a.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-support-b', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-support-b.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-support-c', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-support-c.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-pebble-cluster', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-pebble-cluster.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-lava-base-cluster-a', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-lava-base-cluster-a.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-lava-base-cluster-b', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-lava-base-cluster-b.glb', baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-lava-transition-chips', url: resolvePublicAssetUrl('assets/aquarium/models/rocks/rock-lava-transition-chips.glb', baseUrl), usageTag: 'rock', lod: 'high' }
   ],
   environment: [
-    { id: 'aquarium-hdri', url: resolvePublicAssetUrl('assets/aquarium/aquarium-hdri.hdr', baseUrl), usageTag: 'environment', lod: 'high' }
+    { id: 'aquarium-hdri', url: resolvePublicAssetUrl('assets/aquarium/environment/aquarium-hdri.hdr', baseUrl), usageTag: 'environment', lod: 'high' }
   ]
 })
 

@@ -142,8 +142,8 @@ describe('DetailedFishSystem locomotion profiles', () => {
     expect(goldfish?.locomotionProfileId).toBe('goldfish-wobble')
 
     expect(tropical?.proceduralForwardAxis).toEqual([1, 0, 0])
-    expect(tropical?.schoolForwardAxis).toEqual([1, 0, 0])
-    expect(tropical?.heroForwardAxis).toEqual([1, 0, 0])
+    expect(tropical?.schoolForwardAxis).toEqual([0, 0, 1])
+    expect(tropical?.heroForwardAxis).toEqual([0, 0, 1])
     expect(tropical?.proceduralCorrectionQuaternion).toBeUndefined()
     expect(tropical?.schoolCorrectionQuaternion).toBeUndefined()
     expect(tropical?.heroCorrectionQuaternion).toBeUndefined()
@@ -1044,6 +1044,51 @@ describe('DetailedFishSystem premium materials', () => {
     expect(material.emissive.getHex()).toBe(0x000000)
   })
 
+  test('keeps tropical authored hero assets organic even when the GLB material imports as metallic', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    ;(instance as unknown as {
+      visualAssets: {
+        textures: Record<string, THREE.Texture | null>
+      } | null
+    }).visualAssets = {
+      textures: {}
+    }
+
+    const { createHeroFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createHeroFishMaterial: (
+        baseMaterial: THREE.Material,
+        variant: {
+          name: string
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          scale: number
+          speed: number
+        }
+      ) => THREE.MeshPhysicalMaterial
+    }
+
+    const material = createHeroFishMaterial.bind(instance)(
+      new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        metalness: 1,
+        roughness: 0.08
+      }),
+      {
+        name: 'Tropical',
+        primaryColor: new THREE.Color('#ff8844'),
+        secondaryColor: new THREE.Color('#ffee88'),
+        scale: 1,
+        speed: 1
+      }
+    )
+
+    expect(material.metalness).toBeLessThanOrEqual(0.01)
+    expect(material.roughness).toBeGreaterThanOrEqual(0.5)
+    expect(material.clearcoat).toBeLessThanOrEqual(0.4)
+    expect(material.reflectivity).toBeLessThanOrEqual(0.5)
+    expect(material.envMapIntensity).toBeLessThanOrEqual(0.45)
+  })
+
   test('keeps butterflyfish asset materials subdued so authored markings do not read as chrome', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const butterflyMap = new THREE.Texture()
@@ -1273,8 +1318,8 @@ describe('DetailedFishSystem asset-backed models', () => {
 
     expect(variants.find((variant) => variant.name === 'Tropical')).toMatchObject({
       patternTextureId: 'fish-tropical',
-      schoolModelId: 'fish-tropical-school',
-      heroModelId: 'fish-tropical-hero'
+      schoolModelId: 'fish-clownfish-school',
+      heroModelId: 'fish-clownfish-hero'
     })
     expect(variants.find((variant) => variant.name === 'Angelfish')).toMatchObject({
       patternTextureId: 'fish-angelfish',
@@ -1298,6 +1343,36 @@ describe('DetailedFishSystem asset-backed models', () => {
       baseColorTextureId: 'fish-goldfish-basecolor',
       schoolModelId: 'fish-goldfish-school',
       heroModelId: 'fish-goldfish-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'AbeniPuffer')).toMatchObject({
+      patternTextureId: 'fish-goldfish',
+      baseColorTextureId: 'fish-goldfish-basecolor',
+      schoolModelId: 'fish-abeni-puffer-school',
+      heroModelId: 'fish-abeni-puffer-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'Corydoras')).toMatchObject({
+      patternTextureId: 'fish-goldfish',
+      baseColorTextureId: 'fish-goldfish-basecolor',
+      schoolModelId: 'fish-corydoras-school',
+      heroModelId: 'fish-corydoras-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'AfricanLampeye')).toMatchObject({
+      patternTextureId: 'fish-neon',
+      baseColorTextureId: 'fish-neon-basecolor',
+      schoolModelId: 'fish-african-lampeye-school',
+      heroModelId: 'fish-african-lampeye-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'RasboraHeteromorpha')).toMatchObject({
+      patternTextureId: 'fish-tropical',
+      baseColorTextureId: 'fish-tropical-basecolor',
+      schoolModelId: 'fish-rasbora-heteromorpha-school',
+      heroModelId: 'fish-rasbora-heteromorpha-hero'
+    })
+    expect(variants.find((variant) => variant.name === 'YamatoShrimp')).toMatchObject({
+      patternTextureId: 'fish-goldfish',
+      baseColorTextureId: 'fish-goldfish-basecolor',
+      schoolModelId: 'fish-yamato-shrimp-school',
+      heroModelId: 'fish-yamato-shrimp-hero'
     })
   })
 
@@ -1496,7 +1571,7 @@ describe('DetailedFishSystem asset-backed models', () => {
       speed: 1,
       primaryColor: new THREE.Color('#ff8844'),
       secondaryColor: new THREE.Color('#ffee88'),
-      schoolModelId: 'fish-tropical-school'
+      schoolModelId: 'fish-clownfish-school'
     }]
     ;(instance as unknown as {
       instancedMeshes: THREE.InstancedMesh[]
@@ -1583,7 +1658,7 @@ describe('DetailedFishSystem asset-backed models', () => {
       createHeroFishMeshes: (counts: number[]) => void
     }).visualAssets = {
       models: {
-        'fish-tropical-school': { sourceMesh }
+        'fish-clownfish-school': { sourceMesh }
       }
     }
     ;(instance as unknown as {
@@ -1650,7 +1725,7 @@ describe('DetailedFishSystem asset-backed models', () => {
       primaryColor: new THREE.Color('#ff8844'),
       secondaryColor: new THREE.Color('#ffee88'),
       alphaTextureId: 'fish-tropical-alpha',
-      schoolModelId: 'fish-tropical-school'
+      schoolModelId: 'fish-clownfish-school'
     }]
     ;(instance as unknown as {
       instancedMeshes: THREE.InstancedMesh[]
@@ -1748,7 +1823,7 @@ describe('DetailedFishSystem asset-backed models', () => {
         'fish-tropical-alpha': fallbackAlpha
       },
       models: {
-        'fish-tropical-school': { sourceMesh }
+        'fish-clownfish-school': { sourceMesh }
       }
     }
     ;(instance as unknown as {
@@ -1960,6 +2035,123 @@ describe('DetailedFishSystem asset-backed models', () => {
     const motionNodes = heroObject.userData.motionNodes as { body?: THREE.Object3D; tail?: THREE.Object3D | null } | undefined
     expect(motionNodes?.body).toBeInstanceOf(THREE.Group)
     expect(motionNodes?.tail?.name).toBe('TailFin')
+  })
+
+  test('plays authored hero animation clips on cloned hero scenes', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const heroScene = new THREE.Group()
+    const tail = new THREE.Object3D()
+    tail.name = 'Tail'
+    heroScene.add(tail)
+    const clip = new THREE.AnimationClip('Swim', 1, [
+      new THREE.VectorKeyframeTrack('Tail.position', [0, 1], [0, 0, 0, 1, 0, 0])
+    ])
+
+    const createHeroFishObject = (DetailedFishSystem.prototype as unknown as {
+      createHeroFishObject: (
+        variant: {
+          name: string
+          scale: number
+          speed: number
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          heroModelId?: string
+          heroForwardAxis?: [number, number, number]
+        },
+        heroAsset: {
+          scene: THREE.Group
+          sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> | null
+          animations: THREE.AnimationClip[]
+        } | null
+      ) => THREE.Object3D
+    }).createHeroFishObject.bind(instance)
+    const updateHeroAnimations = (DetailedFishSystem.prototype as unknown as {
+      updateHeroAnimations: (deltaTime: number) => void
+    }).updateHeroAnimations.bind(instance)
+
+    const heroObject = createHeroFishObject({
+      name: 'Tropical',
+      scale: 1,
+      speed: 1,
+      primaryColor: new THREE.Color('#ff8844'),
+      secondaryColor: new THREE.Color('#ffee88'),
+      heroModelId: 'fish-clownfish-hero',
+      heroForwardAxis: [0, 0, 1]
+    }, {
+      scene: heroScene,
+      sourceMesh: null,
+      animations: [clip]
+    })
+    ;(instance as unknown as { heroFishMeshes: THREE.Object3D[] }).heroFishMeshes = [heroObject]
+
+    const clonedTail = heroObject.getObjectByName('Tail')
+    expect(clonedTail?.position.x).toBe(0)
+
+    updateHeroAnimations(0.5)
+
+    expect(clonedTail?.position.x).toBeGreaterThan(0.25)
+  })
+
+  test('uses cloned skinned hero scenes so authored neon tetra animation can play', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const heroScene = new THREE.Group()
+    const tail = new THREE.Object3D()
+    tail.name = 'Tail'
+    heroScene.add(tail)
+    const sourceMesh = new THREE.SkinnedMesh(
+      new THREE.BoxGeometry(1, 0.3, 0.2),
+      new THREE.MeshStandardMaterial()
+    )
+    const rootBone = new THREE.Bone()
+    const skeleton = new THREE.Skeleton([rootBone])
+    sourceMesh.add(rootBone)
+    sourceMesh.bind(skeleton)
+    heroScene.add(sourceMesh)
+    const clip = new THREE.AnimationClip('Neon swim', 1, [
+      new THREE.VectorKeyframeTrack('Tail.position', [0, 1], [0, 0, 0, 1, 0, 0])
+    ])
+    ;(instance as unknown as { heroFishMeshes: THREE.Object3D[] }).heroFishMeshes = []
+
+    const createHeroFishObject = (DetailedFishSystem.prototype as unknown as {
+      createHeroFishObject: (
+        variant: {
+          name: string
+          scale: number
+          speed: number
+          primaryColor: THREE.Color
+          secondaryColor: THREE.Color
+          heroModelId?: string
+        },
+        heroAsset: {
+          scene: THREE.Group
+          sourceMesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material> | null
+          animations: THREE.AnimationClip[]
+        } | null
+      ) => THREE.Object3D
+    }).createHeroFishObject.bind(instance)
+    const updateHeroAnimations = (DetailedFishSystem.prototype as unknown as {
+      updateHeroAnimations: (deltaTime: number) => void
+    }).updateHeroAnimations.bind(instance)
+
+    const heroObject = createHeroFishObject({
+      name: 'Neon',
+      scale: 0.36,
+      speed: 1.28,
+      primaryColor: new THREE.Color('#36d5ff'),
+      secondaryColor: new THREE.Color('#ff4058'),
+      heroModelId: 'fish-neon-hero'
+    }, {
+      scene: heroScene,
+      sourceMesh,
+      animations: [clip]
+    })
+    ;(instance as unknown as { heroFishMeshes: THREE.Object3D[] }).heroFishMeshes = [heroObject]
+
+    expect(heroObject.getObjectByName('Tail')?.position.x).toBe(0)
+
+    updateHeroAnimations(0.5)
+
+    expect(heroObject.getObjectByName('Tail')?.position.x).toBeGreaterThan(0.25)
   })
 
   test('falls back to the procedural hero fish when the hero asset is missing', () => {
@@ -2335,6 +2527,78 @@ describe('DetailedFishSystem quality scaling', () => {
 
     system.setQuality('standard')
     expect(internals.heroFishMeshes.every((mesh) => mesh.visible)).toBe(true)
+  })
+
+  test('keeps animated asset-backed clownfish hero visible on simple quality', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const heroScene = new THREE.Group()
+    heroScene.add(new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.2, 0.6),
+      new THREE.MeshStandardMaterial()
+    ))
+    const animatedClip = new THREE.AnimationClip('swim', 1, [])
+    const system = new DetailedFishSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      models: {
+        'fish-clownfish-school': null,
+        'fish-clownfish-hero': {
+          scene: heroScene,
+          sourceMesh: null,
+          animations: [animatedClip]
+        }
+      },
+      environment: {}
+    })
+
+    system.setQuality('simple')
+    system.setFishGroups([
+      { speciesId: 'clownfish', count: 4 }
+    ])
+
+    const internals = system as unknown as {
+      heroFishMeshes: THREE.Object3D[]
+    }
+    const clownfishHero = internals.heroFishMeshes.find((mesh) => mesh.userData.variantIndex === 0)
+
+    expect(clownfishHero).toBeDefined()
+    expect(clownfishHero?.visible).toBe(true)
+  })
+
+  test('prioritizes animated asset-backed clownfish hero even when older schools have larger counts', () => {
+    const scene = new THREE.Scene()
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    const heroScene = new THREE.Group()
+    heroScene.add(new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.2, 0.6),
+      new THREE.MeshStandardMaterial()
+    ))
+    const system = new DetailedFishSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      models: {
+        'fish-clownfish-school': null,
+        'fish-clownfish-hero': {
+          scene: heroScene,
+          sourceMesh: null,
+          animations: [new THREE.AnimationClip('swim', 1, [])]
+        }
+      },
+      environment: {}
+    })
+
+    system.setFishGroups([
+      { speciesId: 'neon-tetra', count: 12 },
+      { speciesId: 'angelfish', count: 6 },
+      { speciesId: 'clownfish', count: 1 }
+    ])
+
+    const internals = system as unknown as {
+      heroFishMeshes: THREE.Object3D[]
+    }
+
+    expect(internals.heroFishMeshes.some((mesh) => mesh.userData.variantIndex === 0)).toBe(true)
   })
 
   test('keeps the hero fish nose behind the front safe plane even with a forward depth offset', () => {
@@ -2774,7 +3038,12 @@ describe('DetailedFishSystem variant mapping', () => {
       { name: 'Angelfish' },
       { name: 'Butterflyfish' },
       { name: 'Neon' },
-      { name: 'Goldfish' }
+      { name: 'Goldfish' },
+      { name: 'AbeniPuffer' },
+      { name: 'Corydoras' },
+      { name: 'AfricanLampeye' },
+      { name: 'RasboraHeteromorpha' },
+      { name: 'YamatoShrimp' }
     ]
 
     const resolveVariantIndex = (DetailedFishSystem.prototype as unknown as {
@@ -2786,6 +3055,11 @@ describe('DetailedFishSystem variant mapping', () => {
     expect(resolveVariantIndex('butterflyfish')).toBe(2)
     expect(resolveVariantIndex('cardinal-tetra')).toBe(3)
     expect(resolveVariantIndex('goldfish')).toBe(4)
+    expect(resolveVariantIndex('abeni-puffer')).toBe(5)
+    expect(resolveVariantIndex('corydoras')).toBe(6)
+    expect(resolveVariantIndex('african-lampeye')).toBe(7)
+    expect(resolveVariantIndex('rasbora-heteromorpha')).toBe(8)
+    expect(resolveVariantIndex('yamato-shrimp')).toBe(9)
   })
 })
 

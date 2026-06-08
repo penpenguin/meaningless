@@ -2,7 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
 
-const outputDir = path.resolve('public/assets/aquarium')
+const plantTextureOutputDir = path.resolve('public/assets/aquarium/textures/plants')
+const rockTextureOutputDir = path.resolve('public/assets/aquarium/textures/rocks')
+const backdropTextureOutputDir = path.resolve('public/assets/aquarium/textures/backdrop')
 
 const leafSize = 1024
 const rockSize = 1024
@@ -74,7 +76,7 @@ const encodePng = (width, height, rgba) => {
   ])
 }
 
-const writePng = (filename, width, height, rgba) => {
+const writePng = (outputDir, filename, width, height, rgba) => {
   fs.writeFileSync(path.join(outputDir, filename), encodePng(width, height, rgba))
 }
 
@@ -395,21 +397,23 @@ const createBackdropTexture = () => {
 }
 
 const run = () => {
-  fs.mkdirSync(outputDir, { recursive: true })
+  fs.mkdirSync(plantTextureOutputDir, { recursive: true })
+  fs.mkdirSync(rockTextureOutputDir, { recursive: true })
+  fs.mkdirSync(backdropTextureOutputDir, { recursive: true })
 
   const leaf = createLeafTextures()
-  writePng('leaf-diffuse.png', leafSize, leafSize, leaf.diffuse)
-  writePng('leaf-alpha.png', leafSize, leafSize, leaf.alpha)
-  writePng('leaf-normal.png', leafSize, leafSize, leaf.normal)
-  writePng('leaf-roughness.png', leafSize, leafSize, leaf.roughness)
+  writePng(plantTextureOutputDir, 'leaf-diffuse.png', leafSize, leafSize, leaf.diffuse)
+  writePng(plantTextureOutputDir, 'leaf-alpha.png', leafSize, leafSize, leaf.alpha)
+  writePng(plantTextureOutputDir, 'leaf-normal.png', leafSize, leafSize, leaf.normal)
+  writePng(plantTextureOutputDir, 'leaf-roughness.png', leafSize, leafSize, leaf.roughness)
 
   const rock = createRockTextures()
-  writePng('rock-diffuse.png', rockSize, rockSize, rock.diffuse)
-  writePng('rock-normal.png', rockSize, rockSize, rock.normal)
-  writePng('rock-roughness.png', rockSize, rockSize, rock.roughness)
+  writePng(rockTextureOutputDir, 'rock-diffuse.png', rockSize, rockSize, rock.diffuse)
+  writePng(rockTextureOutputDir, 'rock-normal.png', rockSize, rockSize, rock.normal)
+  writePng(rockTextureOutputDir, 'rock-roughness.png', rockSize, rockSize, rock.roughness)
 
   const backdrop = createBackdropTexture()
-  writePng('backdrop-depth.png', backdropSize, backdropSize, backdrop)
+  writePng(backdropTextureOutputDir, 'backdrop-depth.png', backdropSize, backdropSize, backdrop)
 
   console.log('Generated shared aquarium PNG textures:', [
     'leaf-diffuse.png',

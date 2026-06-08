@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { BoidsSystem } from '../utils/Boids'
 import type { AquascapeLayoutStyle, FishGroup, SchoolMood, Tuning } from '../types/aquarium'
 import { getFishContent, getFishContentList } from '../content/registry'
@@ -457,15 +458,15 @@ export class DetailedFishSystem {
         speed: 1.0,
         locomotionProfileId: 'calm-cruiser',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-tropical',
         baseColorTextureId: 'fish-tropical-basecolor',
         normalTextureId: 'fish-tropical-normal',
         roughnessTextureId: 'fish-tropical-roughness',
         alphaTextureId: 'fish-tropical-alpha',
-        schoolModelId: 'fish-tropical-school',
-        heroModelId: 'fish-tropical-hero',
+        schoolModelId: 'fish-clownfish-school',
+        heroModelId: 'fish-clownfish-hero',
         silhouette: {
           bodyLength: 1.45,
           bodyHeight: 0.38,
@@ -604,6 +605,161 @@ export class DetailedFishSystem {
           pectoralLength: 0.28,
           topFullness: 0.82,
           bellyFullness: 1.02
+        }
+      },
+      {
+        name: 'AbeniPuffer',
+        primaryColor: new THREE.Color(0xd8bd6b),
+        secondaryColor: new THREE.Color(0x4d5538),
+        scale: 0.42,
+        speed: 0.72,
+        locomotionProfileId: 'goldfish-wobble',
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
+        patternTextureId: 'fish-goldfish',
+        baseColorTextureId: 'fish-goldfish-basecolor',
+        normalTextureId: 'fish-goldfish-normal',
+        roughnessTextureId: 'fish-goldfish-roughness',
+        alphaTextureId: 'fish-goldfish-alpha',
+        schoolModelId: 'fish-abeni-puffer-school',
+        heroModelId: 'fish-abeni-puffer-hero',
+        silhouette: {
+          bodyLength: 1.02,
+          bodyHeight: 0.48,
+          bodyThickness: 0.44,
+          noseLength: 0.16,
+          tailLength: 0.32,
+          tailHeight: 0.34,
+          dorsalHeight: 0.18,
+          ventralHeight: 0.12,
+          pectoralLength: 0.2,
+          topFullness: 0.96,
+          bellyFullness: 1.08
+        }
+      },
+      {
+        name: 'Corydoras',
+        primaryColor: new THREE.Color(0xd7c7a0),
+        secondaryColor: new THREE.Color(0x4c453c),
+        scale: 0.46,
+        speed: 0.68,
+        locomotionProfileId: 'calm-cruiser',
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
+        patternTextureId: 'fish-goldfish',
+        baseColorTextureId: 'fish-goldfish-basecolor',
+        normalTextureId: 'fish-goldfish-normal',
+        roughnessTextureId: 'fish-goldfish-roughness',
+        alphaTextureId: 'fish-goldfish-alpha',
+        schoolModelId: 'fish-corydoras-school',
+        heroModelId: 'fish-corydoras-hero',
+        silhouette: {
+          bodyLength: 1.36,
+          bodyHeight: 0.34,
+          bodyThickness: 0.3,
+          noseLength: 0.22,
+          tailLength: 0.34,
+          tailHeight: 0.28,
+          dorsalHeight: 0.24,
+          ventralHeight: 0.1,
+          pectoralLength: 0.24,
+          topFullness: 0.78,
+          bellyFullness: 0.9
+        }
+      },
+      {
+        name: 'AfricanLampeye',
+        primaryColor: new THREE.Color(0xcfe8d5),
+        secondaryColor: new THREE.Color(0xaed6ff),
+        scale: 0.34,
+        speed: 1.28,
+        locomotionProfileId: 'slender-darter',
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
+        patternTextureId: 'fish-neon',
+        baseColorTextureId: 'fish-neon-basecolor',
+        normalTextureId: 'fish-neon-normal',
+        roughnessTextureId: 'fish-neon-roughness',
+        alphaTextureId: 'fish-neon-alpha',
+        schoolModelId: 'fish-african-lampeye-school',
+        heroModelId: 'fish-african-lampeye-hero',
+        silhouette: {
+          bodyLength: 1.62,
+          bodyHeight: 0.2,
+          bodyThickness: 0.14,
+          noseLength: 0.24,
+          tailLength: 0.34,
+          tailHeight: 0.26,
+          dorsalHeight: 0.1,
+          ventralHeight: 0.06,
+          pectoralLength: 0.12,
+          topFullness: 0.54,
+          bellyFullness: 0.62
+        }
+      },
+      {
+        name: 'RasboraHeteromorpha',
+        primaryColor: new THREE.Color(0xd97832),
+        secondaryColor: new THREE.Color(0x2f241f),
+        scale: 0.4,
+        speed: 1.16,
+        locomotionProfileId: 'slender-darter',
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
+        patternTextureId: 'fish-tropical',
+        baseColorTextureId: 'fish-tropical-basecolor',
+        normalTextureId: 'fish-tropical-normal',
+        roughnessTextureId: 'fish-tropical-roughness',
+        alphaTextureId: 'fish-tropical-alpha',
+        schoolModelId: 'fish-rasbora-heteromorpha-school',
+        heroModelId: 'fish-rasbora-heteromorpha-hero',
+        silhouette: {
+          bodyLength: 1.5,
+          bodyHeight: 0.3,
+          bodyThickness: 0.18,
+          noseLength: 0.24,
+          tailLength: 0.34,
+          tailHeight: 0.3,
+          dorsalHeight: 0.14,
+          ventralHeight: 0.08,
+          pectoralLength: 0.14,
+          topFullness: 0.64,
+          bellyFullness: 0.7
+        }
+      },
+      {
+        name: 'YamatoShrimp',
+        primaryColor: new THREE.Color(0xcab48c),
+        secondaryColor: new THREE.Color(0x76684f),
+        scale: 0.42,
+        speed: 0.76,
+        locomotionProfileId: 'calm-cruiser',
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
+        patternTextureId: 'fish-goldfish',
+        baseColorTextureId: 'fish-goldfish-basecolor',
+        normalTextureId: 'fish-goldfish-normal',
+        roughnessTextureId: 'fish-goldfish-roughness',
+        alphaTextureId: 'fish-goldfish-alpha',
+        schoolModelId: 'fish-yamato-shrimp-school',
+        heroModelId: 'fish-yamato-shrimp-hero',
+        silhouette: {
+          bodyLength: 1.32,
+          bodyHeight: 0.18,
+          bodyThickness: 0.12,
+          noseLength: 0.36,
+          tailLength: 0.28,
+          tailHeight: 0.18,
+          dorsalHeight: 0.04,
+          ventralHeight: 0.04,
+          pectoralLength: 0.28,
+          topFullness: 0.46,
+          bellyFullness: 0.54
         }
       }
     ]
@@ -1828,7 +1984,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
 
         const heroAsset = this.getVisualModel(variant.heroModelId)
         const heroObject = this.createHeroFishObject(variant, heroAsset)
-        heroObject.visible = this.currentQuality === 'standard'
+        heroObject.visible = this.shouldShowHeroFishOnQuality(heroObject, this.currentQuality)
         heroObject.userData = {
           ...heroObject.userData,
           role: 'hero-fish',
@@ -1863,18 +2019,21 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     heroAsset: LoadedModelAsset | null
   ): THREE.Object3D {
     const sourceMesh = heroAsset?.sourceMesh ?? null
-    if (sourceMesh) {
+    const sourceIsSkinnedMesh = (sourceMesh as (THREE.Mesh & { isSkinnedMesh?: boolean }) | null)?.isSkinnedMesh === true
+    if (sourceMesh && !sourceIsSkinnedMesh) {
       const heroMesh = new THREE.Mesh(
         sourceMesh.geometry,
         this.createHeroFishMaterial(sourceMesh.material, variant)
       )
       heroMesh.castShadow = true
       heroMesh.receiveShadow = true
-      return this.wrapHeroMotionObject(heroMesh, variant)
+      const heroObject = this.wrapHeroMotionObject(heroMesh, variant)
+      this.installHeroAnimation(heroObject, heroAsset?.animations ?? [])
+      return heroObject
     }
 
     if (heroAsset?.scene) {
-      const heroGroup = heroAsset.scene.clone(true)
+      const heroGroup = cloneSkeleton(heroAsset.scene) as THREE.Group
       heroGroup.traverse((object) => {
         const mesh = object as THREE.Mesh
         const material = (mesh as { material?: THREE.Material | THREE.Material[] }).material
@@ -1890,7 +2049,9 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         mesh.receiveShadow = true
       })
 
-      return this.wrapHeroMotionObject(heroGroup, variant)
+      const heroObject = this.wrapHeroMotionObject(heroGroup, variant)
+      this.installHeroAnimation(heroObject, heroAsset.animations ?? [])
+      return heroObject
     }
 
     const heroMaterial = this.createFishMaterial(variant).clone()
@@ -1903,6 +2064,26 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     heroMesh.castShadow = true
     heroMesh.receiveShadow = true
     return this.wrapHeroMotionObject(heroMesh, variant)
+  }
+
+  private installHeroAnimation(heroObject: THREE.Object3D, animations: THREE.AnimationClip[]): void {
+    if (animations.length === 0) return
+
+    const mixer = new THREE.AnimationMixer(heroObject)
+    animations.forEach((clip) => {
+      mixer.clipAction(clip).play()
+    })
+    heroObject.userData.heroAnimationMixer = mixer
+    heroObject.userData.hasAuthoredHeroAnimation = true
+  }
+
+  private updateHeroAnimations(deltaTime: number): void {
+    if (deltaTime <= 0) return
+
+    ;(this.heroFishMeshes ?? []).forEach((heroObject) => {
+      const mixer = heroObject.userData.heroAnimationMixer as THREE.AnimationMixer | undefined
+      mixer?.update(deltaTime)
+    })
   }
 
   private wrapHeroMotionObject(body: THREE.Object3D, variant: FishVariant): THREE.Group {
@@ -2167,6 +2348,28 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
   } {
     const showcaseAccent = this.layoutStyle === 'nature-showcase'
 
+    if (variant.name === 'Tropical') {
+      return hero
+        ? {
+            metalness: 0,
+            roughness: 0.56,
+            clearcoat: 0.32,
+            clearcoatRoughness: 0.58,
+            reflectivity: 0.46,
+            envMapIntensity: 0.38,
+            normalScale: new THREE.Vector2(0.18, 0.12)
+          }
+        : {
+            metalness: 0,
+            roughness: 0.6,
+            clearcoat: 0.24,
+            clearcoatRoughness: 0.62,
+            reflectivity: 0.42,
+            envMapIntensity: 0.32,
+            normalScale: new THREE.Vector2(0.14, 0.1)
+          }
+    }
+
     if (variant.name === 'Butterflyfish') {
       if (showcaseAccent) {
         return hero
@@ -2302,6 +2505,10 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       return 1
     }
 
+    if (this.hasAuthoredHeroAsset(variant)) {
+      return 18
+    }
+
     if (variant.name !== 'Goldfish' && variant.name !== 'Butterflyfish') {
       return 1
     }
@@ -2315,6 +2522,10 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     }
 
     return 1
+  }
+
+  private hasAuthoredHeroAsset(variant?: FishVariant): boolean {
+    return (this.getVisualModel(variant?.heroModelId)?.animations?.length ?? 0) > 0
   }
 
   private resolveHeroAccentScaleMultiplier(variant: FishVariant): number {
@@ -2386,7 +2597,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       normalScale: materialResponse.normalScale,
       roughnessMap: resolvedRoughnessMap,
       color: texturedMaterial.color?.clone() ?? new THREE.Color(0xffffff),
-      metalness: typeof texturedMaterial.metalness === 'number' ? texturedMaterial.metalness : materialResponse.metalness,
+      metalness: materialResponse.metalness,
       roughness: materialResponse.roughness,
       clearcoat: Math.max(materialResponse.clearcoat, texturedMaterial.clearcoat ?? 0),
       clearcoatRoughness: Math.min(materialResponse.clearcoatRoughness, texturedMaterial.clearcoatRoughness ?? materialResponse.clearcoatRoughness),
@@ -2468,6 +2679,11 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     if (archetype === 'Angelfish') return this.safeVariantIndex('angelfish')
     if (archetype === 'Butterflyfish') return this.safeVariantIndex('butterflyfish')
     if (archetype === 'Goldfish') return this.safeVariantIndex('goldfish')
+    if (archetype === 'AbeniPuffer') return this.safeVariantIndex('abenipuffer')
+    if (archetype === 'Corydoras') return this.safeVariantIndex('corydoras')
+    if (archetype === 'AfricanLampeye') return this.safeVariantIndex('africanlampeye')
+    if (archetype === 'RasboraHeteromorpha') return this.safeVariantIndex('rasboraheteromorpha')
+    if (archetype === 'YamatoShrimp') return this.safeVariantIndex('yamatoshrimp')
     return this.safeVariantIndex('neon')
   }
 
@@ -2785,6 +3001,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     this.applyBehaviorForces(bounds, boundsSize, behavior, elapsedTime, safeDeltaTime)
     this.boids.update(safeDeltaTime)
     this.syncInstancedMeshes(bounds, behavior, elapsedTime, safeDeltaTime)
+    this.updateHeroAnimations(safeDeltaTime)
   }
 
   private applyBehaviorForces(
@@ -3103,7 +3320,11 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     })
 
     heroFishMeshes.forEach((object) => {
-      object.visible = quality === 'standard'
+      object.visible = this.shouldShowHeroFishOnQuality(object, quality)
     })
+  }
+
+  private shouldShowHeroFishOnQuality(heroObject: THREE.Object3D, quality: QualityLevel): boolean {
+    return quality === 'standard' || heroObject.userData.hasAuthoredHeroAnimation === true
   }
 }

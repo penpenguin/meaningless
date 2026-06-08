@@ -196,4 +196,18 @@ describe('AudioManager', () => {
     expect(audioContext?.lastBufferSource?.loop).toBe(true)
     expect(audioContext?.lastBufferSource?.start).toHaveBeenCalled()
   })
+
+  it('loads the default underwater ambient from the organized audio directory', async () => {
+    const arrayBuffer = new ArrayBuffer(8)
+    const response = new Response(arrayBuffer)
+    const fetchMock = vi.fn(async () => response)
+    window.fetch = fetchMock as unknown as typeof fetch
+
+    const manager = new AudioManager()
+    manager.setEnabled(true)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fetchMock).toHaveBeenCalledWith('/audio/underwater-loop.wav')
+  })
 })

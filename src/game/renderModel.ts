@@ -28,18 +28,16 @@ const getLaneCounts = (tank: GameTank): Record<Lane, number> => {
 }
 
 const getSchoolMood = (tank: GameTank, schoolLaneShare: number, school: GameTank['fishSchools'][number]): SchoolMood => {
-  const quality = tank.progression.waterQuality
   const comfort = tank.progression.comfort
   const totalFish = tank.fishSchools.reduce((sum, entry) => sum + entry.count, 0)
   const crowding = Math.max(0, totalFish - 18)
 
-  if (quality < 45 || comfort < 35 || crowding >= 7 || (totalFish >= 16 && schoolLaneShare >= 0.72)) {
+  if (comfort < 35 || crowding >= 7 || (totalFish >= 16 && schoolLaneShare >= 0.72)) {
     return 'alert'
   }
 
   if (
     school.lane === 'top' &&
-    quality >= 78 &&
     comfort >= 60 &&
     crowding <= 2 &&
     (totalFish < 16 || schoolLaneShare <= 0.6)
@@ -98,29 +96,18 @@ const getActiveTank = (state: GameAppState): GameTank => {
 
 export const createAquariumTheme = (state: GameAppState): Theme => {
   const tank = getActiveTank(state)
-  const quality = tank.progression.waterQuality
   const comfort = tank.progression.comfort
-  const fogDensity = Number((0.018 + ((100 - quality) / 1800)).toFixed(3))
-  const clarity = quality / 100
   const comfortBlend = Math.min(1, comfort / 100)
-  const tint = quality >= 75
-    ? '#0b5666'
-    : quality >= 45
-      ? '#0a4b5a'
-      : '#21424d'
-  const glassTint = quality >= 75
-    ? '#cfe7ee'
-    : quality >= 45
-      ? '#b6d7de'
-      : '#8faeb5'
-  const glassReflectionStrength = Number((0.12 + (clarity * 0.28)).toFixed(2))
-  const surfaceGlowStrength = Number((0.31 + (clarity * 0.22) + (comfortBlend * 0.09)).toFixed(2))
-  const causticsStrength = Number((0.12 + (clarity * 0.27) + (comfortBlend * 0.09)).toFixed(2))
+  const tint = '#0b5666'
+  const glassTint = '#cfe7ee'
+  const glassReflectionStrength = 0.4
+  const surfaceGlowStrength = Number((0.53 + (comfortBlend * 0.09)).toFixed(2))
+  const causticsStrength = Number((0.39 + (comfortBlend * 0.09)).toFixed(2))
 
   return {
     glassFrameStrength: 0.78,
     waterTint: tint,
-    fogDensity,
+    fogDensity: 0.018,
     particleDensity: Number((0.24 + (comfort / 250)).toFixed(2)),
     waveStrength: Number((0.42 + (comfort / 280)).toFixed(2)),
     waveSpeed: state.game.profile.preferences.motionEnabled ? 0.72 : 0.24,

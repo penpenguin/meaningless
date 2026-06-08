@@ -1084,10 +1084,16 @@ describe('AquascapingSystem composition', () => {
       [...leftShoulderPlacements, ...centerHardscapePlacements].map((placement) => placement.plantType)
     )
     const rightAccentTypes = new Set(rightAccentPlacements.map((placement) => placement.plantType))
+    const leftRearAssetIds = leftRearPlacements.flatMap((placement) => placement.assetIds ?? [])
 
+    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('amazon-sword')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('stem-green-bush')).toBe(true)
     expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('hygrophila-rear')).toBe(true)
-    expect(leftRearPlacements.length).toBeLessThanOrEqual(3)
+    expect(new Set(leftRearPlacements.map((placement) => placement.plantType)).has('matsumo')).toBe(true)
+    expect(leftRearAssetIds).toContain('plant-amazon-sword')
+    expect(leftRearAssetIds).toContain('plant-hygrophila-rear')
+    expect(leftRearAssetIds).toContain('plant-willow-moss')
+    expect(leftRearPlacements.length).toBeLessThanOrEqual(4)
     expect(backgroundVallisPlacements.length).toBeLessThanOrEqual(1)
     expect(backgroundVallisPlacements.every((placement) => placement.zoneId === 'left-rear')).toBe(true)
     expect(leftShoulderPlacements.length).toBeGreaterThanOrEqual(8)
@@ -1102,6 +1108,53 @@ describe('AquascapingSystem composition', () => {
     expect(rightAccentPlacements.every((placement) => placement.plantType === 'crypt-brown')).toBe(true)
     expect(foregroundPlacements.every((placement) => placement.x < -0.02)).toBe(true)
     expect(foregroundPlacements.every((placement) => placement.plantType === 'anubias-petite-clump')).toBe(true)
+  })
+
+  it('plays authored animation clips on cloned matsumo plant assets', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    const plantScene = new THREE.Group()
+    const stem = new THREE.Object3D()
+    stem.name = 'MatsumoStem'
+    plantScene.add(stem)
+    const clip = new THREE.AnimationClip('Sway', 1, [
+      new THREE.VectorKeyframeTrack('MatsumoStem.position', [0, 1], [0, 0, 0, 1, 0, 0])
+    ])
+    ;(instance as unknown as {
+      visualAssets: {
+        manifest: { textures: []; models: []; environment: [] }
+        textures: Record<string, THREE.Texture | null>
+        models: Record<string, { scene: THREE.Group; sourceMesh: null; animations?: THREE.AnimationClip[] } | null>
+        environment: Record<string, THREE.Texture | null>
+      }
+    }).visualAssets = {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      models: {
+        'plant-matsumo': {
+          scene: plantScene,
+          sourceMesh: null,
+          animations: [clip]
+        }
+      },
+      environment: {}
+    }
+    ;(instance as unknown as { plantAnimationMixers: THREE.AnimationMixer[] }).plantAnimationMixers = []
+    ;(instance as unknown as { plants: THREE.Group[] }).plants = []
+    ;(instance as unknown as { time: number }).time = 0
+
+    const cloneVisualModelGroup = (AquascapingSystem.prototype as unknown as {
+      cloneVisualModelGroup: (id: string, userData: Record<string, unknown>) => THREE.Group | null
+    }).cloneVisualModelGroup.bind(instance)
+    const clone = cloneVisualModelGroup('plant-matsumo', {
+      layer: 'background',
+      plantType: 'matsumo'
+    })
+
+    expect(clone?.getObjectByName('MatsumoStem')?.position.x).toBe(0)
+
+    instance.update(0.5)
+
+    expect(clone?.getObjectByName('MatsumoStem')?.position.x).toBeGreaterThan(0.25)
   })
 
   it('adds dedicated nature-showcase epiphyte anchors for wood forks and rock junctions', () => {
@@ -1124,6 +1177,8 @@ describe('AquascapingSystem composition', () => {
     expect(driftwoodTypes.has('anubias-nana-clump')).toBe(true)
     expect(driftwoodTypes.has('javafern-narrow')).toBe(true)
     expect(driftwoodTypes.has('javafern-large')).toBe(true)
+    expect(driftwoodTypes.has('willow-moss')).toBe(true)
+    expect(driftwoodAnchors.some((anchor) => anchor.assetIds?.includes('plant-willow-moss'))).toBe(true)
     expect(rockTypes.has('anubias-nana-clump')).toBe(true)
     expect(rockTypes.has('javafern-large')).toBe(true)
   })
@@ -1467,7 +1522,10 @@ describe('AquascapingSystem premium materials', () => {
         color: '#1a2118',
         roughness: 0.74,
         metalness: 0.06,
-        envMapIntensity: 0.36
+        envMapIntensity: 0.36,
+        emissive: '#ffffff',
+        emissiveIntensity: 1.2,
+        emissiveMap: new THREE.Texture()
       }),
       {
         role: 'hero-canopy',
@@ -1479,6 +1537,8 @@ describe('AquascapingSystem premium materials', () => {
 
     expect(lightness).toBeGreaterThanOrEqual(0.34)
     expect(material.color.getHSL({ h: 0, s: 0, l: 0 }).s).toBeGreaterThan(0.16)
+    expect(material.emissiveIntensity).toBe(0)
+    expect(material.emissiveMap).toBeNull()
   })
 
   it('uses external wood textures for driftwood when visual assets are available', () => {

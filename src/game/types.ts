@@ -31,7 +31,6 @@ export type TankLayout = {
 
 export type TankProgression = {
   comfort: number
-  waterQuality: number
   incomePerMinute: number
   lastCollectedAt: string | null
 }
@@ -56,7 +55,6 @@ export type GameProfile = {
   stats: {
     totalEarnedCoins: number
     totalOfflineSeconds: number
-    totalMaintenanceActions: number
     totalViewedSeconds: number
   }
   preferences: {
@@ -79,8 +77,6 @@ export type GameSave = {
 export type OfflineTankSummary = {
   tankId: string
   earnedCoins: number
-  beforeWaterQuality: number
-  afterWaterQuality: number
 }
 
 export type OfflineSimulationResult = {
@@ -109,7 +105,6 @@ export type GameAction =
   | { type: 'GAME/UNLOCK_DECOR'; payload: { decorId: string } }
   | { type: 'GAME/SET_FISH_COUNT'; payload: { speciesId: string; count: number } }
   | { type: 'GAME/SET_FISH_LANE'; payload: { speciesId: string; lane: Lane } }
-  | { type: 'GAME/CLEAN_TANK' }
   | { type: 'SETTINGS/SET_SOUND'; payload: { enabled: boolean } }
   | { type: 'SETTINGS/SET_MOTION'; payload: { enabled: boolean } }
   | { type: 'SETTINGS/SET_QUALITY'; payload: { quality: QualityLevel } }

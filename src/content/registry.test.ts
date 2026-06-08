@@ -25,6 +25,71 @@ describe('content registry', () => {
     })
   })
 
+  it('registers abeni puffer as a dedicated pufferfish archetype', () => {
+    expect(getFishContent('abeni-puffer')).toMatchObject({
+      speciesId: 'abeni-puffer',
+      displayName: 'アベニーパファー',
+      render: {
+        archetype: 'AbeniPuffer'
+      },
+      gameplay: {
+        preferredLane: 'middle'
+      }
+    })
+  })
+
+  it('registers corydoras as a dedicated bottom-dwelling archetype', () => {
+    expect(getFishContent('corydoras')).toMatchObject({
+      speciesId: 'corydoras',
+      displayName: 'コリドラス',
+      render: {
+        archetype: 'Corydoras'
+      },
+      gameplay: {
+        preferredLane: 'bottom'
+      }
+    })
+  })
+
+  it('registers african lampeye as a dedicated top-schooling archetype', () => {
+    expect(getFishContent('african-lampeye')).toMatchObject({
+      speciesId: 'african-lampeye',
+      displayName: 'アフリカンランプアイ',
+      render: {
+        archetype: 'AfricanLampeye'
+      },
+      gameplay: {
+        preferredLane: 'top'
+      }
+    })
+  })
+
+  it('registers rasbora heteromorpha as a dedicated midwater schooling archetype', () => {
+    expect(getFishContent('rasbora-heteromorpha')).toMatchObject({
+      speciesId: 'rasbora-heteromorpha',
+      displayName: 'ラスボラヘテロモルファ',
+      render: {
+        archetype: 'RasboraHeteromorpha'
+      },
+      gameplay: {
+        preferredLane: 'middle'
+      }
+    })
+  })
+
+  it('registers yamato shrimp as a dedicated bottom-cleaner archetype', () => {
+    expect(getFishContent('yamato-shrimp')).toMatchObject({
+      speciesId: 'yamato-shrimp',
+      displayName: 'ヤマトヌマエビ',
+      render: {
+        archetype: 'YamatoShrimp'
+      },
+      gameplay: {
+        preferredLane: 'bottom'
+      }
+    })
+  })
+
   it('derives starter content ids from registered entries', () => {
     expect(getStarterFishContentIds()).toEqual(['neon-tetra'])
     expect(getStarterDecorContentIds()).toEqual(['plant'])
@@ -77,7 +142,6 @@ describe('content registry', () => {
           purchaseCostPerFish: 1,
           baseIncomePerMinute: 0.2,
           preferredLane: 'middle',
-          pollutionPerFish: 0.2
         }
       },
       {
@@ -100,7 +164,6 @@ describe('content registry', () => {
           purchaseCostPerFish: 1,
           baseIncomePerMinute: 0.3,
           preferredLane: 'top',
-          pollutionPerFish: 0.3
         }
       }
     ]

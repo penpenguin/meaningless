@@ -204,33 +204,6 @@ const handleSetFishLane = (
   return updateGameState(state, () => refreshGame(nextGame))
 }
 
-const handleCleanTank = (state: GameAppState): GameAppState => {
-  const activeTank = state.game.tanks.find((tank) => tank.id === state.game.activeTankId)
-  if (!activeTank) return state
-  const totalFish = activeTank.fishSchools.reduce((total, school) => total + school.count, 0)
-  const maintenanceCost = Math.max(4, Math.ceil(totalFish / 4))
-  if (state.game.profile.currency.coins < maintenanceCost) return state
-
-  const nextGame = withActiveTank(withProfileCoins(state.game, state.game.profile.currency.coins - maintenanceCost), (tank) => refreshTankProgression({
-    ...tank,
-    progression: {
-      ...tank.progression,
-      waterQuality: 100
-    }
-  }))
-
-  return updateGameState(state, () => ({
-    ...refreshGame(nextGame),
-    profile: {
-      ...nextGame.profile,
-      stats: {
-        ...nextGame.profile.stats,
-        totalMaintenanceActions: nextGame.profile.stats.totalMaintenanceActions + 1
-      }
-    }
-  }))
-}
-
 export const gameReducer = (state: GameAppState, action: GameAction): GameAppState => {
   switch (action.type) {
     case 'UI/SET_MODE':
@@ -253,8 +226,6 @@ export const gameReducer = (state: GameAppState, action: GameAction): GameAppSta
       return handleSetFishCount(state, action.payload)
     case 'GAME/SET_FISH_LANE':
       return handleSetFishLane(state, action.payload)
-    case 'GAME/CLEAN_TANK':
-      return handleCleanTank(state)
     case 'SETTINGS/SET_SOUND':
       return updatePreferences(state, (preferences) => ({
         ...preferences,

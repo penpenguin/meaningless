@@ -29,12 +29,10 @@ const getAdjacentPairs = (placements: DecorPlacement[]): number => {
 
 const getDecorStats = (tank: GameTank): {
   comfortBonus: number
-  waterQualityBonus: number
   hideoutScore: number
 } => {
   const adjacentPairs = getAdjacentPairs(tank.decor)
   let comfortBonus = adjacentPairs * 2
-  let waterQualityBonus = 0
   let hideoutScore = 0
 
   tank.decor.forEach((placement) => {
@@ -42,7 +40,6 @@ const getDecorStats = (tank: GameTank): {
     if (!decor) return
 
     comfortBonus += decor.gameplay.comfortBonus
-    waterQualityBonus += decor.gameplay.waterQualityBonus
     hideoutScore += decor.gameplay.hideoutScore ?? 0
 
     const supportedLane = laneForGridRow(placement.y, tank.layout.rows)
@@ -55,14 +52,13 @@ const getDecorStats = (tank: GameTank): {
     }
   })
 
-  return { comfortBonus, waterQualityBonus, hideoutScore }
+  return { comfortBonus, hideoutScore }
 }
 
 const getFishStats = (tank: GameTank): {
   totalFish: number
   baseIncomePerMinute: number
   laneHarmonyBonus: number
-  pollutionPerMinute: number
   uniqueSpecies: number
 } => {
   const uniqueSpecies = new Set(tank.fishSchools.map((school) => school.speciesId)).size
@@ -76,14 +72,12 @@ const getFishStats = (tank: GameTank): {
       totalFish: stats.totalFish + school.count,
       baseIncomePerMinute: stats.baseIncomePerMinute + (fish.gameplay.baseIncomePerMinute * school.count),
       laneHarmonyBonus: stats.laneHarmonyBonus + (isPreferredLane ? 6 : 1),
-      pollutionPerMinute: stats.pollutionPerMinute + (fish.gameplay.pollutionPerFish * school.count),
       uniqueSpecies
     }
   }, {
     totalFish: 0,
     baseIncomePerMinute: 0,
     laneHarmonyBonus: 0,
-    pollutionPerMinute: 0,
     uniqueSpecies
   })
 }
@@ -108,7 +102,6 @@ const getLaneImbalancePenalty = (tank: GameTank, totalFish: number): number => {
 export const calculateTankEconomy = (tank: GameTank): {
   comfort: number
   incomePerMinute: number
-  waterQualityDeltaPerMinute: number
 } => {
   const fishStats = getFishStats(tank)
   const decorStats = getDecorStats(tank)
@@ -132,19 +125,15 @@ export const calculateTankEconomy = (tank: GameTank): {
     100
   )
 
-  const waterQuality = clamp(tank.progression.waterQuality, 0, 100)
   const comfortMultiplier = 0.7 + (comfort / 200)
-  const waterMultiplier = 0.35 + ((waterQuality / 100) * 0.65)
   const incomePerMinute = Math.max(
     1,
-    Math.round(fishStats.baseIncomePerMinute * comfortMultiplier * waterMultiplier)
+    Math.round(fishStats.baseIncomePerMinute * comfortMultiplier)
   )
-  const waterQualityDeltaPerMinute = decorStats.waterQualityBonus - fishStats.pollutionPerMinute
 
   return {
     comfort,
-    incomePerMinute,
-    waterQualityDeltaPerMinute
+    incomePerMinute
   }
 }
 
@@ -155,22 +144,7 @@ type SimulatedTank = {
 }
 
 const simulateTank = (tank: GameTank, simulatedSeconds: number): SimulatedTank => {
-  const beforeWaterQuality = clamp(tank.progression.waterQuality, 0, 100)
-  const baseEconomy = calculateTankEconomy(tank)
-  const minutes = simulatedSeconds / 60
-  const afterWaterQuality = clamp(
-    Math.round(beforeWaterQuality + (baseEconomy.waterQualityDeltaPerMinute * minutes)),
-    0,
-    100
-  )
-  const withAverageWaterQuality: GameTank = {
-    ...tank,
-    progression: {
-      ...tank.progression,
-      waterQuality: Math.round((beforeWaterQuality + afterWaterQuality) / 2)
-    }
-  }
-  const projectedEconomy = calculateTankEconomy(withAverageWaterQuality)
+  const projectedEconomy = calculateTankEconomy(tank)
   const grossCoins = Math.max(0, (projectedEconomy.incomePerMinute * simulatedSeconds) / 60)
 
   return {
@@ -179,16 +153,13 @@ const simulateTank = (tank: GameTank, simulatedSeconds: number): SimulatedTank =
       progression: {
         ...tank.progression,
         comfort: projectedEconomy.comfort,
-        incomePerMinute: projectedEconomy.incomePerMinute,
-        waterQuality: afterWaterQuality
+        incomePerMinute: projectedEconomy.incomePerMinute
       }
     },
     grossCoins,
     summary: {
       tankId: tank.id,
-      earnedCoins: Math.floor(grossCoins),
-      beforeWaterQuality,
-      afterWaterQuality
+      earnedCoins: Math.floor(grossCoins)
     }
   }
 }
@@ -200,8 +171,7 @@ export const refreshTankProgression = (tank: GameTank): GameTank => {
     progression: {
       ...tank.progression,
       comfort: economy.comfort,
-      incomePerMinute: economy.incomePerMinute,
-      waterQuality: clamp(tank.progression.waterQuality, 0, 100)
+      incomePerMinute: economy.incomePerMinute
     }
   }
 }

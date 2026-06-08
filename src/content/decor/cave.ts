@@ -6,7 +6,6 @@ export const cave = createDecorContent({
   gameplay: {
     unlockCost: 24,
     comfortBonus: 10,
-    waterQualityBonus: 0.2,
     laneAffinity: 'bottom',
     adjacencyBonus: 4,
     hideoutScore: 4

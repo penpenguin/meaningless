@@ -108,7 +108,7 @@ export class AdvancedAquariumApp {
     if (!this.scene) return
     if (this.lastAppliedQuality === quality) return
     this.lastAppliedQuality = quality
-    this.scene.setWaterQuality(quality)
+    this.scene.setVisualQuality(quality)
   }
 
   private setupStoreBinding(): void {
