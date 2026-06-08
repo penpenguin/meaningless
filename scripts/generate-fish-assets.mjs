@@ -8,7 +8,8 @@ import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
-const outputDir = path.resolve('public/assets/aquarium')
+const textureOutputDir = path.resolve('public/assets/aquarium/textures/fish')
+const modelOutputDir = path.resolve('public/assets/aquarium/models/fish')
 export const atlasWidth = 1024
 export const atlasHeight = 512
 
@@ -1012,10 +1013,10 @@ const exportGlb = async (object) => {
 
 export const writeFishAssets = async (config) => {
   const atlas = createAtlas(config)
-  const baseColorPath = path.join(outputDir, `fish-${config.id}-basecolor.png`)
-  const normalPath = path.join(outputDir, `fish-${config.id}-normal.png`)
-  const roughnessPath = path.join(outputDir, `fish-${config.id}-roughness.png`)
-  const alphaPath = path.join(outputDir, `fish-${config.id}-alpha.png`)
+  const baseColorPath = path.join(textureOutputDir, `fish-${config.id}-basecolor.png`)
+  const normalPath = path.join(textureOutputDir, `fish-${config.id}-normal.png`)
+  const roughnessPath = path.join(textureOutputDir, `fish-${config.id}-roughness.png`)
+  const alphaPath = path.join(textureOutputDir, `fish-${config.id}-alpha.png`)
   writePng(baseColorPath, atlasWidth, atlasHeight, atlas.baseColor)
   writePng(normalPath, atlasWidth, atlasHeight, atlas.normal)
   writePng(roughnessPath, atlasWidth, atlasHeight, atlas.roughness)
@@ -1064,7 +1065,7 @@ export const writeFishAssets = async (config) => {
   const schoolScene = new THREE.Group()
   schoolScene.add(schoolMesh)
   const schoolGlb = await exportGlb(schoolScene)
-  fs.writeFileSync(path.join(outputDir, `fish-${config.id}-school.glb`), schoolGlb)
+  fs.writeFileSync(path.join(modelOutputDir, `fish-${config.id}-school.glb`), schoolGlb)
 
   const heroBodyMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -1096,12 +1097,13 @@ export const writeFishAssets = async (config) => {
   heroFins.scale.setScalar(heroScale)
   heroGroup.add(heroBody, heroFins)
   const heroGlb = await exportGlb(heroGroup)
-  fs.writeFileSync(path.join(outputDir, `fish-${config.id}-hero.glb`), heroGlb)
+  fs.writeFileSync(path.join(modelOutputDir, `fish-${config.id}-hero.glb`), heroGlb)
 }
 
 export const main = async () => {
   installExporterPolyfills()
-  fs.mkdirSync(outputDir, { recursive: true })
+  fs.mkdirSync(textureOutputDir, { recursive: true })
+  fs.mkdirSync(modelOutputDir, { recursive: true })
 
   for (const config of fishAssetConfigs) {
     await writeFishAssets(config)

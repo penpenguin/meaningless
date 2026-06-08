@@ -65,12 +65,6 @@ const getActiveTank = (state: GameAppState) => {
   return state.game.tanks.find((tank) => tank.id === state.game.activeTankId) ?? state.game.tanks[0]
 }
 
-const getMaintenanceCost = (state: GameAppState): number => {
-  const tank = getActiveTank(state)
-  const totalFish = tank.fishSchools.reduce((total, school) => total + school.count, 0)
-  return Math.max(4, Math.ceil(totalFish / 4))
-}
-
 const getGuideContent = (state: GameAppState): GuideContent => {
   switch (state.ui.mode) {
     case 'shop':
@@ -88,7 +82,7 @@ const getGuideContent = (state: GameAppState): GuideContent => {
     case 'progress':
       return {
         title: 'Read the tank',
-        body: 'Track which changes are calming the fish and which ones are only raising maintenance pressure.',
+        body: 'Track which changes are calming the fish and improving passive income.',
         hint: 'A steadier tank should improve both mood and passive income.'
       }
     case 'settings':
@@ -270,14 +264,6 @@ const createTankPanel = (store: GameStore): HudPanelHandle => {
   summary.className = 'hud-summary hud-summary-grid'
   panel.appendChild(summary)
 
-  const maintenanceButton = document.createElement('button')
-  maintenanceButton.type = 'button'
-  maintenanceButton.className = 'hud-action-button'
-  maintenanceButton.addEventListener('click', () => {
-    store.dispatch({ type: 'GAME/CLEAN_TANK' })
-  })
-  panel.appendChild(maintenanceButton)
-
   const offlineCard = document.createElement('div')
   offlineCard.className = 'hud-offline-card'
   const offlineText = document.createElement('div')
@@ -293,7 +279,6 @@ const createTankPanel = (store: GameStore): HudPanelHandle => {
 
   const render = (state: GameAppState): void => {
     const tank = getActiveTank(state)
-    const maintenanceCost = getMaintenanceCost(state)
     const behavior = getBehaviorCopy(state)
 
     lead.textContent = `${tank.name} · ${tank.decor.length} decor placed`
@@ -301,15 +286,11 @@ const createTankPanel = (store: GameStore): HudPanelHandle => {
     ;[
       { label: 'Income', value: `${tank.progression.incomePerMinute}/min`, meta: 'Active tank' },
       { label: 'Comfort', value: String(tank.progression.comfort), meta: 'Drives unlocks' },
-      { label: 'Water', value: String(tank.progression.waterQuality), meta: 'Keep it clear' },
       { label: 'Behavior', value: behavior.value, meta: behavior.meta },
       { label: 'Schools', value: String(tank.fishSchools.reduce((total, school) => total + school.count, 0)), meta: 'Visible fish' }
     ].forEach((card) => {
       summary.appendChild(createStatCard(card))
     })
-
-    maintenanceButton.textContent = `Restore Water (${maintenanceCost} coins)`
-    maintenanceButton.disabled = state.game.profile.currency.coins < maintenanceCost
 
     if (state.ui.lastOfflineResult) {
       offlineCard.style.display = 'flex'
@@ -566,7 +547,7 @@ const createProgressPanel = (): HudPanelHandle => {
       {
         label: 'Offline gain',
         value: `${Math.floor(state.game.profile.stats.totalOfflineSeconds / 60)}m`,
-        meta: `${state.game.profile.stats.totalMaintenanceActions} maintenance actions`
+        meta: 'Away time simulated'
       }
     ].forEach((card) => {
       statGrid.appendChild(createStatCard(card))
@@ -741,11 +722,8 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): GameHudO
   incomeChip.className = 'hud-secondary-stat'
   const comfortChip = document.createElement('div')
   comfortChip.className = 'hud-secondary-stat'
-  const waterChip = document.createElement('div')
-  waterChip.className = 'hud-secondary-stat'
   secondary.appendChild(incomeChip)
   secondary.appendChild(comfortChip)
-  secondary.appendChild(waterChip)
   topBar.appendChild(secondary)
 
   const buttons = document.createElement('div')
@@ -840,7 +818,6 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): GameHudO
     currencyCompat.textContent = `Coins: ${state.game.profile.currency.coins}`
     incomeChip.textContent = `Income ${tank.progression.incomePerMinute}/min`
     comfortChip.textContent = `Comfort ${tank.progression.comfort}`
-    waterChip.textContent = `Water ${tank.progression.waterQuality}`
 
     guide.dataset.mode = state.ui.mode
     guideTitle.textContent = guideContent.title

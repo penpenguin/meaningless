@@ -19,6 +19,5 @@ export const angelfish = createFishContent({
     purchaseCostPerFish: 3,
     baseIncomePerMinute: 0.38,
     preferredLane: 'top',
-    pollutionPerFish: 0.65
   }
 })

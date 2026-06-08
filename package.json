@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "generate:fish-assets": "node scripts/generate-fish-assets.mjs",
+    "screenshot": "node scripts/capture-aquarium-screenshot.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",

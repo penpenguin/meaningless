@@ -6,7 +6,7 @@ describe('gameSave', () => {
     const now = '2026-03-08T00:00:00.000Z'
     const save = createDefaultGameSave(now)
 
-    expect(save.schemaVersion).toBe(1)
+    expect(save.schemaVersion).toBe(2)
     expect(save.lastSimulatedAt).toBe(now)
     expect(save.tanks).toHaveLength(1)
     expect(save.activeTankId).toBe(save.tanks[0]?.id)
@@ -18,6 +18,8 @@ describe('gameSave', () => {
       speciesId: 'neon-tetra',
       lane: 'middle'
     })
+    expect(save.tanks[0]?.progression).not.toHaveProperty('waterQuality')
+    expect(save.profile.stats).not.toHaveProperty('totalMaintenanceActions')
   })
 
   it('migrates legacy tank/profile/settings into the new game save', () => {
@@ -99,5 +101,39 @@ describe('gameSave', () => {
     expect(hydrated.ui.lastOfflineResult?.simulatedSeconds).toBe(7200)
     expect(hydrated.game.profile.currency.coins).toBeGreaterThan(save.profile.currency.coins)
     expect(hydrated.game.lastSimulatedAt).toBe('2026-03-08T02:00:00.000Z')
+  })
+
+  it('drops legacy water quality fields during save hydration', () => {
+    const save = createDefaultGameSave('2026-03-08T00:00:00.000Z')
+    const tank = save.tanks[0]
+    if (!tank) throw new Error('tank missing')
+
+    const hydrated = createHydratedGameAppState({
+      save: {
+        ...save,
+        schemaVersion: 1,
+        profile: {
+          ...save.profile,
+          stats: {
+            ...save.profile.stats,
+            totalMaintenanceActions: 7
+          } as typeof save.profile.stats & { totalMaintenanceActions: number }
+        },
+        tanks: [
+          {
+            ...tank,
+            progression: {
+              ...tank.progression,
+              waterQuality: 14
+            } as typeof tank.progression & { waterQuality: number }
+          }
+        ]
+      },
+      nowIso: '2026-03-08T00:00:00.000Z'
+    })
+
+    expect(hydrated.game.schemaVersion).toBe(2)
+    expect(hydrated.game.tanks[0]?.progression).not.toHaveProperty('waterQuality')
+    expect(hydrated.game.profile.stats).not.toHaveProperty('totalMaintenanceActions')
   })
 })

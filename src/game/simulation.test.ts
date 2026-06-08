@@ -89,7 +89,7 @@ describe('simulation', () => {
     expect(crowdedWithHideout.comfort).toBeGreaterThan(crowdedBaseline.comfort)
   })
 
-  it('simulates offline progress with a cap and degrades water quality over time', () => {
+  it('simulates offline progress with a cap without water quality summaries', () => {
     const initial = createDefaultGameSave('2026-03-08T00:00:00.000Z')
     const result = simulateGameSave({
       save: initial,
@@ -98,7 +98,9 @@ describe('simulation', () => {
 
     expect(result.offlineResult?.simulatedSeconds).toBe(8 * 60 * 60)
     expect(result.save.profile.currency.coins).toBeGreaterThan(initial.profile.currency.coins)
-    expect(result.save.tanks[0]?.progression.waterQuality).toBeLessThan(100)
+    expect(result.offlineResult?.tankSummaries[0]).not.toHaveProperty('beforeWaterQuality')
+    expect(result.offlineResult?.tankSummaries[0]).not.toHaveProperty('afterWaterQuality')
+    expect(result.save.tanks[0]?.progression).not.toHaveProperty('waterQuality')
     expect(result.save.lastSimulatedAt).toBe('2026-03-09T00:00:00.000Z')
   })
 })

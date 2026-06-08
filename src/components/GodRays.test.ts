@@ -44,6 +44,28 @@ describe('GodRays underwater scatter', () => {
     expect(clearValues.scatterTint.getHexString()).not.toBe(murkyValues.scatterTint.getHexString())
   })
 
+  it('keeps bloom restrained for clear open-water planted scenes so bright substrate does not clip', () => {
+    const clearOpenWaterTheme: Theme = {
+      waterTint: '#0b5666',
+      fogDensity: 0.018,
+      particleDensity: 0.42,
+      waveStrength: 0.58,
+      waveSpeed: 0.72,
+      layoutStyle: 'planted',
+      glassFrameStrength: 0.78,
+      glassTint: '#cfe7ee',
+      glassReflectionStrength: 0.4,
+      surfaceGlowStrength: 0.57,
+      causticsStrength: 0.43
+    }
+
+    const values = resolveGodRayThemeValues(clearOpenWaterTheme)
+
+    expect(values.bloomStrength).toBeLessThanOrEqual(0.16)
+    expect(values.bloomRadius).toBeLessThanOrEqual(0.16)
+    expect(values.bloomThreshold).toBeGreaterThanOrEqual(0.86)
+  })
+
   it('exposes mote-scatter uniforms in the shader instead of a flat ray overlay', () => {
     expect(GodRaysShader.uniforms.time.value).toBe(0)
     expect(GodRaysShader.uniforms.scatterStrength.value).toBe(0)
@@ -200,4 +222,5 @@ describe('GodRays underwater scatter', () => {
     expect(internals.bloomPass.strength).toBeGreaterThan(0.2)
     expect(internals.bloomPass.threshold).toBeGreaterThan(0.5)
   })
+
 })

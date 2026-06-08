@@ -26,7 +26,8 @@ describe('createGameHudOverlay', () => {
 
       expect(tankButton.getAttribute('aria-pressed')).toBe('true')
       expect(layoutButton.getAttribute('aria-pressed')).toBe('false')
-      expect(overlay.textContent).toContain('Restore Water (4 coins)')
+      expect(overlay.textContent).not.toContain('Restore Water')
+      expect(overlay.textContent).not.toContain('Water 100')
       expect(guide.textContent).toContain('spread schools across depths')
       expect(guide.textContent).toContain('calm schools')
       expect(overlay.textContent).toContain('Behavior')
@@ -103,8 +104,7 @@ describe('createGameHudOverlay', () => {
       expect(currencyValue?.textContent).toBe('12')
       expect(statTexts).toEqual([
         'Income 2/min',
-        'Comfort 45',
-        'Water 100'
+        'Comfort 45'
       ])
     } finally {
       document.body.innerHTML = ''

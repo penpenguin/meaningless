@@ -9,7 +9,7 @@ export class AudioManager {
   constructor({ underwaterLoopUrl }: { underwaterLoopUrl?: string } = {}) {
     const baseUrl = import.meta.env?.BASE_URL ?? '/'
     const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
-    this.underwaterLoopUrl = underwaterLoopUrl ?? `${normalizedBaseUrl}underwater-loop.wav`
+    this.underwaterLoopUrl = underwaterLoopUrl ?? `${normalizedBaseUrl}audio/underwater-loop.wav`
     // AudioContext の生成は初回有効化まで遅延させる
     // Don't create water ambient automatically - wait for setEnabled(true)
   }

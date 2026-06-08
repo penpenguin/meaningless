@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import type { LoadedModelAsset, VisualAssetBundle } from '../assets/visualAssets'
 import type { AquascapeLayoutStyle, Theme } from '../types/aquarium'
 
@@ -6,6 +7,7 @@ type PlantLayer = 'foreground' | 'background' | 'midground'
 type PlantType =
   | 'ribbon-seaweed'
   | 'sword-leaf'
+  | 'amazon-sword'
   | 'fan-leaf'
   | 'javafern-large'
   | 'javafern-narrow'
@@ -15,6 +17,8 @@ type PlantType =
   | 'stem-green-bush'
   | 'vallisneria-tall'
   | 'hygrophila-rear'
+  | 'matsumo'
+  | 'willow-moss'
 type PlantRenderRole = 'hero' | 'repeated'
 type PlantClusterKind = 'core' | 'satellite' | 'offshoot'
 type PlantMassRole =
@@ -176,7 +180,7 @@ export type SubstratePlantAnchor = {
   scoopBiasZ: number
 }
 
-type PlantSilhouetteFamily = 'ribbon' | 'strap' | 'broad' | 'rosette'
+type PlantSilhouetteFamily = 'ribbon' | 'strap' | 'broad' | 'rosette' | 'moss'
 type HardscapePlantHost = 'driftwood' | 'rock'
 
 export type HardscapePlantAnchor = {
@@ -199,10 +203,14 @@ const getPlantSilhouetteFamily = (plantType: PlantType): PlantSilhouetteFamily =
     case 'vallisneria-tall':
       return 'ribbon'
     case 'sword-leaf':
+    case 'amazon-sword':
     case 'javafern-narrow':
     case 'stem-green-bush':
     case 'hygrophila-rear':
+    case 'matsumo':
       return 'strap'
+    case 'willow-moss':
+      return 'moss'
     case 'crypt-brown':
       return 'rosette'
     case 'fan-leaf':
@@ -408,7 +416,7 @@ const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
     z: -0.24,
     layer: 'background',
     massRole: 'left-rear',
-    plantType: 'stem-green-bush',
+    plantType: 'amazon-sword',
     baseHeight: 6.62,
     spreadX: 0.14,
     spreadZ: 0.14,
@@ -418,7 +426,7 @@ const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
     heightMin: 5.82,
     heightMax: 7.08,
     coreCount: 1,
-    satelliteCount: 1,
+    satelliteCount: 2,
     offshootCount: 1,
     coreRadius: [0.03, 0.16],
     satelliteRadius: [0.12, 0.28],
@@ -426,11 +434,12 @@ const natureShowcasePlantClusterDefinitions: PlantClusterDefinition[] = [
     minDistance: 0.058,
     depthLaneCount: 4,
     plantMix: [
-      { plantType: 'stem-green-bush', weight: 0.56 },
-      { plantType: 'vallisneria-tall', weight: 0.04 },
-      { plantType: 'hygrophila-rear', weight: 0.4 }
+      { plantType: 'amazon-sword', weight: 0.26 },
+      { plantType: 'stem-green-bush', weight: 0.5 },
+      { plantType: 'hygrophila-rear', weight: 0.24 },
+      { plantType: 'matsumo', weight: 0.12 }
     ],
-    assetIds: ['plant-stem-green-bush', 'plant-vallisneria-tall', 'plant-hygrophila-rear']
+    assetIds: ['plant-amazon-sword', 'plant-stem-green-bush', 'plant-hygrophila-rear', 'plant-matsumo', 'plant-willow-moss']
   },
   {
     id: 'left-mid-broadleaf',
@@ -643,6 +652,12 @@ const getPlacementHueOffset = (plantType: PlantType): number => {
     case 'stem-green-bush':
     case 'hygrophila-rear':
       return -0.004
+    case 'amazon-sword':
+      return -0.008
+    case 'matsumo':
+      return -0.006
+    case 'willow-moss':
+      return 0.004
     case 'javafern-large':
       return -0.012
     case 'javafern-narrow':
@@ -672,6 +687,27 @@ const pickPlantTypeFromMix = (
 
   if (clusterKind === 'core') {
     return zone.plantType
+  }
+
+  if (
+    zone.id === 'left-rear'
+    && zone.plantMix.some((entry) => entry.plantType === 'amazon-sword')
+    && zone.plantMix.some((entry) => entry.plantType === 'stem-green-bush')
+    && zone.plantMix.some((entry) => entry.plantType === 'hygrophila-rear')
+    && zone.plantMix.some((entry) => entry.plantType === 'matsumo')
+  ) {
+    if (clusterKind === 'offshoot') {
+      return 'matsumo'
+    }
+    return index % 2 === 0 ? 'stem-green-bush' : 'hygrophila-rear'
+  }
+
+  if (
+    zone.id === 'left-rear'
+    && zone.plantMix.some((entry) => entry.plantType === 'hygrophila-rear')
+    && zone.plantMix.some((entry) => entry.plantType === 'matsumo')
+  ) {
+    return clusterKind === 'offshoot' ? 'matsumo' : 'hygrophila-rear'
   }
 
   if (clusterKind === 'offshoot' && zone.plantMix.length > 1) {
@@ -1213,13 +1249,13 @@ const natureShowcaseHardscapePlantAnchors: HardscapePlantAnchor[] = [
     host: 'driftwood',
     massRole: 'root-flare',
     layer: 'midground',
-    plantType: 'anubias-petite-clump',
+    plantType: 'willow-moss',
     position: new THREE.Vector3(-1.18, 0.52, -0.06),
     rotation: new THREE.Euler(-0.28, 0.3, 0.1),
-    scale: new THREE.Vector3(0.3, 0.3, 0.3),
-    height: 1.42,
-    hueBase: 0.252,
-    assetIds: ['plant-anubias-petite-clump']
+    scale: new THREE.Vector3(0.18, 0.16, 0.2),
+    height: 0.72,
+    hueBase: 0.286,
+    assetIds: ['plant-willow-moss']
   },
   {
     id: 'driftwood-fork-pocket-upper',
@@ -1837,6 +1873,7 @@ export const resolveHardscapePlantAnchors = (
 export class AquascapingSystem {
   private group: THREE.Group
   private plants: THREE.Group[] = []
+  private plantAnimationMixers: THREE.AnimationMixer[] = []
   private decorations: THREE.Group[] = []
   private time = 0
   private visualAssets: VisualAssetBundle | null
@@ -2144,6 +2181,9 @@ export class AquascapingSystem {
       case 'rosette':
         this.createCryptRosettePlant(seaweedGroup, cluster.layer, height, hue)
         return
+      case 'moss':
+        this.createMossPatchPlant(seaweedGroup, cluster.layer, height, hue)
+        return
     }
   }
 
@@ -2155,7 +2195,12 @@ export class AquascapingSystem {
         return 'stem-green-bush'
       case 'stem-green-bush':
       case 'hygrophila-rear':
+      case 'matsumo':
         return 'vallisneria-tall'
+      case 'willow-moss':
+        return null
+      case 'amazon-sword':
+        return 'anubias-nana-clump'
       case 'javafern-large':
         return 'anubias-nana-clump'
       case 'javafern-narrow':
@@ -2249,9 +2294,10 @@ export class AquascapingSystem {
     hue: number,
     plantType: Exclude<PlantType, 'ribbon-seaweed'> = 'sword-leaf'
   ): void {
+    const isFineStemPlant = plantType === 'stem-green-bush' || plantType === 'hygrophila-rear' || plantType === 'matsumo'
     const leafCount = plantType === 'vallisneria-tall'
       ? layer === 'background' ? 13 : 12
-      : plantType === 'stem-green-bush' || plantType === 'hygrophila-rear'
+      : isFineStemPlant
         ? layer === 'background' ? 18 : 16
         : plantType === 'crypt-brown'
           ? layer === 'background' ? 15 : 13
@@ -2264,7 +2310,7 @@ export class AquascapingSystem {
     for (let j = 0; j < leafCount; j++) {
       const leafHeight = plantType === 'vallisneria-tall'
         ? height * (0.88 + Math.random() * 0.22)
-        : plantType === 'stem-green-bush' || plantType === 'hygrophila-rear'
+        : isFineStemPlant
           ? height * (0.56 + Math.random() * 0.16)
           : plantType === 'crypt-brown'
             ? height * (0.62 + Math.random() * 0.18)
@@ -2273,7 +2319,7 @@ export class AquascapingSystem {
               : height * (0.78 + Math.random() * 0.22)
       const leafWidth = plantType === 'vallisneria-tall'
         ? 0.14 + Math.random() * 0.04
-        : plantType === 'stem-green-bush' || plantType === 'hygrophila-rear'
+        : isFineStemPlant
           ? 0.16 + Math.random() * 0.05
           : plantType === 'crypt-brown'
             ? 0.22 + Math.random() * 0.06
@@ -2286,7 +2332,7 @@ export class AquascapingSystem {
       const spread = j - (leafCount - 1) / 2
       const pairSign = spread === 0 ? 0 : Math.sign(spread)
       const depthLane = j % laneCount
-      const laneOffset = (depthLane - ((laneCount - 1) / 2)) * (plantType === 'stem-green-bush' || plantType === 'hygrophila-rear' ? 0.074 : 0.088)
+      const laneOffset = (depthLane - ((laneCount - 1) / 2)) * (isFineStemPlant ? 0.074 : 0.088)
 
       leaf.position.set(
         spread * (plantType === 'vallisneria-tall' ? 0.04 : 0.054) + pairSign * 0.016 + (Math.random() - 0.5) * 0.03,
@@ -2412,6 +2458,43 @@ export class AquascapingSystem {
       }
 
       seaweedGroup.add(leaf)
+    }
+  }
+
+  private createMossPatchPlant(
+    seaweedGroup: THREE.Group,
+    layer: PlantLayer,
+    height: number,
+    hue: number
+  ): void {
+    const patchCount = layer === 'background' ? 18 : 14
+    const material = this.createLeafMaterial(hue, layer, 'willow-moss')
+
+    for (let index = 0; index < patchCount; index += 1) {
+      const angle = (index / patchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.36
+      const radius = 0.04 + Math.random() * 0.24
+      const bladeHeight = height * (0.08 + Math.random() * 0.12)
+      const bladeWidth = 0.08 + Math.random() * 0.06
+      const geometry = this.createFanLeafGeometry(bladeWidth, bladeHeight, (Math.random() - 0.5) * 0.04)
+      const blade = new THREE.Mesh(geometry, material)
+
+      blade.position.set(
+        Math.cos(angle) * radius,
+        0,
+        Math.sin(angle) * radius * 0.72
+      )
+      blade.rotation.y = angle + Math.PI * 0.5 + (Math.random() - 0.5) * 0.28
+      blade.rotation.z = -0.78 + (Math.random() - 0.5) * 0.16
+      blade.rotation.x = -0.18 + (Math.random() - 0.5) * 0.08
+      blade.castShadow = true
+      blade.receiveShadow = true
+      blade.userData = {
+        role: 'moss-frond',
+        swayOffset: Math.random() * Math.PI * 2,
+        swayAmplitude: 0.012 + Math.random() * 0.01
+      }
+
+      seaweedGroup.add(blade)
     }
   }
 
@@ -2544,6 +2627,8 @@ export class AquascapingSystem {
     const silhouetteFamily = getPlantSilhouetteFamily(plantType)
     const alphaTestBase = silhouetteFamily === 'ribbon'
       ? 0.34
+      : silhouetteFamily === 'moss'
+        ? 0.12
       : silhouetteFamily === 'broad'
         ? 0.2
         : 0.16
@@ -2601,7 +2686,10 @@ export class AquascapingSystem {
           return 0.255
         case 'stem-green-bush':
         case 'hygrophila-rear':
+        case 'matsumo':
           return 0.272
+        case 'willow-moss':
+          return 0.286
         case 'javafern-large':
           return 0.288
         case 'javafern-narrow':
@@ -2610,6 +2698,8 @@ export class AquascapingSystem {
           return 0.262
         case 'anubias-petite-clump':
           return 0.268
+        case 'amazon-sword':
+          return 0.27
         case 'crypt-brown':
           return 0.064
         case 'fan-leaf':
@@ -2624,6 +2714,8 @@ export class AquascapingSystem {
           return 0.34
         case 'stem-green-bush':
         case 'hygrophila-rear':
+        case 'matsumo':
+        case 'willow-moss':
         case 'vallisneria-tall':
           return 0.38
         case 'anubias-nana-clump':
@@ -2636,6 +2728,8 @@ export class AquascapingSystem {
           return 0.39
         case 'fan-leaf':
           return 0.34
+        case 'amazon-sword':
+          return 0.32
         case 'sword-leaf':
           return 0.32
       }
@@ -2652,13 +2746,18 @@ export class AquascapingSystem {
           return role === 'hero' ? 0.48 : 0.45
         case 'stem-green-bush':
         case 'hygrophila-rear':
+        case 'matsumo':
           return role === 'hero' ? 0.53 : 0.5
+        case 'willow-moss':
+          return role === 'hero' ? 0.42 : 0.38
         case 'vallisneria-tall':
           return role === 'hero' ? 0.51 : 0.48
         case 'ribbon-seaweed':
           return role === 'hero' ? 0.42 : 0.4
         case 'fan-leaf':
           return role === 'hero' ? 0.47 : 0.44
+        case 'amazon-sword':
+          return role === 'hero' ? 0.48 : 0.45
         case 'sword-leaf':
           return role === 'hero' ? 0.46 : 0.43
       }
@@ -2741,12 +2840,13 @@ export class AquascapingSystem {
     const model = this.getVisualModel(id)
     if (!model) return null
 
-    const clone = model.scene.clone(true)
+    const clone = cloneSkeleton(model.scene) as THREE.Group
     clone.userData = {
       ...clone.userData,
       ...userData,
       assetId: id
     }
+    this.installPlantAnimation(id, clone, model.animations ?? [])
 
     clone.traverse((object) => {
       const mesh = object as THREE.Mesh
@@ -2762,6 +2862,26 @@ export class AquascapingSystem {
     })
 
     return clone
+  }
+
+  private installPlantAnimation(
+    id: string,
+    root: THREE.Object3D,
+    animations: THREE.AnimationClip[]
+  ): void {
+    if (!id.startsWith('plant-') || animations.length === 0) {
+      return
+    }
+
+    const mixer = new THREE.AnimationMixer(root)
+    animations.forEach((clip) => {
+      mixer.clipAction(clip).play()
+    })
+    root.userData = {
+      ...root.userData,
+      plantAnimationMixer: mixer
+    }
+    this.plantAnimationMixers.push(mixer)
   }
 
   private createAssetBackedMaterial(
@@ -2800,6 +2920,9 @@ export class AquascapingSystem {
         plantType,
         role
       )
+      baseMaterial.emissive = new THREE.Color(0x000000)
+      baseMaterial.emissiveIntensity = 0
+      baseMaterial.emissiveMap = null
       baseMaterial.metalness = 0
       baseMaterial.roughness = typeof baseMaterial.roughness === 'number'
         ? Math.max(baseMaterial.roughness, profile.roughness)
@@ -4313,7 +4436,9 @@ uniform float uDriftwoodRidgeLift;`
         ? 1.54
         : plantType === 'javafern-large'
           ? 2.12
-          : 1.78
+          : plantType === 'willow-moss'
+            ? 0.74
+            : 1.78
     this.populatePlantCluster(cluster, { plantType, layer }, baseHeight, hue)
     cluster.scale.multiplyScalar(
       plantType === 'anubias-petite-clump'
@@ -4322,7 +4447,9 @@ uniform float uDriftwoodRidgeLift;`
           ? 0.24
           : plantType === 'javafern-large'
             ? 0.28
-            : 0.24
+            : plantType === 'willow-moss'
+              ? 0.18
+              : 0.24
     )
     cluster.children.forEach((child) => {
       if (!(child instanceof THREE.Mesh)) {
@@ -5611,7 +5738,9 @@ uniform float uDriftwoodRidgeLift;`
   }
   
   update(elapsedTime: number): void {
+    const deltaTime = Math.max(0, elapsedTime - this.time)
     this.time = elapsedTime
+    this.plantAnimationMixers.forEach((mixer) => mixer.update(deltaTime))
     
     // Animate plant swaying
     this.plants.forEach((plant) => {

@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom'
 import * as THREE from 'three'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
-const outputPath = path.resolve('public/assets/aquarium/driftwood-hero.glb')
+const outputPath = path.resolve('public/assets/aquarium/models/driftwood/driftwood-hero.glb')
 
 const installExporterPolyfills = () => {
   const { window } = new JSDOM('')
@@ -260,5 +260,6 @@ heroDriftwood.add(brokenStub)
 groundObject(heroDriftwood)
 
 const buffer = await exportGlb(heroDriftwood)
+fs.mkdirSync(path.dirname(outputPath), { recursive: true })
 fs.writeFileSync(outputPath, buffer)
 console.log(outputPath)

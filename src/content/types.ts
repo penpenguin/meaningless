@@ -6,7 +6,6 @@ export type FishGameplayDefinition = {
   purchaseCostPerFish: number
   baseIncomePerMinute: number
   preferredLane: Lane
-  pollutionPerFish: number
 }
 
 export type FishContentDefinition = Species & {
@@ -17,7 +16,6 @@ export type FishContentDefinition = Species & {
 export type DecorGameplayDefinition = {
   unlockCost: number
   comfortBonus: number
-  waterQualityBonus: number
   laneAffinity: Lane | 'any'
   adjacencyBonus: number
   hideoutScore?: number

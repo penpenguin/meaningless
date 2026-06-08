@@ -72,7 +72,7 @@ const minFrontGlassCameraClearance = 0.6
 const standardCameraFitRatios = {
   x: 0,
   y: 1 / AQUARIUM_TANK_DIMENSIONS.height,
-  widthCoverage: 0.84
+  widthCoverage: 0.9
 } as const satisfies AquariumCameraFitRatios
 
 const standardTargetRatios = {
@@ -83,7 +83,7 @@ const standardTargetRatios = {
 const photoCameraFitRatios = {
   x: -2.1 / AQUARIUM_TANK_DIMENSIONS.width,
   y: 1.85 / AQUARIUM_TANK_DIMENSIONS.height,
-  widthCoverage: 0.868
+  widthCoverage: 0.922
 } as const satisfies AquariumCameraFitRatios
 
 const photoTargetRatios = {

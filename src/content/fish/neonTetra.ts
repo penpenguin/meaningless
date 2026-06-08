@@ -18,6 +18,5 @@ export const neonTetra = createFishContent({
     purchaseCostPerFish: 1,
     baseIncomePerMinute: 0.22,
     preferredLane: 'top',
-    pollutionPerFish: 0.42
   }
 })

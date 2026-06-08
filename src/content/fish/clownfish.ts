@@ -19,6 +19,5 @@ export const clownfish = createFishContent({
     purchaseCostPerFish: 2,
     baseIncomePerMinute: 0.3,
     preferredLane: 'middle',
-    pollutionPerFish: 0.5
   }
 })
