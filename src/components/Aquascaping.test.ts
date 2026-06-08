@@ -9,6 +9,10 @@ import {
   resolveSubstrateHardscapeAnchors,
   resolveSubstratePlantAnchors
 } from './Aquascaping'
+import {
+  NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS,
+  PLANTED_PLANT_CLUSTER_DEFINITIONS
+} from './aquascapePlants'
 import { createOpenWaterBounds } from './sceneBounds'
 
 const createMockCanvasContext = (): CanvasRenderingContext2D => {
@@ -68,6 +72,19 @@ const countMeshes = (object: THREE.Object3D): number => {
 }
 
 const positionKey = (x: number, z: number): string => `${x.toFixed(3)}:${z.toFixed(3)}`
+
+const plantPresetSnapshot = () => (
+  [PLANTED_PLANT_CLUSTER_DEFINITIONS, NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS].map((preset) =>
+    preset.map((zone) => ({
+      id: zone.id,
+      x: zone.x,
+      z: zone.z,
+      scale: zone.scale.toArray(),
+      plantMix: zone.plantMix?.map((entry) => ({ ...entry })),
+      assetIds: zone.assetIds ? [...zone.assetIds] : undefined
+    }))
+  )
+)
 
 const getMinimumDistance = (
   placements: Array<{ x: number; z: number }>
@@ -404,6 +421,26 @@ describe('AquascapingSystem composition', () => {
     expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.moundHeight)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.moundHeight))).toBeGreaterThan(0.004)
     expect(Math.max(...substratePlantAnchors.map((anchor) => anchor.scoopDepth)) - Math.min(...substratePlantAnchors.map((anchor) => anchor.scoopDepth))).toBeGreaterThan(0.002)
     expect(substratePlantAnchors.some((anchor) => Math.abs(anchor.scoopBiasX) > 0.01)).toBe(true)
+  })
+
+  it('does not mutate exported plant layout presets when aquascape builders run', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const beforeBuild = plantPresetSnapshot()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(new THREE.Scene(), bounds, null, {
+      layoutStyle: 'planted',
+      layoutSeed: 0x53a9d2f1
+    })
+    new AquascapingSystem(new THREE.Scene(), bounds, null, {
+      layoutStyle: 'nature-showcase',
+      layoutSeed: 0x51ac20dd
+    })
+
+    expect(plantPresetSnapshot()).toEqual(beforeBuild)
   })
 
   it('uses the showcase runtime seed for planted masses and substrate anchors instead of the fixed default placements', () => {

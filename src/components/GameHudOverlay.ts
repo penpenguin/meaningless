@@ -3,12 +3,21 @@ import type { FishContentDefinition } from '../content/types'
 import { getDecorContentList, getFishContentList } from '../content/registry'
 import type { GameAppState, GameUiMode } from '../game/types'
 import { createAquariumRenderModel } from '../game/renderModel'
-import type { QualityLevel } from '../types/settings'
 import {
   getObservedSeconds,
   getRemainingObservationSeconds,
   getRequiredObservationSeconds
 } from '../game/unlocks'
+import {
+  HUD_QUALITY_OPTIONS,
+  createHudVisibilityAction,
+  createModeAction,
+  createQualityAction,
+  createSettingsToggleAction,
+  formatDurationShort,
+  getGuideContent,
+  resolveSettingsViewModel
+} from './gameHudViewModel'
 
 type GameHudOverlayOptions = {
   store: GameStore
@@ -22,12 +31,6 @@ type GameHudOverlayHandle = {
 type HudPanelHandle = {
   element: HTMLDivElement
   render: (state: GameAppState) => void
-}
-
-type GuideContent = {
-  title: string
-  body: string
-  hint: string
 }
 
 type StatCardOptions = {
@@ -56,49 +59,13 @@ const createModeButton = (
   button.textContent = label
   button.dataset.mode = mode
   button.addEventListener('click', () => {
-    store.dispatch({ type: 'UI/SET_MODE', payload: { mode } })
+    store.dispatch(createModeAction(mode))
   })
   return button
 }
 
 const getActiveTank = (state: GameAppState) => {
   return state.game.tanks.find((tank) => tank.id === state.game.activeTankId) ?? state.game.tanks[0]
-}
-
-const getGuideContent = (state: GameAppState): GuideContent => {
-  switch (state.ui.mode) {
-    case 'shop':
-      return {
-        title: 'Build the habitat',
-        body: 'Unlock species and decor, then switch to Layout when you want to rebalance where schools gather.',
-        hint: 'A few well-chosen species usually reads better than stacking every lane at once.'
-      }
-    case 'layout':
-      return {
-        title: 'Shape the water column',
-        body: 'Adjust fish counts and lane balance so each school occupies a clearer slice of the tank.',
-        hint: 'Lane chips shift fish depth instantly, so use them before adding more fish.'
-      }
-    case 'progress':
-      return {
-        title: 'Read the tank',
-        body: 'Track which changes are calming the fish and improving passive income.',
-        hint: 'A steadier tank should improve both mood and passive income.'
-      }
-    case 'settings':
-      return {
-        title: 'Tune the view',
-        body: 'Use tactile toggles for sound and motion, then balance fidelity with the quality chips.',
-        hint: 'Press Escape anytime to jump back to Tank.'
-      }
-    case 'tank':
-    default:
-      return {
-        title: 'Observe first',
-        body: 'Watch how fish settle, then use Unlock and Layout to spread schools across depths before adding more stock.',
-        hint: 'Crowded lanes create alert behavior, while calm schools are easier to read.'
-      }
-  }
 }
 
 const getBehaviorCopy = (state: GameAppState): BehaviorCopy => {
@@ -123,21 +90,6 @@ const getBehaviorCopy = (state: GameAppState): BehaviorCopy => {
     value: 'Settled',
     meta: 'Fish are holding formation'
   }
-}
-
-const formatDurationShort = (seconds: number): string => {
-  const normalized = Math.max(0, Math.floor(seconds))
-  if (normalized >= 3600) {
-    const hours = Math.floor(normalized / 3600)
-    const minutes = Math.floor((normalized % 3600) / 60)
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
-  }
-
-  if (normalized >= 60) {
-    return `${Math.floor(normalized / 60)}m`
-  }
-
-  return `${normalized}s`
 }
 
 const getObservationProgressCopy = (state: GameAppState, fish: FishContentDefinition): string | null => {
@@ -578,8 +530,7 @@ const createSettingsPanel = (store: GameStore): HudPanelHandle => {
   soundButton.type = 'button'
   soundButton.className = 'hud-toggle-button'
   soundButton.addEventListener('click', () => {
-    const enabled = !store.getState().game.profile.preferences.soundEnabled
-    store.dispatch({ type: 'SETTINGS/SET_SOUND', payload: { enabled } })
+    store.dispatch(createSettingsToggleAction('sound', store.getState().game.profile.preferences))
   })
   soundRow.appendChild(soundCopy)
   soundRow.appendChild(soundButton)
@@ -594,8 +545,7 @@ const createSettingsPanel = (store: GameStore): HudPanelHandle => {
   motionButton.type = 'button'
   motionButton.className = 'hud-toggle-button'
   motionButton.addEventListener('click', () => {
-    const enabled = !store.getState().game.profile.preferences.motionEnabled
-    store.dispatch({ type: 'SETTINGS/SET_MOTION', payload: { enabled } })
+    store.dispatch(createSettingsToggleAction('motion', store.getState().game.profile.preferences))
   })
   motionRow.appendChild(motionCopy)
   motionRow.appendChild(motionButton)
@@ -610,8 +560,7 @@ const createSettingsPanel = (store: GameStore): HudPanelHandle => {
   photoModeButton.type = 'button'
   photoModeButton.className = 'hud-toggle-button'
   photoModeButton.addEventListener('click', () => {
-    const enabled = !store.getState().game.profile.preferences.photoModeEnabled
-    store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled } })
+    store.dispatch(createSettingsToggleAction('photoMode', store.getState().game.profile.preferences))
   })
   photoModeRow.appendChild(photoModeCopy)
   photoModeRow.appendChild(photoModeButton)
@@ -623,19 +572,13 @@ const createSettingsPanel = (store: GameStore): HudPanelHandle => {
   const qualitySegmented = document.createElement('div')
   qualitySegmented.className = 'hud-segmented'
   const qualityButtons: HTMLButtonElement[] = []
-  const qualityOptions: Array<{ label: string; value: QualityLevel }> = [
-    { label: '簡易', value: 'simple' },
-    { label: '標準', value: 'standard' }
-  ]
+  const qualityOptions = HUD_QUALITY_OPTIONS
   qualityOptions.forEach((quality) => {
     const button = document.createElement('button')
     button.type = 'button'
     button.textContent = quality.label
     button.addEventListener('click', () => {
-      store.dispatch({
-        type: 'SETTINGS/SET_QUALITY',
-        payload: { quality: quality.value }
-      })
+      store.dispatch(createQualityAction(quality.value))
     })
     qualityButtons.push(button)
     qualitySegmented.appendChild(button)
@@ -648,28 +591,24 @@ const createSettingsPanel = (store: GameStore): HudPanelHandle => {
   panel.appendChild(settingsHint)
 
   const render = (state: GameAppState): void => {
-    const soundEnabled = state.game.profile.preferences.soundEnabled
-    const motionEnabled = state.game.profile.preferences.motionEnabled
-    const photoModeEnabled = state.game.profile.preferences.photoModeEnabled
-    const quality = state.game.profile.preferences.quality
+    const settingsView = resolveSettingsViewModel(state.game.profile.preferences)
 
-    soundButton.textContent = soundEnabled ? 'On' : 'Off'
-    soundButton.classList.toggle('is-on', soundEnabled)
-    soundButton.setAttribute('aria-pressed', String(soundEnabled))
+    soundButton.textContent = settingsView.sound.text
+    soundButton.classList.toggle('is-on', settingsView.sound.pressed)
+    soundButton.setAttribute('aria-pressed', String(settingsView.sound.pressed))
 
-    motionButton.textContent = motionEnabled ? 'On' : 'Off'
-    motionButton.classList.toggle('is-on', motionEnabled)
-    motionButton.setAttribute('aria-pressed', String(motionEnabled))
+    motionButton.textContent = settingsView.motion.text
+    motionButton.classList.toggle('is-on', settingsView.motion.pressed)
+    motionButton.setAttribute('aria-pressed', String(settingsView.motion.pressed))
 
-    photoModeButton.textContent = photoModeEnabled ? 'On' : 'Off'
-    photoModeButton.classList.toggle('is-on', photoModeEnabled)
-    photoModeButton.setAttribute('aria-pressed', String(photoModeEnabled))
+    photoModeButton.textContent = settingsView.photoMode.text
+    photoModeButton.classList.toggle('is-on', settingsView.photoMode.pressed)
+    photoModeButton.setAttribute('aria-pressed', String(settingsView.photoMode.pressed))
 
     qualityButtons.forEach((button, index) => {
-      const value = qualityOptions[index]?.value
-      const isActive = value === quality
-      button.classList.toggle('is-active', isActive)
-      button.setAttribute('aria-pressed', String(isActive))
+      const option = settingsView.qualityOptions[index]
+      button.classList.toggle('is-active', option?.active === true)
+      button.setAttribute('aria-pressed', String(option?.active === true))
     })
   }
 
@@ -693,10 +632,10 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): GameHudO
   revealTab.addEventListener('click', () => {
     const { photoModeEnabled } = store.getState().game.profile.preferences
     if (photoModeEnabled) {
-      store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled: false } })
+      store.dispatch(createSettingsToggleAction('photoMode', store.getState().game.profile.preferences))
       return
     }
-    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: true } })
+    store.dispatch(createHudVisibilityAction(true))
   })
 
   const topBar = document.createElement('div')
@@ -745,7 +684,7 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): GameHudO
   hideHudButton.dataset.action = 'hide-hud'
   hideHudButton.textContent = 'Hide HUD'
   hideHudButton.addEventListener('click', () => {
-    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: false } })
+    store.dispatch(createHudVisibilityAction(false))
   })
   buttons.appendChild(hideHudButton)
   topBar.appendChild(buttons)
@@ -812,7 +751,7 @@ export const createGameHudOverlay = ({ store }: GameHudOverlayOptions): GameHudO
 
   const renderOverlay = (state: GameAppState): void => {
     const tank = getActiveTank(state)
-    const guideContent = getGuideContent(state)
+    const guideContent = getGuideContent(state.ui.mode)
 
     currencyValue.textContent = String(state.game.profile.currency.coins)
     currencyCompat.textContent = `Coins: ${state.game.profile.currency.coins}`

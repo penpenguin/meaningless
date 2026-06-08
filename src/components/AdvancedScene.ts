@@ -29,7 +29,6 @@ import {
   PRIMARY_SHADOW_CAMERA_RANGE,
   PRIMARY_SHADOW_FRUSTUM_RATIOS,
   type AquariumTankDimensions,
-  type TankRelativeAnchor,
   resolveDefaultCameraPosition,
   resolveDefaultControlsTarget,
   resolveLightTarget,
@@ -40,6 +39,14 @@ import {
 import type { VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
 import { ScreenSpaceWaterHazeShader, syncScreenSpaceWaterHazePass } from './screenSpaceWaterHaze'
+import {
+  AQUARIUM_LAYERED_LIGHTING_ANCHORS,
+  SURFACE_CAUSTIC_PHASE_FAMILY
+} from './sceneLighting'
+import {
+  SUBSTRATE_GEOMETRY_SEGMENTS,
+  SUBSTRATE_VISUAL_FOOTPRINT_SCALE
+} from './substrateGeometry'
 
 interface PerformanceStats {
   fps: number
@@ -55,76 +62,10 @@ type PremiumThemeValues = {
   causticsStrength: number
 }
 
-const substrateGeometrySegments = {
-  topWidth: 160,
-  topDepth: 112
-}
-const substrateVisualFootprintScale = {
-  width: 3.62,
-  depth: 3.68
-} as const
-
 const usesOpenWaterPresentation = (theme: Theme): boolean => (
   theme.layoutStyle === 'nature-showcase' ||
   (theme.layoutStyle === 'planted' && theme.fogDensity <= 0.08 && theme.glassFrameStrength >= 0.7)
 )
-
-const SURFACE_CAUSTIC_PHASE_FAMILY = 'surface-caustic'
-
-const tankRelativeLightingAnchors = {
-  lightCanopy: {
-    x: 0.04,
-    topClearance: 0.114,
-    z: -0.18
-  },
-  heroRimLight: {
-    x: 0.142,
-    y: 0.034,
-    z: -0.188
-  },
-  heroGroundGlow: {
-    x: 0.106,
-    bottomClearance: 0.058,
-    z: -0.1
-  },
-  heroFrontFill: {
-    x: 0.068,
-    bottomClearance: 0.132,
-    z: 0.126
-  },
-  nearSurfaceBands: [
-    {
-      x: -0.312,
-      topClearance: 0.202,
-      z: -0.06
-    },
-    {
-      x: -0.162,
-      topClearance: 0.194,
-      z: -0.11
-    },
-    {
-      x: 0.018,
-      topClearance: 0.212,
-      z: -0.152
-    },
-    {
-      x: 0.182,
-      topClearance: 0.192,
-      z: -0.198
-    },
-    {
-      x: 0.314,
-      topClearance: 0.205,
-      z: -0.244
-    }
-  ] satisfies TankRelativeAnchor[],
-  midwater: {
-    x: 0.028,
-    y: 0.082,
-    z: -0.172
-  }
-} satisfies Record<string, TankRelativeAnchor | TankRelativeAnchor[]>
 
 const calculateGaussianFalloff = (
   x: number,
@@ -1495,10 +1436,10 @@ export class AdvancedAquariumScene {
 
   private createHeroLightingLayers(dimensions: AquariumTankDimensions): void {
     const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
-    const lightCanopyPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.lightCanopy)
-    const heroRimLightPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.heroRimLight)
-    const heroGroundGlowPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.heroGroundGlow)
-    const heroFrontFillPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.heroFrontFill)
+    const lightCanopyPosition = resolveTankRelativePosition(dimensions, AQUARIUM_LAYERED_LIGHTING_ANCHORS.lightCanopy)
+    const heroRimLightPosition = resolveTankRelativePosition(dimensions, AQUARIUM_LAYERED_LIGHTING_ANCHORS.heroRimLight)
+    const heroGroundGlowPosition = resolveTankRelativePosition(dimensions, AQUARIUM_LAYERED_LIGHTING_ANCHORS.heroGroundGlow)
+    const heroFrontFillPosition = resolveTankRelativePosition(dimensions, AQUARIUM_LAYERED_LIGHTING_ANCHORS.heroFrontFill)
 
     const lightCanopy = new THREE.Mesh(
       new THREE.PlaneGeometry(tankWidth * 0.94, tankHeight * 0.5),
@@ -1603,7 +1544,7 @@ export class AdvancedAquariumScene {
       {
         name: 'tank-light-near-surface-band-0',
         size: new THREE.Vector2(tankWidth * 0.28, tankHeight * 0.52),
-        anchor: tankRelativeLightingAnchors.nearSurfaceBands[0],
+        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[0],
         rotationY: 0.12,
         rotationZ: -0.05,
         opacity: 0.124,
@@ -1622,7 +1563,7 @@ export class AdvancedAquariumScene {
       {
         name: 'tank-light-near-surface-band-1',
         size: new THREE.Vector2(tankWidth * 0.26, tankHeight * 0.54),
-        anchor: tankRelativeLightingAnchors.nearSurfaceBands[1],
+        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[1],
         rotationY: -0.04,
         rotationZ: 0.018,
         opacity: 0.129,
@@ -1641,7 +1582,7 @@ export class AdvancedAquariumScene {
       {
         name: 'tank-light-near-surface-band-2',
         size: new THREE.Vector2(tankWidth * 0.34, tankHeight * 0.58),
-        anchor: tankRelativeLightingAnchors.nearSurfaceBands[2],
+        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[2],
         rotationY: -0.09,
         rotationZ: -0.016,
         opacity: 0.136,
@@ -1660,7 +1601,7 @@ export class AdvancedAquariumScene {
       {
         name: 'tank-light-near-surface-band-3',
         size: new THREE.Vector2(tankWidth * 0.28, tankHeight * 0.54),
-        anchor: tankRelativeLightingAnchors.nearSurfaceBands[3],
+        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[3],
         rotationY: -0.08,
         rotationZ: 0.024,
         opacity: 0.129,
@@ -1679,7 +1620,7 @@ export class AdvancedAquariumScene {
       {
         name: 'tank-light-near-surface-band-4',
         size: new THREE.Vector2(tankWidth * 0.29, tankHeight * 0.5),
-        anchor: tankRelativeLightingAnchors.nearSurfaceBands[4],
+        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[4],
         rotationY: -0.14,
         rotationZ: -0.02,
         opacity: 0.12,
@@ -1735,7 +1676,7 @@ export class AdvancedAquariumScene {
       return mesh
     })
 
-    const midwaterPosition = resolveTankRelativePosition(dimensions, tankRelativeLightingAnchors.midwater)
+    const midwaterPosition = resolveTankRelativePosition(dimensions, AQUARIUM_LAYERED_LIGHTING_ANCHORS.midwater)
     this.midwaterLightMeshes = [
       {
         name: 'tank-light-midwater-fill',
@@ -2206,8 +2147,8 @@ export class AdvancedAquariumScene {
 
     const baseHeight = 0.68
     const baseBottomY = -tankHeight / 2
-    const substrateVisualWidth = tankWidth * substrateVisualFootprintScale.width
-    const substrateVisualDepth = tankDepth * substrateVisualFootprintScale.depth
+    const substrateVisualWidth = tankWidth * SUBSTRATE_VISUAL_FOOTPRINT_SCALE.width
+    const substrateVisualDepth = tankDepth * SUBSTRATE_VISUAL_FOOTPRINT_SCALE.depth
     const redistributeSubstrateCoordinate = (coordinate: number, visualSize: number): number => {
       const halfSize = visualSize / 2
       const normalized = THREE.MathUtils.clamp(coordinate / halfSize, -1, 1)
@@ -2252,8 +2193,8 @@ export class AdvancedAquariumScene {
     const sandGeometry = new THREE.PlaneGeometry(
       substrateVisualWidth,
       substrateVisualDepth,
-      substrateGeometrySegments.topWidth,
-      substrateGeometrySegments.topDepth
+      SUBSTRATE_GEOMETRY_SEGMENTS.topWidth,
+      SUBSTRATE_GEOMETRY_SEGMENTS.topDepth
     )
     sandGeometry.rotateX(-Math.PI / 2)
 

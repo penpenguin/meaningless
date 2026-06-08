@@ -26,7 +26,7 @@
 - TypeScript ES Modules、2 スペースインデント、セミコロンなし（既存ファイルに合わせる）。
 - クラス・コンポーネント名は PascalCase、関数・変数は camelCase。
 - Shader は `.glsl` 拡張子で管理し、モジュールから直接 import する。
-- Tailwind/DaisyUI はユーティリティを論理的にグループ化し、可読性を優先。
+- UI スタイルは `src/styles.css` の authored Pure CSS を維持し、Tailwind/PostCSS/DaisyUI を再導入する場合は使用箇所をテストで先に固定する。
 
 ## テスト指針（t-wada TDD）
 - すべて Red → Green → Refactor を最小ステップで実施。バグ修正前に必ず失敗するテストを追加。
@@ -44,10 +44,12 @@
 - `vite.config.ts` で alias や plugin を追加する際は開発・本番の両方で動作確認し、必要なら設定を README に追記。
 
 ## Active Technologies
-- TypeScript 5.3.3 + Three.js 0.161, Vite 7.2, Vitest 4, TailwindCSS 3.4, DaisyUI 4.6, vite-plugin-glsl 1.5
+- TypeScript + Three.js 0.161, Vite 7, Vitest 4, authored Pure CSS, vite-plugin-glsl 1.5
+- Playwright is retained as a dev dependency for `scripts/capture-aquarium-screenshot.mjs`; `@types/three` remains required for TypeScript typecheck coverage over Three.js APIs.
 - localStorage（ゲーム保存/旧保存形式マイグレーション）、インメモリ（カレント状態）
 
 ## Recent Changes
+- Removed unused Tailwind/PostCSS/Autoprefixer/DaisyUI tooling after migrating the stylesheet entrypoint to authored Pure CSS.
 - Removed legacy editor/store modules, unused rendering classes, stale aquarium-editor specs, and the unused `tweakpane` dependency
 - Added `nature-showcase` as the hero planted layout with a left-heavy rock mound, curved pale sand beach, multipiece driftwood fan, and species-layered planted composition.
 - Retuned `AdvancedScene` toward a freshwater planted showcase look with broader daylight canopy lighting, darker natural backdrops, softer caustics, and reduced blue-box/panel feel.

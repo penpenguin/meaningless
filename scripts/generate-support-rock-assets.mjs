@@ -4,8 +4,9 @@ import zlib from 'node:zlib'
 import { JSDOM } from 'jsdom'
 import * as THREE from 'three'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
+import { assetPublicOutputPath } from '../src/assets/assetPathConventions.js'
 
-const outputDir = path.resolve('public/assets/models/rocks')
+const outputDir = path.resolve(assetPublicOutputPath('models', 'rocks'))
 const textureSize = 256
 
 const crcTable = new Uint32Array(256)

@@ -7,9 +7,10 @@ import { JSDOM } from 'jsdom'
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
+import { assetPublicOutputPath, fishAssetFileName } from '../src/assets/assetPathConventions.js'
 
-const textureOutputDir = path.resolve('public/assets/textures/fish')
-const modelOutputDir = path.resolve('public/assets/models/fish')
+const textureOutputDir = path.resolve(assetPublicOutputPath('textures', 'fish'))
+const modelOutputDir = path.resolve(assetPublicOutputPath('models', 'fish'))
 export const atlasWidth = 1024
 export const atlasHeight = 512
 
@@ -1013,10 +1014,10 @@ const exportGlb = async (object) => {
 
 export const writeFishAssets = async (config) => {
   const atlas = createAtlas(config)
-  const baseColorPath = path.join(textureOutputDir, `fish-${config.id}-basecolor.png`)
-  const normalPath = path.join(textureOutputDir, `fish-${config.id}-normal.png`)
-  const roughnessPath = path.join(textureOutputDir, `fish-${config.id}-roughness.png`)
-  const alphaPath = path.join(textureOutputDir, `fish-${config.id}-alpha.png`)
+  const baseColorPath = path.join(textureOutputDir, fishAssetFileName(config.id, 'basecolor'))
+  const normalPath = path.join(textureOutputDir, fishAssetFileName(config.id, 'normal'))
+  const roughnessPath = path.join(textureOutputDir, fishAssetFileName(config.id, 'roughness'))
+  const alphaPath = path.join(textureOutputDir, fishAssetFileName(config.id, 'alpha'))
   writePng(baseColorPath, atlasWidth, atlasHeight, atlas.baseColor)
   writePng(normalPath, atlasWidth, atlasHeight, atlas.normal)
   writePng(roughnessPath, atlasWidth, atlasHeight, atlas.roughness)
@@ -1065,7 +1066,7 @@ export const writeFishAssets = async (config) => {
   const schoolScene = new THREE.Group()
   schoolScene.add(schoolMesh)
   const schoolGlb = await exportGlb(schoolScene)
-  fs.writeFileSync(path.join(modelOutputDir, `fish-${config.id}-school.glb`), schoolGlb)
+  fs.writeFileSync(path.join(modelOutputDir, fishAssetFileName(config.id, 'school')), schoolGlb)
 
   const heroBodyMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -1097,7 +1098,7 @@ export const writeFishAssets = async (config) => {
   heroFins.scale.setScalar(heroScale)
   heroGroup.add(heroBody, heroFins)
   const heroGlb = await exportGlb(heroGroup)
-  fs.writeFileSync(path.join(modelOutputDir, `fish-${config.id}-hero.glb`), heroGlb)
+  fs.writeFileSync(path.join(modelOutputDir, fishAssetFileName(config.id, 'hero')), heroGlb)
 }
 
 export const main = async () => {
