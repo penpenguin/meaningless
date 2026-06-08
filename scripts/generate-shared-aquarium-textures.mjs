@@ -2,9 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
 
-const plantTextureOutputDir = path.resolve('public/assets/aquarium/textures/plants')
-const rockTextureOutputDir = path.resolve('public/assets/aquarium/textures/rocks')
-const backdropTextureOutputDir = path.resolve('public/assets/aquarium/textures/backdrop')
+const plantTextureOutputDir = path.resolve('public/assets/textures/plants')
+const rockTextureOutputDir = path.resolve('public/assets/textures/rocks')
+const backdropTextureOutputDir = path.resolve('public/assets/textures/backdrop')
 
 const leafSize = 1024
 const rockSize = 1024

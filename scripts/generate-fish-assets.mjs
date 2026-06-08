@@ -8,8 +8,8 @@ import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
-const textureOutputDir = path.resolve('public/assets/aquarium/textures/fish')
-const modelOutputDir = path.resolve('public/assets/aquarium/models/fish')
+const textureOutputDir = path.resolve('public/assets/textures/fish')
+const modelOutputDir = path.resolve('public/assets/models/fish')
 export const atlasWidth = 1024
 export const atlasHeight = 512
 
