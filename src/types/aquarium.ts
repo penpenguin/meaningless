@@ -74,6 +74,7 @@ export type SpeciesArchetype =
   | 'Corydoras'
   | 'AfricanLampeye'
   | 'RasboraHeteromorpha'
+  | 'YamatoShrimp'
 
 export type SpeciesRenderConfig = {
   archetype: SpeciesArchetype

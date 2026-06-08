@@ -8,6 +8,7 @@ import { corydoras } from './corydoras'
 import { goldfish } from './goldfish'
 import { neonTetra } from './neonTetra'
 import { rasboraHeteromorpha } from './rasboraHeteromorpha'
+import { yamatoShrimp } from './yamatoShrimp'
 import type { FishContentDefinition } from '../types'
 
 export const registerFishContent = (...definitions: FishContentDefinition[]): FishContentDefinition[] => definitions
@@ -22,5 +23,6 @@ export const fishContentDefinitions = registerFishContent(
   abeniPuffer,
   corydoras,
   africanLampeye,
-  rasboraHeteromorpha
+  rasboraHeteromorpha,
+  yamatoShrimp
 )

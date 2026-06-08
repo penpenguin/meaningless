@@ -77,6 +77,19 @@ describe('content registry', () => {
     })
   })
 
+  it('registers yamato shrimp as a dedicated bottom-cleaner archetype', () => {
+    expect(getFishContent('yamato-shrimp')).toMatchObject({
+      speciesId: 'yamato-shrimp',
+      displayName: 'ヤマトヌマエビ',
+      render: {
+        archetype: 'YamatoShrimp'
+      },
+      gameplay: {
+        preferredLane: 'bottom'
+      }
+    })
+  })
+
   it('derives starter content ids from registered entries', () => {
     expect(getStarterFishContentIds()).toEqual(['neon-tetra'])
     expect(getStarterDecorContentIds()).toEqual(['plant'])

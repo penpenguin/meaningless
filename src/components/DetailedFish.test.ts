@@ -1368,6 +1368,12 @@ describe('DetailedFishSystem asset-backed models', () => {
       schoolModelId: 'fish-rasbora-heteromorpha-school',
       heroModelId: 'fish-rasbora-heteromorpha-hero'
     })
+    expect(variants.find((variant) => variant.name === 'YamatoShrimp')).toMatchObject({
+      patternTextureId: 'fish-goldfish',
+      baseColorTextureId: 'fish-goldfish-basecolor',
+      schoolModelId: 'fish-yamato-shrimp-school',
+      heroModelId: 'fish-yamato-shrimp-hero'
+    })
   })
 
   test('falls back to procedural geometry when a school model is unavailable', () => {
@@ -3036,7 +3042,8 @@ describe('DetailedFishSystem variant mapping', () => {
       { name: 'AbeniPuffer' },
       { name: 'Corydoras' },
       { name: 'AfricanLampeye' },
-      { name: 'RasboraHeteromorpha' }
+      { name: 'RasboraHeteromorpha' },
+      { name: 'YamatoShrimp' }
     ]
 
     const resolveVariantIndex = (DetailedFishSystem.prototype as unknown as {
@@ -3052,6 +3059,7 @@ describe('DetailedFishSystem variant mapping', () => {
     expect(resolveVariantIndex('corydoras')).toBe(6)
     expect(resolveVariantIndex('african-lampeye')).toBe(7)
     expect(resolveVariantIndex('rasbora-heteromorpha')).toBe(8)
+    expect(resolveVariantIndex('yamato-shrimp')).toBe(9)
   })
 })
 

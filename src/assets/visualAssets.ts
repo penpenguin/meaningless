@@ -261,6 +261,8 @@ export const createAquariumAssetManifest = (
     { id: 'fish-african-lampeye-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-african-lampeye-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
     { id: 'fish-rasbora-heteromorpha-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-rasbora-heteromorpha-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
     { id: 'fish-rasbora-heteromorpha-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-rasbora-heteromorpha-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-yamato-shrimp-school', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-yamato-shrimp-school.glb', baseUrl), usageTag: 'fish', lod: 'high' },
+    { id: 'fish-yamato-shrimp-hero', url: resolvePublicAssetUrl('assets/aquarium/models/fish/fish-yamato-shrimp-hero.glb', baseUrl), usageTag: 'fish', lod: 'high' },
     { id: 'plant-amazon-sword', url: resolvePublicAssetUrl('assets/aquarium/models/plants/plant-amazon-sword.glb', baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'plant-matsumo', url: resolvePublicAssetUrl('assets/aquarium/models/plants/plant-matsumo.glb', baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'plant-willow-moss', url: resolvePublicAssetUrl('assets/aquarium/models/plants/plant-willow-moss.glb', baseUrl), usageTag: 'plant', lod: 'high' },

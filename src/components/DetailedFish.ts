@@ -730,6 +730,37 @@ export class DetailedFishSystem {
           topFullness: 0.64,
           bellyFullness: 0.7
         }
+      },
+      {
+        name: 'YamatoShrimp',
+        primaryColor: new THREE.Color(0xcab48c),
+        secondaryColor: new THREE.Color(0x76684f),
+        scale: 0.42,
+        speed: 0.76,
+        locomotionProfileId: 'calm-cruiser',
+        proceduralForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [1, 0, 0],
+        heroForwardAxis: [1, 0, 0],
+        patternTextureId: 'fish-goldfish',
+        baseColorTextureId: 'fish-goldfish-basecolor',
+        normalTextureId: 'fish-goldfish-normal',
+        roughnessTextureId: 'fish-goldfish-roughness',
+        alphaTextureId: 'fish-goldfish-alpha',
+        schoolModelId: 'fish-yamato-shrimp-school',
+        heroModelId: 'fish-yamato-shrimp-hero',
+        silhouette: {
+          bodyLength: 1.32,
+          bodyHeight: 0.18,
+          bodyThickness: 0.12,
+          noseLength: 0.36,
+          tailLength: 0.28,
+          tailHeight: 0.18,
+          dorsalHeight: 0.04,
+          ventralHeight: 0.04,
+          pectoralLength: 0.28,
+          topFullness: 0.46,
+          bellyFullness: 0.54
+        }
       }
     ]
   }
@@ -2652,6 +2683,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     if (archetype === 'Corydoras') return this.safeVariantIndex('corydoras')
     if (archetype === 'AfricanLampeye') return this.safeVariantIndex('africanlampeye')
     if (archetype === 'RasboraHeteromorpha') return this.safeVariantIndex('rasboraheteromorpha')
+    if (archetype === 'YamatoShrimp') return this.safeVariantIndex('yamatoshrimp')
     return this.safeVariantIndex('neon')
   }
 
