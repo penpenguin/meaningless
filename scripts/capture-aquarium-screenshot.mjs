@@ -1,7 +1,7 @@
 import { chromium as defaultChromium } from 'playwright'
 import { promises as defaultFs } from 'node:fs'
 
-const defaultUrl = 'http://127.0.0.1:5174/meaningless/'
+const defaultUrl = 'http://127.0.0.1:5173/meaningless/'
 const defaultOutputPath = '/tmp/meaningless-aquarium.jpg'
 
 /**

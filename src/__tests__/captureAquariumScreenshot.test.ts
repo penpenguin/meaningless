@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { captureAquariumScreenshot } from '../../scripts/capture-aquarium-screenshot.mjs'
 
 describe('captureAquariumScreenshot', () => {
-  it('captures through a Playwright CDP session instead of page.screenshot', async () => {
+  const createScreenshotHarness = () => {
     const writeFile = vi.fn()
     const send = vi.fn(async () => ({ data: Buffer.from('jpeg').toString('base64') }))
     const pageScreenshot = vi.fn()
@@ -22,6 +22,19 @@ describe('captureAquariumScreenshot', () => {
         close: browser.close
       }))
     }
+
+    return {
+      browser,
+      chromium,
+      page,
+      pageScreenshot,
+      send,
+      writeFile
+    }
+  }
+
+  it('captures through a Playwright CDP session instead of page.screenshot', async () => {
+    const { browser, chromium, page, pageScreenshot, send, writeFile } = createScreenshotHarness()
 
     const result = await captureAquariumScreenshot({
       chromium,
@@ -45,5 +58,21 @@ describe('captureAquariumScreenshot', () => {
     expect(pageScreenshot).not.toHaveBeenCalled()
     expect(writeFile).toHaveBeenCalledWith('/tmp/aquarium.jpg', Buffer.from('jpeg'))
     expect(browser.close).toHaveBeenCalled()
+  })
+
+  it('defaults to the Vite dev server port used by npm run dev', async () => {
+    const { chromium, page, writeFile } = createScreenshotHarness()
+
+    await captureAquariumScreenshot({
+      chromium,
+      fs: { writeFile },
+      outputPath: '/tmp/aquarium.jpg',
+      waitMs: 0
+    })
+
+    expect(page.goto).toHaveBeenCalledWith(
+      'http://127.0.0.1:5173/meaningless/',
+      { waitUntil: 'domcontentloaded' }
+    )
   })
 })
