@@ -18,7 +18,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { defaultTheme } from '../utils/stateSchema'
 import { disposeSceneResources } from '../utils/threeDisposal'
-import { createOpenWaterBounds } from './sceneBounds'
+import { createOpenWaterBounds } from '../utils/sceneBounds'
 import {
   AQUARIUM_CAMERA_FRAMING,
   AQUARIUM_DEPTH_LAYER_ANCHORS,
@@ -35,7 +35,7 @@ import {
   resolvePhotoModeCameraPosition,
   resolvePhotoModeControlsTarget,
   resolveTankRelativePosition
-} from './aquariumLayout'
+} from '../utils/aquariumLayout'
 import type { VisualAssetBundle } from '../assets/visualAssets'
 import type { QualityLevel } from '../types/settings'
 import { ScreenSpaceWaterHazeShader, syncScreenSpaceWaterHazePass } from './screenSpaceWaterHaze'
@@ -53,6 +53,13 @@ interface PerformanceStats {
   frameTime: number
   fishVisible: number
   drawCalls: number
+}
+
+type PhotoModeFollowMode = 'fish' | 'mouse'
+
+type PhotoModeOptions = {
+  enabled: boolean
+  followMode: PhotoModeFollowMode
 }
 
 type PremiumThemeValues = {
@@ -746,6 +753,8 @@ export class AdvancedAquariumScene {
   private animationId: number | null = null
   public motionEnabled = true
   private photoModeEnabled = false
+  private photoModeFollowMode: PhotoModeFollowMode = 'fish'
+  private readonly photoModePointer = new THREE.Vector2()
   private motionScale = 1
   public advancedEffectsEnabled = true
   private readonly tankDimensions = AQUARIUM_TANK_DIMENSIONS
@@ -773,12 +782,11 @@ export class AdvancedAquariumScene {
   constructor(
     container: HTMLElement,
     visualAssets?: VisualAssetBundle,
-    initialQuality: QualityLevel = 'standard',
     initialTheme: Theme = defaultTheme
   ) {
     this.container = container
     this.visualAssets = visualAssets
-    this.currentVisualQuality = initialQuality
+    this.currentVisualQuality = 'standard'
     this.scene = new THREE.Scene()
     applyThemeToScene(this.scene, initialTheme)
     this.clock = new THREE.Clock()
@@ -4369,6 +4377,14 @@ export class AdvancedAquariumScene {
   private resolvePhotoModeTarget(): THREE.Vector3 {
     this.tempPhotoModeTarget.copy(this.photoModeControlsTarget)
 
+    if (this.photoModeFollowMode === 'mouse') {
+      const dimensions = this.tankDimensions ?? AQUARIUM_TANK_DIMENSIONS
+      this.tempPhotoModeTarget.x += this.photoModePointer.x * dimensions.width * 0.18
+      this.tempPhotoModeTarget.y += this.photoModePointer.y * dimensions.height * 0.16
+      this.tempPhotoModeTarget.z -= this.photoModePointer.y * dimensions.depth * 0.08
+      return this.tempPhotoModeTarget
+    }
+
     const heroFocusPoint = this.fishSystem?.getHeroFocusPoint?.()
     if (!heroFocusPoint) {
       return this.tempPhotoModeTarget
@@ -4690,11 +4706,12 @@ export class AdvancedAquariumScene {
     }
   }
 
-  public setPhotoMode(enabled: boolean): void {
-    this.photoModeEnabled = enabled
-    this.motionScale = enabled ? 0.72 : 1
-    this.controls.autoRotate = enabled
-    this.controls.autoRotateSpeed = enabled ? 0.45 : 1
+  public setPhotoMode(options: PhotoModeOptions): void {
+    this.photoModeEnabled = options.enabled
+    this.photoModeFollowMode = options.followMode
+    this.motionScale = options.enabled ? 0.72 : 1
+    this.controls.autoRotate = options.enabled && options.followMode === 'fish'
+    this.controls.autoRotateSpeed = options.enabled ? 0.45 : 1
   }
   
   public setAdvancedEffects(enabled: boolean): void {
@@ -4769,6 +4786,21 @@ export class AdvancedAquariumScene {
 
   private setupEventListeners(): void {
     window.addEventListener('resize', this.handleResize)
+    this.container.addEventListener('pointermove', this.handlePhotoModePointerMove)
+  }
+
+  private handlePhotoModePointerMove = (event: PointerEvent): void => {
+    const rect = this.container.getBoundingClientRect()
+    const width = rect.width || this.container.clientWidth || window.innerWidth
+    const height = rect.height || this.container.clientHeight || window.innerHeight
+    if (width <= 0 || height <= 0) return
+
+    const x = ((event.clientX - rect.left) / width) * 2 - 1
+    const y = -(((event.clientY - rect.top) / height) * 2 - 1)
+    this.photoModePointer.set(
+      THREE.MathUtils.clamp(x, -1, 1),
+      THREE.MathUtils.clamp(y, -1, 1)
+    )
   }
 
   private getViewportSize(): { width: number; height: number } {
@@ -5045,6 +5077,7 @@ export class AdvancedAquariumScene {
   public dispose(): void {
     this.stop()
     window.removeEventListener('resize', this.handleResize)
+    this.container?.removeEventListener('pointermove', this.handlePhotoModePointerMove)
 
     if (this.spiralDecorations) {
       this.spiralDecorations.dispose()

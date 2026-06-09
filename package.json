@@ -10,22 +10,27 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "verify:soc": "depcruise --config .dependency-cruiser.cjs --include-only '^src' --output-type err --progress none src"
   },
   "dependencies": {
-    "three": "^0.161.0"
+    "three": "^0.184.0",
+    "tweakpane": "^4.0.5"
   },
   "devDependencies": {
-    "@types/node": "^22.9.3",
-    "@types/three": "^0.161.2",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.9.1",
+    "@types/three": "^0.184.1",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
-    "eslint": "^8.56.0",
-    "jsdom": "^27.4.0",
+    "dependency-cruiser": "^17.4.3",
+    "eslint": "^10.4.1",
+    "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
     "playwright": "^1.58.2",
-    "typescript": "^5.3.3",
-    "vite": "^7.2.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
     "vite-plugin-glsl": "^1.5.4",
     "vitest": "^4.0.10"
   },

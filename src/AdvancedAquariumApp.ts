@@ -5,27 +5,25 @@ import { createAquariumRenderModel } from './game/renderModel'
 import { loadGameSave, resolveBootGameSave, saveGameSave } from './game/storage'
 import { AdvancedAquariumScene } from './components/AdvancedScene'
 import { AudioManager } from './components/AudioManager'
-import { createGameHudOverlay } from './components/GameHudOverlay'
+import { createGameControlPane } from './components/GameControlPane'
 import { hideLoadingOverlay, showBubbleLoadingAnimation } from './utils/loadingScreen'
 import { loadProfileState } from './utils/profileStorage'
 import { loadSettingsState } from './utils/settingsStorage'
 import { getAutoSave } from './utils/storage'
 import { loadTankState } from './utils/tankStorage'
 import { loadVisualAssets, type VisualAssetBundle } from './assets/visualAssets'
-import type { QualityLevel } from './types/settings'
 
-type HudOverlayHandle = ReturnType<typeof createGameHudOverlay>
+type ControlPaneHandle = ReturnType<typeof createGameControlPane>
 
 export class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
   private audioManager: AudioManager
   private store: GameStore
-  private overlay: HudOverlayHandle | null = null
+  private controlPane: ControlPaneHandle | null = null
   private storeUnsubscribe: (() => void) | null = null
   private motionMediaQuery: MediaQueryList
   private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
   private keyHandler: ((event: KeyboardEvent) => void) | null = null
-  private lastAppliedQuality: QualityLevel | null = null
   private visualAssets: VisualAssetBundle | null = null
 
   constructor() {
@@ -74,10 +72,9 @@ export class AdvancedAquariumApp {
     this.scene = new AdvancedAquariumScene(
       container,
       this.visualAssets ?? undefined,
-      this.store.getState().game.profile.preferences.quality,
       initialTheme
     )
-    this.setupHudOverlay()
+    this.setupControlPane()
     this.setupStoreBinding()
     this.setupEventListeners()
     this.scene.start()
@@ -96,19 +93,20 @@ export class AdvancedAquariumApp {
     this.visualAssets = await loadVisualAssets()
   }
 
-  private setupHudOverlay(): void {
-    if (this.overlay) {
-      this.overlay.dispose()
+  private setupControlPane(): void {
+    if (this.controlPane) {
+      this.controlPane.dispose()
     }
-    this.overlay = createGameHudOverlay({ store: this.store })
-    document.body.appendChild(this.overlay.element)
-  }
-
-  private applyQualitySettings(quality: QualityLevel): void {
-    if (!this.scene) return
-    if (this.lastAppliedQuality === quality) return
-    this.lastAppliedQuality = quality
-    this.scene.setVisualQuality(quality)
+    this.controlPane = createGameControlPane({
+      store: this.store,
+      getPerformanceStats: () => this.scene?.getPerformanceStats() ?? {
+        fps: 0,
+        frameTime: 0,
+        drawCalls: 0,
+        fishVisible: 0
+      }
+    })
+    document.body.appendChild(this.controlPane.element)
   }
 
   private setupStoreBinding(): void {
@@ -125,7 +123,6 @@ export class AdvancedAquariumApp {
 
     this.storeUnsubscribe = this.store.subscribe(({ state }) => {
       applySceneState(state)
-      this.applyQualitySettings(state.game.profile.preferences.quality)
     })
   }
 
@@ -167,9 +164,9 @@ export class AdvancedAquariumApp {
 
     this.store.destroy()
 
-    if (this.overlay) {
-      this.overlay.dispose()
-      this.overlay = null
+    if (this.controlPane) {
+      this.controlPane.dispose()
+      this.controlPane = null
     }
 
     if (this.scene) {

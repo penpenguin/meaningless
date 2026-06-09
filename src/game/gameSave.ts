@@ -8,38 +8,23 @@ import {
   STARTER_DECOR_ID,
   STARTER_FISH_ID
 } from './catalog'
-import { getStarterDecorContentIds, getStarterFishContentIds } from '../content/registry'
 import { refreshTankProgression, simulateGameSave } from './simulation'
-import type { GameAppState, GameSave, Lane } from './types'
-import type { QualityLevel } from '../types/settings'
+import type { GameAppState, GameSave, Lane, PhotoModeFollowMode } from './types'
 
-export const CURRENT_GAME_SCHEMA_VERSION = 2
-
-const migrateQuality = (value: unknown, fallback: QualityLevel): QualityLevel => {
-  if (value === 'simple' || value === 'standard') return value
-  if (value === 'low') return 'simple'
-  if (value === 'medium' || value === 'high') return 'standard'
-  return fallback
-}
+export const CURRENT_GAME_SCHEMA_VERSION = 3
 
 const createDefaultProfile = () => ({
-  currency: {
-    coins: 12,
-    pendingCoins: 0
-  },
-  unlockedFishIds: getStarterFishContentIds(),
-  unlockedDecorIds: getStarterDecorContentIds(),
   stats: {
-    totalEarnedCoins: 0,
     totalOfflineSeconds: 0,
     totalViewedSeconds: 0
   },
   preferences: {
     soundEnabled: true,
     motionEnabled: true,
-    quality: 'simple' as const,
-    hudVisible: true,
-    photoModeEnabled: false
+    photoMode: {
+      enabled: false,
+      followMode: 'fish' as const
+    }
   }
 })
 
@@ -90,6 +75,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null
 }
 
+const migratePhotoModeFollowMode = (value: unknown): PhotoModeFollowMode => {
+  return value === 'mouse' ? 'mouse' : 'fish'
+}
+
 export const migrateLegacySave = (options: {
   nowIso: string
   legacyTank: unknown
@@ -124,14 +113,6 @@ export const migrateLegacySave = (options: {
     ...fallbackState,
     profile: {
       ...fallbackState.profile,
-      currency: {
-        coins: migratedProfile?.currency.pearls ?? fallbackState.profile.currency.coins,
-        pendingCoins: 0
-      },
-      unlockedFishIds: Array.from(new Set([
-        ...fallbackState.profile.unlockedFishIds,
-        ...(migratedProfile?.unlockedSpeciesIds ?? [])
-      ])),
       preferences: {
         soundEnabled: migratedSettings?.soundEnabled ??
           (typeof legacyAutoSaveSettings?.soundEnabled === 'boolean'
@@ -141,9 +122,7 @@ export const migrateLegacySave = (options: {
           (typeof legacyAutoSaveSettings?.motionEnabled === 'boolean'
             ? legacyAutoSaveSettings.motionEnabled
             : fallbackState.profile.preferences.motionEnabled),
-        quality: migrateQuality(migratedSettings?.quality, fallbackState.profile.preferences.quality),
-        hudVisible: fallbackState.profile.preferences.hudVisible,
-        photoModeEnabled: fallbackState.profile.preferences.photoModeEnabled
+        photoMode: fallbackState.profile.preferences.photoMode
       },
       stats: {
         ...fallbackState.profile.stats,
@@ -153,7 +132,7 @@ export const migrateLegacySave = (options: {
     tanks: [refreshTankProgression({
       ...tank,
       fishSchools,
-      decor: fallbackState.profile.unlockedDecorIds.includes(STARTER_DECOR_ID) ? [] : tank.decor
+      decor: tank.decor
     })],
     activeTankId: tank.id
   }
@@ -209,7 +188,7 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
         fishSchools,
         rareFish: [],
         decor,
-        progression: {
+      progression: {
           comfort: typeof progression.comfort === 'number' ? Math.max(0, Math.floor(progression.comfort)) : 0,
           incomePerMinute: typeof progression.incomePerMinute === 'number' ? Math.max(1, Math.floor(progression.incomePerMinute)) : 1,
           lastCollectedAt: typeof progression.lastCollectedAt === 'string' ? progression.lastCollectedAt : null
@@ -225,30 +204,7 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
     schemaVersion: CURRENT_GAME_SCHEMA_VERSION,
     lastSimulatedAt: typeof value.lastSimulatedAt === 'string' ? value.lastSimulatedAt : nowIso,
     profile: {
-      currency: {
-        coins: isRecord(profileSource.currency) && typeof profileSource.currency.coins === 'number'
-          ? Math.max(0, Math.floor(profileSource.currency.coins))
-          : fallback.profile.currency.coins,
-        pendingCoins: isRecord(profileSource.currency) && typeof profileSource.currency.pendingCoins === 'number'
-          ? Math.max(0, profileSource.currency.pendingCoins)
-          : fallback.profile.currency.pendingCoins
-      },
-      unlockedFishIds: Array.from(new Set([
-        ...fallback.profile.unlockedFishIds,
-        ...(Array.isArray(profileSource.unlockedFishIds)
-          ? profileSource.unlockedFishIds.filter((entry): entry is string => typeof entry === 'string')
-          : [])
-      ])),
-      unlockedDecorIds: Array.from(new Set([
-        ...fallback.profile.unlockedDecorIds,
-        ...(Array.isArray(profileSource.unlockedDecorIds)
-          ? profileSource.unlockedDecorIds.filter((entry): entry is string => typeof entry === 'string')
-          : [])
-      ])),
       stats: {
-        totalEarnedCoins: isRecord(profileSource.stats) && typeof profileSource.stats.totalEarnedCoins === 'number'
-          ? Math.max(0, Math.floor(profileSource.stats.totalEarnedCoins))
-          : fallback.profile.stats.totalEarnedCoins,
         totalOfflineSeconds: isRecord(profileSource.stats) && typeof profileSource.stats.totalOfflineSeconds === 'number'
           ? Math.max(0, Math.floor(profileSource.stats.totalOfflineSeconds))
           : fallback.profile.stats.totalOfflineSeconds,
@@ -263,13 +219,16 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
         motionEnabled: typeof preferencesSource.motionEnabled === 'boolean'
           ? preferencesSource.motionEnabled
           : fallback.profile.preferences.motionEnabled,
-        quality: migrateQuality(preferencesSource.quality, fallback.profile.preferences.quality),
-        hudVisible: typeof preferencesSource.hudVisible === 'boolean'
-          ? preferencesSource.hudVisible
-          : fallback.profile.preferences.hudVisible,
-        photoModeEnabled: typeof preferencesSource.photoModeEnabled === 'boolean'
-          ? preferencesSource.photoModeEnabled
-          : fallback.profile.preferences.photoModeEnabled
+        photoMode: {
+          enabled: isRecord(preferencesSource.photoMode) && typeof preferencesSource.photoMode.enabled === 'boolean'
+            ? preferencesSource.photoMode.enabled
+            : typeof preferencesSource.photoModeEnabled === 'boolean'
+              ? preferencesSource.photoModeEnabled
+              : fallback.profile.preferences.photoMode.enabled,
+          followMode: isRecord(preferencesSource.photoMode)
+            ? migratePhotoModeFollowMode(preferencesSource.photoMode.followMode)
+            : fallback.profile.preferences.photoMode.followMode
+        }
       }
     },
     tanks,

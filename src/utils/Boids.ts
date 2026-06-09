@@ -3,7 +3,7 @@ import {
   createFishSafeBounds,
   resolveFishAxisExtents,
   type FishRenderExtents
-} from '../components/sceneBounds'
+} from './sceneBounds'
 
 const clamp01 = (value: number): number => THREE.MathUtils.clamp(value, 0, 1)
 const DEFAULT_FISH_SAFE_EXTENTS: FishRenderExtents = {

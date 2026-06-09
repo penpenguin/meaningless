@@ -6,8 +6,7 @@ type RenderScene = {
   applyTheme: (theme: ReturnType<typeof createAquariumTheme>) => void
   applyFishGroups: (groups: ReturnType<typeof createAquariumFishGroups>) => boolean
   setMotionEnabled: (enabled: boolean) => void
-  setPhotoMode: (enabled: boolean) => void
-  setVisualQuality: (quality: GameAppState['game']['profile']['preferences']['quality']) => void
+  setPhotoMode: (photoMode: GameAppState['game']['profile']['preferences']['photoMode']) => void
 }
 
 type AudioBinding = {
@@ -52,8 +51,7 @@ export const createRenderStateApplier = (options: {
     }
 
     options.scene.setMotionEnabled(state.game.profile.preferences.motionEnabled)
-    options.scene.setPhotoMode(state.game.profile.preferences.photoModeEnabled)
-    options.scene.setVisualQuality(state.game.profile.preferences.quality)
+    options.scene.setPhotoMode(state.game.profile.preferences.photoMode)
     options.audioManager.setEnabled(state.game.profile.preferences.soundEnabled)
   }
 }

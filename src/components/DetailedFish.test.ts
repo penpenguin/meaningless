@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import * as THREE from 'three'
 import { DetailedFishSystem } from './DetailedFish'
+import { createAquariumAssetManifest } from '../assets/visualAssets'
 
 const createHeroSingleMeshScene = (): THREE.Group => {
   const scene = new THREE.Group()
@@ -29,6 +30,31 @@ const createHeroMultiMeshScene = (): THREE.Group => {
   tail.position.x = -0.72
   scene.add(tail)
   return scene
+}
+
+const createSchoolSourceMesh = (): THREE.Mesh<THREE.BufferGeometry, THREE.Material> => new THREE.Mesh(
+  new THREE.BoxGeometry(0.5, 0.25, 0.2),
+  new THREE.MeshStandardMaterial({ color: '#ffffff', map: new THREE.Texture() })
+)
+
+const createFishModelBundle = () => {
+  const speciesIds = [
+    'fish-angelfish',
+    'fish-butterflyfish',
+    'fish-clownfish',
+    'fish-goldfish',
+    'fish-neon'
+  ]
+
+  return {
+    manifest: { textures: [], models: [], environment: [] },
+    textures: {},
+    models: Object.fromEntries(speciesIds.flatMap((id) => [
+      [`${id}-school`, { scene: new THREE.Group(), sourceMesh: createSchoolSourceMesh() }],
+      [`${id}-hero`, { scene: createHeroSingleMeshScene(), sourceMesh: null }]
+    ])),
+    environment: {}
+  }
 }
 
 describe('DetailedFishSystem geometry merging', () => {
@@ -1376,7 +1402,24 @@ describe('DetailedFishSystem asset-backed models', () => {
     })
   })
 
-  test('falls back to procedural geometry when a school model is unavailable', () => {
+  test('references only registered model assets for school and hero fish', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        schoolModelId?: string
+        heroModelId?: string
+      }>
+    }
+    const manifestModelIds = new Set(createAquariumAssetManifest('/').models.map((entry) => entry.id))
+    const referencedModelIds = createFishVariants.bind(instance)()
+      .flatMap((variant) => [variant.schoolModelId, variant.heroModelId])
+      .filter((id): id is string => typeof id === 'string')
+
+    expect(referencedModelIds.length).toBeGreaterThan(0)
+    expect(referencedModelIds.filter((id) => !manifestModelIds.has(id))).toEqual([])
+  })
+
+  test('skips school geometry when a school model is unavailable', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const fallbackGeometry = new THREE.BoxGeometry(1, 1, 1)
     const fallbackMaterial = new THREE.MeshPhysicalMaterial({ color: '#ffffff' })
@@ -1528,12 +1571,9 @@ describe('DetailedFishSystem asset-backed models', () => {
 
     createDetailedFishMeshes([2])
 
-    const createdMesh = (instance as unknown as { instancedMeshes: THREE.InstancedMesh[] }).instancedMeshes[0]
-
-    expect(geometrySpy).toHaveBeenCalledTimes(1)
-    expect(materialSpy).toHaveBeenCalledTimes(1)
-    expect(createdMesh.geometry).toBe(fallbackGeometry)
-    expect(createdMesh.material).toBe(fallbackMaterial)
+    expect((instance as unknown as { instancedMeshes: THREE.InstancedMesh[] }).instancedMeshes).toHaveLength(0)
+    expect(geometrySpy).not.toHaveBeenCalled()
+    expect(materialSpy).not.toHaveBeenCalled()
   })
 
   test('keeps school instance colors near-neutral when using authored fish assets', () => {
@@ -1849,6 +1889,115 @@ describe('DetailedFishSystem asset-backed models', () => {
     expect(material.alphaTest).toBeCloseTo(0.05)
   })
 
+  test('skips school fish instead of falling back to procedural geometry when the school asset is missing', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const geometrySpy = vi.fn(() => new THREE.BoxGeometry(1, 1, 1))
+
+    ;(instance as unknown as {
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        primaryColor: THREE.Color
+        secondaryColor: THREE.Color
+        schoolModelId?: string
+      }>
+      instancedMeshes: THREE.InstancedMesh[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).variants = [{
+      name: 'Clownfish',
+      scale: 1,
+      speed: 1,
+      primaryColor: new THREE.Color('#ff8844'),
+      secondaryColor: new THREE.Color('#ffffff'),
+      schoolModelId: 'fish-clownfish-school'
+    }]
+    ;(instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).instancedMeshes = []
+    ;(instance as unknown as {
+      baseInstanceCounts: number[]
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).baseInstanceCounts = []
+    ;(instance as unknown as {
+      group: THREE.Group
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).group = new THREE.Group()
+    ;(instance as unknown as {
+      fishCount: number
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).fishCount = 2
+    ;(instance as unknown as {
+      currentQuality: 'simple' | 'standard'
+      heroAssignments: Map<number, unknown>
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).currentQuality = 'standard'
+    ;(instance as unknown as {
+      heroAssignments: Map<number, unknown>
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).heroAssignments = new Map()
+    ;(instance as unknown as {
+      visualAssets: { models: Record<string, null> } | null
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).visualAssets = {
+      models: {
+        'fish-clownfish-school': null
+      }
+    }
+    ;(instance as unknown as {
+      createDetailedFishGeometry: (variant: unknown) => THREE.BufferGeometry
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createDetailedFishGeometry = geometrySpy
+    ;(instance as unknown as {
+      createHeroFishMeshes: (counts: number[]) => void
+    }).createHeroFishMeshes = vi.fn()
+
+    const createDetailedFishMeshes = (DetailedFishSystem.prototype as unknown as {
+      createDetailedFishMeshes: (countsPerVariant?: number[]) => void
+    }).createDetailedFishMeshes.bind(instance)
+
+    createDetailedFishMeshes([2])
+
+    expect((instance as unknown as { instancedMeshes: THREE.InstancedMesh[] }).instancedMeshes).toHaveLength(0)
+    expect((instance as unknown as { group: THREE.Group }).group.children).toHaveLength(0)
+    expect(geometrySpy).not.toHaveBeenCalled()
+  })
+
   test('uses the authored single-mesh hero asset when a source mesh is available', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const heroScene = createHeroSingleMeshScene()
@@ -2154,7 +2303,7 @@ describe('DetailedFishSystem asset-backed models', () => {
     expect(heroObject.getObjectByName('Tail')?.position.x).toBeGreaterThan(0.25)
   })
 
-  test('falls back to the procedural hero fish when the hero asset is missing', () => {
+  test('skips hero fish instead of falling back to procedural geometry when the hero asset is missing', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const fallbackGeometry = new THREE.BoxGeometry(1, 0.4, 0.2)
     const fallbackMaterial = new THREE.MeshPhysicalMaterial({ color: '#ffeeaa' })
@@ -2239,15 +2388,10 @@ describe('DetailedFishSystem asset-backed models', () => {
 
     createHeroFishMeshes([1])
 
-    const heroObject = (instance as unknown as { heroFishMeshes: THREE.Object3D[] }).heroFishMeshes[0]
-
-    expect(heroObject).toBeInstanceOf(THREE.Group)
-    const motionNodes = heroObject.userData.motionNodes as { body?: THREE.Object3D; tail?: THREE.Object3D | null } | undefined
-    expect(motionNodes?.body).toBeInstanceOf(THREE.Mesh)
-    expect((motionNodes?.body as THREE.Mesh).geometry).toBe(fallbackGeometry)
-    expect((motionNodes?.body as THREE.Mesh).material).toBeInstanceOf(THREE.MeshPhysicalMaterial)
-    expect(geometrySpy).toHaveBeenCalledTimes(1)
-    expect(materialSpy).toHaveBeenCalledTimes(1)
+    expect((instance as unknown as { heroFishMeshes: THREE.Object3D[] }).heroFishMeshes).toHaveLength(0)
+    expect((instance as unknown as { group: THREE.Group }).group.children).toHaveLength(0)
+    expect(geometrySpy).not.toHaveBeenCalled()
+    expect(materialSpy).not.toHaveBeenCalled()
   })
 })
 
@@ -2255,7 +2399,7 @@ describe('DetailedFishSystem wander target timing', () => {
   test('uses a slightly denser default school count on desktop for the wider tank', () => {
     const scene = new THREE.Scene()
     const bounds = new THREE.Box3(new THREE.Vector3(-9, -4, -5), new THREE.Vector3(9, 4, 5))
-    const system = new DetailedFishSystem(scene, bounds)
+    const system = new DetailedFishSystem(scene, bounds, createFishModelBundle())
     const internals = system as unknown as { fishCount: number }
 
     expect(internals.fishCount).toBe(66)
@@ -2508,7 +2652,7 @@ describe('DetailedFishSystem quality scaling', () => {
   test('shows dedicated hero fish only on standard quality', () => {
     const scene = new THREE.Scene()
     const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
-    const system = new DetailedFishSystem(scene, bounds)
+    const system = new DetailedFishSystem(scene, bounds, createFishModelBundle())
 
     system.setFishGroups([
       { speciesId: 'neon-tetra', count: 8 }
@@ -2604,7 +2748,7 @@ describe('DetailedFishSystem quality scaling', () => {
   test('keeps the hero fish nose behind the front safe plane even with a forward depth offset', () => {
     const scene = new THREE.Scene()
     const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
-    const system = new DetailedFishSystem(scene, bounds)
+    const system = new DetailedFishSystem(scene, bounds, createFishModelBundle())
 
     system.setFishGroups([
       { speciesId: 'neon-tetra', count: 8 }
@@ -2644,7 +2788,7 @@ describe('DetailedFishSystem quality scaling', () => {
   test('uses restrained planted hero placements so accent fish do not dominate the front glass', () => {
     const scene = new THREE.Scene()
     const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
-    const system = new DetailedFishSystem(scene, bounds, null, { layoutStyle: 'planted' })
+    const system = new DetailedFishSystem(scene, bounds, createFishModelBundle(), { layoutStyle: 'planted' })
 
     system.setFishGroups([
       { speciesId: 'neon-tetra', count: 10 },
@@ -3095,7 +3239,7 @@ describe('DetailedFishSystem fish group application', () => {
   test('setFishGroups rebuilds meshes based on group counts', () => {
     const scene = new THREE.Scene()
     const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
-    const system = new DetailedFishSystem(scene, bounds)
+    const system = new DetailedFishSystem(scene, bounds, createFishModelBundle())
 
     system.setFishGroups([
       { speciesId: 'neon-tetra', count: 3 },
@@ -3115,7 +3259,7 @@ describe('DetailedFishSystem fish group application', () => {
   test('setFishGroups preserves quality scaling', () => {
     const scene = new THREE.Scene()
     const bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
-    const system = new DetailedFishSystem(scene, bounds)
+    const system = new DetailedFishSystem(scene, bounds, createFishModelBundle())
 
     system.setQuality('simple')
     system.setFishGroups([

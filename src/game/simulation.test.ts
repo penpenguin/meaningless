@@ -97,7 +97,8 @@ describe('simulation', () => {
     })
 
     expect(result.offlineResult?.simulatedSeconds).toBe(8 * 60 * 60)
-    expect(result.save.profile.currency.coins).toBeGreaterThan(initial.profile.currency.coins)
+    expect(result.save.profile).not.toHaveProperty('currency')
+    expect(result.offlineResult?.tankSummaries[0]).toEqual({ tankId: initial.activeTankId })
     expect(result.offlineResult?.tankSummaries[0]).not.toHaveProperty('beforeWaterQuality')
     expect(result.offlineResult?.tankSummaries[0]).not.toHaveProperty('afterWaterQuality')
     expect(result.save.tanks[0]?.progression).not.toHaveProperty('waterQuality')

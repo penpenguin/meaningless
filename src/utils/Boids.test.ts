@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import * as THREE from 'three'
 import { Boid, BoidsSystem } from './Boids'
-import { createFishSafeBounds, resolveFishAxisExtents } from '../components/sceneBounds'
+import { createFishSafeBounds, resolveFishAxisExtents } from './sceneBounds'
 
 type BoundaryParams = {
   maxSpeed: number

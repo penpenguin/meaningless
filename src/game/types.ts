@@ -1,6 +1,5 @@
-import type { QualityLevel } from '../types/settings'
-
 export type Lane = 'top' | 'middle' | 'bottom'
+export type PhotoModeFollowMode = 'fish' | 'mouse'
 
 export type FishSchool = {
   id: string
@@ -46,23 +45,17 @@ export type GameTank = {
 }
 
 export type GameProfile = {
-  currency: {
-    coins: number
-    pendingCoins: number
-  }
-  unlockedFishIds: string[]
-  unlockedDecorIds: string[]
   stats: {
-    totalEarnedCoins: number
     totalOfflineSeconds: number
     totalViewedSeconds: number
   }
   preferences: {
     soundEnabled: boolean
     motionEnabled: boolean
-    quality: QualityLevel
-    hudVisible: boolean
-    photoModeEnabled: boolean
+    photoMode: {
+      enabled: boolean
+      followMode: PhotoModeFollowMode
+    }
   }
 }
 
@@ -76,12 +69,10 @@ export type GameSave = {
 
 export type OfflineTankSummary = {
   tankId: string
-  earnedCoins: number
 }
 
 export type OfflineSimulationResult = {
   simulatedSeconds: number
-  earnedCoins: number
   tankSummaries: OfflineTankSummary[]
 }
 
@@ -101,12 +92,9 @@ export type GameAction =
   | { type: 'UI/SET_MODE'; payload: { mode: GameUiMode } }
   | { type: 'GAME/TICK'; payload: { nowIso: string } }
   | { type: 'GAME/CLEAR_OFFLINE_RESULT' }
-  | { type: 'GAME/UNLOCK_FISH'; payload: { speciesId: string } }
-  | { type: 'GAME/UNLOCK_DECOR'; payload: { decorId: string } }
   | { type: 'GAME/SET_FISH_COUNT'; payload: { speciesId: string; count: number } }
   | { type: 'GAME/SET_FISH_LANE'; payload: { speciesId: string; lane: Lane } }
   | { type: 'SETTINGS/SET_SOUND'; payload: { enabled: boolean } }
   | { type: 'SETTINGS/SET_MOTION'; payload: { enabled: boolean } }
-  | { type: 'SETTINGS/SET_QUALITY'; payload: { quality: QualityLevel } }
-  | { type: 'SETTINGS/SET_HUD_VISIBILITY'; payload: { visible: boolean } }
   | { type: 'SETTINGS/SET_PHOTO_MODE'; payload: { enabled: boolean } }
+  | { type: 'SETTINGS/SET_PHOTO_FOLLOW_MODE'; payload: { followMode: PhotoModeFollowMode } }

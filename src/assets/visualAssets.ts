@@ -276,17 +276,7 @@ export const createAquariumAssetManifest = (
     { id: 'plant-hygrophila-rear', url: resolvePublicAssetUrl(modelAssetPath('plants', 'plant-hygrophila-rear.glb'), baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'plant-vallisneria-tall', url: resolvePublicAssetUrl(modelAssetPath('plants', 'plant-vallisneria-tall.glb'), baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'driftwood-hero', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-hero.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-secondary-a', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-secondary-a.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-secondary-b', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-secondary-b.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-secondary-c', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-secondary-c.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-ridge-hero.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-support-a', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-support-a.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-support-b', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-support-b.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-support-c', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-support-c.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-pebble-cluster', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-pebble-cluster.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-lava-base-cluster-a', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-lava-base-cluster-a.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-lava-base-cluster-b', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-lava-base-cluster-b.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-lava-transition-chips', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-lava-transition-chips.glb'), baseUrl), usageTag: 'rock', lod: 'high' }
+    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-ridge-hero.glb'), baseUrl), usageTag: 'rock', lod: 'high' }
   ],
   environment: [
     { id: 'aquarium-hdri', url: resolvePublicAssetUrl(environmentAssetPath('aquarium-hdri.hdr'), baseUrl), usageTag: 'environment', lod: 'high' }

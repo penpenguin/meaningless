@@ -1,4 +1,4 @@
-import type { TankRelativeAnchor } from './aquariumLayout'
+import type { TankRelativeAnchor } from '../utils/aquariumLayout'
 
 export const SURFACE_CAUSTIC_PHASE_FAMILY = 'surface-caustic'
 

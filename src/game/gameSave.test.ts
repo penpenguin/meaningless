@@ -6,14 +6,19 @@ describe('gameSave', () => {
     const now = '2026-03-08T00:00:00.000Z'
     const save = createDefaultGameSave(now)
 
-    expect(save.schemaVersion).toBe(2)
+    expect(save.schemaVersion).toBe(3)
     expect(save.lastSimulatedAt).toBe(now)
     expect(save.tanks).toHaveLength(1)
     expect(save.activeTankId).toBe(save.tanks[0]?.id)
-    expect(save.profile.currency.coins).toBe(12)
-    expect(save.profile.preferences.hudVisible).toBe(true)
-    expect(save.profile.preferences.photoModeEnabled).toBe(false)
-    expect(save.profile.preferences.quality).toBe('simple')
+    expect(save.profile).not.toHaveProperty('currency')
+    expect(save.profile).not.toHaveProperty('unlockedFishIds')
+    expect(save.profile).not.toHaveProperty('unlockedDecorIds')
+    expect(save.profile.preferences).not.toHaveProperty('quality')
+    expect(save.profile.preferences).not.toHaveProperty('hudVisible')
+    expect(save.profile.preferences.photoMode).toEqual({
+      enabled: false,
+      followMode: 'fish'
+    })
     expect(save.tanks[0]?.fishSchools[0]).toMatchObject({
       speciesId: 'neon-tetra',
       lane: 'middle'
@@ -59,18 +64,21 @@ describe('gameSave', () => {
       legacyAutoSave: null
     })
 
-    expect(migrated.profile.currency.coins).toBe(23)
-    expect(migrated.profile.unlockedFishIds).toContain('clownfish')
-    expect(migrated.profile.preferences.quality).toBe('standard')
-    expect(migrated.profile.preferences.hudVisible).toBe(true)
-    expect(migrated.profile.preferences.photoModeEnabled).toBe(false)
+    expect(migrated.profile).not.toHaveProperty('currency')
+    expect(migrated.profile).not.toHaveProperty('unlockedFishIds')
+    expect(migrated.profile.preferences).not.toHaveProperty('quality')
+    expect(migrated.profile.preferences).not.toHaveProperty('hudVisible')
+    expect(migrated.profile.preferences.photoMode).toEqual({
+      enabled: false,
+      followMode: 'fish'
+    })
     expect(migrated.tanks[0]?.fishSchools).toEqual([
       expect.objectContaining({ speciesId: 'clownfish', count: 6, lane: 'middle' }),
       expect.objectContaining({ speciesId: 'angelfish', count: 2, lane: 'top' })
     ])
   })
 
-  it('maps legacy low quality to simple', () => {
+  it('drops legacy quality settings during migration', () => {
     const migrated = migrateLegacySave({
       nowIso: '2026-03-08T00:00:00.000Z',
       legacyTank: null,
@@ -84,7 +92,7 @@ describe('gameSave', () => {
       legacyAutoSave: null
     })
 
-    expect(migrated.profile.preferences.quality).toBe('simple')
+    expect(migrated.profile.preferences).not.toHaveProperty('quality')
   })
 
   it('hydrates offline progress and records the offline summary in ui state', () => {
@@ -99,7 +107,8 @@ describe('gameSave', () => {
 
     expect(hydrated.ui.lastOfflineResult).not.toBeNull()
     expect(hydrated.ui.lastOfflineResult?.simulatedSeconds).toBe(7200)
-    expect(hydrated.game.profile.currency.coins).toBeGreaterThan(save.profile.currency.coins)
+    expect(hydrated.ui.lastOfflineResult?.tankSummaries[0]).toEqual({ tankId: save.activeTankId })
+    expect(hydrated.game.profile).not.toHaveProperty('currency')
     expect(hydrated.game.lastSimulatedAt).toBe('2026-03-08T02:00:00.000Z')
   })
 
@@ -132,7 +141,7 @@ describe('gameSave', () => {
       nowIso: '2026-03-08T00:00:00.000Z'
     })
 
-    expect(hydrated.game.schemaVersion).toBe(2)
+    expect(hydrated.game.schemaVersion).toBe(3)
     expect(hydrated.game.tanks[0]?.progression).not.toHaveProperty('waterQuality')
     expect(hydrated.game.profile.stats).not.toHaveProperty('totalMaintenanceActions')
   })

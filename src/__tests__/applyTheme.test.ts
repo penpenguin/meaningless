@@ -21,7 +21,7 @@ describe('applyThemeToScene', () => {
     applyThemeToScene(scene, baseTheme)
 
     expect(scene.fog).toBeInstanceOf(THREE.FogExp2)
-    const fog = scene.fog as THREE.FogExp2
+    const fog = scene.fog as unknown as THREE.FogExp2
     expect(fog.density).toBeCloseTo(baseTheme.fogDensity)
     expect(fog.color.getHexString()).toBe('112233')
   })
