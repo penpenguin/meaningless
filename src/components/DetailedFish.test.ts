@@ -3411,6 +3411,73 @@ describe('DetailedFishSystem fish group application', () => {
     expect(boidsUpdate).toHaveBeenCalledWith(0.25)
   })
 
+  test('simple quality updates school motion every other frame while keeping hero animation live', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boidsUpdate = vi.fn()
+    const syncInstancedMeshes = vi.fn()
+    const updateHeroAnimations = vi.fn()
+    const internals = instance as unknown as {
+      currentQuality: 'simple'
+      instancedMeshes: THREE.InstancedMesh[]
+      instancedTailMotionUniforms: Array<{ value: number }>
+      boids: { boids: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; acceleration: THREE.Vector3 }>; update: (deltaTime: number) => void }
+      bounds: THREE.Box3
+      behaviorProfile: {
+        preferredDepth: number
+        depthVariance: number
+        turnBias: number
+        schoolMood: 'calm'
+        avoidWalls: number
+      }
+      tempBoundsSize: THREE.Vector3
+      tempDepthForce: THREE.Vector3
+      tempHorizontalDirection: THREE.Vector3
+      tempHorizontalPreviousDirection: THREE.Vector3
+      tempInterestForce: THREE.Vector3
+      updateWanderTargets: (elapsedTime: number) => void
+      ensureHeadingState: () => void
+      ensureMotionStateArrays: () => void
+      applyBehaviorForces: () => void
+      syncInstancedMeshes: typeof syncInstancedMeshes
+      updateHeroAnimations: typeof updateHeroAnimations
+    }
+
+    internals.currentQuality = 'simple'
+    internals.instancedMeshes = []
+    internals.instancedTailMotionUniforms = []
+    internals.boids = { boids: [], update: boidsUpdate }
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    internals.behaviorProfile = {
+      preferredDepth: 0.5,
+      depthVariance: 0.18,
+      turnBias: 0.14,
+      schoolMood: 'calm',
+      avoidWalls: 0.8
+    }
+    internals.tempBoundsSize = new THREE.Vector3()
+    internals.tempDepthForce = new THREE.Vector3()
+    internals.tempHorizontalDirection = new THREE.Vector3()
+    internals.tempHorizontalPreviousDirection = new THREE.Vector3()
+    internals.tempInterestForce = new THREE.Vector3()
+    internals.updateWanderTargets = vi.fn()
+    internals.ensureHeadingState = vi.fn()
+    internals.ensureMotionStateArrays = vi.fn()
+    internals.applyBehaviorForces = vi.fn()
+    internals.syncInstancedMeshes = syncInstancedMeshes
+    internals.updateHeroAnimations = updateHeroAnimations
+
+    const update = (DetailedFishSystem.prototype as unknown as {
+      update: (deltaTime: number, elapsedTime: number) => void
+    }).update.bind(instance)
+
+    update(0.016, 1)
+    update(0.016, 1.016)
+
+    expect(boidsUpdate).toHaveBeenCalledTimes(1)
+    expect(syncInstancedMeshes).toHaveBeenCalledTimes(1)
+    expect(updateHeroAnimations).toHaveBeenCalledTimes(2)
+  })
+
   test('update biases fish upward or downward based on the active depth profile', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const boid = {

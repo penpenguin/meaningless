@@ -2,17 +2,11 @@ import { Pane } from 'tweakpane'
 import type { GameStore } from '../game/createGameStore'
 import { getDecorContentList, getFishContentList } from '../content/registry'
 import type { GameAppState, Lane, PhotoModeFollowMode } from '../game/types'
+import { createEmptyPerformanceStats, type PerformanceStats } from '../utils/performanceStats'
 
 type GameControlPaneOptions = {
   store: GameStore
   getPerformanceStats?: () => PerformanceStats
-}
-
-type PerformanceStats = {
-  fps: number
-  frameTime: number
-  drawCalls: number
-  fishVisible: number
 }
 
 type PaneControl = {
@@ -67,6 +61,16 @@ const syncPerformanceStats = (params: ControlParams, stats: PerformanceStats): v
   params.fps = Math.round(stats.fps)
   params.frameTime = Number(stats.frameTime.toFixed(1))
   params.drawCalls = Math.max(0, Math.floor(stats.drawCalls))
+  params.triangles = Math.max(0, Math.floor(stats.triangles))
+  params.geometries = Math.max(0, Math.floor(stats.geometries))
+  params.textures = Math.max(0, Math.floor(stats.textures))
+  params.assetLoadTotalMs = Math.max(0, Math.floor(stats.assetLoadTotalMs))
+  params.assetLoadTexturesMs = Math.max(0, Math.floor(stats.assetLoadTexturesMs))
+  params.assetLoadModelsMs = Math.max(0, Math.floor(stats.assetLoadModelsMs))
+  params.assetLoadEnvironmentMs = Math.max(0, Math.floor(stats.assetLoadEnvironmentMs))
+  params.fishUpdateAverageMs = Number(stats.fishUpdateAverageMs.toFixed(1))
+  params.waterMotionUpdateAverageMs = Number(stats.waterMotionUpdateAverageMs.toFixed(1))
+  params.godRaysDepthRenderAverageMs = Number(stats.godRaysDepthRenderAverageMs.toFixed(1))
   params.fishVisible = Math.max(0, Math.floor(stats.fishVisible))
 }
 
@@ -213,12 +217,7 @@ export const createGameControlPane = ({ store, getPerformanceStats }: GameContro
 
   if (getPerformanceStats) {
     const debugFolder = pane.addFolder({ title: 'Debug' })
-    syncPerformanceStats(params, {
-      fps: 0,
-      frameTime: 0,
-      drawCalls: 0,
-      fishVisible: 0
-    })
+    syncPerformanceStats(params, createEmptyPerformanceStats())
     addControl(debugFolder.addBinding(params, 'fps', {
       label: 'FPS',
       readonly: true
@@ -229,6 +228,46 @@ export const createGameControlPane = ({ store, getPerformanceStats }: GameContro
     }))
     addControl(debugFolder.addBinding(params, 'drawCalls', {
       label: 'Draw calls',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'triangles', {
+      label: 'Triangles',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'geometries', {
+      label: 'Geometries',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'textures', {
+      label: 'Textures',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'assetLoadTotalMs', {
+      label: 'Asset load ms',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'assetLoadTexturesMs', {
+      label: 'Texture load ms',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'assetLoadModelsMs', {
+      label: 'Model load ms',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'assetLoadEnvironmentMs', {
+      label: 'Environment load ms',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'fishUpdateAverageMs', {
+      label: 'Fish update avg ms',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'waterMotionUpdateAverageMs', {
+      label: 'Water update avg ms',
+      readonly: true
+    }))
+    addControl(debugFolder.addBinding(params, 'godRaysDepthRenderAverageMs', {
+      label: 'God rays depth avg ms',
       readonly: true
     }))
     addControl(debugFolder.addBinding(params, 'fishVisible', {

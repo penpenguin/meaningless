@@ -11,9 +11,19 @@ import { loadProfileState } from './utils/profileStorage'
 import { loadSettingsState } from './utils/settingsStorage'
 import { getAutoSave } from './utils/storage'
 import { loadTankState } from './utils/tankStorage'
-import { loadVisualAssets, type VisualAssetBundle } from './assets/visualAssets'
+import {
+  createBootAquariumAssetManifest,
+  createDeferredAquariumAssetManifest,
+  loadVisualAssets,
+  type VisualAssetBundle
+} from './assets/visualAssets'
+import { createEmptyPerformanceStats, type PerformanceStats } from './utils/performanceStats'
+import { resolvePerformanceTuningOptions } from './utils/performanceTuning'
 
 type ControlPaneHandle = ReturnType<typeof createGameControlPane>
+type AquariumDebugWindow = Window & {
+  __aquariumPerformanceStats?: () => PerformanceStats
+}
 
 export class AdvancedAquariumApp {
   private scene: AdvancedAquariumScene | null = null
@@ -62,6 +72,7 @@ export class AdvancedAquariumApp {
   }
 
   private async init(): Promise<void> {
+    performance.mark('aquarium:app:init:start')
     this.showLoadingScreen()
     await this.loadAssets()
 
@@ -72,13 +83,21 @@ export class AdvancedAquariumApp {
     this.scene = new AdvancedAquariumScene(
       container,
       this.visualAssets ?? undefined,
-      initialTheme
+      initialTheme,
+      resolvePerformanceTuningOptions(window.location.search)
     )
     this.setupControlPane()
     this.setupStoreBinding()
     this.setupEventListeners()
     this.scene.start()
+    this.setupPerformanceDebugHook()
     this.hideLoadingScreen()
+    performance.mark('aquarium:loading-overlay:hidden')
+    performance.measure(
+      'aquarium:app:init-to-overlay-hidden',
+      'aquarium:app:init:start',
+      'aquarium:loading-overlay:hidden'
+    )
   }
 
   private showLoadingScreen(): void {
@@ -90,7 +109,31 @@ export class AdvancedAquariumApp {
   }
 
   private async loadAssets(): Promise<void> {
-    this.visualAssets = await loadVisualAssets()
+    this.visualAssets = await loadVisualAssets(createBootAquariumAssetManifest())
+    void this.loadDeferredAssets()
+  }
+
+  private async loadDeferredAssets(): Promise<void> {
+    const deferredManifest = createDeferredAquariumAssetManifest()
+    if (
+      deferredManifest.textures.length === 0 &&
+      deferredManifest.models.length === 0 &&
+      deferredManifest.environment.length === 0
+    ) {
+      return
+    }
+
+    const deferredAssets = await loadVisualAssets(deferredManifest)
+    if (!this.visualAssets) return
+
+    this.visualAssets.manifest = {
+      textures: [...this.visualAssets.manifest.textures, ...deferredAssets.manifest.textures],
+      models: [...this.visualAssets.manifest.models, ...deferredAssets.manifest.models],
+      environment: [...this.visualAssets.manifest.environment, ...deferredAssets.manifest.environment]
+    }
+    Object.assign(this.visualAssets.textures, deferredAssets.textures)
+    Object.assign(this.visualAssets.models, deferredAssets.models)
+    Object.assign(this.visualAssets.environment, deferredAssets.environment)
   }
 
   private setupControlPane(): void {
@@ -99,14 +142,14 @@ export class AdvancedAquariumApp {
     }
     this.controlPane = createGameControlPane({
       store: this.store,
-      getPerformanceStats: () => this.scene?.getPerformanceStats() ?? {
-        fps: 0,
-        frameTime: 0,
-        drawCalls: 0,
-        fishVisible: 0
-      }
+      getPerformanceStats: () => this.scene?.getPerformanceStats() ?? createEmptyPerformanceStats()
     })
     document.body.appendChild(this.controlPane.element)
+  }
+
+  private setupPerformanceDebugHook(): void {
+    const debugWindow = window as AquariumDebugWindow
+    debugWindow.__aquariumPerformanceStats = () => this.scene?.getPerformanceStats() ?? createEmptyPerformanceStats()
   }
 
   private setupStoreBinding(): void {
@@ -174,6 +217,7 @@ export class AdvancedAquariumApp {
       this.scene = null
     }
 
+    delete (window as AquariumDebugWindow).__aquariumPerformanceStats
     this.audioManager.dispose()
   }
 }

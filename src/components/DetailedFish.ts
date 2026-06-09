@@ -122,6 +122,8 @@ export class DetailedFishSystem {
   private headingInitialized: boolean[] = []
   private behaviorProfile: BehaviorProfile = { ...DEFAULT_BEHAVIOR_PROFILE }
   private currentQuality: QualityLevel = 'standard'
+  private schoolUpdateFrame = 0
+  private schoolUpdateDeltaTime = 0
   private visualAssets: VisualAssetBundle | null
   private layoutStyle: AquascapeLayoutStyle
   private layoutSeed: number
@@ -2342,9 +2344,19 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       uniform.value = elapsedTime
     })
 
-    this.applyBehaviorForces(bounds, boundsSize, behavior, elapsedTime, safeDeltaTime)
-    this.boids.update(safeDeltaTime)
-    this.syncInstancedMeshes(bounds, behavior, elapsedTime, safeDeltaTime)
+    this.schoolUpdateDeltaTime = ((this.schoolUpdateDeltaTime as number | undefined) ?? 0) + safeDeltaTime
+    const schoolUpdateInterval = this.currentQuality === 'simple' ? 2 : 1
+    const schoolUpdateFrame = (this.schoolUpdateFrame as number | undefined) ?? 0
+    const shouldUpdateSchoolMotion = schoolUpdateFrame % schoolUpdateInterval === 0
+    this.schoolUpdateFrame = schoolUpdateFrame + 1
+
+    if (shouldUpdateSchoolMotion) {
+      const schoolDeltaTime = this.schoolUpdateDeltaTime
+      this.schoolUpdateDeltaTime = 0
+      this.applyBehaviorForces(bounds, boundsSize, behavior, elapsedTime, schoolDeltaTime)
+      this.boids.update(schoolDeltaTime)
+      this.syncInstancedMeshes(bounds, behavior, elapsedTime, schoolDeltaTime)
+    }
     this.updateHeroAnimations(safeDeltaTime)
   }
 

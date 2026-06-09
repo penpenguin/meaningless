@@ -8,6 +8,7 @@ import {
   modelAssetPath,
   textureAssetPath
 } from './assetPathConventions.js'
+import type { AssetLoadTimingStats, PerformanceLike } from '../utils/performanceStats'
 
 export type AssetUsageTag =
   | 'plant'
@@ -60,6 +61,7 @@ export type VisualAssetBundle = {
   textures: Record<string, THREE.Texture | null>
   models: Record<string, LoadedModelAsset | null>
   environment: Record<string, THREE.Texture | null>
+  loadTimings?: AssetLoadTimingStats
 }
 
 type TextureLoaderLike = Pick<THREE.TextureLoader, 'loadAsync'>
@@ -67,6 +69,7 @@ type GLTFLoaderLike = {
   loadAsync(url: string): Promise<{ scene: THREE.Object3D | THREE.Group; animations?: THREE.AnimationClip[] }>
 }
 type HDRILoaderLike = Pick<RGBELoader, 'loadAsync'>
+type AssetLoadClock = () => number
 
 const materialTextureKeys = [
   'map',
@@ -195,6 +198,25 @@ const loadModelAsset = async (
   }
 }
 
+const measureAssetLoad = async <T>(
+  now: AssetLoadClock,
+  performanceLike: PerformanceLike | undefined,
+  label: string,
+  load: () => Promise<T>
+): Promise<[T, number]> => {
+  const startMark = `aquarium:assets:${label}:start`
+  const endMark = `aquarium:assets:${label}:end`
+  performanceLike?.mark?.(startMark)
+  const start = now()
+  const result = await load()
+  const duration = Math.max(0, now() - start)
+  performanceLike?.mark?.(endMark)
+  performanceLike?.measure?.(`aquarium:assets:${label}`, startMark, endMark)
+  performanceLike?.clearMarks?.(startMark)
+  performanceLike?.clearMarks?.(endMark)
+  return [result, duration]
+}
+
 export const resolvePublicAssetUrl = (
   assetPath: string,
   baseUrl: string = import.meta.env.BASE_URL ?? '/'
@@ -283,6 +305,50 @@ export const createAquariumAssetManifest = (
   ]
 })
 
+const bootFishTextureIds = new Set([
+  'fish-neon-basecolor',
+  'fish-neon-normal',
+  'fish-neon-roughness',
+  'fish-neon-alpha',
+  'fish-scale-normal',
+  'fish-scale-roughness'
+])
+
+const bootFishModelIds = new Set([
+  'fish-neon-school',
+  'fish-neon-hero'
+])
+
+const isBootTextureEntry = (entry: ManifestTextureEntry): boolean => (
+  entry.usageTag !== 'fish' || bootFishTextureIds.has(entry.id)
+)
+
+const isBootModelEntry = (entry: ManifestModelEntry): boolean => (
+  entry.usageTag !== 'fish' || bootFishModelIds.has(entry.id)
+)
+
+export const createBootAquariumAssetManifest = (
+  baseUrl: string = import.meta.env.BASE_URL ?? '/'
+): AssetManifest => {
+  const manifest = createAquariumAssetManifest(baseUrl)
+  return {
+    textures: manifest.textures.filter(isBootTextureEntry),
+    models: manifest.models.filter(isBootModelEntry),
+    environment: manifest.environment
+  }
+}
+
+export const createDeferredAquariumAssetManifest = (
+  baseUrl: string = import.meta.env.BASE_URL ?? '/'
+): AssetManifest => {
+  const manifest = createAquariumAssetManifest(baseUrl)
+  return {
+    textures: manifest.textures.filter((entry) => !isBootTextureEntry(entry)),
+    models: manifest.models.filter((entry) => !isBootModelEntry(entry)),
+    environment: []
+  }
+}
+
 export const aquariumAssetManifest: AssetManifest = createAquariumAssetManifest()
 
 export const loadVisualAssets = async (
@@ -291,38 +357,62 @@ export const loadVisualAssets = async (
     textureLoader?: TextureLoaderLike
     gltfLoader?: GLTFLoaderLike
     hdriLoader?: HDRILoaderLike
+    now?: AssetLoadClock
+    performance?: PerformanceLike
   } = {}
 ): Promise<VisualAssetBundle> => {
   const textureLoader = options.textureLoader ?? new THREE.TextureLoader()
   const gltfLoader = options.gltfLoader ?? new GLTFLoader()
   const hdriLoader = options.hdriLoader ?? new RGBELoader()
+  const now = options.now ?? (() => performance.now())
+  const performanceLike = options.performance ?? (typeof performance === 'undefined' ? undefined : performance)
 
-  const [textureEntries, modelEntries, environmentEntries] = await Promise.all([
-    Promise.all(
-      manifest.textures.map(async (entry) => {
-        try {
-          const texture = await textureLoader.loadAsync(entry.url)
-          return [entry.id, configureTexture(texture, entry)] as const
-        } catch {
-          return [entry.id, null] as const
-        }
-      })
+  const totalStart = now()
+  const [
+    [textureEntries, texturesMs],
+    [modelEntries, modelsMs],
+    [environmentEntries, environmentMs]
+  ] = await Promise.all([
+    measureAssetLoad(
+      now,
+      performanceLike,
+      'textures',
+      () => Promise.all(
+        manifest.textures.map(async (entry) => {
+          try {
+            const texture = await textureLoader.loadAsync(entry.url)
+            return [entry.id, configureTexture(texture, entry)] as const
+          } catch {
+            return [entry.id, null] as const
+          }
+        })
+      )
     ),
-    Promise.all(
-      manifest.models.map(async (entry) => {
-        const model = await loadModelAsset(entry, gltfLoader)
-        return [entry.id, model] as const
-      })
+    measureAssetLoad(
+      now,
+      performanceLike,
+      'models',
+      () => Promise.all(
+        manifest.models.map(async (entry) => {
+          const model = await loadModelAsset(entry, gltfLoader)
+          return [entry.id, model] as const
+        })
+      )
     ),
-    Promise.all(
-      manifest.environment.map(async (entry) => {
-        try {
-          const texture = await hdriLoader.loadAsync(entry.url)
-          return [entry.id, configureEnvironmentTexture(texture)] as const
-        } catch {
-          return [entry.id, null] as const
-        }
-      })
+    measureAssetLoad(
+      now,
+      performanceLike,
+      'environment',
+      () => Promise.all(
+        manifest.environment.map(async (entry) => {
+          try {
+            const texture = await hdriLoader.loadAsync(entry.url)
+            return [entry.id, configureEnvironmentTexture(texture)] as const
+          } catch {
+            return [entry.id, null] as const
+          }
+        })
+      )
     )
   ])
 
@@ -330,6 +420,12 @@ export const loadVisualAssets = async (
     manifest,
     textures: Object.fromEntries(textureEntries),
     models: Object.fromEntries(modelEntries),
-    environment: Object.fromEntries(environmentEntries)
+    environment: Object.fromEntries(environmentEntries),
+    loadTimings: {
+      totalMs: Math.max(0, now() - totalStart),
+      texturesMs,
+      modelsMs,
+      environmentMs
+    }
   }
 }

@@ -45,7 +45,7 @@
 
 ## Active Technologies
 - TypeScript + Three.js 0.161, Vite 7, Vitest 4, authored Pure CSS, vite-plugin-glsl 1.5
-- Playwright is retained as a dev dependency for `scripts/capture-aquarium-screenshot.mjs`; `@types/three` remains required for TypeScript typecheck coverage over Three.js APIs.
+- Playwright is retained as a dev dependency for local screenshot/performance tooling (`scripts/capture-aquarium-screenshot.mjs`, `scripts/measure-aquarium-performance.mjs`); `@types/three` remains required for TypeScript typecheck coverage over Three.js APIs.
 - localStorage（ゲーム保存/旧保存形式マイグレーション）、インメモリ（カレント状態）
 
 ## Recent Changes

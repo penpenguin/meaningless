@@ -87,11 +87,14 @@ vi.mock('../components/GameControlPane', () => {
 
 vi.mock('../assets/visualAssets', () => {
   return {
-    aquariumAssetManifest: { textures: [], models: [] },
+    aquariumAssetManifest: { textures: [], models: [], environment: [] },
+    createBootAquariumAssetManifest: vi.fn(() => ({ textures: [], models: [], environment: [] })),
+    createDeferredAquariumAssetManifest: vi.fn(() => ({ textures: [], models: [], environment: [] })),
     loadVisualAssets: vi.fn(async () => ({
-      manifest: { textures: [], models: [] },
+      manifest: { textures: [], models: [], environment: [] },
       textures: {},
-      models: {}
+      models: {},
+      environment: {}
     }))
   }
 })

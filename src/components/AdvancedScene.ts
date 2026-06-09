@@ -20,9 +20,23 @@ import { defaultTheme } from '../utils/stateSchema'
 import { disposeSceneResources } from '../utils/threeDisposal'
 import { createOpenWaterBounds } from '../utils/sceneBounds'
 import {
+  applyAssetLoadTimings,
+  createEmptySpanTimingStats,
+  createEmptyPerformanceStats,
+  measurePerformanceSpan,
+  readRendererDebugStats,
+  type PerformanceStats,
+  type SpanTimingStats
+} from '../utils/performanceStats'
+import {
+  DEFAULT_PERFORMANCE_TUNING,
+  type PerformanceTuningOptions
+} from '../utils/performanceTuning'
+import { resolveAdaptiveRenderScale } from '../utils/renderScale'
+import { shouldRunQualityCadencedUpdate } from '../utils/updateCadence'
+import {
   AQUARIUM_CAMERA_FRAMING,
   AQUARIUM_DEPTH_LAYER_ANCHORS,
-  AQUARIUM_FRONT_GLASS_THICKNESS,
   AQUARIUM_TANK_DIMENSIONS,
   MAIN_LIGHT_RIG_ANCHORS,
   MAIN_LIGHT_TARGET_OFFSETS,
@@ -47,13 +61,6 @@ import {
   SUBSTRATE_GEOMETRY_SEGMENTS,
   SUBSTRATE_VISUAL_FOOTPRINT_SCALE
 } from './substrateGeometry'
-
-interface PerformanceStats {
-  fps: number
-  frameTime: number
-  fishVisible: number
-  drawCalls: number
-}
 
 type PhotoModeFollowMode = 'fish' | 'mouse'
 
@@ -757,6 +764,7 @@ export class AdvancedAquariumScene {
   private readonly photoModePointer = new THREE.Vector2()
   private motionScale = 1
   public advancedEffectsEnabled = true
+  private readonly performanceTuning: PerformanceTuningOptions
   private readonly tankDimensions = AQUARIUM_TANK_DIMENSIONS
   private defaultCameraPosition = resolveDefaultCameraPosition(this.tankDimensions)
   private photoModeCameraPosition = resolvePhotoModeCameraPosition(this.tankDimensions)
@@ -766,14 +774,15 @@ export class AdvancedAquariumScene {
   private readonly visualAssets?: VisualAssetBundle
   
   // Performance monitoring
-  private stats: PerformanceStats = {
-    fps: 0,
-    frameTime: 0,
-    fishVisible: 0,
-    drawCalls: 0
-  }
+  private stats: PerformanceStats = createEmptyPerformanceStats()
+  private fishUpdateStats: SpanTimingStats = createEmptySpanTimingStats()
+  private waterMotionUpdateStats: SpanTimingStats = createEmptySpanTimingStats()
   private fpsCounter = 0
   private lastStatsUpdate = 0
+  private adaptiveRenderScale = 1
+  private stressedFrameSamples = 0
+  private stableFrameSamples = 0
+  private waterMotionFrame = 0
   private readonly performanceThresholds = {
     medium: 50,
     low: 30
@@ -782,15 +791,18 @@ export class AdvancedAquariumScene {
   constructor(
     container: HTMLElement,
     visualAssets?: VisualAssetBundle,
-    initialTheme: Theme = defaultTheme
+    initialTheme: Theme = defaultTheme,
+    performanceTuning: PerformanceTuningOptions = DEFAULT_PERFORMANCE_TUNING
   ) {
     this.container = container
     this.visualAssets = visualAssets
+    this.performanceTuning = performanceTuning
+    applyAssetLoadTimings(this.stats, visualAssets?.loadTimings)
     this.currentVisualQuality = 'standard'
     this.scene = new THREE.Scene()
     applyThemeToScene(this.scene, initialTheme)
     this.clock = new THREE.Clock()
-    
+
     this.setupCamera()
     this.setupRenderer(container)
     this.setupComposer()
@@ -850,7 +862,7 @@ export class AdvancedAquariumScene {
       powerPreference: 'high-performance'
     })
     this.renderer.setSize(width, height)
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.currentVisualQuality === 'simple' ? 1 : 2))
+    this.renderer.setPixelRatio(this.resolveRendererPixelRatio())
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = this.resolveToneMappingExposure(this.currentVisualQuality)
     this.renderer.shadowMap.enabled = true
@@ -1541,6 +1553,14 @@ export class AdvancedAquariumScene {
       ? cameraAspect
       : fallbackAspect
 
+    if (this.performanceTuning?.screenSpaceHazeEnabled === false) {
+      if (this.screenSpaceHazePass) {
+        this.screenSpaceHazePass.enabled = false
+      }
+      this.godRaysEffect?.setScreenSpaceWaterHazeEnabled?.(false)
+      return
+    }
+
     syncScreenSpaceWaterHazePass(this.screenSpaceHazePass, theme, quality, aspect)
     this.godRaysEffect?.configureScreenSpaceWaterHaze?.(theme, quality, aspect)
   }
@@ -1548,228 +1568,125 @@ export class AdvancedAquariumScene {
   private createUnderwaterLightingBands(dimensions: AquariumTankDimensions): void {
     const { width: tankWidth, height: tankHeight } = dimensions
 
-    this.nearSurfaceLightMeshes = [
-      {
-        name: 'tank-light-near-surface-band-0',
-        size: new THREE.Vector2(tankWidth * 0.28, tankHeight * 0.52),
-        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[0],
-        rotationY: 0.12,
-        rotationZ: -0.05,
-        opacity: 0.124,
-        scrollX: 0.0028,
-        scrollY: 0.0078,
-        swayX: 0.1,
-        swayY: 0.045,
-        opacityPulse: 0.04,
-        phase: 0.18,
-        mapRepeatX: 1.18,
-        mapRepeatY: 1.02,
-        mapWarpX: 0.024,
-        mapWarpY: 0.016,
-        mapRotation: 0.038
-      },
-      {
-        name: 'tank-light-near-surface-band-1',
-        size: new THREE.Vector2(tankWidth * 0.26, tankHeight * 0.54),
-        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[1],
-        rotationY: -0.04,
-        rotationZ: 0.018,
-        opacity: 0.129,
-        scrollX: -0.0021,
-        scrollY: 0.0072,
-        swayX: 0.082,
-        swayY: 0.05,
-        opacityPulse: 0.05,
-        phase: 0.72,
-        mapRepeatX: 1.12,
-        mapRepeatY: 1.04,
-        mapWarpX: 0.022,
-        mapWarpY: 0.015,
-        mapRotation: 0.032
-      },
-      {
-        name: 'tank-light-near-surface-band-2',
-        size: new THREE.Vector2(tankWidth * 0.34, tankHeight * 0.58),
-        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[2],
-        rotationY: -0.09,
-        rotationZ: -0.016,
-        opacity: 0.136,
-        scrollX: 0.0014,
-        scrollY: 0.0068,
-        swayX: 0.072,
-        swayY: 0.052,
-        opacityPulse: 0.05,
-        phase: 1.24,
-        mapRepeatX: 1.24,
-        mapRepeatY: 1.06,
-        mapWarpX: 0.026,
-        mapWarpY: 0.017,
-        mapRotation: 0.036
-      },
-      {
-        name: 'tank-light-near-surface-band-3',
-        size: new THREE.Vector2(tankWidth * 0.28, tankHeight * 0.54),
-        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[3],
-        rotationY: -0.08,
-        rotationZ: 0.024,
-        opacity: 0.129,
-        scrollX: -0.0018,
-        scrollY: 0.0076,
-        swayX: 0.088,
-        swayY: 0.046,
-        opacityPulse: 0.045,
-        phase: 1.84,
-        mapRepeatX: 1.14,
-        mapRepeatY: 1.03,
-        mapWarpX: 0.023,
-        mapWarpY: 0.015,
-        mapRotation: 0.03
-      },
-      {
-        name: 'tank-light-near-surface-band-4',
-        size: new THREE.Vector2(tankWidth * 0.29, tankHeight * 0.5),
-        anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[4],
-        rotationY: -0.14,
-        rotationZ: -0.02,
-        opacity: 0.12,
-        scrollX: 0.0025,
-        scrollY: 0.0074,
-        swayX: 0.102,
-        swayY: 0.044,
-        opacityPulse: 0.04,
-        phase: 2.36,
-        mapRepeatX: 1.16,
-        mapRepeatY: 1.01,
-        mapWarpX: 0.024,
-        mapWarpY: 0.014,
-        mapRotation: 0.04
-      }
-    ].map((config) => {
-      const texture = this.createNearSurfaceLightTexture()
-      texture.repeat.set(config.mapRepeatX, config.mapRepeatY)
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(config.size.x, config.size.y),
-        new THREE.MeshBasicMaterial({
-          map: texture,
+    const nearSurfaceTexture = this.createNearSurfaceLightTexture()
+    const nearSurfaceConfig = {
+      name: 'tank-light-near-surface-sheet',
+      size: new THREE.Vector2(tankWidth * 1.55, tankHeight * 0.62),
+      anchor: AQUARIUM_LAYERED_LIGHTING_ANCHORS.nearSurfaceBands[2],
+      rotationY: -0.08,
+      rotationZ: -0.01,
+      opacity: 0.13,
+      scrollX: 0.0014,
+      scrollY: 0.0072,
+      swayX: 0.075,
+      swayY: 0.05,
+      opacityPulse: 0.048,
+      phase: 1.24,
+      mapRepeatX: 1.2,
+      mapRepeatY: 1.04,
+      mapWarpX: 0.025,
+      mapWarpY: 0.016,
+      mapRotation: 0.036
+    }
+    nearSurfaceTexture.repeat.set(nearSurfaceConfig.mapRepeatX, nearSurfaceConfig.mapRepeatY)
+    const nearSurfacePosition = resolveTankRelativePosition(dimensions, nearSurfaceConfig.anchor)
+    const nearSurfaceMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(nearSurfaceConfig.size.x, nearSurfaceConfig.size.y),
+      new THREE.MeshBasicMaterial({
+        map: nearSurfaceTexture,
         color: new THREE.Color('#ddd9c7'),
-          transparent: true,
-          opacity: config.opacity,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          side: THREE.DoubleSide
-        })
-      )
-      const position = resolveTankRelativePosition(dimensions, config.anchor)
-      mesh.name = config.name
-      mesh.position.copy(position)
-      mesh.rotation.y = config.rotationY
-      mesh.rotation.z = config.rotationZ
-      mesh.renderOrder = 2
-      mesh.userData.baseOpacity = config.opacity
-      mesh.userData.baseX = position.x
-      mesh.userData.baseY = position.y
-      mesh.userData.scrollX = config.scrollX
-      mesh.userData.scrollY = config.scrollY
-      mesh.userData.swayX = config.swayX
-      mesh.userData.swayY = config.swayY
-      mesh.userData.opacityPulse = config.opacityPulse
-      mesh.userData.phase = config.phase
-      mesh.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
-      mesh.userData.mapRepeatX = config.mapRepeatX
-      mesh.userData.mapRepeatY = config.mapRepeatY
-      mesh.userData.mapWarpX = config.mapWarpX
-      mesh.userData.mapWarpY = config.mapWarpY
-      mesh.userData.mapRotation = config.mapRotation
-      this.tank.add(mesh)
-      return mesh
-    })
+        transparent: true,
+        opacity: nearSurfaceConfig.opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    nearSurfaceMesh.name = nearSurfaceConfig.name
+    nearSurfaceMesh.position.copy(nearSurfacePosition)
+    nearSurfaceMesh.rotation.y = nearSurfaceConfig.rotationY
+    nearSurfaceMesh.rotation.z = nearSurfaceConfig.rotationZ
+    nearSurfaceMesh.renderOrder = 2
+    nearSurfaceMesh.userData.baseOpacity = nearSurfaceConfig.opacity
+    nearSurfaceMesh.userData.baseX = nearSurfacePosition.x
+    nearSurfaceMesh.userData.baseY = nearSurfacePosition.y
+    nearSurfaceMesh.userData.scrollX = nearSurfaceConfig.scrollX
+    nearSurfaceMesh.userData.scrollY = nearSurfaceConfig.scrollY
+    nearSurfaceMesh.userData.swayX = nearSurfaceConfig.swayX
+    nearSurfaceMesh.userData.swayY = nearSurfaceConfig.swayY
+    nearSurfaceMesh.userData.opacityPulse = nearSurfaceConfig.opacityPulse
+    nearSurfaceMesh.userData.phase = nearSurfaceConfig.phase
+    nearSurfaceMesh.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
+    nearSurfaceMesh.userData.mapRepeatX = nearSurfaceConfig.mapRepeatX
+    nearSurfaceMesh.userData.mapRepeatY = nearSurfaceConfig.mapRepeatY
+    nearSurfaceMesh.userData.mapWarpX = nearSurfaceConfig.mapWarpX
+    nearSurfaceMesh.userData.mapWarpY = nearSurfaceConfig.mapWarpY
+    nearSurfaceMesh.userData.mapRotation = nearSurfaceConfig.mapRotation
+    this.tank.add(nearSurfaceMesh)
+    this.nearSurfaceLightMeshes = [nearSurfaceMesh]
 
     const midwaterPosition = resolveTankRelativePosition(dimensions, AQUARIUM_LAYERED_LIGHTING_ANCHORS.midwater)
-    this.midwaterLightMeshes = [
-      {
-        name: 'tank-light-midwater-fill',
-        size: new THREE.Vector2(tankWidth * 0.88, tankHeight * 0.62),
-        position: midwaterPosition.clone(),
-        rotationY: -0.06,
-        rotationZ: 0.028,
-        opacity: 0.074,
-        scrollX: 0.0011,
-        scrollY: 0.0038,
-        swayX: 0.055,
-        swayY: 0.042,
-        swayZ: 0.045,
-        opacityPulse: 0.035,
-        phase: 0.44,
-        mapRepeatX: 1.08,
-        mapRepeatY: 1.02,
-        mapWarpX: 0.015,
-        mapWarpY: 0.012,
-        mapRotation: 0.02,
-        variant: 'fill' as const
-      },
-      {
-        name: 'tank-light-midwater-breakup',
-        size: new THREE.Vector2(tankWidth * 0.6, tankHeight * 0.52),
-        position: midwaterPosition.clone().add(new THREE.Vector3(-tankWidth * 0.014, -tankHeight * 0.018, tankWidth * 0.008)),
-        rotationY: -0.1,
-        rotationZ: -0.014,
-        opacity: 0.088,
-        scrollX: -0.0008,
-        scrollY: 0.0049,
-        swayX: 0.042,
-        swayY: 0.048,
-        swayZ: 0.054,
-        opacityPulse: 0.042,
-        phase: 1.02,
-        mapRepeatX: 1.16,
-        mapRepeatY: 1.08,
-        mapWarpX: 0.019,
-        mapWarpY: 0.014,
-        mapRotation: 0.028,
-        variant: 'breakup' as const
-      }
-    ].map((config) => {
-      const texture = this.createMidwaterLightTexture(config.variant)
-      texture.repeat.set(config.mapRepeatX, config.mapRepeatY)
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(config.size.x, config.size.y),
-        new THREE.MeshBasicMaterial({
-          map: texture,
+    const midwaterConfig = {
+      name: 'tank-light-midwater-sheet',
+      size: new THREE.Vector2(tankWidth * 0.9, tankHeight * 0.64),
+      position: midwaterPosition.clone(),
+      rotationY: -0.08,
+      rotationZ: 0.014,
+      opacity: 0.084,
+      scrollX: 0.0002,
+      scrollY: 0.0044,
+      swayX: 0.05,
+      swayY: 0.045,
+      swayZ: 0.052,
+      opacityPulse: 0.04,
+      phase: 0.72,
+      mapRepeatX: 1.12,
+      mapRepeatY: 1.05,
+      mapWarpX: 0.018,
+      mapWarpY: 0.013,
+      mapRotation: 0.024,
+      variant: 'combined' as const
+    }
+    const midwaterTexture = this.createMidwaterLightTexture(midwaterConfig.variant)
+    midwaterTexture.repeat.set(midwaterConfig.mapRepeatX, midwaterConfig.mapRepeatY)
+    const midwaterMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(midwaterConfig.size.x, midwaterConfig.size.y),
+      new THREE.MeshBasicMaterial({
+        map: midwaterTexture,
         color: new THREE.Color('#d4d2c0'),
-          transparent: true,
-          opacity: config.opacity,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          side: THREE.DoubleSide
-        })
-      )
-      mesh.name = config.name
-      mesh.position.copy(config.position)
-      mesh.rotation.y = config.rotationY
-      mesh.rotation.z = config.rotationZ
-      mesh.renderOrder = 2
-      mesh.userData.baseOpacity = config.opacity
-      mesh.userData.baseX = config.position.x
-      mesh.userData.baseY = config.position.y
-      mesh.userData.baseZ = config.position.z
-      mesh.userData.baseRotationZ = config.rotationZ
-      mesh.userData.scrollX = config.scrollX
-      mesh.userData.scrollY = config.scrollY
-      mesh.userData.swayX = config.swayX
-      mesh.userData.swayY = config.swayY
-      mesh.userData.swayZ = config.swayZ
-      mesh.userData.opacityPulse = config.opacityPulse
-      mesh.userData.phase = config.phase
-      mesh.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
-      mesh.userData.mapRepeatX = config.mapRepeatX
-      mesh.userData.mapRepeatY = config.mapRepeatY
-      mesh.userData.mapWarpX = config.mapWarpX
-      mesh.userData.mapWarpY = config.mapWarpY
-      mesh.userData.mapRotation = config.mapRotation
-      mesh.userData.midwaterLayer = config.variant
-      this.tank.add(mesh)
-      return mesh
-    })
+        transparent: true,
+        opacity: midwaterConfig.opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    )
+    midwaterMesh.name = midwaterConfig.name
+    midwaterMesh.position.copy(midwaterConfig.position)
+    midwaterMesh.rotation.y = midwaterConfig.rotationY
+    midwaterMesh.rotation.z = midwaterConfig.rotationZ
+    midwaterMesh.renderOrder = 2
+    midwaterMesh.userData.baseOpacity = midwaterConfig.opacity
+    midwaterMesh.userData.baseX = midwaterConfig.position.x
+    midwaterMesh.userData.baseY = midwaterConfig.position.y
+    midwaterMesh.userData.baseZ = midwaterConfig.position.z
+    midwaterMesh.userData.baseRotationZ = midwaterConfig.rotationZ
+    midwaterMesh.userData.scrollX = midwaterConfig.scrollX
+    midwaterMesh.userData.scrollY = midwaterConfig.scrollY
+    midwaterMesh.userData.swayX = midwaterConfig.swayX
+    midwaterMesh.userData.swayY = midwaterConfig.swayY
+    midwaterMesh.userData.swayZ = midwaterConfig.swayZ
+    midwaterMesh.userData.opacityPulse = midwaterConfig.opacityPulse
+    midwaterMesh.userData.phase = midwaterConfig.phase
+    midwaterMesh.userData.phaseFamily = SURFACE_CAUSTIC_PHASE_FAMILY
+    midwaterMesh.userData.mapRepeatX = midwaterConfig.mapRepeatX
+    midwaterMesh.userData.mapRepeatY = midwaterConfig.mapRepeatY
+    midwaterMesh.userData.mapWarpX = midwaterConfig.mapWarpX
+    midwaterMesh.userData.mapWarpY = midwaterConfig.mapWarpY
+    midwaterMesh.userData.mapRotation = midwaterConfig.mapRotation
+    midwaterMesh.userData.midwaterLayer = midwaterConfig.variant
+    this.tank.add(midwaterMesh)
+    this.midwaterLightMeshes = [midwaterMesh]
   }
 
   private createHardscapeOcclusionLayers(dimensions: AquariumTankDimensions): void {
@@ -2412,105 +2329,10 @@ export class AdvancedAquariumScene {
   }
 
   private createGlassShell(dimensions: AquariumTankDimensions): void {
-    const { width: tankWidth, height: tankHeight, depth: tankDepth } = dimensions
-    const theme = this.scene instanceof THREE.Scene ? resolveTheme(this.scene) : defaultTheme
-    const useOpenWaterPresentation = usesOpenWaterPresentation(theme)
-
-    const thickness = AQUARIUM_FRONT_GLASS_THICKNESS
-    const halfDepth = tankDepth / 2
-    const halfWidth = tankWidth / 2
-    const halfHeight = tankHeight / 2
-    const glassMaterial = this.createGlassMaterial()
-
-    const frontGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankWidth, tankHeight), glassMaterial.clone())
-    frontGlass.name = 'tank-glass-front'
-    frontGlass.position.set(0, 0, halfDepth + thickness)
-    this.tank.add(frontGlass)
-
-    const frontHighlight = new THREE.Mesh(
-      new THREE.PlaneGeometry(tankWidth * 0.92, tankHeight * 0.88),
-      new THREE.MeshBasicMaterial({
-        map: this.createGlassHighlightTexture(),
-        color: new THREE.Color('#dde2d7'),
-        transparent: true,
-        opacity: useOpenWaterPresentation ? 0.01 : 0.088,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    )
-    frontHighlight.name = 'tank-glass-front-highlight'
-    frontHighlight.position.set(0, 0.2, halfDepth + thickness + 0.014)
-    frontHighlight.renderOrder = 4
-    frontHighlight.userData.baseOpacity = useOpenWaterPresentation ? 0.01 : 0.088
-    this.frontGlassHighlightMesh = frontHighlight
-    this.tank.add(frontHighlight)
-
-    const createEdgeHighlight = (name: string, x: number, rotationY: number): THREE.Mesh => {
-      const edgeHighlight = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.28, tankHeight * 0.84),
-        new THREE.MeshBasicMaterial({
-          map: this.createGlassHighlightTexture(),
-          color: new THREE.Color('#e2e5da'),
-          transparent: true,
-          opacity: 0.07,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          side: THREE.DoubleSide
-        })
-      )
-      edgeHighlight.name = name
-      edgeHighlight.position.set(x, 0.12, halfDepth + thickness + 0.016)
-      edgeHighlight.rotation.y = rotationY
-      edgeHighlight.renderOrder = 5
-      edgeHighlight.userData.baseOpacity = 0.07
-      edgeHighlight.userData.baseY = 0.12
-      this.tank.add(edgeHighlight)
-      return edgeHighlight
-    }
-
-    const leftEdgeHighlight = createEdgeHighlight('tank-glass-edge-highlight-left', -halfWidth + 0.12, 0.1)
-    const rightEdgeHighlight = createEdgeHighlight('tank-glass-edge-highlight-right', halfWidth - 0.12, -0.1)
-    leftEdgeHighlight.visible = !useOpenWaterPresentation
-    rightEdgeHighlight.visible = !useOpenWaterPresentation
-
-    const leftGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankDepth, tankHeight), glassMaterial.clone())
-    leftGlass.name = 'tank-glass-left'
-    leftGlass.rotation.y = Math.PI / 2
-    leftGlass.position.set(-halfWidth - thickness, 0, 0)
-    leftGlass.visible = !useOpenWaterPresentation
-    this.tank.add(leftGlass)
-
-    const rightGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankDepth, tankHeight), glassMaterial.clone())
-    rightGlass.name = 'tank-glass-right'
-    rightGlass.rotation.y = -Math.PI / 2
-    rightGlass.position.set(halfWidth + thickness, 0, 0)
-    rightGlass.visible = !useOpenWaterPresentation
-    this.tank.add(rightGlass)
-
-    const backGlass = new THREE.Mesh(new THREE.PlaneGeometry(tankWidth, tankHeight), glassMaterial.clone())
-    backGlass.name = 'tank-glass-back'
-    backGlass.rotation.y = Math.PI
-    backGlass.position.set(0, 0, -halfDepth - thickness)
-    backGlass.visible = !useOpenWaterPresentation
-    this.tank.add(backGlass)
-
-    const edgeMaterial = new THREE.MeshStandardMaterial({
-      color: 0xaab6af,
-      roughness: 0.48,
-      metalness: 0.1,
-      transparent: true,
-      opacity: 0.14
-    })
-
-    const topEdge = new THREE.Mesh(new THREE.BoxGeometry(tankWidth + 0.12, 0.08, 0.08), edgeMaterial)
-    topEdge.name = 'tank-glass-edge-top'
-    topEdge.position.set(0, halfHeight + 0.02, halfDepth + 0.02)
-    topEdge.visible = !useOpenWaterPresentation
-    this.tank.add(topEdge)
-
-    this.glassPanes = [frontGlass, leftGlass, rightGlass, backGlass]
-    this.glassEdgeHighlightMeshes = [leftEdgeHighlight, rightEdgeHighlight]
+    void dimensions
+    this.glassPanes = []
+    this.glassEdgeHighlightMeshes = []
+    this.frontGlassHighlightMesh = null
   }
 
   private createInteriorWallPanels(dimensions: AquariumTankDimensions): void {
@@ -2567,28 +2389,6 @@ export class AdvancedAquariumScene {
     this.tank.add(rightPanel)
 
     this.wallPanelMeshes = [backPanel, leftPanel, rightPanel]
-  }
-
-  private createGlassMaterial(): THREE.MeshPhysicalMaterial {
-    return new THREE.MeshPhysicalMaterial({
-      color: 0xb7c3ba,
-      transmission: 0.96,
-      transparent: true,
-      opacity: 0.12,
-      roughness: 0.08,
-      metalness: 0,
-      thickness: 0.42,
-      ior: 1.18,
-      clearcoat: 1,
-      clearcoatRoughness: 0.1,
-      attenuationColor: new THREE.Color('#cad3c8'),
-      attenuationDistance: 2.1,
-      specularIntensity: 0.62,
-      specularColor: new THREE.Color('#ffffff'),
-      envMapIntensity: 1.08,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    })
   }
 
   private createWaterVolume(dimensions: AquariumTankDimensions): void {
@@ -2920,15 +2720,17 @@ export class AdvancedAquariumScene {
     return texture
   }
 
-  private createMidwaterLightTexture(variant: 'fill' | 'breakup'): THREE.CanvasTexture {
+  private createMidwaterLightTexture(variant: 'fill' | 'breakup' | 'combined'): THREE.CanvasTexture {
     const canvas = document.createElement('canvas')
     canvas.width = 512
     canvas.height = 512
     const ctx = canvas.getContext('2d')
     const texture = new THREE.CanvasTexture(canvas)
+    const includesFill = variant === 'fill' || variant === 'combined'
+    const includesBreakup = variant === 'breakup' || variant === 'combined'
     texture.wrapS = THREE.RepeatWrapping
     texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(1.08, variant === 'fill' ? 1.02 : 1.08)
+    texture.repeat.set(1.08, includesFill && !includesBreakup ? 1.02 : 1.08)
 
     if (
       !ctx ||
@@ -2948,7 +2750,7 @@ export class AdvancedAquariumScene {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     const verticalFalloff = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    if (variant === 'fill') {
+    if (includesFill) {
       verticalFalloff.addColorStop(0, 'rgba(236, 240, 228, 0.36)')
       verticalFalloff.addColorStop(0.16, 'rgba(199, 206, 189, 0.26)')
       verticalFalloff.addColorStop(0.46, 'rgba(124, 136, 117, 0.11)')
@@ -2964,7 +2766,7 @@ export class AdvancedAquariumScene {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     ctx.globalCompositeOperation = 'screen'
-    if (variant === 'fill') {
+    if (includesFill) {
       [
         { x: 0.18, y: 0.26, radius: 126, alpha: 0.11 },
         { x: 0.42, y: 0.22, radius: 152, alpha: 0.15 },
@@ -2990,7 +2792,8 @@ export class AdvancedAquariumScene {
           wash.radius * 2
         )
       })
-    } else {
+    }
+    if (includesBreakup) {
       [
         { x: 0.34, topWidth: 72, midWidth: 122, bottomWidth: 164, drift: -18, alpha: 0.13 },
         { x: 0.58, topWidth: 62, midWidth: 112, bottomWidth: 150, drift: 12, alpha: 0.12 },
@@ -3029,9 +2832,9 @@ export class AdvancedAquariumScene {
 
     ctx.globalCompositeOperation = 'destination-out'
     ;[
-      { x: 0.18, y: 0.5, radius: 88, alpha: variant === 'fill' ? 0.18 : 0.26 },
-      { x: 0.52, y: 0.68, radius: 116, alpha: variant === 'fill' ? 0.22 : 0.32 },
-      { x: 0.78, y: 0.82, radius: 104, alpha: variant === 'fill' ? 0.2 : 0.28 }
+      { x: 0.18, y: 0.5, radius: 88, alpha: variant === 'fill' ? 0.18 : variant === 'combined' ? 0.22 : 0.26 },
+      { x: 0.52, y: 0.68, radius: 116, alpha: variant === 'fill' ? 0.22 : variant === 'combined' ? 0.27 : 0.32 },
+      { x: 0.78, y: 0.82, radius: 104, alpha: variant === 'fill' ? 0.2 : variant === 'combined' ? 0.24 : 0.28 }
     ].forEach((breakup) => {
       const erode = ctx.createRadialGradient(
         canvas.width * breakup.x,
@@ -3047,7 +2850,7 @@ export class AdvancedAquariumScene {
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     })
 
-    if (variant === 'breakup') {
+    if (includesBreakup) {
       const lowerShear = ctx.createLinearGradient(0, canvas.height * 0.48, 0, canvas.height)
       lowerShear.addColorStop(0, 'rgba(255, 255, 255, 0)')
       lowerShear.addColorStop(0.54, 'rgba(255, 255, 255, 0.14)')
@@ -3302,48 +3105,6 @@ export class AdvancedAquariumScene {
         glow.radius * 2
       )
     })
-
-    texture.colorSpace = THREE.SRGBColorSpace
-    return texture
-  }
-
-  private createGlassHighlightTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 512
-    const ctx = canvas.getContext('2d')
-    const texture = new THREE.CanvasTexture(canvas)
-
-    if (!ctx || typeof ctx.createLinearGradient !== 'function') {
-      return texture
-    }
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0)'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    const verticalGlow = ctx.createLinearGradient(canvas.width * 0.22, 0, canvas.width * 0.72, canvas.height)
-    verticalGlow.addColorStop(0, 'rgba(255, 255, 255, 0)')
-    verticalGlow.addColorStop(0.32, 'rgba(240, 243, 238, 0.14)')
-    verticalGlow.addColorStop(0.56, 'rgba(210, 220, 214, 0.28)')
-    verticalGlow.addColorStop(1, 'rgba(255, 255, 255, 0)')
-    ctx.fillStyle = verticalGlow
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    if (typeof ctx.createRadialGradient === 'function') {
-      const bloom = ctx.createRadialGradient(
-        canvas.width * 0.62,
-        canvas.height * 0.26,
-        canvas.width * 0.04,
-        canvas.width * 0.62,
-        canvas.height * 0.26,
-        canvas.width * 0.34
-      )
-      bloom.addColorStop(0, 'rgba(241, 244, 239, 0.28)')
-      bloom.addColorStop(0.45, 'rgba(208, 220, 213, 0.14)')
-      bloom.addColorStop(1, 'rgba(255, 255, 255, 0)')
-      ctx.fillStyle = bloom
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-    }
 
     texture.colorSpace = THREE.SRGBColorSpace
     return texture
@@ -4341,7 +4102,17 @@ export class AdvancedAquariumScene {
     
     if (this.motionEnabled) {
       if (this.fishSystem) {
-        this.fishSystem.update(deltaTime * this.motionScale, elapsedTime * this.motionScale)
+        measurePerformanceSpan(
+          this.fishUpdateStats,
+          {
+            name: 'aquarium:fish:update',
+            startMark: 'aquarium:fish:update:start',
+            endMark: 'aquarium:fish:update:end'
+          },
+          () => {
+            this.fishSystem?.update(deltaTime * this.motionScale, elapsedTime * this.motionScale)
+          }
+        )
       }
       this.syncFishVisibleStat()
       
@@ -4349,17 +4120,44 @@ export class AdvancedAquariumScene {
         this.particleSystem.update(elapsedTime * this.motionScale)
       }
 
-      this.updateTankWaterMotion(elapsedTime * this.motionScale)
+      if (this.shouldUpdateTankWaterMotion()) {
+        measurePerformanceSpan(
+          this.waterMotionUpdateStats,
+          {
+            name: 'aquarium:water-motion:update',
+            startMark: 'aquarium:water-motion:update:start',
+            endMark: 'aquarium:water-motion:update:end'
+          },
+          () => {
+            this.updateTankWaterMotion(elapsedTime * this.motionScale)
+          }
+        )
+      }
       
       if (this.aquascaping) {
         this.aquascaping.update(elapsedTime * this.motionScale)
       }
-      
+
       if (this.spiralDecorations) {
         this.spiralDecorations.update(deltaTime * this.motionScale)
       }
     }
-    
+
+    this.renderSceneFrame(elapsedTime)
+
+    // Update performance stats
+    this.updatePerformanceStats(startTime)
+  }
+
+  private renderSceneFrame(elapsedTime: number): void {
+    if (
+      this.performanceTuning?.postProcessingEnabled === false ||
+      this.currentVisualQuality === 'simple'
+    ) {
+      this.renderer.render(this.scene, this.camera)
+      return
+    }
+
     // Render with or without post-processing
     if (this.godRaysEffect && this.advancedEffectsEnabled) {
       this.godRaysEffect.update(elapsedTime * this.motionScale)
@@ -4369,9 +4167,15 @@ export class AdvancedAquariumScene {
     } else {
       this.renderer.render(this.scene, this.camera)
     }
-    
-    // Update performance stats
-    this.updatePerformanceStats(startTime)
+  }
+
+  private shouldUpdateTankWaterMotion(): boolean {
+    const waterMotionFrame = (this.waterMotionFrame as number | undefined) ?? 0
+    this.waterMotionFrame = waterMotionFrame + 1
+    return shouldRunQualityCadencedUpdate({
+      frame: waterMotionFrame,
+      quality: this.currentVisualQuality
+    })
   }
 
   private resolvePhotoModeTarget(): THREE.Vector3 {
@@ -4669,10 +4473,62 @@ export class AdvancedAquariumScene {
     }
     this.stats.fishVisible = this.fishSystem.getVisibleFishCount()
   }
+
+  private syncGodRaysDepthRenderStats(): void {
+    const depthStats = this.godRaysEffect?.getDepthRenderStats()
+    this.stats.godRaysDepthRenderCount = depthStats?.count ?? 0
+    this.stats.godRaysDepthRenderLastMs = depthStats?.lastMs ?? 0
+    this.stats.godRaysDepthRenderAverageMs = depthStats?.averageMs ?? 0
+  }
+
+  private syncUpdateTimingStats(): void {
+    this.stats.fishUpdateCount = this.fishUpdateStats.count
+    this.stats.fishUpdateLastMs = this.fishUpdateStats.lastMs
+    this.stats.fishUpdateAverageMs = this.fishUpdateStats.averageMs
+    this.stats.waterMotionUpdateCount = this.waterMotionUpdateStats.count
+    this.stats.waterMotionUpdateLastMs = this.waterMotionUpdateStats.lastMs
+    this.stats.waterMotionUpdateAverageMs = this.waterMotionUpdateStats.averageMs
+  }
+
+  private resolveRendererPixelRatio(): number {
+    const pixelRatioCap = this.currentVisualQuality === 'simple' ? 1 : 2
+    return Math.min(window.devicePixelRatio * this.adaptiveRenderScale, pixelRatioCap)
+  }
+
+  private syncAdaptiveRenderScale(frameTimeMs: number): void {
+    if (this.currentVisualQuality !== 'standard') return
+
+    if (frameTimeMs >= 28) {
+      this.stressedFrameSamples++
+      this.stableFrameSamples = 0
+    } else if (frameTimeMs <= 20) {
+      this.stableFrameSamples++
+      this.stressedFrameSamples = 0
+    } else {
+      this.stressedFrameSamples = 0
+      this.stableFrameSamples = 0
+    }
+
+    const nextScale = resolveAdaptiveRenderScale({
+      currentScale: this.adaptiveRenderScale,
+      averageFrameTimeMs: frameTimeMs,
+      stressedSampleCount: this.stressedFrameSamples,
+      stableSampleCount: this.stableFrameSamples
+    })
+    if (nextScale === this.adaptiveRenderScale) return
+
+    this.adaptiveRenderScale = nextScale
+    this.stressedFrameSamples = 0
+    this.stableFrameSamples = 0
+    this.renderer.setPixelRatio(this.resolveRendererPixelRatio())
+  }
   
   private updatePerformanceStats(startTime: number): void {
     this.stats.frameTime = performance.now() - startTime
-    this.stats.drawCalls = this.renderer.info.render.calls
+    this.syncAdaptiveRenderScale(this.stats.frameTime)
+    Object.assign(this.stats, readRendererDebugStats(this.renderer.info))
+    this.syncUpdateTimingStats()
+    this.syncGodRaysDepthRenderStats()
     
     this.fpsCounter++
     if (performance.now() - this.lastStatsUpdate > 1000) {
@@ -4736,8 +4592,11 @@ export class AdvancedAquariumScene {
     this.currentVisualQuality = quality
     this.syncRendererPipelineForQuality(quality)
     const { width, height } = this.getViewportSize()
-    const pixelRatioCap = quality === 'simple' ? 1 : 2
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap))
+    this.adaptiveRenderScale = 1
+    this.stressedFrameSamples = 0
+    this.stableFrameSamples = 0
+    this.waterMotionFrame = 0
+    this.renderer.setPixelRatio(this.resolveRendererPixelRatio())
     this.renderer.setSize(width, height)
 
     if (this.composer) {
@@ -4843,7 +4702,7 @@ export class AdvancedAquariumScene {
 
   private applyShadowQuality(quality: QualityLevel): void {
     if (!this.primaryShadowLight) return
-    const shadowMapSize = quality === 'simple' ? 2048 : 4096
+    const shadowMapSize = this.performanceTuning?.shadowMapSize ?? (quality === 'simple' ? 1024 : 2048)
     this.primaryShadowLight.shadow.mapSize.width = shadowMapSize
     this.primaryShadowLight.shadow.mapSize.height = shadowMapSize
   }

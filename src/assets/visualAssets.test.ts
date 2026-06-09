@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
 import {
   createAquariumAssetManifest,
+  createBootAquariumAssetManifest,
+  createDeferredAquariumAssetManifest,
   loadVisualAssets,
   resolvePublicAssetUrl,
   type AssetManifest
@@ -46,6 +48,16 @@ const createImageTexture = (): THREE.Texture<HTMLImageElement> => new THREE.Text
 
 describe('loadVisualAssets', () => {
   it('loads textures, models, and hdri assets by id and falls back to null on failure', async () => {
+    let now = 100
+    const performanceMarks: string[] = []
+    const performanceMeasures: string[] = []
+    const performance = {
+      mark: (name: string) => performanceMarks.push(name),
+      measure: (name: string, startMark: string, endMark: string) => {
+        performanceMeasures.push(`${name}:${startMark}:${endMark}`)
+      },
+      clearMarks: () => undefined
+    }
     const textureLoader = {
       loadAsync: vi.fn(async (url: string) => {
         if (url.includes('missing')) {
@@ -86,7 +98,16 @@ describe('loadVisualAssets', () => {
       ]
     }
 
-    const assets = await loadVisualAssets(manifest, { textureLoader, gltfLoader, hdriLoader })
+    const assets = await loadVisualAssets(manifest, {
+      textureLoader,
+      gltfLoader,
+      hdriLoader,
+      now: () => {
+        now += 5
+        return now
+      },
+      performance
+    })
 
     expect(textureLoader.loadAsync).toHaveBeenCalledTimes(2)
     expect(gltfLoader.loadAsync).toHaveBeenCalledTimes(2)
@@ -97,6 +118,24 @@ describe('loadVisualAssets', () => {
     expect(assets.models['missing-model']).toBeNull()
     expect(assets.environment['aquarium-hdri']).toBeInstanceOf(THREE.Texture)
     expect(assets.environment['missing-hdri']).toBeNull()
+    expect(assets.loadTimings).toEqual(expect.objectContaining({
+      totalMs: expect.any(Number),
+      texturesMs: expect.any(Number),
+      modelsMs: expect.any(Number),
+      environmentMs: expect.any(Number)
+    }))
+    expect(performanceMarks).toContain('aquarium:assets:textures:start')
+    expect(performanceMarks).toContain('aquarium:assets:models:start')
+    expect(performanceMarks).toContain('aquarium:assets:environment:start')
+    expect(performanceMeasures).toContain(
+      'aquarium:assets:textures:aquarium:assets:textures:start:aquarium:assets:textures:end'
+    )
+    expect(performanceMeasures).toContain(
+      'aquarium:assets:models:aquarium:assets:models:start:aquarium:assets:models:end'
+    )
+    expect(performanceMeasures).toContain(
+      'aquarium:assets:environment:aquarium:assets:environment:start:aquarium:assets:environment:end'
+    )
   })
 
   it('treats invalid school models as unavailable so instancing can fall back safely', async () => {
@@ -218,6 +257,31 @@ describe('loadVisualAssets', () => {
 })
 
 describe('public aquarium asset urls', () => {
+  it('splits startup-critical assets from deferred optional fish assets', () => {
+    const bootManifest = createBootAquariumAssetManifest('/')
+    const deferredManifest = createDeferredAquariumAssetManifest('/')
+    const bootTextureIds = new Set(bootManifest.textures.map((entry) => entry.id))
+    const bootModelIds = new Set(bootManifest.models.map((entry) => entry.id))
+    const deferredTextureIds = new Set(deferredManifest.textures.map((entry) => entry.id))
+    const deferredModelIds = new Set(deferredManifest.models.map((entry) => entry.id))
+
+    expect(bootTextureIds.has('leaf-diffuse')).toBe(true)
+    expect(bootTextureIds.has('substrate-sand-normal')).toBe(true)
+    expect(bootTextureIds.has('fish-neon-basecolor')).toBe(true)
+    expect(bootTextureIds.has('fish-goldfish-basecolor')).toBe(false)
+    expect(bootModelIds.has('plant-amazon-sword')).toBe(true)
+    expect(bootModelIds.has('driftwood-hero')).toBe(true)
+    expect(bootModelIds.has('fish-neon-school')).toBe(true)
+    expect(bootModelIds.has('fish-goldfish-hero')).toBe(false)
+
+    expect(deferredTextureIds.has('fish-goldfish-basecolor')).toBe(true)
+    expect(deferredTextureIds.has('fish-neon-basecolor')).toBe(false)
+    expect(deferredModelIds.has('fish-goldfish-hero')).toBe(true)
+    expect(deferredModelIds.has('plant-amazon-sword')).toBe(false)
+    expect(bootManifest.environment).toHaveLength(1)
+    expect(deferredManifest.environment).toHaveLength(0)
+  })
+
   it('uses authored fish texture atlases instead of fish SVG diffuse assets', () => {
     const manifest = createAquariumAssetManifest('/')
     const textureIds = new Set(manifest.textures.map((entry) => entry.id))
