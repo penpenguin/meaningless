@@ -13,6 +13,10 @@ type AudioBinding = {
   setEnabled: (enabled: boolean) => void
 }
 
+type RenderStateApplyOptions = {
+  forceFishGroups?: boolean
+}
+
 const isSameTheme = (
   left: ReturnType<typeof createAquariumTheme>,
   right: ReturnType<typeof createAquariumTheme>
@@ -35,7 +39,7 @@ export const createRenderStateApplier = (options: {
   let lastTheme: ReturnType<typeof createAquariumTheme> | null = null
   let lastFishGroups: ReturnType<typeof createAquariumFishGroups> | null = null
 
-  return (state: GameAppState): void => {
+  return (state: GameAppState, applyOptions: RenderStateApplyOptions = {}): void => {
     const theme = createAquariumTheme(state)
     if (!lastTheme || !isSameTheme(lastTheme, theme)) {
       options.scene.applyTheme(theme)
@@ -43,7 +47,7 @@ export const createRenderStateApplier = (options: {
     }
 
     const fishGroups = createAquariumFishGroups(state)
-    if (!lastFishGroups || !areFishGroupsEqual(lastFishGroups, fishGroups)) {
+    if (applyOptions.forceFishGroups || !lastFishGroups || !areFishGroupsEqual(lastFishGroups, fishGroups)) {
       const applied = options.scene.applyFishGroups(fishGroups)
       if (applied) {
         lastFishGroups = fishGroups

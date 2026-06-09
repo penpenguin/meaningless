@@ -24,6 +24,7 @@ const hoisted = vi.hoisted(() => {
     lastSceneAssets: null as unknown,
     lastSceneOptions: null as unknown,
     lastSceneInstance: null as {
+      applyFishGroups: ReturnType<typeof vi.fn>
       getPerformanceStats: ReturnType<typeof vi.fn>
     } | null,
     lastPaneStatsProvider: null as null | (() => unknown)
@@ -51,6 +52,7 @@ vi.mock('../components/AdvancedScene', () => {
         hoisted.lastSceneAssets = assets ?? null
         hoisted.lastSceneOptions = options ?? null
         hoisted.lastSceneInstance = this as unknown as {
+          applyFishGroups: ReturnType<typeof vi.fn>
           getPerformanceStats: ReturnType<typeof vi.fn>
         }
       }
@@ -258,12 +260,14 @@ describe('AdvancedAquariumApp UX integration', () => {
     expect(hoisted.loadVisualAssets).toHaveBeenNthCalledWith(2, hoisted.deferredManifest)
     expect(hoisted.lastSceneAssets).toBe(bootAssets)
     expect((hoisted.lastSceneAssets as typeof bootAssets).textures.boot).toBe(bootTexture)
+    expect(hoisted.lastSceneInstance?.applyFishGroups).toHaveBeenCalledTimes(1)
 
     resolveDeferredAssets(deferredAssets)
     await flushMicrotasks()
 
     expect((hoisted.lastSceneAssets as typeof bootAssets & typeof deferredAssets).textures.deferred).toBe(deferredTexture)
     expect((hoisted.lastSceneAssets as typeof bootAssets & typeof deferredAssets).models['fish-goldfish-hero']).toBeNull()
+    expect(hoisted.lastSceneInstance?.applyFishGroups).toHaveBeenCalledTimes(2)
 
     app.dispose()
   })

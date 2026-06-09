@@ -19,6 +19,7 @@ import {
 } from './assets/visualAssets'
 import { createEmptyPerformanceStats, type PerformanceStats } from './utils/performanceStats'
 import { resolvePerformanceTuningOptions } from './utils/performanceTuning'
+import type { GameAppState } from './game/types'
 
 type ControlPaneHandle = ReturnType<typeof createGameControlPane>
 type AquariumDebugWindow = Window & {
@@ -35,6 +36,7 @@ export class AdvancedAquariumApp {
   private motionMediaHandler: ((event: MediaQueryListEvent) => void) | null = null
   private keyHandler: ((event: KeyboardEvent) => void) | null = null
   private visualAssets: VisualAssetBundle | null = null
+  private applySceneState: ((state: GameAppState, options?: { forceFishGroups?: boolean }) => void) | null = null
 
   constructor() {
     const nowIso = new Date().toISOString()
@@ -134,6 +136,7 @@ export class AdvancedAquariumApp {
     Object.assign(this.visualAssets.textures, deferredAssets.textures)
     Object.assign(this.visualAssets.models, deferredAssets.models)
     Object.assign(this.visualAssets.environment, deferredAssets.environment)
+    this.applySceneState?.(this.store.getState(), { forceFishGroups: true })
   }
 
   private setupControlPane(): void {
@@ -163,6 +166,7 @@ export class AdvancedAquariumApp {
       scene,
       audioManager: this.audioManager
     })
+    this.applySceneState = applySceneState
 
     this.storeUnsubscribe = this.store.subscribe(({ state }) => {
       applySceneState(state)
@@ -204,6 +208,7 @@ export class AdvancedAquariumApp {
       this.storeUnsubscribe()
       this.storeUnsubscribe = null
     }
+    this.applySceneState = null
 
     this.store.destroy()
 
