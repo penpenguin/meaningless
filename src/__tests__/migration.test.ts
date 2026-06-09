@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, createDefaultState, migrateState } from '../utils/stateSchema'
+import { migrateTankState } from '../utils/tankSchema'
 import { importState } from '../utils/serialization'
 import { createState } from './fixtures/aquariumState'
 
@@ -66,6 +67,47 @@ describe('migration fallback', () => {
     }
 
     const migrated = migrateState(legacy)
+
+    expect(migrated.theme.layoutStyle).toBe('planted')
+  })
+
+  it('migrates legacy marine aquarium layouts to planted', () => {
+    const legacy = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      theme: {
+        glassFrameStrength: 0.2,
+        waterTint: '#ffffff',
+        fogDensity: 0.1,
+        particleDensity: 0.1,
+        waveStrength: 0.1,
+        waveSpeed: 0.1,
+        layoutStyle: 'marine'
+      },
+      fishGroups: [{ speciesId: 'neon-tetra', count: 3 }],
+      settings: { soundEnabled: false, motionEnabled: true }
+    }
+
+    const migrated = migrateState(legacy)
+
+    expect(migrated.theme.layoutStyle).toBe('planted')
+  })
+
+  it('migrates legacy marine tank layouts to planted', () => {
+    const legacy = {
+      schemaVersion: 1,
+      theme: {
+        glassFrameStrength: 0.2,
+        waterTint: '#ffffff',
+        fogDensity: 0.1,
+        particleDensity: 0.1,
+        waveStrength: 0.1,
+        waveSpeed: 0.1,
+        layoutStyle: 'marine'
+      },
+      fishGroups: [{ speciesId: 'neon-tetra', count: 3 }]
+    }
+
+    const migrated = migrateTankState(legacy)
 
     expect(migrated.theme.layoutStyle).toBe('planted')
   })

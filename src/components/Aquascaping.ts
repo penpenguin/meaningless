@@ -9,7 +9,6 @@ export {
 } from './aquascapeHardscape'
 export type { SubstrateHardscapeAnchor } from './aquascapeHardscape'
 import {
-  createSeededRandom,
   getPlantSilhouetteFamily,
   resolveRuntimeLayoutSeed,
   resolveSampledPlantPlacements
@@ -19,7 +18,6 @@ import type {
   PlantLayer,
   PlantMassRole,
   PlantRenderRole,
-  PlantScatterDefinition,
   PlantType
 } from './aquascapePlants'
 
@@ -110,19 +108,6 @@ const cloneHardscapePlantAnchor = (anchor: HardscapePlantAnchor): HardscapePlant
   scale: anchor.scale.clone(),
   assetIds: anchor.assetIds ? [...anchor.assetIds] : undefined
 })
-
-
-
-const marineSeaweedClusterDefinitions: PlantScatterDefinition[] = [
-  { x: -0.34, z: 0.2, layer: 'foreground', plantType: 'fan-leaf', baseHeight: 2.45, spreadX: 0.72, spreadZ: 0.52, hueBase: 0.24 },
-  { x: -0.3, z: -0.18, layer: 'background', plantType: 'sword-leaf', baseHeight: 5.2, spreadX: 0.66, spreadZ: 0.44, hueBase: 0.22 },
-  { x: -0.18, z: -0.02, layer: 'midground', plantType: 'fan-leaf', baseHeight: 3.35, spreadX: 0.68, spreadZ: 0.5, hueBase: 0.25 },
-  { x: 0.02, z: -0.24, layer: 'background', plantType: 'fan-leaf', baseHeight: 5.05, spreadX: 0.58, spreadZ: 0.42, hueBase: 0.31 },
-  { x: 0.08, z: 0.24, layer: 'foreground', plantType: 'sword-leaf', baseHeight: 2.55, spreadX: 0.7, spreadZ: 0.54, hueBase: 0.3 },
-  { x: 0.24, z: -0.02, layer: 'midground', plantType: 'ribbon-seaweed', baseHeight: 3.25, spreadX: 0.68, spreadZ: 0.48, hueBase: 0.28 },
-  { x: 0.32, z: -0.16, layer: 'background', plantType: 'fan-leaf', baseHeight: 5.6, spreadX: 0.62, spreadZ: 0.46, hueBase: 0.37 },
-  { x: -0.08, z: -0.12, layer: 'background', plantType: 'ribbon-seaweed', baseHeight: 4.9, spreadX: 0.6, spreadZ: 0.42, hueBase: 0.18 }
-]
 
 const plantedHardscapePlantAnchors: HardscapePlantAnchor[] = [
   {
@@ -882,19 +867,11 @@ export class AquascapingSystem {
     scene.add(this.group)
     
     this.createSeaweed(bounds)
-    if (this.layoutStyle === 'marine') {
-      this.createCorals(bounds)
-    } else {
-      this.createFreshwaterAccents(bounds)
-    }
-    this.createRocks(bounds)
     this.createHeroDriftwood(bounds)
     this.createHeroRockRidge(bounds)
     this.createHeroCanopy(bounds)
     this.createDriftwoodBurialDetails(bounds)
-    this.createHardscapeTransitionDetails(bounds)
     this.createHardscapeShadow(bounds)
-    this.createSandDetails(bounds)
   }
   
   private createSeaweed(bounds: THREE.Box3): void {
@@ -906,70 +883,6 @@ export class AquascapingSystem {
     if (this.layoutStyle === 'nature-showcase') {
       this.createNatureShowcasePlanting(bounds, this.layoutSeed)
       return
-    }
-
-    this.createMarineSeaweed(bounds)
-  }
-
-  private createMarineSeaweed(bounds: THREE.Box3): void {
-    const seaweedCount = 24
-    const size = new THREE.Vector3()
-    bounds.getSize(size)
-    
-    for (let i = 0; i < seaweedCount; i++) {
-      const seaweedGroup = new THREE.Group()
-      const cluster = marineSeaweedClusterDefinitions[i % marineSeaweedClusterDefinitions.length]
-      
-      const x = THREE.MathUtils.clamp(
-        cluster.x * size.x + (Math.random() - 0.5) * cluster.spreadX,
-        bounds.min.x + 0.45,
-        bounds.max.x - 0.45
-      )
-      const z = THREE.MathUtils.clamp(
-        cluster.z * size.z + (Math.random() - 0.5) * cluster.spreadZ,
-        bounds.min.z + 0.35,
-        bounds.max.z - 0.35
-      )
-      const y = bounds.min.y + 0.42  // 砂層の高さに合わせる
-      
-      seaweedGroup.position.set(x, y, z)
-      seaweedGroup.userData = {
-        layer: cluster.layer,
-        plantType: cluster.plantType
-      }
-      
-      const height = cluster.baseHeight + Math.random() * (
-        cluster.layer === 'background'
-          ? 1.6
-          : cluster.layer === 'midground'
-            ? 1.2
-            : 0.68
-      )
-      const hue = cluster.hueBase + Math.random() * 0.04
-
-      this.populatePlantCluster(seaweedGroup, cluster, height, hue)
-
-      if (cluster.plantType === 'ribbon-seaweed' && cluster.layer === 'background') {
-        seaweedGroup.scale.set(0.92, 1.18, 0.94)
-      } else if (cluster.plantType === 'ribbon-seaweed' && cluster.layer === 'foreground') {
-        seaweedGroup.scale.set(1.14, 0.96, 1.14)
-      } else if (cluster.plantType === 'sword-leaf') {
-        seaweedGroup.scale.set(
-          cluster.layer === 'foreground' ? 1.1 : 0.98,
-          cluster.layer === 'background' ? 1.18 : cluster.layer === 'midground' ? 1.04 : 0.98,
-          cluster.layer === 'foreground' ? 1.08 : 0.96
-        )
-      } else {
-        seaweedGroup.scale.set(
-          cluster.layer === 'foreground' ? 1.16 : 1,
-          cluster.layer === 'background' ? 1.12 : 0.98,
-          cluster.layer === 'foreground' ? 1.14 : 0.98
-        )
-      }
-      seaweedGroup.rotation.y = (Math.random() - 0.5) * 0.45
-      
-      this.plants.push(seaweedGroup)
-      this.group.add(seaweedGroup)
     }
   }
 
@@ -1023,10 +936,6 @@ export class AquascapingSystem {
       this.plants.push(massGroup)
       this.group.add(massGroup)
     })
-  }
-
-  private createFreshwaterAccents(bounds: THREE.Box3): void {
-    void bounds
   }
 
   public toneAccentGroup(group: THREE.Group, tintHex: string, blend: number): void {
@@ -2203,16 +2112,16 @@ uniform float uDriftwoodRidgeLift;`
     if (this.layoutStyle === 'nature-showcase') {
       driftwoodGroup.position.set(
         center.x - size.x * 0.308,
-        bounds.min.y + 0.72,
-        center.z - size.z * 0.004
+        bounds.min.y - 1.58,
+        center.z - size.z * 0.14
       )
       driftwoodGroup.rotation.set(-0.06, -0.22, 0.1)
       driftwoodGroup.scale.set(1.32, 1.18, 0.98)
     } else {
       driftwoodGroup.position.set(
         center.x + size.x * 0.056,
-        bounds.min.y + 1.18,
-        center.z + size.z * 0.12
+        bounds.min.y - 1.58,
+        center.z - size.z * 0.16
       )
       driftwoodGroup.rotation.set(-0.01, -0.14, 0.2)
       driftwoodGroup.scale.set(1.72, 1.58, 1.34)
@@ -2781,7 +2690,7 @@ uniform float uDriftwoodRidgeLift;`
     if (this.layoutStyle === 'nature-showcase') {
       asset.position.set(
         -0.3 - fittedCenter.x,
-        0.08 - fittedBounds.min.y,
+        -1.62 - fittedBounds.min.y,
         0.08 - fittedCenter.z
       )
     } else {
@@ -3175,96 +3084,6 @@ uniform float uDriftwoodRidgeLift;`
     }
     driftwoodGroup.add(burialShadow)
 
-    const burialLip = new THREE.Mesh(
-      new THREE.SphereGeometry(0.52, 20, 14),
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color('#b09a7d'),
-        roughness: 0.98,
-        metalness: 0
-      })
-    )
-    if (this.layoutStyle === 'nature-showcase') {
-      burialLip.position.set(-2.12, 0.16, 0.74)
-      burialLip.scale.set(2.2, 0.28, 1.24)
-      burialLip.rotation.set(-0.22, 0.38, 0.16)
-    } else {
-      burialLip.position.set(-2.02, 0.14, 0.66)
-      burialLip.scale.set(1.96, 0.22, 1.14)
-      burialLip.rotation.set(-0.18, 0.3, 0.12)
-    }
-    burialLip.receiveShadow = true
-    burialLip.userData = {
-      role: 'driftwood-burial-lip'
-    }
-    driftwoodGroup.add(burialLip)
-
-    const moundDefinitions = this.layoutStyle === 'nature-showcase'
-      ? [
-        {
-          offset: new THREE.Vector3(-2.24, 0.16, 0.76),
-          scale: new THREE.Vector3(1.2, 0.26, 0.66),
-          color: '#9f8d70'
-        },
-        {
-          offset: new THREE.Vector3(-1.72, 0.12, 0.62),
-          scale: new THREE.Vector3(0.9, 0.18, 0.52),
-          color: '#8e7c60'
-        },
-        {
-          offset: new THREE.Vector3(-2.02, 0.14, 0.44),
-          scale: new THREE.Vector3(0.72, 0.16, 0.4),
-          color: '#8a785d'
-        },
-        {
-          offset: new THREE.Vector3(-1.36, 0.1, 0.32),
-          scale: new THREE.Vector3(0.66, 0.14, 0.34),
-          color: '#85745b'
-        },
-        {
-          offset: new THREE.Vector3(-2.46, 0.12, 0.94),
-          scale: new THREE.Vector3(0.78, 0.16, 0.42),
-          color: '#7e6f58'
-        }
-      ]
-      : [
-        {
-          offset: new THREE.Vector3(-2.18, 0.14, 0.72),
-          scale: new THREE.Vector3(1.12, 0.24, 0.6),
-          color: '#9b896e'
-        },
-        {
-          offset: new THREE.Vector3(-1.54, 0.1, 0.56),
-          scale: new THREE.Vector3(0.82, 0.16, 0.46),
-          color: '#85745b'
-        },
-        {
-          offset: new THREE.Vector3(-1.92, 0.12, 0.38),
-          scale: new THREE.Vector3(0.64, 0.14, 0.34),
-          color: '#85745b'
-        },
-        {
-          offset: new THREE.Vector3(-1.18, 0.08, 0.28),
-          scale: new THREE.Vector3(0.58, 0.12, 0.3),
-          color: '#85745b'
-        }
-      ]
-    moundDefinitions.forEach((definition) => {
-      const mound = new THREE.Mesh(
-        new THREE.SphereGeometry(0.44, 18, 12),
-        new THREE.MeshStandardMaterial({
-          color: new THREE.Color(definition.color),
-          roughness: 0.98,
-          metalness: 0
-        })
-      )
-      mound.position.copy(definition.offset)
-      mound.scale.copy(definition.scale)
-      mound.receiveShadow = true
-      mound.userData = {
-        role: 'driftwood-detritus-mound'
-      }
-      driftwoodGroup.add(mound)
-    })
   }
 
   private ensureAoUv2(mesh: THREE.Mesh): void {
@@ -3481,72 +3300,6 @@ uniform float uDriftwoodRidgeLift;`
     return pebbleGroup
   }
   
-  private createCorals(bounds: THREE.Box3): void {
-    const coralCount = 8
-    const size = new THREE.Vector3()
-    bounds.getSize(size)
-    
-    for (let i = 0; i < coralCount; i++) {
-      const coralGroup = new THREE.Group()
-      coralGroup.userData = {
-        role: 'marine-accent',
-        accentType: 'coral'
-      }
-      
-      const x = (Math.random() - 0.5) * size.x * 0.6
-      const z = (Math.random() - 0.5) * size.z * 0.6
-      const y = bounds.min.y + 0.42  // 砂層の高さに合わせる
-      
-      coralGroup.position.set(x, y, z)
-      
-      // Branch coral structure
-      const branchCount = 3 + Math.floor(Math.random() * 4)
-      
-      for (let j = 0; j < branchCount; j++) {
-        const branchHeight = 0.5 + Math.random() * 1.5
-        const branchRadius = 0.05 + Math.random() * 0.03
-        
-        const geometry = new THREE.ConeGeometry(
-          branchRadius * 2,
-          branchHeight,
-          6
-        )
-        
-        const coralColors = [
-          new THREE.Color(0xff6b47),
-          new THREE.Color(0xff8c69),
-          new THREE.Color(0xffa500),
-          new THREE.Color(0xff69b4)
-        ]
-        
-        const material = new THREE.MeshPhysicalMaterial({
-          color: coralColors[Math.floor(Math.random() * coralColors.length)],
-          metalness: 0,
-          roughness: 0.9,
-          clearcoat: 0.3,
-          clearcoatRoughness: 0.8
-        })
-        
-        const branch = new THREE.Mesh(geometry, material)
-        branch.position.y = branchHeight / 2
-        branch.rotation.x = (Math.random() - 0.5) * 0.5
-        branch.rotation.z = (Math.random() - 0.5) * 0.5
-        branch.rotation.y = (j / branchCount) * Math.PI * 2 + Math.random() * 0.5
-        branch.castShadow = true
-        branch.receiveShadow = true
-        
-        coralGroup.add(branch)
-      }
-      
-      this.hardscapeGroups.push(coralGroup)
-      this.group.add(coralGroup)
-    }
-  }
-  
-  private createRocks(bounds: THREE.Box3): void {
-    void bounds
-  }
-
   private createHardscapeShadow(bounds: THREE.Box3): void {
     const canvas = document.createElement('canvas')
     canvas.width = 256
@@ -3588,50 +3341,6 @@ uniform float uDriftwoodRidgeLift;`
     this.group.add(shadow)
   }
 
-  private createHardscapeTransitionDetails(bounds: THREE.Box3): void {
-    void bounds
-  }
-
-  private createSandDetails(bounds: THREE.Box3): void {
-    if (this.layoutStyle === 'nature-showcase') return
-
-    const rippleGeometry = new THREE.PlaneGeometry(1, 0.1, 10, 1)
-    const rippleMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xe8d5b8,
-      metalness: 0,
-      roughness: 1,
-      transparent: true,
-      opacity: 0.3
-    })
-    const size = new THREE.Vector3()
-    bounds.getSize(size)
-    const rippleSeed = createSeededRandom(3611)
-    const rippleCount = 20
-
-    for (let i = 0; i < rippleCount; i++) {
-      const ripple = new THREE.Mesh(rippleGeometry, rippleMaterial)
-      ripple.rotation.x = -Math.PI / 2
-      ripple.rotation.z = rippleSeed() * Math.PI
-
-      const x = (rippleSeed() - 0.5) * size.x * 0.9
-      const z = (rippleSeed() - 0.5) * size.z * 0.9
-
-      ripple.position.set(
-        x,
-        bounds.min.y + 0.01,
-        z
-      )
-
-      const scale = 0.5 + rippleSeed() * 2
-      ripple.scale.set(scale, 1, scale)
-      ripple.userData = {
-        role: 'sand-ripple'
-      }
-      
-      this.group.add(ripple)
-    }
-  }
-  
   update(elapsedTime: number): void {
     const deltaTime = Math.max(0, elapsedTime - this.time)
     this.time = elapsedTime

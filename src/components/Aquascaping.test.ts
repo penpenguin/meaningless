@@ -752,17 +752,20 @@ describe('AquascapingSystem composition', () => {
     const burialShadow = driftwood?.children.find(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-burial-shadow'
     )
+    const burialLip = driftwood?.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-burial-lip'
+    )
     const detritusMounds = driftwood?.children.filter(
       (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.userData.role === 'driftwood-detritus-mound'
     ) ?? []
 
     expect(burialShadow).toBeDefined()
+    expect(burialLip).toBeUndefined()
     expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.transparent).toBe(true)
     expect((burialShadow?.material as THREE.MeshBasicMaterial | undefined)?.opacity ?? 1).toBeLessThanOrEqual(0.2)
     expect(burialShadow?.position.x ?? 0).toBeLessThanOrEqual(-1.74)
     expect(burialShadow?.position.z ?? 0).toBeGreaterThanOrEqual(0.62)
-    expect(detritusMounds.length).toBeGreaterThanOrEqual(4)
-    expect(detritusMounds.some((mound) => mound.position.x <= -1.7 && mound.position.z >= 0.56)).toBe(true)
+    expect(detritusMounds).toHaveLength(0)
   })
 
   it.skip('stages the driftwood ahead of the ridge and adds small attachments so the wood reads as the main hardscape', () => {
@@ -1055,6 +1058,74 @@ describe('AquascapingSystem composition', () => {
     expect(driftwood?.children.some((child) => child.userData.role === 'driftwood-secondary-branch')).toBe(false)
   })
 
+  it('moves the nature-showcase driftwood model down to the substrate instead of suspending it above plants', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = bounds.getSize(new THREE.Vector3())
+    const center = bounds.getCenter(new THREE.Vector3())
+    const driftwoodAsset = createModelAssetScene('driftwood-hero')
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null }
+      }
+    }, {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    )
+
+    expect(driftwood).toBeDefined()
+    expect(driftwood?.position.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(bounds.min.y - 1.52)
+    expect(driftwood?.position.z ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(center.z - size.z * 0.1)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('moves the default planted driftwood model down to the substrate instead of suspending it above plants', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = bounds.getSize(new THREE.Vector3())
+    const center = bounds.getCenter(new THREE.Vector3())
+    const driftwoodAsset = createModelAssetScene('driftwood-hero')
+
+    new AquascapingSystem(scene, bounds, {
+      manifest: { textures: [], models: [], environment: [] },
+      textures: {},
+      environment: {},
+      models: {
+        'driftwood-hero': { scene: driftwoodAsset, sourceMesh: null }
+      }
+    }, {
+      layoutStyle: 'planted'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwood = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'hero-driftwood'
+    )
+
+    expect(driftwood).toBeDefined()
+    expect(driftwood?.position.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(bounds.min.y - 1.52)
+    expect(driftwood?.position.z ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(center.z - size.z * 0.1)
+
+    getContextSpy.mockRestore()
+  })
+
   it('does not create removed showcase secondary driftwood branches', () => {
     const getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
@@ -1171,6 +1242,26 @@ describe('AquascapingSystem composition', () => {
 
     new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
       layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const sandRipples = aquascapingGroup.children.filter((child) => child.userData.role === 'sand-ripple')
+
+    expect(sandRipples).toHaveLength(0)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('does not add procedural sand ripple strips to the planted substrate', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
+      layoutStyle: 'planted'
     })
 
     const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
@@ -1338,25 +1429,26 @@ describe('AquascapingSystem composition', () => {
     expect(cryptCanopies[0]?.scale.y ?? 0).toBeLessThanOrEqual(0.8)
   })
 
-  it('builds seaweed from ribbon fronds instead of stacked cylinders', () => {
+  it('does not build marine ribbon seaweed in supported planted layouts', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
 
-    const scene = new THREE.Scene()
     const bounds = createOpenWaterBounds()
+    const layouts = ['planted', 'nature-showcase'] as const
 
-    new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
-      layoutStyle: 'marine'
+    layouts.forEach((layoutStyle) => {
+      const scene = new THREE.Scene()
+
+      new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
+        layoutStyle
+      })
+
+      const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+      const ribbonPlants = aquascapingGroup.children.filter((child) => child.userData.plantType === 'ribbon-seaweed')
+
+      expect(ribbonPlants).toEqual([])
     })
-
-    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
-    const ribbonPlant = aquascapingGroup.children.find((child) => child.userData.plantType === 'ribbon-seaweed') as THREE.Group
-    const fronds = ribbonPlant.children.filter((child) => child instanceof THREE.Mesh) as THREE.Mesh[]
-
-    expect(fronds.length).toBeGreaterThan(0)
-    expect(fronds.some((frond) => frond.geometry.type === 'PlaneGeometry')).toBe(true)
-    expect(fronds.some((frond) => frond.geometry.type === 'CylinderGeometry')).toBe(false)
   })
 
   it.skip('mixes distinct planted species into the layered aquascape', () => {
@@ -1441,25 +1533,28 @@ describe('AquascapingSystem composition', () => {
     expect(freshwaterAccentTypes.has('epiphyte')).toBe(true)
   })
 
-  it('adds coral cone accents only for the marine layout', () => {
+  it('does not add coral cone accents in supported planted layouts', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
 
-    const scene = new THREE.Scene()
     const bounds = createOpenWaterBounds()
+    const layouts = ['planted', 'nature-showcase'] as const
 
-    new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
-      layoutStyle: 'marine'
+    layouts.forEach((layoutStyle) => {
+      const scene = new THREE.Scene()
+
+      new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
+        layoutStyle
+      })
+
+      const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+      const coralBranches = aquascapingGroup.children.flatMap((child) =>
+        child instanceof THREE.Group ? child.children : []
+      ).filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.geometry.type === 'ConeGeometry')
+
+      expect(coralBranches).toEqual([])
     })
-
-    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
-    const coralBranches = aquascapingGroup.children.flatMap((child) =>
-      child instanceof THREE.Group ? child.children : []
-    ).filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.geometry.type === 'ConeGeometry')
-
-    expect(coralBranches.length).toBeGreaterThan(0)
-    expect(coralBranches.every((mesh) => mesh.castShadow)).toBe(true)
   })
 })
 
@@ -2141,6 +2236,25 @@ describe('AquascapingSystem premium materials', () => {
     expect(asset.rotation.y).toBeGreaterThanOrEqual(0.34)
     expect(asset.rotation.z).toBeGreaterThanOrEqual(-0.14)
   })
+
+  it('moves the nature-showcase driftwood asset core down without adding procedural contact geometry', () => {
+    const instance = Object.create(AquascapingSystem.prototype) as AquascapingSystem
+    ;(instance as unknown as { layoutStyle: 'nature-showcase' }).layoutStyle = 'nature-showcase'
+    const asset = createModelAssetScene('driftwood-hero')
+    const tankSize = createOpenWaterBounds().getSize(new THREE.Vector3())
+
+    const fitHeroDriftwoodAssetCore = (AquascapingSystem.prototype as unknown as {
+      fitHeroDriftwoodAssetCore: (asset: THREE.Group, tankSize: THREE.Vector3) => void
+    }).fitHeroDriftwoodAssetCore.bind(instance)
+
+    fitHeroDriftwoodAssetCore(asset, tankSize)
+
+    const fittedBounds = getWorldBounds(asset)
+
+    expect(fittedBounds.min.y).toBeLessThanOrEqual(-1.58)
+    expect(fittedBounds.getCenter(new THREE.Vector3()).y).toBeLessThanOrEqual(-0.28)
+  })
+
 })
 
 describe('AquascapingSystem asset-backed hero scape', () => {

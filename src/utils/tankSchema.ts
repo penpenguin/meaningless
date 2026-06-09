@@ -25,8 +25,13 @@ const isObject = (value: unknown): value is Record<string, unknown> => {
 const isString = (value: unknown): value is string => typeof value === 'string'
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 const isLayoutStyle = (value: unknown): value is Theme['layoutStyle'] => (
-  value === 'planted' || value === 'marine' || value === 'nature-showcase'
+  value === 'planted' || value === 'nature-showcase'
 )
+
+const coerceLayoutStyle = (value: unknown): Theme['layoutStyle'] | undefined => {
+  if (value === 'marine') return 'planted'
+  return isLayoutStyle(value) ? value : undefined
+}
 
 const validateTheme = (value: unknown): value is Theme => {
   if (!isObject(value)) return false
@@ -55,7 +60,8 @@ const coerceTheme = (value: unknown): Partial<Theme> | undefined => {
   if (isNumber(value.particleDensity)) theme.particleDensity = value.particleDensity
   if (isNumber(value.waveStrength)) theme.waveStrength = value.waveStrength
   if (isNumber(value.waveSpeed)) theme.waveSpeed = value.waveSpeed
-  if (isLayoutStyle(value.layoutStyle)) theme.layoutStyle = value.layoutStyle
+  const layoutStyle = coerceLayoutStyle(value.layoutStyle)
+  if (layoutStyle) theme.layoutStyle = layoutStyle
   return Object.keys(theme).length > 0 ? theme : undefined
 }
 
