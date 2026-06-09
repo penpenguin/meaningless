@@ -9,7 +9,6 @@ vi.mock('../components/AdvancedScene', () => {
       setMotionEnabled: ReturnType<typeof vi.fn>
       setPhotoMode: ReturnType<typeof vi.fn>
       setAdvancedEffects: ReturnType<typeof vi.fn>
-      setVisualQuality: ReturnType<typeof vi.fn>
       applyTheme: ReturnType<typeof vi.fn>
       applyFishGroups: ReturnType<typeof vi.fn>
       start: ReturnType<typeof vi.fn>
@@ -20,7 +19,6 @@ vi.mock('../components/AdvancedScene', () => {
         this.setMotionEnabled = vi.fn()
         this.setPhotoMode = vi.fn()
         this.setAdvancedEffects = vi.fn()
-        this.setVisualQuality = vi.fn()
         this.applyTheme = vi.fn()
         this.applyFishGroups = vi.fn(() => true)
         this.start = vi.fn()
@@ -47,11 +45,11 @@ vi.mock('../components/AudioManager', () => {
   }
 })
 
-vi.mock('../components/GameHudOverlay', () => {
+vi.mock('../components/GameControlPane', () => {
   return {
-    createGameHudOverlay: () => {
+    createGameControlPane: () => {
       const overlay = document.createElement('div')
-      overlay.className = 'hud-overlay'
+      overlay.className = 'game-control-pane'
       return {
         element: overlay,
         dispose: vi.fn()

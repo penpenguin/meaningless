@@ -4,5 +4,4 @@ export type SettingsState = {
   schemaVersion: number
   soundEnabled: boolean
   motionEnabled: boolean
-  quality: QualityLevel
 }

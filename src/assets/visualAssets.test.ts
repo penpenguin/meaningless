@@ -42,6 +42,8 @@ const readGlbJson = (relativePath: string): Record<string, unknown> => {
   return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8')) as Record<string, unknown>
 }
 
+const createImageTexture = (): THREE.Texture<HTMLImageElement> => new THREE.Texture(document.createElement('img'))
+
 describe('loadVisualAssets', () => {
   it('loads textures, models, and hdri assets by id and falls back to null on failure', async () => {
     const textureLoader = {
@@ -49,7 +51,7 @@ describe('loadVisualAssets', () => {
         if (url.includes('missing')) {
           throw new Error('missing texture')
         }
-        return new THREE.Texture()
+        return createImageTexture()
       })
     }
     const gltfLoader = {
@@ -191,7 +193,7 @@ describe('loadVisualAssets', () => {
         if (url.includes('substrate-sand-normal.png')) {
           throw new Error('missing authored normal')
         }
-        return new THREE.Texture()
+        return createImageTexture()
       })
     }
 
@@ -353,12 +355,12 @@ describe('public aquarium asset urls', () => {
     expect(textureUrls.some((url) => url.endsWith('driftwood-ao.png'))).toBe(true)
     expect(textureUrls.some((url) => url.endsWith('driftwood-bark-ao.png'))).toBe(true)
     expect(textureUrls.some((url) => url.endsWith('driftwood-bark-cavity-mask.png'))).toBe(true)
-    expect(modelIds.has('driftwood-secondary-a')).toBe(true)
-    expect(modelIds.has('driftwood-secondary-b')).toBe(true)
-    expect(modelIds.has('driftwood-secondary-c')).toBe(true)
-    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-a.glb'))).toBe(true)
-    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-b.glb'))).toBe(true)
-    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-c.glb'))).toBe(true)
+    expect(modelIds.has('driftwood-secondary-a')).toBe(false)
+    expect(modelIds.has('driftwood-secondary-b')).toBe(false)
+    expect(modelIds.has('driftwood-secondary-c')).toBe(false)
+    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-a.glb'))).toBe(false)
+    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-b.glb'))).toBe(false)
+    expect(modelUrls.some((url) => url.endsWith('driftwood-secondary-c.glb'))).toBe(false)
 
     const driftwoodHero = readGlbJson('public/assets/models/driftwood/driftwood-hero.glb')
     expect((driftwoodHero.images as unknown[] | undefined)?.length ?? 0).toBeGreaterThanOrEqual(3)
@@ -387,27 +389,27 @@ describe('public aquarium asset urls', () => {
     expect(Array.from(textureUrlsById.values()).some((url) => url.endsWith('backdrop-depth.svg'))).toBe(false)
   })
 
-  it('registers authored support rock glbs for the asset-backed aquascape support path', () => {
+  it('omits removed support rock glbs while keeping the authored hero ridge model', () => {
     const manifest = createAquariumAssetManifest('/')
     const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
 
     expect(modelUrlsById.get('rock-ridge-hero')).toBe('/assets/models/rocks/rock-ridge-hero.glb')
-    expect(modelUrlsById.get('rock-support-a')).toBe('/assets/models/rocks/rock-support-a.glb')
-    expect(modelUrlsById.get('rock-support-b')).toBe('/assets/models/rocks/rock-support-b.glb')
-    expect(modelUrlsById.get('rock-support-c')).toBe('/assets/models/rocks/rock-support-c.glb')
-    expect(modelUrlsById.get('rock-pebble-cluster')).toBe('/assets/models/rocks/rock-pebble-cluster.glb')
+    expect(modelUrlsById.has('rock-support-a')).toBe(false)
+    expect(modelUrlsById.has('rock-support-b')).toBe(false)
+    expect(modelUrlsById.has('rock-support-c')).toBe(false)
+    expect(modelUrlsById.has('rock-pebble-cluster')).toBe(false)
 
     const rockRidgeHero = readGlbJson('public/assets/models/rocks/rock-ridge-hero.glb')
     expect((rockRidgeHero.images as unknown[] | undefined)?.length ?? 0).toBeGreaterThanOrEqual(3)
   })
 
-  it('registers nature showcase base-cluster and transition rock glbs for the left mound layout', () => {
+  it('omits removed nature showcase base-cluster and transition rock glbs', () => {
     const manifest = createAquariumAssetManifest('/')
     const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
 
-    expect(modelUrlsById.get('rock-lava-base-cluster-a')).toBe('/assets/models/rocks/rock-lava-base-cluster-a.glb')
-    expect(modelUrlsById.get('rock-lava-base-cluster-b')).toBe('/assets/models/rocks/rock-lava-base-cluster-b.glb')
-    expect(modelUrlsById.get('rock-lava-transition-chips')).toBe('/assets/models/rocks/rock-lava-transition-chips.glb')
+    expect(modelUrlsById.has('rock-lava-base-cluster-a')).toBe(false)
+    expect(modelUrlsById.has('rock-lava-base-cluster-b')).toBe(false)
+    expect(modelUrlsById.has('rock-lava-transition-chips')).toBe(false)
   })
 
   it('uses authored png pbr textures for substrate sand while keeping the stable texture ids', () => {
@@ -448,14 +450,9 @@ describe('public aquarium asset urls', () => {
     expect(textureUrlsById.get('substrate-sand-normal')).toBe('/meaningless/assets/textures/substrate/substrate-sand-normal.png')
     expect(textureUrlsById.get('substrate-sand-roughness')).toBe('/meaningless/assets/textures/substrate/substrate-sand-roughness.png')
     expect(textureUrlsById.get('substrate-sand-ao')).toBe('/meaningless/assets/textures/substrate/substrate-sand-ao.png')
-    expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-base-cluster-a')).toBe(
-      '/meaningless/assets/models/rocks/rock-lava-base-cluster-a.glb'
-    )
-    expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-base-cluster-b')).toBe(
-      '/meaningless/assets/models/rocks/rock-lava-base-cluster-b.glb'
-    )
-    expect(new Map(manifest.models.map((entry) => [entry.id, entry.url])).get('rock-lava-transition-chips')).toBe(
-      '/meaningless/assets/models/rocks/rock-lava-transition-chips.glb'
-    )
+    const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
+    expect(modelUrlsById.has('rock-lava-base-cluster-a')).toBe(false)
+    expect(modelUrlsById.has('rock-lava-base-cluster-b')).toBe(false)
+    expect(modelUrlsById.has('rock-lava-transition-chips')).toBe(false)
   })
 })

@@ -15,7 +15,7 @@ import {
   createFishSafeBounds,
   resolveFishAxisExtents,
   type FishRenderExtents
-} from './sceneBounds'
+} from '../utils/sceneBounds'
 import {
   DEFAULT_ORIENTATION_CORRECTION,
   FISH_SAFE_PADDING_BY_PATH,
@@ -1286,11 +1286,14 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       
       const schoolAsset = this.getVisualModel(variant.schoolModelId)
       const sourceMesh = schoolAsset?.sourceMesh ?? null
-      const fishGeometry = sourceMesh?.geometry.clone() ?? this.createDetailedFishGeometry(variant)
-      const fishMaterial = sourceMesh
-        ? this.createFishAssetMaterial(sourceMesh.material, variant, false)
-        : this.createFishMaterial(variant)
-      const renderPath = sourceMesh ? 'school' : 'procedural'
+      if (!sourceMesh) {
+        boidStartIndex += actualCount
+        return
+      }
+
+      const fishGeometry = sourceMesh.geometry.clone()
+      const fishMaterial = this.createFishAssetMaterial(sourceMesh.material, variant, false)
+      const renderPath = 'school'
       fishGeometry.userData = {
         ...fishGeometry.userData,
         sharedAsset: false
@@ -1387,6 +1390,9 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
 
         const heroAsset = this.getVisualModel(variant.heroModelId)
         const heroObject = this.createHeroFishObject(variant, heroAsset)
+        if (!heroObject) {
+          return
+        }
         heroObject.visible = this.shouldShowHeroFishOnQuality(heroObject, this.currentQuality)
         heroObject.userData = {
           ...heroObject.userData,
@@ -1420,7 +1426,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
   private createHeroFishObject(
     variant: FishVariant,
     heroAsset: LoadedModelAsset | null
-  ): THREE.Object3D {
+  ): THREE.Object3D | null {
     const sourceMesh = heroAsset?.sourceMesh ?? null
     const sourceIsSkinnedMesh = (sourceMesh as (THREE.Mesh & { isSkinnedMesh?: boolean }) | null)?.isSkinnedMesh === true
     if (sourceMesh && !sourceIsSkinnedMesh) {
@@ -1457,16 +1463,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
       return heroObject
     }
 
-    const heroMaterial = this.createFishMaterial(variant).clone()
-    heroMaterial.envMapIntensity = Math.min(1.08, (heroMaterial.envMapIntensity ?? 0.68) + 0.12)
-    heroMaterial.clearcoat = Math.min(1, (heroMaterial.clearcoat ?? 0.72) + 0.08)
-    heroMaterial.emissive.set(0x000000)
-    heroMaterial.emissiveIntensity = 0
-
-    const heroMesh = new THREE.Mesh(this.createDetailedFishGeometry(variant), heroMaterial)
-    heroMesh.castShadow = true
-    heroMesh.receiveShadow = true
-    return this.wrapHeroMotionObject(heroMesh, variant)
+    return null
   }
 
   private installHeroAnimation(heroObject: THREE.Object3D, animations: THREE.AnimationClip[]): void {
@@ -2039,7 +2036,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     return index >= 0 ? index : 0
   }
   
-  private createDetailedFishGeometry(variant: FishVariant): THREE.BufferGeometry {
+  public createDetailedFishGeometry(variant: FishVariant): THREE.BufferGeometry {
     const silhouette = this.resolveSilhouette(variant)
 
     const tailRootX = -silhouette.bodyLength * 0.48
@@ -2275,7 +2272,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
     return texture
   }
   
-  private createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
+  public createFishMaterial(variant: FishVariant): THREE.MeshPhysicalMaterial {
     const speciesBaseColorTexture = this.getVisualTexture(variant.baseColorTextureId)
     const speciesNormalTexture = this.getVisualTexture(variant.normalTextureId)
     const speciesRoughnessTexture = this.getVisualTexture(variant.roughnessTextureId)

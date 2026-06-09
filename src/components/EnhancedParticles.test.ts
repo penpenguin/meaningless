@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { EnhancedParticleSystem } from './EnhancedParticles'
-import { createOpenWaterBounds } from './sceneBounds'
+import { createOpenWaterBounds } from '../utils/sceneBounds'
 
 describe('EnhancedParticleSystem layering', () => {
   it('layers localized bubble plumes with suspended motes instead of one generic bubble cloud', () => {

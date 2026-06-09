@@ -20,32 +20,19 @@ describe('viewport layout', () => {
     expect(styles).toMatch(/#canvas-container::after\s*{/)
   })
 
-  it('packs the overlay into a compact mobile bottom sheet', () => {
-    expect(styles).toMatch(/@media \(max-width: 960px\)\s*{[\s\S]*\.hud-panel-container\s*{[^}]*max-height:\s*min\(52dvh,\s*30rem\);/s)
-    expect(styles).toMatch(/@media \(max-width: 720px\)\s*{[\s\S]*\.hud-guide-hint\s*{[^}]*display:\s*none;/s)
+  it('anchors the Tweakpane controls as a compact fixed HUD surface', () => {
+    expect(styles).toMatch(/\.game-control-pane\s*{[^}]*position:\s*fixed;[^}]*top:\s*1rem;[^}]*right:\s*1rem;/s)
+    expect(styles).toMatch(/\.game-control-pane\s*{[^}]*width:\s*min\(22rem,\s*calc\(100vw - 2rem\)\);/s)
   })
 
-  it('stacks desktop HUD sections in a vertical rail so wrapped controls do not collide', () => {
-    expect(styles).toMatch(/\.hud-rail\s*{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*gap:\s*0\.75rem;/s)
-    expect(styles).toMatch(/\.hud-panel-container\s*{[^}]*position:\s*relative;/s)
-    expect(styles).not.toContain('top: 5.5rem;')
+  it('keeps pane controls usable on narrow screens', () => {
+    expect(styles).toMatch(/@media \(max-width:\s*720px\)\s*{[\s\S]*\.game-control-pane\s*{[^}]*left:\s*0\.75rem;[^}]*right:\s*0\.75rem;/s)
+    expect(styles).toMatch(/@media \(max-width:\s*720px\)\s*{[\s\S]*\.game-control-pane\s*{[^}]*width:\s*auto;/s)
   })
 
-  it('adds animated panel transitions and custom UI chrome for controls', () => {
-    expect(styles).toContain('@keyframes hudPanelEnter')
-    expect(styles).toMatch(/\.hud-buttons button\s*{[^}]*transition:/s)
-    expect(styles).toMatch(/\.hud-toggle-button\s*{/)
-    expect(styles).toMatch(/\.hud-segmented\s*{/)
-    expect(styles).toMatch(/\.hud-stat-card\s*{/)
-    expect(styles).toMatch(/\.hud-board-shell\s*{/)
-  })
-
-  it('keeps a fixed reveal tab available when the HUD is hidden', () => {
-    expect(styles).toMatch(/\.hud-reveal-tab\s*{[^}]*position:\s*absolute;[^}]*top:\s*1rem;[^}]*right:\s*1rem;/s)
-    expect(styles).toMatch(/@media \(max-width: 960px\)\s*{[\s\S]*\.hud-reveal-tab\s*{[^}]*bottom:\s*1rem;/s)
-  })
-
-  it('forces hidden HUD elements off-screen even when base display styles are present', () => {
-    expect(styles).toMatch(/\.hud-rail\[hidden\],\s*\.hud-reveal-tab\[hidden\]\s*{[^}]*display:\s*none\s*!important;/s)
+  it('removes the legacy authored HUD selectors', () => {
+    expect(styles).not.toContain('.hud-overlay')
+    expect(styles).not.toContain('.hud-rail')
+    expect(styles).not.toContain('.hud-reveal-tab')
   })
 })

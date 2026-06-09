@@ -8,8 +8,7 @@ describe('createRenderStateApplier', () => {
       applyTheme: vi.fn(),
       applyFishGroups: vi.fn(() => true),
       setMotionEnabled: vi.fn(),
-      setPhotoMode: vi.fn(),
-      setVisualQuality: vi.fn()
+      setPhotoMode: vi.fn()
     }
     const audioManager = {
       setEnabled: vi.fn()
@@ -22,8 +21,7 @@ describe('createRenderStateApplier', () => {
     expect(scene.applyTheme).toHaveBeenCalledTimes(1)
     expect(scene.applyFishGroups).toHaveBeenCalledTimes(1)
     expect(scene.setMotionEnabled).toHaveBeenCalledWith(true)
-    expect(scene.setPhotoMode).toHaveBeenCalledWith(false)
-    expect(scene.setVisualQuality).toHaveBeenCalledWith(state.game.profile.preferences.quality)
+    expect(scene.setPhotoMode).toHaveBeenCalledWith({ enabled: false, followMode: 'fish' })
     expect(audioManager.setEnabled).toHaveBeenCalledWith(true)
   })
 
@@ -32,8 +30,7 @@ describe('createRenderStateApplier', () => {
       applyTheme: vi.fn(),
       applyFishGroups: vi.fn(() => true),
       setMotionEnabled: vi.fn(),
-      setPhotoMode: vi.fn(),
-      setVisualQuality: vi.fn()
+      setPhotoMode: vi.fn()
     }
     const audioManager = {
       setEnabled: vi.fn()
@@ -54,7 +51,6 @@ describe('createRenderStateApplier', () => {
     expect(scene.applyFishGroups).toHaveBeenCalledTimes(1)
     expect(scene.setMotionEnabled).toHaveBeenCalledTimes(2)
     expect(scene.setPhotoMode).toHaveBeenCalledTimes(2)
-    expect(scene.setVisualQuality).toHaveBeenCalledTimes(2)
     expect(audioManager.setEnabled).toHaveBeenCalledTimes(2)
   })
 })

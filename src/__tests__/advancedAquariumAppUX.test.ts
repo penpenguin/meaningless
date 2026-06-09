@@ -15,7 +15,8 @@ const hoisted = vi.hoisted(() => ({
   lastSceneAssets: null as unknown,
   lastSceneInstance: null as {
     getPerformanceStats: ReturnType<typeof vi.fn>
-  } | null
+  } | null,
+  lastPaneStatsProvider: null as null | (() => unknown)
 }))
 
 vi.mock('../components/AdvancedScene', () => {
@@ -24,7 +25,6 @@ vi.mock('../components/AdvancedScene', () => {
       setMotionEnabled = vi.fn()
       setPhotoMode = vi.fn()
       setAdvancedEffects = vi.fn()
-      setVisualQuality = vi.fn()
       applyTheme = vi.fn()
       applyFishGroups = vi.fn(() => true)
       start = vi.fn()
@@ -41,6 +41,32 @@ vi.mock('../components/AdvancedScene', () => {
         hoisted.lastSceneInstance = this as unknown as {
           getPerformanceStats: ReturnType<typeof vi.fn>
         }
+      }
+    }
+  }
+})
+
+vi.mock('../components/GameControlPane', () => {
+  return {
+    createGameControlPane: ({
+      store,
+      getPerformanceStats
+    }: {
+      store: { dispatch: (action: unknown) => void }
+      getPerformanceStats?: () => unknown
+    }) => {
+      hoisted.lastPaneStatsProvider = getPerformanceStats ?? null
+      const element = document.createElement('div')
+      element.className = 'game-control-pane'
+      const photoButton = document.createElement('button')
+      photoButton.dataset.action = 'photo-mode'
+      photoButton.addEventListener('click', () => {
+        store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled: true } })
+      })
+      element.appendChild(photoButton)
+      return {
+        element,
+        dispose: vi.fn(() => element.remove())
       }
     }
   }
@@ -121,6 +147,7 @@ describe('AdvancedAquariumApp UX integration', () => {
     hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
     hoisted.lastSceneAssets = null
     hoisted.lastSceneInstance = null
+    hoisted.lastPaneStatsProvider = null
   })
 
   it('starts hiding the loading screen immediately after init completes', async () => {
@@ -139,18 +166,16 @@ describe('AdvancedAquariumApp UX integration', () => {
     app.dispose()
   })
 
-  it('renders game HUD overlay with coins indicator', async () => {
+  it('renders the centralized Tweakpane control surface without the legacy HUD', async () => {
     vi.useFakeTimers()
     hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
     const app = new AdvancedAquariumApp()
     await flushMicrotasks()
 
-    expect(document.querySelector('.hud-overlay')).not.toBeNull()
-    expect(document.querySelector('.editor-overlay')).toBeNull()
-
-    const pearlsLabel = document.querySelector('.hud-pearls')
-    expect(pearlsLabel?.textContent).toContain('Coins:')
-    expect(document.querySelector('[data-mode="tank"]')?.textContent).toBe('Tank')
+    expect(document.querySelector('.hud-overlay')).toBeNull()
+    expect(document.querySelector('.game-control-pane')).not.toBeNull()
+    expect(document.body.textContent).not.toContain('Coins')
+    expect(document.body.textContent).not.toContain('Visual quality')
 
     app.dispose()
   })
@@ -161,15 +186,11 @@ describe('AdvancedAquariumApp UX integration', () => {
     const app = new AdvancedAquariumApp()
     await flushMicrotasks()
 
-    const settingsButton = document.querySelector('[data-mode="settings"]') as HTMLButtonElement
-    settingsButton.click()
-
-    const toggles = Array.from(document.querySelectorAll('.hud-toggle-button')) as HTMLButtonElement[]
-    const photoModeButton = toggles[2]
-    photoModeButton?.click()
+    const photoModeButton = document.querySelector('[data-action="photo-mode"]') as HTMLButtonElement
+    photoModeButton.click()
 
     const scene = (app as unknown as { scene: { setPhotoMode: ReturnType<typeof vi.fn> } | null }).scene
-    expect(scene?.setPhotoMode).toHaveBeenCalledWith(true)
+    expect(scene?.setPhotoMode).toHaveBeenCalledWith({ enabled: true, followMode: 'fish' })
 
     app.dispose()
   })
@@ -187,15 +208,17 @@ describe('AdvancedAquariumApp UX integration', () => {
     app.dispose()
   })
 
-  it('does not poll scene performance stats after startup', async () => {
+  it('passes scene performance stats into the control pane', async () => {
     vi.useFakeTimers()
     hoisted.loadVisualAssets.mockResolvedValue(hoisted.mockedAssets)
 
     const app = new AdvancedAquariumApp()
     await flushMicrotasks()
-    await vi.advanceTimersByTimeAsync(2200)
 
-    expect(hoisted.lastSceneInstance?.getPerformanceStats).not.toHaveBeenCalled()
+    expect(hoisted.lastPaneStatsProvider).not.toBeNull()
+    hoisted.lastPaneStatsProvider?.()
+
+    expect(hoisted.lastSceneInstance?.getPerformanceStats).toHaveBeenCalledTimes(1)
 
     app.dispose()
   })

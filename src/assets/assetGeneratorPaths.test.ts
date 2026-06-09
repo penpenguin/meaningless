@@ -20,8 +20,7 @@ describe('aquarium asset generator output paths', () => {
   it('keeps shared texture and hardscape generators aligned with the flattened assets directory', () => {
     const scripts = [
       'scripts/generate-shared-aquarium-textures.mjs',
-      'scripts/generate-driftwood-hero-asset.mjs',
-      'scripts/generate-support-rock-assets.mjs'
+      'scripts/generate-driftwood-hero-asset.mjs'
     ].map(readScript)
 
     scripts.forEach((script) => {

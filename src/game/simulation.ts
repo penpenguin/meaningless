@@ -139,13 +139,11 @@ export const calculateTankEconomy = (tank: GameTank): {
 
 type SimulatedTank = {
   tank: GameTank
-  grossCoins: number
   summary: OfflineTankSummary
 }
 
-const simulateTank = (tank: GameTank, simulatedSeconds: number): SimulatedTank => {
+const simulateTank = (tank: GameTank): SimulatedTank => {
   const projectedEconomy = calculateTankEconomy(tank)
-  const grossCoins = Math.max(0, (projectedEconomy.incomePerMinute * simulatedSeconds) / 60)
 
   return {
     tank: {
@@ -156,10 +154,8 @@ const simulateTank = (tank: GameTank, simulatedSeconds: number): SimulatedTank =
         incomePerMinute: projectedEconomy.incomePerMinute
       }
     },
-    grossCoins,
     summary: {
-      tankId: tank.id,
-      earnedCoins: Math.floor(grossCoins)
+      tankId: tank.id
     }
   }
 }
@@ -202,10 +198,7 @@ export const simulateGameSave = (options: {
     }
   }
 
-  const tankResults = options.save.tanks.map((tank) => simulateTank(tank, simulatedSeconds))
-  const grossCoins = tankResults.reduce((total, result) => total + result.grossCoins, 0) + options.save.profile.currency.pendingCoins
-  const earnedCoins = Math.floor(grossCoins)
-  const pendingCoins = grossCoins - earnedCoins
+  const tankResults = options.save.tanks.map((tank) => simulateTank(tank))
 
   return {
     save: {
@@ -213,13 +206,8 @@ export const simulateGameSave = (options: {
       lastSimulatedAt: options.nowIso,
       profile: {
         ...options.save.profile,
-        currency: {
-          coins: options.save.profile.currency.coins + earnedCoins,
-          pendingCoins
-        },
         stats: {
           ...options.save.profile.stats,
-          totalEarnedCoins: options.save.profile.stats.totalEarnedCoins + earnedCoins,
           totalOfflineSeconds: options.save.profile.stats.totalOfflineSeconds + simulatedSeconds
         }
       },
@@ -227,7 +215,6 @@ export const simulateGameSave = (options: {
     },
     offlineResult: {
       simulatedSeconds,
-      earnedCoins,
       tankSummaries: tankResults.map((result) => result.summary)
     }
   }

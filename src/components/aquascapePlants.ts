@@ -161,7 +161,7 @@ export const PLANTED_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[] = [
       { plantType: 'anubias-petite-clump', weight: 0.76 },
       { plantType: 'anubias-nana-clump', weight: 0.24 }
     ],
-    assetIds: ['plant-anubias-petite-clump', 'plant-anubias-nana-clump']
+    assetIds: ['plant-willow-moss', 'plant-willow-moss']
   },
   {
     id: 'left-rear',
@@ -191,7 +191,7 @@ export const PLANTED_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[] = [
       { plantType: 'hygrophila-rear', weight: 0.1 },
       { plantType: 'stem-green-bush', weight: 0.24 }
     ],
-    assetIds: ['plant-vallisneria-tall', 'plant-stem-green-bush', 'plant-hygrophila-rear']
+    assetIds: ['plant-vallisneria-tall', 'plant-hygrophila-rear', 'plant-hygrophila-rear']
   },
   {
     id: 'left-shoulder',
@@ -221,7 +221,7 @@ export const PLANTED_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[] = [
       { plantType: 'javafern-narrow', weight: 0.2 },
       { plantType: 'anubias-nana-clump', weight: 0.26 }
     ],
-    assetIds: ['plant-javafern-large', 'plant-javafern-narrow', 'plant-anubias-nana-clump']
+    assetIds: ['plant-amazon-sword', 'plant-matsumo', 'plant-willow-moss']
   },
   {
     id: 'front-center',
@@ -251,7 +251,7 @@ export const PLANTED_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[] = [
       { plantType: 'javafern-narrow', weight: 0.32 },
       { plantType: 'anubias-nana-clump', weight: 0.26 }
     ],
-    assetIds: ['plant-javafern-large', 'plant-javafern-narrow', 'plant-anubias-nana-clump']
+    assetIds: ['plant-amazon-sword', 'plant-matsumo', 'plant-willow-moss']
   },
   {
     id: 'mid-right-backfill',
@@ -280,7 +280,7 @@ export const PLANTED_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[] = [
       { plantType: 'crypt-brown', weight: 0.74 },
       { plantType: 'anubias-nana-clump', weight: 0.26 }
     ],
-    assetIds: ['plant-crypt-brown', 'plant-anubias-nana-clump']
+    assetIds: ['plant-amazon-sword', 'plant-willow-moss']
   },
   {
     id: 'right-rear',
@@ -309,7 +309,7 @@ export const PLANTED_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[] = [
       { plantType: 'crypt-brown', weight: 0.78 },
       { plantType: 'anubias-nana-clump', weight: 0.22 }
     ],
-    assetIds: ['plant-crypt-brown', 'plant-anubias-nana-clump']
+    assetIds: ['plant-amazon-sword', 'plant-willow-moss']
   }
 ]
 
@@ -343,7 +343,7 @@ export const NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[]
       { plantType: 'hygrophila-rear', weight: 0.24 },
       { plantType: 'matsumo', weight: 0.12 }
     ],
-    assetIds: ['plant-amazon-sword', 'plant-stem-green-bush', 'plant-hygrophila-rear', 'plant-matsumo', 'plant-willow-moss']
+    assetIds: ['plant-amazon-sword', 'plant-hygrophila-rear', 'plant-hygrophila-rear', 'plant-matsumo', 'plant-willow-moss']
   },
   {
     id: 'left-mid-broadleaf',
@@ -374,7 +374,7 @@ export const NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[]
       { plantType: 'anubias-petite-clump', weight: 0.18 },
       { plantType: 'anubias-nana-clump', weight: 0.24 }
     ],
-    assetIds: ['plant-javafern-large', 'plant-javafern-narrow', 'plant-anubias-nana-clump', 'plant-anubias-petite-clump']
+    assetIds: ['plant-amazon-sword', 'plant-matsumo', 'plant-willow-moss', 'plant-willow-moss']
   },
   {
     id: 'center-left-fern-mass',
@@ -405,7 +405,7 @@ export const NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[]
       { plantType: 'anubias-nana-clump', weight: 0.22 },
       { plantType: 'anubias-petite-clump', weight: 0.14 }
     ],
-    assetIds: ['plant-javafern-large', 'plant-javafern-narrow', 'plant-anubias-nana-clump', 'plant-anubias-petite-clump']
+    assetIds: ['plant-amazon-sword', 'plant-matsumo', 'plant-willow-moss', 'plant-willow-moss']
   },
   {
     id: 'right-mid-crypt',
@@ -433,7 +433,7 @@ export const NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[]
     plantMix: [
       { plantType: 'crypt-brown', weight: 1 }
     ],
-    assetIds: ['plant-crypt-brown']
+    assetIds: ['plant-amazon-sword']
   },
   {
     id: 'right-rear',
@@ -461,7 +461,7 @@ export const NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[]
     plantMix: [
       { plantType: 'crypt-brown', weight: 1 }
     ],
-    assetIds: ['plant-crypt-brown']
+    assetIds: ['plant-amazon-sword']
   },
   {
     id: 'left-foot',
@@ -489,7 +489,7 @@ export const NATURE_SHOWCASE_PLANT_CLUSTER_DEFINITIONS: PlantClusterDefinition[]
     plantMix: [
       { plantType: 'anubias-petite-clump', weight: 1 }
     ],
-    assetIds: ['plant-anubias-petite-clump']
+    assetIds: ['plant-willow-moss']
   }
 ]
 

@@ -7,18 +7,18 @@ describe('createGameStore', () => {
     vi.useRealTimers()
   })
 
-  it('advances coins with passive income on tick', async () => {
+  it('advances viewed time on tick without tracking currency', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-08T00:00:00.000Z'))
     const store = createGameStore({
       initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' }),
       tickIntervalMs: 1000
     })
-    const initialCoins = store.getState().game.profile.currency.coins
 
     await vi.advanceTimersByTimeAsync(60_000)
 
-    expect(store.getState().game.profile.currency.coins).toBeGreaterThan(initialCoins)
+    expect(store.getState().game.profile).not.toHaveProperty('currency')
+    expect(store.getState().game.profile.stats.totalViewedSeconds).toBe(60)
     store.destroy()
   })
 
@@ -53,35 +53,22 @@ describe('createGameStore', () => {
       onGameStateChange
     })
 
-    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: false } })
+    store.dispatch({ type: 'SETTINGS/SET_SOUND', payload: { enabled: false } })
 
     expect(onGameStateChange).toHaveBeenCalledTimes(1)
     store.destroy()
   })
 
-  it('spends coins to unlock species and improve income by stocking fish', () => {
+  it('stocks every catalog species without unlocks or coins', () => {
     const seeded = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
     const store = createGameStore({
-      initialState: {
-        ...seeded,
-        game: {
-          ...seeded.game,
-          profile: {
-            ...seeded.game.profile,
-            currency: {
-              ...seeded.game.profile.currency,
-              coins: 80
-            }
-          }
-        }
-      }
+      initialState: seeded
     })
 
-    store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: 'clownfish' } })
     store.dispatch({ type: 'GAME/SET_FISH_COUNT', payload: { speciesId: 'clownfish', count: 4 } })
 
     const state = store.getState()
-    expect(state.game.profile.unlockedFishIds).toContain('clownfish')
+    expect(state.game.profile).not.toHaveProperty('unlockedFishIds')
     expect(state.game.tanks[0]?.progression.incomePerMinute).toBeGreaterThan(1)
 
     store.destroy()
@@ -94,40 +81,6 @@ describe('createGameStore', () => {
 
     expect(store.getState().ui).not.toHaveProperty('selectedDecorId')
 
-    store.destroy()
-  })
-
-  it('requires observation time before unlocking watch-based species', () => {
-    const seeded = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
-    const store = createGameStore({
-      tickIntervalMs: 60_000,
-      initialState: {
-        ...seeded,
-        game: {
-          ...seeded.game,
-          profile: {
-            ...seeded.game.profile,
-            currency: {
-              ...seeded.game.profile.currency,
-              coins: 80
-            }
-          }
-        }
-      }
-    })
-
-    store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: 'angelfish' } })
-    expect(store.getState().game.profile.unlockedFishIds).not.toContain('angelfish')
-
-    store.dispatch({
-      type: 'GAME/TICK',
-      payload: {
-        nowIso: '2026-03-08T00:15:00.000Z'
-      }
-    })
-    store.dispatch({ type: 'GAME/UNLOCK_FISH', payload: { speciesId: 'angelfish' } })
-
-    expect(store.getState().game.profile.unlockedFishIds).toContain('angelfish')
     store.destroy()
   })
 
@@ -151,39 +104,24 @@ describe('createGameStore', () => {
     store.destroy()
   })
 
-  it('persists HUD visibility through settings actions', () => {
+  it('toggles photo mode and switches follow mode independently of HUD visibility', () => {
     const store = createGameStore({
       initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
     })
 
-    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
-
-    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: false } })
-    expect(store.getState().game.profile.preferences.hudVisible).toBe(false)
-
-    store.dispatch({ type: 'SETTINGS/SET_HUD_VISIBILITY', payload: { visible: true } })
-    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
-
-    store.destroy()
-  })
-
-  it('toggles photo mode and hides the HUD while it is active', () => {
-    const store = createGameStore({
-      initialState: createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
-    })
-
-    expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(false)
-    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
+    expect(store.getState().game.profile.preferences.photoMode.enabled).toBe(false)
+    expect(store.getState().game.profile.preferences.photoMode.followMode).toBe('fish')
 
     store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled: true } })
+    store.dispatch({ type: 'SETTINGS/SET_PHOTO_FOLLOW_MODE', payload: { followMode: 'mouse' } })
 
-    expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(true)
-    expect(store.getState().game.profile.preferences.hudVisible).toBe(false)
+    expect(store.getState().game.profile.preferences.photoMode.enabled).toBe(true)
+    expect(store.getState().game.profile.preferences.photoMode.followMode).toBe('mouse')
 
     store.dispatch({ type: 'SETTINGS/SET_PHOTO_MODE', payload: { enabled: false } })
 
-    expect(store.getState().game.profile.preferences.photoModeEnabled).toBe(false)
-    expect(store.getState().game.profile.preferences.hudVisible).toBe(true)
+    expect(store.getState().game.profile.preferences.photoMode.enabled).toBe(false)
+    expect(store.getState().game.profile.preferences).not.toHaveProperty('hudVisible')
 
     store.destroy()
   })

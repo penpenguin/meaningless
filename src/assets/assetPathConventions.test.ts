@@ -15,8 +15,8 @@ describe('asset path conventions', () => {
       'assets/textures/substrate/substrate-sand-ao.png'
     )
     expect(fishTextureAssetPath('tropical', 'basecolor')).toBe('assets/textures/fish/fish-tropical-basecolor.png')
-    expect(modelAssetPath('rocks', 'rock-lava-transition-chips.glb')).toBe(
-      'assets/models/rocks/rock-lava-transition-chips.glb'
+    expect(modelAssetPath('rocks', 'rock-ridge-hero.glb')).toBe(
+      'assets/models/rocks/rock-ridge-hero.glb'
     )
     expect(environmentAssetPath('aquarium-hdri.hdr')).toBe('assets/environment/aquarium-hdri.hdr')
   })

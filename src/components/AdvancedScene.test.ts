@@ -11,7 +11,7 @@ import {
   resolveDefaultControlsTarget,
   resolvePhotoModeCameraPosition,
   resolvePhotoModeControlsTarget
-} from './aquariumLayout'
+} from '../utils/aquariumLayout'
 import type { Theme } from '../types/aquarium'
 
 type CreateSubstrateFn = (dimensions: AquariumTankDimensions) => void
@@ -399,6 +399,7 @@ describe('AdvancedAquariumScene photo mode', () => {
       controls: { autoRotate: boolean; autoRotateSpeed: number }
       motionScale: number
       photoModeEnabled: boolean
+      photoModeFollowMode: 'fish' | 'mouse'
     }
 
     internals.controls = {
@@ -407,18 +408,20 @@ describe('AdvancedAquariumScene photo mode', () => {
     }
     internals.motionScale = 1
     internals.photoModeEnabled = false
+    internals.photoModeFollowMode = 'fish'
 
     const setPhotoMode = (AdvancedAquariumScene.prototype as unknown as {
-      setPhotoMode: (enabled: boolean) => void
+      setPhotoMode: (options: { enabled: boolean; followMode: 'fish' | 'mouse' }) => void
     }).setPhotoMode.bind(instance)
 
-    setPhotoMode(true)
+    setPhotoMode({ enabled: true, followMode: 'fish' })
     expect(internals.photoModeEnabled).toBe(true)
+    expect(internals.photoModeFollowMode).toBe('fish')
     expect(internals.motionScale).toBeCloseTo(0.72)
     expect(internals.controls.autoRotate).toBe(true)
     expect(internals.controls.autoRotateSpeed).toBeCloseTo(0.45)
 
-    setPhotoMode(false)
+    setPhotoMode({ enabled: false, followMode: 'fish' })
     expect(internals.photoModeEnabled).toBe(false)
     expect(internals.motionScale).toBe(1)
     expect(internals.controls.autoRotate).toBe(false)
@@ -429,6 +432,7 @@ describe('AdvancedAquariumScene photo mode', () => {
     const internals = instance as unknown as {
       photoModeControlsTarget: THREE.Vector3
       tempPhotoModeTarget: THREE.Vector3
+      photoModeFollowMode: 'fish' | 'mouse'
       fishSystem: {
         getHeroFocusPoint: () => THREE.Vector3
       }
@@ -436,6 +440,7 @@ describe('AdvancedAquariumScene photo mode', () => {
 
     internals.photoModeControlsTarget = resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS)
     internals.tempPhotoModeTarget = new THREE.Vector3()
+    internals.photoModeFollowMode = 'fish'
     internals.fishSystem = {
       getHeroFocusPoint: () => new THREE.Vector3(2.4, -0.1, 2.7)
     }
@@ -448,6 +453,32 @@ describe('AdvancedAquariumScene photo mode', () => {
 
     expect(target.x).toBeGreaterThan(resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS).x)
     expect(target.z).toBeGreaterThan(resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS).z)
+  })
+
+  it('moves the photo mode target from normalized pointer input in mouse follow mode', () => {
+    const instance = Object.create(AdvancedAquariumScene.prototype) as AdvancedAquariumScene
+    const baseTarget = resolvePhotoModeControlsTarget(AQUARIUM_TANK_DIMENSIONS)
+    const internals = instance as unknown as {
+      photoModeControlsTarget: THREE.Vector3
+      tempPhotoModeTarget: THREE.Vector3
+      photoModeFollowMode: 'fish' | 'mouse'
+      photoModePointer: THREE.Vector2
+    }
+
+    internals.photoModeControlsTarget = baseTarget
+    internals.tempPhotoModeTarget = new THREE.Vector3()
+    internals.photoModeFollowMode = 'mouse'
+    internals.photoModePointer = new THREE.Vector2(0.75, -0.5)
+
+    const resolvePhotoModeTarget = (AdvancedAquariumScene.prototype as unknown as {
+      resolvePhotoModeTarget: () => THREE.Vector3
+    }).resolvePhotoModeTarget.bind(instance)
+
+    const target = resolvePhotoModeTarget()
+
+    expect(target.x).toBeGreaterThan(baseTarget.x)
+    expect(target.y).toBeLessThan(baseTarget.y)
+    expect(target.z).not.toBe(baseTarget.z)
   })
 
   it('keeps photo mode fit-driven while remaining slightly tighter than the default framing', () => {
