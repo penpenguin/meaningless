@@ -157,13 +157,39 @@ describe('createGameControlPane', () => {
       fps: 58,
       frameTime: 17.2,
       drawCalls: 121,
-      fishVisible: 24
+      fishVisible: 24,
+      triangles: 45_678,
+      geometries: 82,
+      textures: 37,
+      assetLoadTotalMs: 211.4,
+      assetLoadTexturesMs: 80.2,
+      assetLoadModelsMs: 130.8,
+      assetLoadEnvironmentMs: 12.1,
+      fishUpdateCount: 10,
+      fishUpdateLastMs: 2.2,
+      fishUpdateAverageMs: 2.8,
+      waterMotionUpdateCount: 10,
+      waterMotionUpdateLastMs: 1.4,
+      waterMotionUpdateAverageMs: 1.8,
+      godRaysDepthRenderCount: 6,
+      godRaysDepthRenderLastMs: 4.1,
+      godRaysDepthRenderAverageMs: 4.6
     }))
     const pane = createGameControlPane({ store, getPerformanceStats })
 
     expect(paneMock.bindings.some((binding) => binding.config?.label === 'FPS')).toBe(true)
     expect(paneMock.bindings.some((binding) => binding.config?.label === 'Frame ms')).toBe(true)
     expect(paneMock.bindings.some((binding) => binding.config?.label === 'Draw calls')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Triangles')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Geometries')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Textures')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Asset load ms')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Texture load ms')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Model load ms')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Environment load ms')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Fish update avg ms')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Water update avg ms')).toBe(true)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'God rays depth avg ms')).toBe(true)
     expect(paneMock.bindings.some((binding) => binding.config?.label === 'Fish visible')).toBe(true)
 
     vi.advanceTimersByTime(1000)

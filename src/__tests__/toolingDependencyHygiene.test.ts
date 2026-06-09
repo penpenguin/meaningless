@@ -14,14 +14,17 @@ type PackageJson = {
 }
 
 describe('tooling dependency hygiene', () => {
-  it('keeps Playwright tied to the screenshot script instead of runtime code', () => {
+  it('keeps Playwright tied to local tooling scripts instead of runtime code', () => {
     const packageJson = readJson<PackageJson>('package.json')
     const screenshotScript = readText('scripts/capture-aquarium-screenshot.mjs')
+    const performanceScript = readText('scripts/measure-aquarium-performance.mjs')
 
     expect(packageJson.scripts?.screenshot).toBe('node scripts/capture-aquarium-screenshot.mjs')
+    expect(packageJson.scripts?.['measure:performance']).toBe('node scripts/measure-aquarium-performance.mjs')
     expect(packageJson.dependencies).not.toHaveProperty('playwright')
     expect(packageJson.devDependencies).toHaveProperty('playwright')
     expect(screenshotScript).toContain("from 'playwright'")
+    expect(performanceScript).toContain("from 'playwright'")
   })
 
   it('keeps Three runtime and type dependencies explicit', () => {

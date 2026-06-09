@@ -223,4 +223,69 @@ describe('GodRays underwater scatter', () => {
     expect(internals.bloomPass.threshold).toBeGreaterThan(0.5)
   })
 
+  it('measures depth render duration and call count', () => {
+    const instance = Object.create(GodRaysEffect.prototype) as GodRaysEffect
+    const nowValues = [0, 7]
+    const internals = instance as unknown as {
+      depthRenderStats?: { count: number; lastMs: number; averageMs: number }
+      performance: {
+        now: () => number
+        mark: (name: string) => void
+        measure: (name: string, startMark: string, endMark: string) => void
+        clearMarks: (name?: string) => void
+      }
+      scene: { traverse: (visitor: (object: unknown) => void) => void }
+      renderer: {
+        setRenderTarget: (target: unknown) => void
+        render: (scene: unknown, camera: unknown) => void
+      }
+      depthRenderTarget: unknown
+      camera: unknown
+    }
+
+    internals.performance = {
+      now: () => nowValues.shift() ?? 7,
+      mark: () => undefined,
+      measure: () => undefined,
+      clearMarks: () => undefined
+    }
+    internals.scene = { traverse: () => undefined }
+    internals.renderer = {
+      setRenderTarget: () => undefined,
+      render: () => undefined
+    }
+    internals.depthRenderTarget = {}
+    internals.camera = {}
+
+    const renderDepth = (GodRaysEffect.prototype as unknown as {
+      renderDepth: () => void
+    }).renderDepth.bind(instance)
+
+    renderDepth()
+
+    expect(instance.getDepthRenderStats()).toEqual({
+      count: 1,
+      lastMs: 7,
+      averageMs: 7
+    })
+  })
+
+  it('updates the expensive depth pass every other render while composing each frame', () => {
+    const instance = Object.create(GodRaysEffect.prototype) as GodRaysEffect
+    const internals = instance as unknown as {
+      renderDepth: () => void
+      composer: { render: () => void }
+    }
+
+    internals.renderDepth = vi.fn()
+    internals.composer = { render: vi.fn() }
+
+    instance.render()
+    instance.render()
+    instance.render()
+
+    expect(internals.renderDepth).toHaveBeenCalledTimes(2)
+    expect(internals.composer.render).toHaveBeenCalledTimes(3)
+  })
+
 })

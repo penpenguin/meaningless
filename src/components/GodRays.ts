@@ -6,6 +6,12 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import type { Theme } from '../types/aquarium'
 import type { QualityLevel } from '../types/settings'
 import { defaultTheme } from '../utils/stateSchema'
+import {
+  createEmptySpanTimingStats,
+  measurePerformanceSpan,
+  type PerformanceLike,
+  type SpanTimingStats
+} from '../utils/performanceStats'
 import { ScreenSpaceWaterHazeShader, syncScreenSpaceWaterHazePass } from './screenSpaceWaterHaze'
 
 type GodRayThemeValues = {
@@ -258,6 +264,10 @@ export class GodRaysEffect {
   private renderer: THREE.WebGLRenderer
   private sunMesh: THREE.Group
   private themeValues: GodRayThemeValues = resolveGodRayThemeValues(defaultTheme)
+  private depthRenderStats: SpanTimingStats = createEmptySpanTimingStats()
+  private depthRenderFrame = 0
+  private depthRenderInterval = 2
+  private performance: PerformanceLike = performance
   
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -351,27 +361,47 @@ export class GodRaysEffect {
     syncScreenSpaceWaterHazePass(this.waterHazePass, theme, quality, aspect)
   }
 
+  public setScreenSpaceWaterHazeEnabled(enabled: boolean): void {
+    this.waterHazePass.enabled = enabled
+  }
+
   private renderDepth(): void {
-    // Store original materials
-    const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>()
-    
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        originalMaterials.set(object, object.material)
-        object.material = this.depthMaterial
+    this.depthRenderStats ??= createEmptySpanTimingStats()
+    measurePerformanceSpan(
+      this.depthRenderStats,
+      {
+        name: 'aquarium:god-rays:render-depth',
+        startMark: 'aquarium:god-rays:render-depth:start',
+        endMark: 'aquarium:god-rays:render-depth:end',
+        performance: this.performance
+      },
+      () => {
+        // Store original materials
+        const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>()
+
+        this.scene.traverse((object) => {
+          if (object instanceof THREE.Mesh) {
+            originalMaterials.set(object, object.material)
+            object.material = this.depthMaterial
+          }
+        })
+
+        // Render depth
+        this.renderer.setRenderTarget(this.depthRenderTarget)
+        this.renderer.render(this.scene, this.camera)
+
+        // Restore materials
+        originalMaterials.forEach((material, mesh) => {
+          mesh.material = material
+        })
+
+        this.renderer.setRenderTarget(null)
       }
-    })
-    
-    // Render depth
-    this.renderer.setRenderTarget(this.depthRenderTarget)
-    this.renderer.render(this.scene, this.camera)
-    
-    // Restore materials
-    originalMaterials.forEach((material, mesh) => {
-      mesh.material = material
-    })
-    
-    this.renderer.setRenderTarget(null)
+    )
+  }
+
+  public getDepthRenderStats(): SpanTimingStats {
+    return { ...this.depthRenderStats }
   }
   
   update(time: number): void {
@@ -417,7 +447,12 @@ export class GodRaysEffect {
   }
   
   render(): void {
-    this.renderDepth()
+    const depthRenderFrame = this.depthRenderFrame ?? 0
+    const depthRenderInterval = this.depthRenderInterval ?? 2
+    if (depthRenderFrame % depthRenderInterval === 0) {
+      this.renderDepth()
+    }
+    this.depthRenderFrame = depthRenderFrame + 1
     this.composer.render()
   }
   

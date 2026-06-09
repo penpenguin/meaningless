@@ -1161,6 +1161,26 @@ describe('AquascapingSystem composition', () => {
     getContextSpy.mockRestore()
   })
 
+  it('does not add bright procedural sand ripples to the nature-showcase beach', () => {
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+
+    new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const sandRipples = aquascapingGroup.children.filter((child) => child.userData.role === 'sand-ripple')
+
+    expect(sandRipples).toHaveLength(0)
+
+    getContextSpy.mockRestore()
+  })
+
   it('layers nature-showcase plants into species-driven colonies instead of a vallis wall', () => {
     const sampledPlantPlacements = resolveSampledPlantPlacements('nature-showcase', 0x53a9d2f1)
     const leftRearPlacements = sampledPlantPlacements.filter((placement) => placement.zoneId === 'left-rear')

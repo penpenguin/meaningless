@@ -53,4 +53,24 @@ describe('createRenderStateApplier', () => {
     expect(scene.setPhotoMode).toHaveBeenCalledTimes(2)
     expect(audioManager.setEnabled).toHaveBeenCalledTimes(2)
   })
+
+  it('can force fish groups to reapply after deferred model assets become available', () => {
+    const scene = {
+      applyTheme: vi.fn(),
+      applyFishGroups: vi.fn(() => true),
+      setMotionEnabled: vi.fn(),
+      setPhotoMode: vi.fn()
+    }
+    const audioManager = {
+      setEnabled: vi.fn()
+    }
+    const apply = createRenderStateApplier({ scene, audioManager })
+    const state = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
+
+    apply(state)
+    apply(state, { forceFishGroups: true })
+
+    expect(scene.applyTheme).toHaveBeenCalledTimes(1)
+    expect(scene.applyFishGroups).toHaveBeenCalledTimes(2)
+  })
 })

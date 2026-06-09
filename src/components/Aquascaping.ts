@@ -3593,30 +3593,28 @@ uniform float uDriftwoodRidgeLift;`
   }
 
   private createSandDetails(bounds: THREE.Box3): void {
+    if (this.layoutStyle === 'nature-showcase') return
+
     const rippleGeometry = new THREE.PlaneGeometry(1, 0.1, 10, 1)
     const rippleMaterial = new THREE.MeshPhysicalMaterial({
-      color: this.layoutStyle === 'nature-showcase' ? 0xd1b99a : 0xe8d5b8,
+      color: 0xe8d5b8,
       metalness: 0,
       roughness: 1,
       transparent: true,
-      opacity: this.layoutStyle === 'nature-showcase' ? 0.1 : 0.3
+      opacity: 0.3
     })
     const size = new THREE.Vector3()
     bounds.getSize(size)
-    const rippleSeed = createSeededRandom(this.layoutStyle === 'nature-showcase' ? 7421 : 3611)
-    const rippleCount = this.layoutStyle === 'nature-showcase' ? 4 : 20
+    const rippleSeed = createSeededRandom(3611)
+    const rippleCount = 20
 
     for (let i = 0; i < rippleCount; i++) {
       const ripple = new THREE.Mesh(rippleGeometry, rippleMaterial)
       ripple.rotation.x = -Math.PI / 2
       ripple.rotation.z = rippleSeed() * Math.PI
 
-      const x = this.layoutStyle === 'nature-showcase'
-        ? size.x * (0.22 + rippleSeed() * 0.12)
-        : (rippleSeed() - 0.5) * size.x * 0.9
-      const z = this.layoutStyle === 'nature-showcase'
-        ? size.z * (0.16 + rippleSeed() * 0.1)
-        : (rippleSeed() - 0.5) * size.z * 0.9
+      const x = (rippleSeed() - 0.5) * size.x * 0.9
+      const z = (rippleSeed() - 0.5) * size.z * 0.9
 
       ripple.position.set(
         x,
@@ -3624,9 +3622,7 @@ uniform float uDriftwoodRidgeLift;`
         z
       )
 
-      const scale = this.layoutStyle === 'nature-showcase'
-        ? 0.32 + rippleSeed() * 0.3
-        : 0.5 + rippleSeed() * 2
+      const scale = 0.5 + rippleSeed() * 2
       ripple.scale.set(scale, 1, scale)
       ripple.userData = {
         role: 'sand-ripple'
