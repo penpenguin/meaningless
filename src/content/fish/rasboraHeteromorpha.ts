@@ -18,7 +18,6 @@ export const rasboraHeteromorpha = createFishContent({
   gameplay: {
     unlockCost: 62,
     purchaseCostPerFish: 4,
-    baseIncomePerMinute: 0.52,
     preferredLane: 'middle',
   }
 })

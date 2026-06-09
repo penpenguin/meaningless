@@ -17,7 +17,6 @@ export const clownfish = createFishContent({
   gameplay: {
     unlockCost: 18,
     purchaseCostPerFish: 2,
-    baseIncomePerMinute: 0.3,
     preferredLane: 'middle',
   }
 })

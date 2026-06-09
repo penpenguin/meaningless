@@ -15,23 +15,10 @@ export type RareFishInstance = {
   nickname?: string
 }
 
-export type DecorPlacement = {
-  id: string
-  decorId: string
-  x: number
-  y: number
-}
-
 export type TankLayout = {
   shape: 'square'
   columns: number
   rows: number
-}
-
-export type TankProgression = {
-  comfort: number
-  incomePerMinute: number
-  lastCollectedAt: string | null
 }
 
 export type GameTank = {
@@ -40,8 +27,6 @@ export type GameTank = {
   layout: TankLayout
   fishSchools: FishSchool[]
   rareFish: RareFishInstance[]
-  decor: DecorPlacement[]
-  progression: TankProgression
 }
 
 export type GameProfile = {

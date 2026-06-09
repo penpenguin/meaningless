@@ -1,0 +1,10 @@
+Performance/tooling status compressed from dated tooling memories:
+
+- Current package scripts include `npm run measure:performance` (`scripts/measure-aquarium-performance.mjs`) and `npm run screenshot` (`scripts/capture-aquarium-screenshot.mjs`). Playwright stays in devDependencies because local screenshot/performance tooling and Codex workflows rely on it.
+- Performance plan completed on 2026-06-09: P0 measurement harness, renderer debug stats, performance marks/measures, update timing stats, and A/B measurement switches; P1 glass overlay removal, merged light planes, simple post-processing bypass, godrays depth throttling, reduced shadow map sizes, boot/deferred asset loading; P2 adaptive render scale, simple fish LOD, simple water-motion LOD; P3 Vite/Rolldown code splitting and responsibility extractions.
+- Debug stats: `AdvancedAquariumScene.getPerformanceStats()` exposes draw calls, triangles, geometry/texture counts, asset load timings, update timings, and visible fish. `window.__aquariumPerformanceStats()` allows tooling to read current stats.
+- Perf query/env switches: `perfPost=0`, `perfHaze=0`, `perfShadow=1024|2048|4096`; harness env includes `AQUARIUM_PERFORMANCE_POST_PROCESSING=0`, `AQUARIUM_PERFORMANCE_HAZE=0`, URL/duration/headless/output controls.
+- Asset loading is split between boot-critical aquarium/starter neon assets and deferred optional unlockable fish assets.
+- Vite 8/Rolldown grouping splits Three.js by concern (`three-core`, controls, loaders, postprocessing, utils, examples). Large upstream chunks may still warn.
+- Playwright caveat: this repo is heavy under SwiftShader/headless WebGL. Prefer one context and targeted checks for routine work; screenshot-heavy desktop+mobile passes are slow and best reserved for visual signoff.
+- Historical dependency notes: Tailwind/PostCSS/DaisyUI/lottie were removed from active tooling; `@types/three` remains required for typecheck; `tweakpane` is currently used by `GameControlPane`.

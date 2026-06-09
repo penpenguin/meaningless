@@ -109,6 +109,7 @@ export class DetailedFishSystem {
   private tempForwardAxis = new THREE.Vector3(1, 0, 0)
   private tempQuaternion = new THREE.Quaternion()
   private tempCorrectionQuaternion = new THREE.Quaternion()
+  private tempRenderQuaternion = new THREE.Quaternion()
   private tempHorizontalDirection = new THREE.Vector3()
   private tempHorizontalPreviousDirection = new THREE.Vector3()
   private tempCurrentPos = new THREE.Vector3()
@@ -324,6 +325,28 @@ export class DetailedFishSystem {
       this.getModelForwardAxis(variant, renderPath),
       direction.clone().normalize()
     )
+  }
+
+  private resolveRenderQuaternion(
+    variant: FishVariant,
+    renderPath: FishRenderPath,
+    direction: THREE.Vector3
+  ): THREE.Quaternion {
+    const renderQuaternion = this.tempRenderQuaternion ?? new THREE.Quaternion()
+    const correctionQuaternion = this.tempCorrectionQuaternion ?? new THREE.Quaternion()
+    const correction = this.getOrientationCorrection(variant, renderPath).correctionQuaternion
+    this.tempRenderQuaternion = renderQuaternion
+    this.tempCorrectionQuaternion = correctionQuaternion
+
+    renderQuaternion.copy(this.resolveHeadingQuaternion(variant, renderPath, direction))
+    correctionQuaternion.set(
+      correction[0],
+      correction[1],
+      correction[2],
+      correction[3]
+    ).normalize()
+
+    return renderQuaternion.multiply(correctionQuaternion)
   }
 
   private resolveSilhouette(variant: FishVariant): Required<NonNullable<FishVariant['silhouette']>> {
@@ -2499,7 +2522,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         let bank = 0
         if (this.tempDirection.lengthSq() > 0) {
           this.tempDirection.normalize()
-          const targetQuaternion = this.resolveHeadingQuaternion(variant, renderPath, this.tempDirection)
+          const targetQuaternion = this.resolveRenderQuaternion(variant, renderPath, this.tempDirection)
 
           if (!this.headingInitialized[boidIndex]) {
             smoothedQuaternion.copy(targetQuaternion)
@@ -2572,7 +2595,7 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
             this.tempDirection.lengthSq() > 0 ? this.tempDirection : previousVelocity
           )
           if (this.tempDirection.lengthSq() > 0) {
-            const heroQuaternion = this.resolveHeadingQuaternion(variant, 'hero', this.tempDirection)
+            const heroQuaternion = this.resolveRenderQuaternion(variant, 'hero', this.tempDirection)
             heroAssignment.object.quaternion.copy(heroQuaternion)
             heroAssignment.object.rotation.x += climbAngle * (0.18 + locomotion.yawResponsiveness * 0.06)
             heroAssignment.object.rotation.z += bank

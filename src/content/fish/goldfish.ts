@@ -18,7 +18,6 @@ export const goldfish = createFishContent({
   gameplay: {
     unlockCost: 48,
     purchaseCostPerFish: 4,
-    baseIncomePerMinute: 0.55,
     preferredLane: 'bottom',
   }
 })

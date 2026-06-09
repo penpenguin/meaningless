@@ -1,6 +1,6 @@
 import { Pane } from 'tweakpane'
 import type { GameStore } from '../game/createGameStore'
-import { getDecorContentList, getFishContentList } from '../content/registry'
+import { getFishContentList } from '../content/registry'
 import type { GameAppState, Lane, PhotoModeFollowMode } from '../game/types'
 import { createEmptyPerformanceStats, type PerformanceStats } from '../utils/performanceStats'
 
@@ -81,10 +81,7 @@ const syncParams = (params: ControlParams, state: GameAppState): void => {
   params.motion = state.game.profile.preferences.motionEnabled
   params.photoMode = state.game.profile.preferences.photoMode.enabled
   params.photoFollow = state.game.profile.preferences.photoMode.followMode
-  params.comfort = tank.progression.comfort
-  params.income = tank.progression.incomePerMinute
   params.fishTotal = tank.fishSchools.reduce((total, school) => total + school.count, 0)
-  params.decorTotal = tank.decor.length
   params.observedMinutes = Math.floor(state.game.profile.stats.totalViewedSeconds / 60)
 
   getFishContentList().forEach((fish) => {
@@ -112,20 +109,8 @@ export const createGameControlPane = ({ store, getPerformanceStats }: GameContro
   }
 
   const tankFolder = pane.addFolder({ title: 'Tank status' })
-  addControl(tankFolder.addBinding(params, 'comfort', {
-    label: 'Comfort',
-    readonly: true
-  }))
-  addControl(tankFolder.addBinding(params, 'income', {
-    label: 'Income/min',
-    readonly: true
-  }))
   addControl(tankFolder.addBinding(params, 'fishTotal', {
     label: 'Fish',
-    readonly: true
-  }))
-  addControl(tankFolder.addBinding(params, 'decorTotal', {
-    label: 'Decor',
     readonly: true
   }))
   addControl(tankFolder.addBinding(params, 'observedMinutes', {
@@ -166,16 +151,6 @@ export const createGameControlPane = ({ store, getPerformanceStats }: GameContro
         }
       })
     }) as PaneControl)
-  })
-
-  const decorFolder = pane.addFolder({ title: 'Decor' })
-  getDecorContentList().forEach((decor) => {
-    addControl(decorFolder.addBinding({
-      [`decor:${decor.decorId}`]: `${decor.displayName} +${decor.gameplay.comfortBonus}`
-    }, `decor:${decor.decorId}`, {
-      label: formatControlLabel(decor.decorId),
-      readonly: true
-    }))
   })
 
   const settingsFolder = pane.addFolder({ title: 'Settings' })

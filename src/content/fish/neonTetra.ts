@@ -16,7 +16,6 @@ export const neonTetra = createFishContent({
   gameplay: {
     unlockCost: 0,
     purchaseCostPerFish: 1,
-    baseIncomePerMinute: 0.22,
     preferredLane: 'top',
   }
 })

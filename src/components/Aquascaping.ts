@@ -857,7 +857,7 @@ export class AquascapingSystem {
   private group: THREE.Group
   private plants: THREE.Group[] = []
   private plantAnimationMixers: THREE.AnimationMixer[] = []
-  private decorations: THREE.Group[] = []
+  private hardscapeGroups: THREE.Group[] = []
   private time = 0
   private visualAssets: VisualAssetBundle | null
   private layoutStyle: AquascapeLayoutStyle
@@ -2237,7 +2237,7 @@ uniform float uDriftwoodRidgeLift;`
 
     this.attachHardscapePlants(driftwoodGroup, 'driftwood')
 
-    this.decorations.push(driftwoodGroup)
+    this.hardscapeGroups.push(driftwoodGroup)
     this.group.add(driftwoodGroup)
   }
 
@@ -2831,7 +2831,7 @@ uniform float uDriftwoodRidgeLift;`
         this.layoutStyle === 'nature-showcase' ? 0.54 : 1.18
       )
       this.attachHardscapePlants(ridgeAsset, 'rock')
-      this.decorations.push(ridgeAsset)
+      this.hardscapeGroups.push(ridgeAsset)
       this.group.add(ridgeAsset)
       return
     }
@@ -3538,7 +3538,7 @@ uniform float uDriftwoodRidgeLift;`
         coralGroup.add(branch)
       }
       
-      this.decorations.push(coralGroup)
+      this.hardscapeGroups.push(coralGroup)
       this.group.add(coralGroup)
     }
   }

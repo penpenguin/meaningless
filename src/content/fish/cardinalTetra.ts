@@ -17,7 +17,6 @@ export const cardinalTetra = createFishContent({
   gameplay: {
     unlockCost: 22,
     purchaseCostPerFish: 2,
-    baseIncomePerMinute: 0.28,
     preferredLane: 'middle',
   }
 })

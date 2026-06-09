@@ -202,7 +202,6 @@ describe('AdvancedAquariumScene disposal', () => {
       composer: { dispose: () => void }
       handleResize: () => void
       stop: () => void
-      spiralDecorations: { dispose: () => void } | null
       godRaysEffect: { dispose: () => void } | null
       scene: THREE.Scene
     }
@@ -212,7 +211,6 @@ describe('AdvancedAquariumScene disposal', () => {
     internals.composer = { dispose: vi.fn() }
     internals.handleResize = vi.fn()
     internals.stop = vi.fn()
-    internals.spiralDecorations = null
     internals.godRaysEffect = null
     internals.scene = new THREE.Scene()
 
@@ -235,7 +233,6 @@ describe('AdvancedAquariumScene disposal', () => {
       composer: { dispose: () => void }
       handleResize: () => void
       stop: () => void
-      spiralDecorations: { dispose: () => void } | null
       godRaysEffect: { dispose: () => void } | null
       scene: THREE.Scene
     }
@@ -245,7 +242,6 @@ describe('AdvancedAquariumScene disposal', () => {
     internals.composer = { dispose: vi.fn() }
     internals.handleResize = vi.fn()
     internals.stop = vi.fn()
-    internals.spiralDecorations = null
     internals.godRaysEffect = null
 
     const scene = new THREE.Scene()

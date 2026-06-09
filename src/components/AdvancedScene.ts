@@ -10,7 +10,6 @@ import {
   resolveSubstrateHardscapeAnchors,
   resolveSubstratePlantAnchors
 } from './Aquascaping'
-import { SpiralDecorations } from './SpiralDecorations'
 import { GodRaysEffect } from './GodRays'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
@@ -725,7 +724,6 @@ export class AdvancedAquariumScene {
   private pendingFishGroups: FishGroup[] | null = null
   private particleSystem: EnhancedParticleSystem | null = null
   private aquascaping: AquascapingSystem | null = null
-  private spiralDecorations: SpiralDecorations | null = null
   private godRaysEffect: GodRaysEffect | null = null
   private screenSpaceHazePass: ShaderPass | null = null
   private environmentLoader: EnvironmentLoader
@@ -908,7 +906,6 @@ export class AdvancedAquariumScene {
     this.setupAdvancedLighting()
     this.setupGradientBackground()
     this.createAdvancedTank()
-    this.createSpiralDecorations()
     this.createAquascaping()
     this.createAdvancedFishSystem()
     this.createAdvancedWaterEffects()
@@ -4038,10 +4035,6 @@ export class AdvancedAquariumScene {
     return texture
   }
 
-  private createSpiralDecorations(): void {
-    this.spiralDecorations = new SpiralDecorations(this.scene)
-  }
-  
   private createAquascaping(): void {
     const tankBounds = createOpenWaterBounds(this.getTankDimensions())
     this.aquascaping = new AquascapingSystem(this.scene, tankBounds, this.visualAssets, resolveTheme(this.scene))
@@ -4138,9 +4131,6 @@ export class AdvancedAquariumScene {
         this.aquascaping.update(elapsedTime * this.motionScale)
       }
 
-      if (this.spiralDecorations) {
-        this.spiralDecorations.update(deltaTime * this.motionScale)
-      }
     }
 
     this.renderSceneFrame(elapsedTime)
@@ -4937,10 +4927,6 @@ export class AdvancedAquariumScene {
     this.stop()
     window.removeEventListener('resize', this.handleResize)
     this.container?.removeEventListener('pointermove', this.handlePhotoModePointerMove)
-
-    if (this.spiralDecorations) {
-      this.spiralDecorations.dispose()
-    }
 
     disposeSceneResources(this.scene)
     this.disposeRendererPipeline()

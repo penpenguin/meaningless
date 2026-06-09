@@ -1406,7 +1406,7 @@ describe('AquascapingSystem composition', () => {
     expect(backgroundMasses.some((plant) => plant.userData.plantType === 'crypt-brown')).toBe(true)
   })
 
-  it.skip('does not add coral cone decorations in the default planted layout', () => {
+  it.skip('does not add coral cone accents in the default planted layout', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())
@@ -1441,7 +1441,7 @@ describe('AquascapingSystem composition', () => {
     expect(freshwaterAccentTypes.has('epiphyte')).toBe(true)
   })
 
-  it('adds coral cone decorations only for the marine layout', () => {
+  it('adds coral cone accents only for the marine layout', () => {
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => createMockCanvasContext())

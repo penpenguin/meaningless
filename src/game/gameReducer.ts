@@ -1,5 +1,5 @@
 import { getFishContent } from '../content/registry'
-import { simulateGameSave, refreshTankProgression } from './simulation'
+import { simulateGameSave } from './simulation'
 import type { GameAction, GameAppState, GameSave, GameTank } from './types'
 
 const withActiveTank = (game: GameSave, updater: (tank: GameTank) => GameTank): GameSave => {
@@ -10,13 +10,6 @@ const withActiveTank = (game: GameSave, updater: (tank: GameTank) => GameTank): 
   return {
     ...game,
     tanks
-  }
-}
-
-const refreshGame = (game: GameSave): GameSave => {
-  return {
-    ...game,
-    tanks: game.tanks.map(refreshTankProgression)
   }
 }
 
@@ -105,13 +98,13 @@ const handleSetFishCount = (
   const nextGame = withActiveTank(state.game, (tank) => {
     const remaining = tank.fishSchools.filter((school) => school.speciesId !== fish.speciesId)
     if (normalizedCount <= 0) {
-      return refreshTankProgression({
+      return {
         ...tank,
         fishSchools: remaining
-      })
+      }
     }
 
-    return refreshTankProgression({
+    return {
       ...tank,
       fishSchools: [
         ...remaining,
@@ -122,17 +115,17 @@ const handleSetFishCount = (
           lane: current?.lane ?? fish.gameplay.preferredLane
         }
       ]
-    })
+    }
   })
 
-  return updateGameState(state, () => refreshGame(nextGame))
+  return updateGameState(state, () => nextGame)
 }
 
 const handleSetFishLane = (
   state: GameAppState,
   payload: Extract<GameAction, { type: 'GAME/SET_FISH_LANE' }>['payload']
 ): GameAppState => {
-  const nextGame = withActiveTank(state.game, (tank) => refreshTankProgression({
+  const nextGame = withActiveTank(state.game, (tank) => ({
     ...tank,
     fishSchools: tank.fishSchools.map((school) =>
       school.speciesId === payload.speciesId
@@ -141,7 +134,7 @@ const handleSetFishLane = (
     )
   }))
 
-  return updateGameState(state, () => refreshGame(nextGame))
+  return updateGameState(state, () => nextGame)
 }
 
 export const gameReducer = (state: GameAppState, action: GameAction): GameAppState => {

@@ -87,13 +87,16 @@ describe('createGameControlPane', () => {
     paneMock.reset()
   })
 
-  it('mounts a Tweakpane HUD without coin or visual quality controls', () => {
+  it('mounts a Tweakpane HUD without coin, income, decor, comfort, or visual quality controls', () => {
     const store = createGameStore({ tickIntervalMs: 60_000 })
     const pane = createGameControlPane({ store })
     document.body.appendChild(pane.element)
 
     expect(pane.element.className).toContain('game-control-pane')
     expect(pane.element.textContent).not.toContain('Coin')
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Income/min')).toBe(false)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Decor')).toBe(false)
+    expect(paneMock.bindings.some((binding) => binding.config?.label === 'Comfort')).toBe(false)
     expect(pane.element.textContent).not.toContain('Quality')
     expect(paneMock.bindings.some((binding) => binding.config?.label === 'Photo follow')).toBe(true)
 

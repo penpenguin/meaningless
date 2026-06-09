@@ -27,34 +27,23 @@ const getLaneCounts = (tank: GameTank): Record<Lane, number> => {
   })
 }
 
-const getSchoolMood = (tank: GameTank, schoolLaneShare: number, school: GameTank['fishSchools'][number]): SchoolMood => {
-  const comfort = tank.progression.comfort
+const getSchoolMood = (tank: GameTank, schoolLaneShare: number): SchoolMood => {
   const totalFish = tank.fishSchools.reduce((sum, entry) => sum + entry.count, 0)
   const crowding = Math.max(0, totalFish - 18)
 
-  if (comfort < 35 || crowding >= 7 || (totalFish >= 16 && schoolLaneShare >= 0.72)) {
+  if (crowding >= 7 || (totalFish >= 16 && schoolLaneShare >= 0.72)) {
     return 'alert'
-  }
-
-  if (
-    school.lane === 'top' &&
-    comfort >= 60 &&
-    crowding <= 2 &&
-    (totalFish < 16 || schoolLaneShare <= 0.6)
-  ) {
-    return 'feeding'
   }
 
   return 'calm'
 }
 
-const getMoodTuning = (mood: SchoolMood, lane: Lane, comfort: number) => {
+const getMoodTuning = (mood: SchoolMood, lane: Lane) => {
   const baseDepth = laneToPreferredDepth(lane)
-  const comfortOffset = Math.min(0.08, comfort / 1500)
 
   if (mood === 'alert') {
     return {
-      speed: Number((0.66 + (comfort / 260)).toFixed(2)),
+      speed: 0.66,
       cohesion: 0.72,
       separation: 0.74,
       alignment: 0.64,
@@ -67,19 +56,19 @@ const getMoodTuning = (mood: SchoolMood, lane: Lane, comfort: number) => {
 
   if (mood === 'feeding') {
     return {
-      speed: Number((0.6 + (comfort / 260)).toFixed(2)),
+      speed: 0.6,
       cohesion: 0.5,
       separation: 0.58,
       alignment: 0.56,
       avoidWalls: 0.78,
-      preferredDepth: Number(clamp(baseDepth - 0.08 - comfortOffset, 0.08, 0.82).toFixed(2)),
+      preferredDepth: Number(clamp(baseDepth - 0.08, 0.08, 0.82).toFixed(2)),
       depthVariance: 0.24,
       turnBias: 0.24
     }
   }
 
   return {
-    speed: Number((0.52 + (comfort / 260)).toFixed(2)),
+    speed: 0.52,
     cohesion: 0.48,
     separation: 0.56,
     alignment: 0.55,
@@ -95,21 +84,18 @@ const getActiveTank = (state: GameAppState): GameTank => {
 }
 
 export const createAquariumTheme = (state: GameAppState): Theme => {
-  const tank = getActiveTank(state)
-  const comfort = tank.progression.comfort
-  const comfortBlend = Math.min(1, comfort / 100)
   const tint = '#0b5666'
   const glassTint = '#cfe7ee'
   const glassReflectionStrength = 0.4
-  const surfaceGlowStrength = Number((0.53 + (comfortBlend * 0.09)).toFixed(2))
-  const causticsStrength = Number((0.39 + (comfortBlend * 0.09)).toFixed(2))
+  const surfaceGlowStrength = 0.57
+  const causticsStrength = 0.43
 
   return {
     glassFrameStrength: 0.78,
     waterTint: tint,
     fogDensity: 0.018,
-    particleDensity: Number((0.24 + (comfort / 250)).toFixed(2)),
-    waveStrength: Number((0.42 + (comfort / 280)).toFixed(2)),
+    particleDensity: 0.42,
+    waveStrength: 0.58,
     waveSpeed: state.game.profile.preferences.motionEnabled ? 0.72 : 0.24,
     layoutStyle: 'planted',
     glassTint,
@@ -121,14 +107,13 @@ export const createAquariumTheme = (state: GameAppState): Theme => {
 
 export const createAquariumFishGroups = (state: GameAppState): FishGroup[] => {
   const tank = getActiveTank(state)
-  const comfort = tank.progression.comfort
   const laneCounts = getLaneCounts(tank)
   const totalFish = Math.max(1, tank.fishSchools.reduce((sum, school) => sum + school.count, 0))
 
   return tank.fishSchools.map((school) => {
     const laneShare = laneCounts[school.lane] / totalFish
-    const schoolMood = getSchoolMood(tank, laneShare, school)
-    const moodTuning = getMoodTuning(schoolMood, school.lane, comfort)
+    const schoolMood = getSchoolMood(tank, laneShare)
+    const moodTuning = getMoodTuning(schoolMood, school.lane)
 
     return {
       speciesId: school.speciesId,

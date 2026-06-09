@@ -3830,6 +3830,133 @@ describe('DetailedFishSystem fish group application', () => {
     randomSpy.mockRestore()
   })
 
+  test('update applies per-asset orientation correction to the rendered school fish pose', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boid = {
+      position: new THREE.Vector3(0, 0, 0),
+      velocity: new THREE.Vector3(1, 0, 0),
+      acceleration: new THREE.Vector3(),
+      maxSpeed: 4,
+      maxForce: 2
+    }
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+      1
+    )
+    mesh.userData.renderPath = 'school'
+
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        schoolForwardAxis?: [number, number, number]
+        schoolCorrectionQuaternion?: [number, number, number, number]
+        locomotionProfileId?: string
+      }>
+      boids: { boids: typeof boid[]; update: (deltaTime: number) => void }
+      boidVariantIndices: number[]
+      wanderTargets: THREE.Vector3[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      dummy: THREE.Object3D
+      tempWanderForce: THREE.Vector3
+      tempJitter: THREE.Vector3
+      tempNoiseForce: THREE.Vector3
+      tempDirection: THREE.Vector3
+      tempSuddenTurn: THREE.Vector3
+      tempCuriosityForce: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
+      headingInitialized: boolean[]
+      tempCurrentPos: THREE.Vector3
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      tempDepthForce: THREE.Vector3
+      tempBoundsSize: THREE.Vector3
+      tempHorizontalDirection: THREE.Vector3
+      tempHorizontalPreviousDirection: THREE.Vector3
+      bounds: THREE.Box3
+      heroAssignments: Map<number, unknown>
+      behaviorProfile: {
+        preferredDepth: number
+        depthVariance: number
+        turnBias: number
+        schoolMood: 'calm'
+        avoidWalls: number
+      }
+    }
+
+    internals.instancedMeshes = [mesh]
+    internals.variants = [{
+      name: 'Angelfish',
+      scale: 0.66,
+      speed: 0.8,
+      schoolForwardAxis: [1, 0, 0],
+      schoolCorrectionQuaternion: [-Math.sin(Math.PI / 4), 0, 0, Math.cos(Math.PI / 4)],
+      locomotionProfileId: 'disk-glider'
+    }]
+    internals.boids = { boids: [boid], update: () => {} }
+    internals.boidVariantIndices = [0]
+    internals.wanderTargets = [new THREE.Vector3(0, 0, 0)]
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0])
+    internals.swimPhases = new Float32Array([0])
+    internals.dummy = new THREE.Object3D()
+    internals.tempWanderForce = new THREE.Vector3()
+    internals.tempJitter = new THREE.Vector3()
+    internals.tempNoiseForce = new THREE.Vector3()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempSuddenTurn = new THREE.Vector3()
+    internals.tempCuriosityForce = new THREE.Vector3()
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.smoothedQuaternions = [new THREE.Quaternion()]
+    internals.previousVelocities = [new THREE.Vector3(1, 0, 0)]
+    internals.headingInitialized = [false]
+    internals.tempCurrentPos = new THREE.Vector3()
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+    internals.tempDepthForce = new THREE.Vector3()
+    internals.tempBoundsSize = new THREE.Vector3()
+    internals.tempHorizontalDirection = new THREE.Vector3()
+    internals.tempHorizontalPreviousDirection = new THREE.Vector3()
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5))
+    internals.heroAssignments = new Map()
+    internals.behaviorProfile = {
+      preferredDepth: 0.5,
+      depthVariance: 0.18,
+      turnBias: 0.14,
+      schoolMood: 'calm',
+      avoidWalls: 0.8
+    }
+
+    const stub = instance as unknown as { updateWanderTargets: (elapsedTime: number) => void }
+    stub.updateWanderTargets = () => {}
+
+    const update = (DetailedFishSystem.prototype as unknown as {
+      update: (deltaTime: number, elapsedTime: number) => void
+    }).update.bind(instance)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+    update(1 / 60, 0)
+
+    const matrix = new THREE.Matrix4()
+    mesh.getMatrixAt(0, matrix)
+    const quaternion = new THREE.Quaternion()
+    matrix.decompose(new THREE.Vector3(), quaternion, new THREE.Vector3())
+    const rawForward = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion).normalize()
+    const rawDorsal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize()
+
+    expect(rawForward.angleTo(boid.velocity.clone().normalize())).toBeLessThan(0.12)
+    expect(rawDorsal.angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(0.12)
+
+    randomSpy.mockRestore()
+  })
+
   test('update keeps root yaw stable when velocity is steady', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const boid = {
