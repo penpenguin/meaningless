@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
-import { applyThemeToScene } from '../components/AdvancedScene'
+import { applyThemeToScene } from '../components/scene/AdvancedScene'
 import type { Theme } from '../types/aquarium'
 
 const baseTheme: Theme = {

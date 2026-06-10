@@ -7,7 +7,7 @@ import {
   modelAssetPath,
   textureAssetPath
 } from './assetPathConventions.js'
-import type { AssetLoadTimingStats, PerformanceLike } from '../utils/performanceStats'
+import type { AssetLoadTimingStats, PerformanceLike } from '../utils/performance/performanceStats'
 
 export type AssetUsageTag =
   | 'plant'

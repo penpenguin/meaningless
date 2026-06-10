@@ -4,13 +4,6 @@ import process from 'node:process'
 
 export const defaultMaxLines = 800
 
-export const legacyOversizedFileLineLimits = {
-  'src/components/AdvancedScene.ts': 4934,
-  'src/components/Aquascaping.ts': 3519,
-  'src/components/DetailedFish.ts': 2709,
-  'src/components/aquascapePlants.ts': 921
-}
-
 /**
  * @param {string} relativePath
  * @returns {boolean}
@@ -82,7 +75,6 @@ const collectFiles = async (directory, rootDir, files = []) => {
  *   path: string,
  *   lines: number,
  *   limit: number,
- *   legacy: boolean
  * }} FileLineCountViolation
  *
  * @typedef {{
@@ -93,8 +85,7 @@ const collectFiles = async (directory, rootDir, files = []) => {
  * @typedef {{
  *   rootDir?: string,
  *   sourceDir?: string,
- *   maxLines?: number,
- *   legacyFileLineLimits?: Record<string, number>
+ *   maxLines?: number
  * }} FileLineCountOptions
  */
 
@@ -105,8 +96,7 @@ const collectFiles = async (directory, rootDir, files = []) => {
 export const checkFileLineCount = async ({
   rootDir = process.cwd(),
   sourceDir = 'src',
-  maxLines = defaultMaxLines,
-  legacyFileLineLimits = legacyOversizedFileLineLimits
+  maxLines = defaultMaxLines
 } = {}) => {
   const files = await collectFiles(path.resolve(rootDir, sourceDir), rootDir)
   const violations = []
@@ -114,14 +104,11 @@ export const checkFileLineCount = async ({
   for (const file of files) {
     const content = await fs.readFile(file.fullPath, 'utf8')
     const lines = countLines(content)
-    const legacyLimit = legacyFileLineLimits[file.relativePath]
-    const limit = legacyLimit ?? maxLines
-    if (lines > limit) {
+    if (lines > maxLines) {
       violations.push({
         path: file.relativePath,
         lines,
-        limit,
-        legacy: typeof legacyLimit === 'number'
+        limit: maxLines
       })
     }
   }
@@ -139,15 +126,14 @@ export const checkFileLineCount = async ({
  * @returns {string}
  */
 const formatViolation = (violation) => {
-  const kind = violation.legacy ? 'legacy ceiling' : 'limit'
-  return `${violation.path}: ${violation.lines} lines > ${violation.limit} ${kind}`
+  return `${violation.path}: ${violation.lines} lines > ${violation.limit} limit`
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   checkFileLineCount()
     .then((result) => {
       if (result.passed) return
-      console.error(`File line count guard failed. Production TypeScript files must stay within ${defaultMaxLines} lines unless explicitly grandfathered.`)
+      console.error(`File line count guard failed. Production TypeScript files must stay within ${defaultMaxLines} lines.`)
       for (const violation of result.violations) {
         console.error(`- ${formatViolation(violation)}`)
       }

@@ -1,6 +1,6 @@
-import { migrateProfileState } from '../utils/profileSchema'
-import { migrateSettingsState } from '../utils/settingsSchema'
-import { migrateTankState } from '../utils/tankSchema'
+import { migrateProfileState } from '../utils/storage/profileSchema'
+import { migrateSettingsState } from '../utils/storage/settingsSchema'
+import { migrateTankState } from '../utils/storage/tankSchema'
 import {
   DEFAULT_TANK_NAME,
   GRID_COLUMNS,

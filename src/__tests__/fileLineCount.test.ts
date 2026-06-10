@@ -1,13 +1,15 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { checkFileLineCount } from '../../scripts/check-file-line-count.mjs'
 
 const tempRoots: string[] = []
+const repositoryRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 
 const createTempRoot = (): string => {
   const root = mkdtempSync(join(tmpdir(), 'aquarium-line-count-'))
@@ -37,8 +39,7 @@ describe('file line count guard', () => {
     const result = await checkFileLineCount({
       rootDir: root,
       sourceDir: 'src',
-      maxLines: 800,
-      legacyFileLineLimits: {}
+      maxLines: 800
     })
 
     expect(result.passed).toBe(false)
@@ -46,16 +47,15 @@ describe('file line count guard', () => {
       {
         path: 'src/largeFeature.ts',
         lines: 801,
-        limit: 800,
-        legacy: false
+        limit: 800
       }
     ])
   })
 
   it('does not grandfather legacy oversized files', async () => {
     const root = createTempRoot()
-    mkdirSync(join(root, 'src/components'), { recursive: true })
-    writeLines(root, 'src/components/AdvancedScene.ts', 805)
+    mkdirSync(join(root, 'src/components/scene'), { recursive: true })
+    writeLines(root, 'src/components/scene/AdvancedScene.ts', 805)
 
     const result = await checkFileLineCount({
       rootDir: root,
@@ -65,7 +65,7 @@ describe('file line count guard', () => {
 
     expect(result.passed).toBe(false)
     expect(result.violations[0]).toMatchObject({
-      path: 'src/components/AdvancedScene.ts',
+      path: 'src/components/scene/AdvancedScene.ts',
       lines: 805,
       limit: 800
     })
@@ -75,5 +75,27 @@ describe('file line count guard', () => {
     const packageJson = await import('../../package.json')
 
     expect(packageJson.default.scripts['verify:soc']).toContain('node scripts/check-file-line-count.mjs')
+  })
+
+  it('keeps component implementation files out of the components root', () => {
+    const directComponentTypeScriptFiles = readdirSync(join(repositoryRoot, 'src/components'), {
+      withFileTypes: true
+    })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+      .map((entry) => entry.name)
+      .sort()
+
+    expect(directComponentTypeScriptFiles).toEqual(['index.ts'])
+  })
+
+  it('keeps utility implementation files out of the utils root', () => {
+    const directUtilityTypeScriptFiles = readdirSync(join(repositoryRoot, 'src/utils'), {
+      withFileTypes: true
+    })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+      .map((entry) => entry.name)
+      .sort()
+
+    expect(directUtilityTypeScriptFiles).toEqual([])
   })
 })

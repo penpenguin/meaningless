@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, createDefaultState, migrateState } from '../utils/stateSchema'
-import { migrateTankState } from '../utils/tankSchema'
-import { importState } from '../utils/serialization'
+import { CURRENT_SCHEMA_VERSION, createDefaultState, migrateState } from '../utils/storage/stateSchema'
+import { migrateTankState } from '../utils/storage/tankSchema'
+import { importState } from '../utils/storage/serialization'
 import { createState } from './fixtures/aquariumState'
 
 
