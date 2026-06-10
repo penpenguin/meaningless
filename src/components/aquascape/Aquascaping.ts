@@ -77,6 +77,7 @@ import {
   createFallbackPebbleCluster,
   createHardscapeShadow
 } from './aquascapingHardscapeMethods'
+import { createAccentHardscape } from './aquascapingAccentHardscapeMethods'
 import {
   update,
   createSeaweedTexture,
@@ -113,6 +114,7 @@ export class AquascapingSystem {
   declare public createSeaweed: (bounds: THREE.Box3) => void
   declare public createHeroDriftwood: (bounds: THREE.Box3) => void
   declare public createHeroRockRidge: (bounds: THREE.Box3) => void
+  declare public createAccentHardscape: (bounds: THREE.Box3) => void
   declare public createHeroCanopy: (bounds: THREE.Box3) => void
   declare public createDriftwoodBurialDetails: (bounds: THREE.Box3) => void
   declare public createHardscapeShadow: (bounds: THREE.Box3) => void
@@ -149,6 +151,7 @@ export class AquascapingSystem {
     this.createSeaweed(bounds)
     this.createHeroDriftwood(bounds)
     this.createHeroRockRidge(bounds)
+    this.createAccentHardscape(bounds)
     this.createHeroCanopy(bounds)
     this.createDriftwoodBurialDetails(bounds)
     this.createHardscapeShadow(bounds)
@@ -205,6 +208,7 @@ Object.assign(AquascapingSystem.prototype, {
   createHeroDriftwoodLocalRim,
   fitHeroDriftwoodAssetCore,
   createHeroRockRidge,
+  createAccentHardscape,
   createHeroCanopy,
   attachHardscapePlants,
   createEpiphyteCluster,

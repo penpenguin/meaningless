@@ -261,7 +261,9 @@ export const createAquariumAssetManifest = (
     { id: 'plant-hygrophila-rear', url: resolvePublicAssetUrl(modelAssetPath('plants', 'plant-hygrophila-rear.glb'), baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'plant-vallisneria-tall', url: resolvePublicAssetUrl(modelAssetPath('plants', 'plant-vallisneria-tall.glb'), baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'driftwood-hero', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-hero.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-ridge-hero.glb'), baseUrl), usageTag: 'rock', lod: 'high' }
+    { id: 'driftwood-accent-02', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-accent-02.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
+    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-ridge-hero.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-accent-02', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-accent-02.glb'), baseUrl), usageTag: 'rock', lod: 'high' }
   ],
   environment: [
     { id: 'aquarium-hdri', url: resolvePublicAssetUrl(environmentAssetPath('aquarium-hdri.hdr'), baseUrl), usageTag: 'environment', lod: 'high' }

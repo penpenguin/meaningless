@@ -416,6 +416,16 @@ describe('public aquarium asset urls', () => {
     expect((driftwoodHero.images as unknown[] | undefined)?.length ?? 0).toBeGreaterThanOrEqual(3)
   })
 
+  it('registers the standalone driftwood accent model for nature-showcase placement', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
+
+    expect(modelUrlsById.get('driftwood-accent-02')).toBe('/assets/models/driftwood/driftwood-accent-02.glb')
+
+    const driftwoodAccent = readGlbJson('public/assets/models/driftwood/driftwood-accent-02.glb')
+    expect((driftwoodAccent.meshes as unknown[] | undefined)?.length ?? 0).toBeGreaterThan(0)
+  })
+
   it('omits standalone shared leaf, rock, and backdrop texture entries', () => {
     const manifest = createAquariumAssetManifest('/')
     const textureUrlsById = new Map(manifest.textures.map((entry) => [entry.id, entry.url]))
@@ -451,6 +461,16 @@ describe('public aquarium asset urls', () => {
 
     const rockRidgeHero = readGlbJson('public/assets/models/rocks/rock-ridge-hero.glb')
     expect((rockRidgeHero.images as unknown[] | undefined)?.length ?? 0).toBeGreaterThanOrEqual(3)
+  })
+
+  it('registers the standalone rock accent model for nature-showcase placement', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const modelUrlsById = new Map(manifest.models.map((entry) => [entry.id, entry.url]))
+
+    expect(modelUrlsById.get('rock-accent-02')).toBe('/assets/models/rocks/rock-accent-02.glb')
+
+    const rockAccent = readGlbJson('public/assets/models/rocks/rock-accent-02.glb')
+    expect((rockAccent.meshes as unknown[] | undefined)?.length ?? 0).toBeGreaterThan(0)
   })
 
   it('omits removed nature showcase base-cluster and transition rock glbs', () => {

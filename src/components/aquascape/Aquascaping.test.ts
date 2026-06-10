@@ -59,7 +59,9 @@ const createMaterialAssetScene = (material: THREE.Material): THREE.Group => {
 
 const requiredAquascapeModelIds = [
   'driftwood-hero',
+  'driftwood-accent-02',
   'rock-ridge-hero',
+  'rock-accent-02',
   'plant-amazon-sword',
   'plant-hygrophila-rear',
   'plant-matsumo',
@@ -1120,7 +1122,7 @@ describe('AquascapingSystem composition', () => {
     )
 
     expect(driftwood).toBeDefined()
-    expect(driftwood?.position.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(bounds.min.y - 1.52)
+    expect(driftwood?.position.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(bounds.min.y - 1.72)
     expect(driftwood?.position.z ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(center.z - size.z * 0.1)
 
     getContextSpy.mockRestore()
@@ -1228,6 +1230,94 @@ describe('AquascapingSystem composition', () => {
     expect(generatedObjects.map((child) => child.userData.role)).toEqual([])
     expect(modelRequiredObjects.length).toBeGreaterThan(0)
     expect(modelRequiredObjects.every((child) => typeof child.userData.assetId === 'string')).toBe(true)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('places one standalone driftwood accent and one standalone rock accent in the nature-showcase mound', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = bounds.getSize(new THREE.Vector3())
+    const center = bounds.getCenter(new THREE.Vector3())
+
+    new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
+      layoutStyle: 'nature-showcase'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwoodAccent = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'driftwood-accent'
+    )
+    const rockAccent = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'rock-accent'
+    )
+    const driftwoodAccentSize = driftwoodAccent
+      ? getWorldBounds(driftwoodAccent).getSize(new THREE.Vector3())
+      : new THREE.Vector3()
+    const driftwoodAccentBounds = driftwoodAccent
+      ? getWorldBounds(driftwoodAccent)
+      : new THREE.Box3()
+    const rockAccentSize = rockAccent
+      ? getWorldBounds(rockAccent).getSize(new THREE.Vector3())
+      : new THREE.Vector3()
+    const rockAccentBounds = rockAccent
+      ? getWorldBounds(rockAccent)
+      : new THREE.Box3()
+
+    expect(driftwoodAccent?.userData.assetId).toBe('driftwood-accent-02')
+    expect(rockAccent?.userData.assetId).toBe('rock-accent-02')
+    expect(driftwoodAccent?.position.x ?? 1).toBeGreaterThan(center.x - size.x * 0.24)
+    expect(driftwoodAccent?.position.x ?? 1).toBeLessThan(center.x - size.x * 0.16)
+    expect(rockAccent?.position.x ?? 1).toBeLessThan(center.x - size.x * 0.18)
+    expect(driftwoodAccent?.position.z ?? 1).toBeLessThan(center.z - size.z * 0.08)
+    expect(rockAccent?.position.z ?? 1).toBeLessThan(center.z - size.z * 0.005)
+    expect(Math.abs((driftwoodAccent?.position.x ?? 0) - (rockAccent?.position.x ?? 0))).toBeGreaterThan(0.24)
+    expect(driftwoodAccentSize.x).toBeGreaterThan(size.x * 0.12)
+    expect(driftwoodAccentSize.y).toBeGreaterThan(size.y * 0.08)
+    expect(rockAccentSize.x).toBeGreaterThan(size.x * 0.08)
+    expect(rockAccentSize.y).toBeGreaterThan(size.y * 0.06)
+    expect(driftwoodAccentBounds.min.y).toBeGreaterThanOrEqual(bounds.min.y - 0.72)
+    expect(driftwoodAccentBounds.min.y).toBeLessThanOrEqual(bounds.min.y - 0.42)
+    expect(rockAccentBounds.min.y).toBeGreaterThanOrEqual(bounds.min.y - 0.68)
+    expect(rockAccentBounds.min.y).toBeLessThanOrEqual(bounds.min.y - 0.34)
+
+    getContextSpy.mockRestore()
+  })
+
+  it('places the standalone driftwood and rock accents in the default planted layout too', () => {
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => createMockCanvasContext())
+
+    const scene = new THREE.Scene()
+    const bounds = createOpenWaterBounds()
+    const size = bounds.getSize(new THREE.Vector3())
+    const center = bounds.getCenter(new THREE.Vector3())
+
+    new AquascapingSystem(scene, bounds, createAquascapeModelBundle(), {
+      layoutStyle: 'planted'
+    })
+
+    const aquascapingGroup = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group
+    const driftwoodAccent = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'driftwood-accent'
+    )
+    const rockAccent = aquascapingGroup.children.find(
+      (child): child is THREE.Group => child instanceof THREE.Group && child.userData.role === 'rock-accent'
+    )
+
+    expect(driftwoodAccent?.userData.assetId).toBe('driftwood-accent-02')
+    expect(rockAccent?.userData.assetId).toBe('rock-accent-02')
+    expect(driftwoodAccent ? getWorldBounds(driftwoodAccent).getSize(new THREE.Vector3()).x : 0).toBeGreaterThan(2)
+    expect(rockAccent ? getWorldBounds(rockAccent).getSize(new THREE.Vector3()).x : 0).toBeGreaterThan(1.5)
+    expect(driftwoodAccent?.position.x ?? 1).toBeGreaterThan(center.x - size.x * 0.24)
+    expect(driftwoodAccent?.position.x ?? 1).toBeLessThan(center.x - size.x * 0.16)
+    expect(driftwoodAccent?.position.z ?? 1).toBeLessThan(center.z - size.z * 0.08)
+    expect(rockAccent?.position.z ?? 1).toBeLessThan(center.z - size.z * 0.005)
 
     getContextSpy.mockRestore()
   })
