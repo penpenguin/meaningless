@@ -142,6 +142,11 @@ export class DetailedFishSystem {
   public preferredDepthBands: PreferredDepthBand[] = []
   public preferredLateralLanes: PreferredLateralLane[] = []
   public interestSeeds: Float32Array = new Float32Array()
+  public motionTailCadenceOffsets: Float32Array = new Float32Array()
+  public motionAmplitudeOffsets: Float32Array = new Float32Array()
+  public motionPauseBiases: Float32Array = new Float32Array()
+  public motionDartBiases: Float32Array = new Float32Array()
+  public motionTurnBiasOffsets: Float32Array = new Float32Array()
   public activeInterestPoints: Array<HabitatInterestPoint | null> = []
   public habitatInterestPoints: HabitatInterestPoint[] = []
   public baseInstanceCounts: number[] = []

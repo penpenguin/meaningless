@@ -483,6 +483,111 @@ describe('DetailedFishSystem locomotion profiles', () => {
     expect(goldfishWobble.retargetIntervalRange[1]).toBeLessThanOrEqual(14)
   })
 
+  test('gait dynamics expose visible motion changes beyond steering weights', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants, getLocomotionProfile, resolveGaitDynamics } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        locomotionProfileId?: string
+      }>
+      getLocomotionProfile: (variant: { locomotionProfileId?: string }) => {
+        interestWeight: number
+        glideFactor: number
+        burstMultiplier: number
+        hoverDrag: number
+      }
+      resolveGaitDynamics: (
+        state: 'cruise' | 'inspect' | 'glide' | 'burst' | 'hover',
+        profile: { interestWeight: number; glideFactor: number; burstMultiplier: number; hoverDrag: number }
+      ) => {
+        tailAmplitudeMultiplier: number
+        tailCadenceMultiplier: number
+        bodyMotionScale: number
+        impulseScale: number
+        pauseScale: number
+      }
+    }
+
+    const variants = createFishVariants.bind(instance)()
+    const profile = getLocomotionProfile.bind(instance)(variants.find((variant) => variant.name === 'Neon')!)
+    const cruise = resolveGaitDynamics.bind(instance)('cruise', profile)
+    const glide = resolveGaitDynamics.bind(instance)('glide', profile)
+    const burst = resolveGaitDynamics.bind(instance)('burst', profile)
+    const hover = resolveGaitDynamics.bind(instance)('hover', profile)
+
+    expect(glide.tailAmplitudeMultiplier).toBeLessThan(cruise.tailAmplitudeMultiplier)
+    expect(burst.tailCadenceMultiplier).toBeGreaterThan(cruise.tailCadenceMultiplier)
+    expect(burst.impulseScale).toBeGreaterThan(cruise.impulseScale)
+    expect(hover.pauseScale).toBeGreaterThan(cruise.pauseScale)
+    expect(hover.bodyMotionScale).toBeGreaterThan(glide.bodyMotionScale)
+  })
+
+  test('initializeRandomness seeds per-fish motion personalities', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const internals = instance as unknown as {
+      fishCount: number
+      bounds: THREE.Box3
+      layoutStyle: 'nature-showcase'
+      variants: Array<{ name: string; locomotionProfileId?: 'slender-darter' }>
+      boidVariantIndices: number[]
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      speedMultipliers: Float32Array
+      nextRetargetTimes: Float32Array
+      nextStateChangeTimes: Float32Array
+      stateCooldowns: Float32Array
+      interestSeeds: Float32Array
+      gaitStates: Array<'cruise' | 'inspect' | 'glide' | 'burst' | 'hover'>
+      preferredDepthBands: Array<'upper' | 'mid' | 'hardscape-near'>
+      preferredLateralLanes: Array<'left' | 'center' | 'right'>
+      activeInterestPoints: Array<unknown>
+      wanderTargets: THREE.Vector3[]
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
+      headingInitialized: boolean[]
+      tempBoundsSize: THREE.Vector3
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      motionTailCadenceOffsets: Float32Array
+      motionAmplitudeOffsets: Float32Array
+      motionPauseBiases: Float32Array
+      motionDartBiases: Float32Array
+      motionTurnBiasOffsets: Float32Array
+    }
+    internals.fishCount = 4
+    internals.bounds = new THREE.Box3(new THREE.Vector3(-5, -4, -5), new THREE.Vector3(5, 4, 5))
+    internals.layoutStyle = 'nature-showcase'
+    internals.variants = [{ name: 'Neon', locomotionProfileId: 'slender-darter' }]
+    internals.boidVariantIndices = [0, 0, 0, 0]
+    internals.tempBoundsSize = new THREE.Vector3()
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+
+    const initializeRandomness = (DetailedFishSystem.prototype as unknown as {
+      initializeRandomness: () => void
+    }).initializeRandomness.bind(instance)
+    const randomValues = [
+      0.1, 0.2, 0.3, 0.4, 0.05, 0.9, 0.2, 0.7, 0.8, 0.15, 0.4, 0.65, 0.33, 0.77, 0.12,
+      0.6, 0.7, 0.8, 0.9, 0.25, 0.1, 0.85, 0.45, 0.55, 0.2, 0.7, 0.3, 0.8, 0.4, 0.6,
+      0.9, 0.8, 0.7, 0.6, 0.35, 0.2, 0.6, 0.5, 0.4, 0.9, 0.1, 0.55, 0.45, 0.75, 0.25,
+      0.4, 0.3, 0.2, 0.1, 0.45, 0.75, 0.25, 0.65, 0.35, 0.8, 0.2, 0.6, 0.4, 0.5, 0.7
+    ]
+    let randomIndex = 0
+    const randomSpy = vi.spyOn(Math, 'random').mockImplementation(() => randomValues[randomIndex++ % randomValues.length])
+
+    initializeRandomness()
+
+    expect(internals.motionTailCadenceOffsets).toHaveLength(4)
+    expect(internals.motionAmplitudeOffsets).toHaveLength(4)
+    expect(internals.motionPauseBiases).toHaveLength(4)
+    expect(internals.motionDartBiases).toHaveLength(4)
+    expect(new Set(Array.from(internals.motionTailCadenceOffsets)).size).toBeGreaterThan(1)
+    expect(Math.min(...internals.motionPauseBiases)).toBeGreaterThanOrEqual(0)
+    expect(Math.max(...internals.motionPauseBiases)).toBeLessThanOrEqual(1)
+
+    randomSpy.mockRestore()
+  })
+
   test('applyVariantLocomotionTuning passes fish-safe extents to boids', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
     const setBoidTuning = vi.fn()
@@ -723,6 +828,68 @@ describe('DetailedFishSystem locomotion profiles', () => {
     expect(walkAmplitudes.getX(0)).toBeGreaterThan(tailAmplitudes.getX(0))
 
     randomSpy.mockRestore()
+  })
+
+  test('instanced tail attributes reflect gait and personality variation', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const geometry = new THREE.BoxGeometry(1, 0.2, 2)
+    const { createFishVariants, applyInstancedTailMotionAttributes } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        locomotionProfileId?: string
+      }>
+      applyInstancedTailMotionAttributes: (
+        geometry: THREE.BufferGeometry,
+        variant: { name: string; locomotionProfileId?: string },
+        boidStartIndex: number,
+        instanceCount: number
+      ) => void
+    }
+
+    const neon = createFishVariants.bind(instance)().find((variant) => variant.name === 'Neon')
+    expect(neon).toBeDefined()
+
+    ;(instance as unknown as {
+      swimPhases: Float32Array
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      gaitStates: Array<'glide' | 'burst'>
+      motionTailCadenceOffsets: Float32Array
+      motionAmplitudeOffsets: Float32Array
+    }).swimPhases = new Float32Array([0, 0])
+    ;(instance as unknown as {
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      gaitStates: Array<'glide' | 'burst'>
+      motionTailCadenceOffsets: Float32Array
+      motionAmplitudeOffsets: Float32Array
+    }).speedMultipliers = new Float32Array([1, 1])
+    ;(instance as unknown as {
+      randomOffsets: Float32Array
+      gaitStates: Array<'glide' | 'burst'>
+      motionTailCadenceOffsets: Float32Array
+      motionAmplitudeOffsets: Float32Array
+    }).randomOffsets = new Float32Array([0, 0])
+    ;(instance as unknown as {
+      gaitStates: Array<'glide' | 'burst'>
+      motionTailCadenceOffsets: Float32Array
+      motionAmplitudeOffsets: Float32Array
+    }).gaitStates = ['glide', 'burst']
+    ;(instance as unknown as {
+      motionTailCadenceOffsets: Float32Array
+      motionAmplitudeOffsets: Float32Array
+    }).motionTailCadenceOffsets = new Float32Array([1, 1.08])
+    ;(instance as unknown as {
+      motionAmplitudeOffsets: Float32Array
+    }).motionAmplitudeOffsets = new Float32Array([0.9, 1.1])
+
+    applyInstancedTailMotionAttributes.bind(instance)(geometry, neon!, 0, 2)
+
+    const tailAmplitudes = geometry.getAttribute('instanceTailAmplitude') as THREE.InstancedBufferAttribute
+    const tailFrequencies = geometry.getAttribute('instanceTailFrequency') as THREE.InstancedBufferAttribute
+
+    expect(tailAmplitudes.getX(0)).toBeLessThan(tailAmplitudes.getX(1))
+    expect(tailFrequencies.getX(0)).toBeLessThan(tailFrequencies.getX(1))
   })
 
   test('Yamato shrimp school material uses crawler walk deformation instead of fish tail swimming', () => {

@@ -64,17 +64,22 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
       const gaitState = this.gaitStates[index] ?? 'cruise'
       const dynamics = this.resolveGaitDynamics(gaitState, locomotion)
       this.updatePerFishBoidTuning(index, locomotion, gaitState, bounds, boundsSize, behavior)
+      const pauseBias = this.motionPauseBiases?.[index] ?? 0.5
+      const dartBias = this.motionDartBiases?.[index] ?? 0.5
+      const turnBiasOffset = this.motionTurnBiasOffsets?.[index] ?? 0
       const moodCruiseStrength = behavior.schoolMood === 'alert'
         ? 1.04
         : behavior.schoolMood === 'feeding'
           ? 0.94
           : 0.88
       const crawlerMotionScale = isCrawler ? 0.34 : 1
-      const wanderStrength = (0.18 + locomotion.curiosityRate * 0.16) * moodCruiseStrength * dynamics.wanderScale * crawlerMotionScale
-      const jitterScale = locomotion.turnNoise * (0.035 + behavior.turnBias * 0.04) * dynamics.jitterScale * crawlerMotionScale
-      const curiosityRate = locomotion.curiosityRate * (0.014 + behavior.turnBias * 0.028) * dynamics.curiosityScale
-      const suddenTurnRate = locomotion.suddenTurnRate * (0.7 + behavior.turnBias * 0.4) * dynamics.suddenTurnScale
-      const turnNoiseScale = locomotion.turnNoise * (0.05 + behavior.turnBias * 0.06) * dynamics.turnNoiseScale * crawlerMotionScale
+      const personalityTravelScale = THREE.MathUtils.lerp(1.08, 0.76, pauseBias) * THREE.MathUtils.lerp(0.88, 1.18, dartBias)
+      const personalityImpulseScale = dynamics.impulseScale * THREE.MathUtils.lerp(0.76, 1.42, dartBias)
+      const wanderStrength = (0.18 + locomotion.curiosityRate * 0.16) * moodCruiseStrength * dynamics.wanderScale * crawlerMotionScale * personalityTravelScale
+      const jitterScale = locomotion.turnNoise * (0.035 + behavior.turnBias * 0.04) * dynamics.jitterScale * crawlerMotionScale * THREE.MathUtils.lerp(0.82, 1.16, dartBias)
+      const curiosityRate = locomotion.curiosityRate * (0.014 + behavior.turnBias * 0.028) * dynamics.curiosityScale * THREE.MathUtils.lerp(0.72, 1.18, dartBias)
+      const suddenTurnRate = locomotion.suddenTurnRate * (0.7 + behavior.turnBias * 0.4) * dynamics.suddenTurnScale * personalityImpulseScale
+      const turnNoiseScale = locomotion.turnNoise * (0.05 + behavior.turnBias * 0.06) * dynamics.turnNoiseScale * crawlerMotionScale * (1 + turnBiasOffset * 0.22)
       const depthRange = isCrawler
         ? boundsSize.y * 0.004
         : boundsSize.y * (0.08 + behavior.depthVariance * 0.18 + locomotion.depthBobAmount * 0.04) * dynamics.depthBobScale
@@ -123,18 +128,18 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
 
       if (this.shouldTrigger(curiosityRate, safeDeltaTime)) {
         this.tempCuriosityForce.set(
-          (Math.random() - 0.5) * (0.24 + locomotion.curiosityRate * 0.22),
+          (Math.random() - 0.5) * (0.24 + locomotion.curiosityRate * 0.22) * personalityImpulseScale,
           isCrawler ? 0 : (Math.random() - 0.5) * (0.1 + locomotion.depthBobAmount * 0.16),
-          (Math.random() - 0.5) * (0.1 + locomotion.turnNoise * 0.18)
+          (Math.random() - 0.5) * (0.1 + locomotion.turnNoise * 0.18) * (1 + turnBiasOffset * 0.18)
         )
         boid.acceleration.add(this.tempCuriosityForce)
       }
 
       if (this.shouldTrigger(suddenTurnRate, safeDeltaTime)) {
         this.tempSuddenTurn.set(
-          (Math.random() - 0.5) * (0.16 + locomotion.yawResponsiveness * 0.18),
+          (Math.random() - 0.5) * (0.16 + locomotion.yawResponsiveness * 0.18) * personalityImpulseScale,
           isCrawler ? 0 : (Math.random() - 0.5) * (0.08 + locomotion.depthBobAmount * 0.12),
-          (Math.random() - 0.5) * (0.08 + locomotion.turnNoise * 0.14)
+          (Math.random() - 0.5) * (0.08 + locomotion.turnNoise * 0.14) * (1 + turnBiasOffset * 0.24)
         )
         boid.acceleration.add(this.tempSuddenTurn)
       }
@@ -175,13 +180,17 @@ export function syncInstancedMeshes(this: any, bounds: THREE.Box3, behavior: Beh
         const randomOffset = this.randomOffsets[boidIndex] ?? 0
         const swimPhase = this.swimPhases[boidIndex] ?? 0
         const speedMult = this.speedMultipliers[boidIndex] ?? 1
+        const cadenceOffset = this.motionTailCadenceOffsets?.[boidIndex] ?? 1
+        const amplitudeOffset = this.motionAmplitudeOffsets?.[boidIndex] ?? 1
+        const pauseBias = this.motionPauseBiases?.[boidIndex] ?? 0.5
+        const dartBias = this.motionDartBiases?.[boidIndex] ?? 0.5
         const gaitState = this.gaitStates[boidIndex] ?? 'cruise'
         const dynamics = this.resolveGaitDynamics(gaitState, locomotion)
         const headingFollowRate = (
           2.4 +
           (locomotion.yawResponsiveness * 2.2) +
           (behavior.avoidWalls * 1.1)
-        ) * dynamics.headingResponseScale * (1 - locomotion.turnStartLag * 0.45)
+        ) * dynamics.headingResponseScale * (1 - locomotion.turnStartLag * 0.45) * THREE.MathUtils.lerp(0.88, 1.14, dartBias)
         const smoothedQuaternion = this.smoothedQuaternions[boidIndex]
         const previousVelocity = this.previousVelocities[boidIndex]
 
@@ -246,11 +255,46 @@ export function syncInstancedMeshes(this: any, bounds: THREE.Box3, behavior: Beh
           previousVelocity.copy(boid.velocity)
         }
 
-        const swimFreq = locomotion.tailBeatFreq * speedMult * dynamics.tailBeatMultiplier * (0.92 + Math.sin(randomOffset) * 0.18)
-        const bodySway = Math.sin(elapsedTime * swimFreq + swimPhase) * locomotion.bodyWiggleAmount * (isCrawler ? 0.004 : 0.045) * dynamics.bodyMotionScale
+        const swimFreq = locomotion.tailBeatFreq * speedMult * dynamics.tailBeatMultiplier * dynamics.tailCadenceMultiplier * cadenceOffset * (0.92 + Math.sin(randomOffset) * 0.18)
+        const visibleMotionScale = amplitudeOffset * THREE.MathUtils.lerp(1.08, 0.84, pauseBias)
+        const bodySway = Math.sin(elapsedTime * swimFreq + swimPhase) * locomotion.bodyWiggleAmount * (isCrawler ? 0.004 : 0.045) * dynamics.bodyMotionScale * visibleMotionScale
         const microPitch = Math.sin(elapsedTime * (swimFreq * 0.52) + swimPhase * 0.7) * locomotion.bodyWiggleAmount * (isCrawler ? 0.001 : 0.014) * dynamics.bodyMotionScale
-        const tailWave = Math.sin(elapsedTime * (swimFreq * 1.35) + swimPhase * 1.35) * locomotion.bodyWiggleAmount * (isCrawler ? 0.01 : 0.28) * dynamics.tailBeatMultiplier
+        const tailWave = Math.sin(elapsedTime * (swimFreq * 1.35) + swimPhase * 1.35) * locomotion.bodyWiggleAmount * (isCrawler ? 0.01 : 0.28) * dynamics.tailBeatMultiplier * dynamics.tailAmplitudeMultiplier * visibleMotionScale
         this.dummy.rotation.x += microPitch * 0.35
+
+        const tailAmplitudeAttribute = mesh.geometry.getAttribute('instanceTailAmplitude') as THREE.InstancedBufferAttribute | undefined
+        const tailFrequencyAttribute = mesh.geometry.getAttribute('instanceTailFrequency') as THREE.InstancedBufferAttribute | undefined
+        const walkAmplitudeAttribute = mesh.geometry.getAttribute('instanceWalkAmplitude') as THREE.InstancedBufferAttribute | undefined
+        const walkFrequencyAttribute = mesh.geometry.getAttribute('instanceWalkFrequency') as THREE.InstancedBufferAttribute | undefined
+        if (tailAmplitudeAttribute && tailFrequencyAttribute) {
+          const baseTailAmplitude = isCrawler
+            ? (0.002 + locomotion.bodyWiggleAmount * 0.012) * (0.82 + (Math.sin(randomOffset * 1.7) * 0.18)) * amplitudeOffset
+            : (
+              0.03 +
+              (locomotion.bodyWiggleAmount * 0.05) +
+              (Math.max(0, 1 - locomotion.yawResponsiveness) * 0.008)
+            ) * (0.78 + (Math.sin(randomOffset * 1.7) * 0.22)) * dynamics.tailAmplitudeMultiplier * amplitudeOffset
+          const baseTailFrequency = Math.max(
+            0.45,
+            locomotion.tailBeatFreq * speedMult * dynamics.tailCadenceMultiplier * cadenceOffset * (0.84 + Math.cos(randomOffset * 1.3) * 0.16)
+          )
+          tailAmplitudeAttribute.setX(i, baseTailAmplitude)
+          tailFrequencyAttribute.setX(i, baseTailFrequency)
+          tailAmplitudeAttribute.needsUpdate = true
+          tailFrequencyAttribute.needsUpdate = true
+        }
+        if (isCrawler && walkAmplitudeAttribute && walkFrequencyAttribute) {
+          walkAmplitudeAttribute.setX(
+            i,
+            (0.038 + locomotion.curiosityRate * 0.01) * (0.86 + Math.sin(randomOffset * 1.1) * 0.14) * amplitudeOffset
+          )
+          walkFrequencyAttribute.setX(
+            i,
+            Math.max(1.05, (1.34 + locomotion.cruiseSpeed * 0.55) * speedMult * cadenceOffset * (0.9 + Math.cos(randomOffset * 1.4) * 0.1))
+          )
+          walkAmplitudeAttribute.needsUpdate = true
+          walkFrequencyAttribute.needsUpdate = true
+        }
 
         const floatWave = isCrawler
           ? 0

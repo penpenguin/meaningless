@@ -329,6 +329,21 @@ export function ensureMotionStateArrays(this: any): void {
     if (!this.interestSeeds || this.interestSeeds.length !== count) {
       this.interestSeeds = new Float32Array(count)
     }
+    if (!this.motionTailCadenceOffsets || this.motionTailCadenceOffsets.length !== count) {
+      this.motionTailCadenceOffsets = new Float32Array(count).fill(1)
+    }
+    if (!this.motionAmplitudeOffsets || this.motionAmplitudeOffsets.length !== count) {
+      this.motionAmplitudeOffsets = new Float32Array(count).fill(1)
+    }
+    if (!this.motionPauseBiases || this.motionPauseBiases.length !== count) {
+      this.motionPauseBiases = new Float32Array(count).fill(0.5)
+    }
+    if (!this.motionDartBiases || this.motionDartBiases.length !== count) {
+      this.motionDartBiases = new Float32Array(count).fill(0.5)
+    }
+    if (!this.motionTurnBiasOffsets || this.motionTurnBiasOffsets.length !== count) {
+      this.motionTurnBiasOffsets = new Float32Array(count)
+    }
     if (!this.gaitStates || this.gaitStates.length !== count) {
       this.gaitStates = Array.from({ length: count }, () => 'cruise')
     }

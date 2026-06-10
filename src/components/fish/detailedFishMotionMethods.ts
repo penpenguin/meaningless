@@ -158,7 +158,11 @@ export function resolveGaitDynamics(this: any, gaitState: GaitState, profile: Lo
           lanePullMultiplier: 0.62,
           depthPullMultiplier: 0.82,
           tailBeatMultiplier: 0.92,
+          tailAmplitudeMultiplier: 0.78,
+          tailCadenceMultiplier: 0.94,
           bodyMotionScale: 1.12,
+          impulseScale: 0.52,
+          pauseScale: 1.12,
           bankScale: 0.74,
           headingResponseScale: 0.88,
           floatScale: 1.12
@@ -177,7 +181,11 @@ export function resolveGaitDynamics(this: any, gaitState: GaitState, profile: Lo
           lanePullMultiplier: 0.96,
           depthPullMultiplier: 0.92,
           tailBeatMultiplier: 0.74,
+          tailAmplitudeMultiplier: 0.36,
+          tailCadenceMultiplier: 0.62,
           bodyMotionScale: 0.66,
+          impulseScale: 0.24,
+          pauseScale: 1.28,
           bankScale: 0.6,
           headingResponseScale: 0.7,
           floatScale: 0.74
@@ -196,7 +204,11 @@ export function resolveGaitDynamics(this: any, gaitState: GaitState, profile: Lo
           lanePullMultiplier: 0.44,
           depthPullMultiplier: 0.58,
           tailBeatMultiplier: 1.24,
+          tailAmplitudeMultiplier: 1.14,
+          tailCadenceMultiplier: 1.42,
           bodyMotionScale: 0.54,
+          impulseScale: 1.55,
+          pauseScale: 0.62,
           bankScale: 1.08,
           headingResponseScale: 1.18,
           floatScale: 0.52
@@ -215,7 +227,11 @@ export function resolveGaitDynamics(this: any, gaitState: GaitState, profile: Lo
           lanePullMultiplier: 0.88,
           depthPullMultiplier: 1.18,
           tailBeatMultiplier: 0.86,
+          tailAmplitudeMultiplier: 0.22,
+          tailCadenceMultiplier: 0.48,
           bodyMotionScale: 1.22,
+          impulseScale: 0.14,
+          pauseScale: 1.55,
           bankScale: 0.42,
           headingResponseScale: 0.64,
           floatScale: 1.24
@@ -235,7 +251,11 @@ export function resolveGaitDynamics(this: any, gaitState: GaitState, profile: Lo
           lanePullMultiplier: 1,
           depthPullMultiplier: 1,
           tailBeatMultiplier: 1,
+          tailAmplitudeMultiplier: 1,
+          tailCadenceMultiplier: 1,
           bodyMotionScale: 0.82,
+          impulseScale: 1,
+          pauseScale: 1,
           bankScale: 1,
           headingResponseScale: 1,
           floatScale: 0.92
@@ -313,6 +333,11 @@ export function initializeRandomness(this: any): void {
     this.nextStateChangeTimes = new Float32Array(this.fishCount)
     this.stateCooldowns = new Float32Array(this.fishCount)
     this.interestSeeds = new Float32Array(this.fishCount)
+    this.motionTailCadenceOffsets = new Float32Array(this.fishCount)
+    this.motionAmplitudeOffsets = new Float32Array(this.fishCount)
+    this.motionPauseBiases = new Float32Array(this.fishCount)
+    this.motionDartBiases = new Float32Array(this.fishCount)
+    this.motionTurnBiasOffsets = new Float32Array(this.fishCount)
     this.gaitStates = Array.from({ length: this.fishCount }, () => 'cruise')
     this.preferredDepthBands = Array.from({ length: this.fishCount }, () => 'mid')
     this.preferredLateralLanes = Array.from({ length: this.fishCount }, () => 'center')
@@ -351,6 +376,19 @@ export function initializeRandomness(this: any): void {
       this.preferredLateralLanes[i] = this.pickPreferredLateralLane()
       this.gaitStates[i] = this.pickInitialGaitState(profile)
       this.interestSeeds[i] = Math.random()
+      this.motionTailCadenceOffsets[i] = THREE.MathUtils.lerp(
+        profile.movementMode === 'crawl' ? 0.92 : 0.86,
+        profile.movementMode === 'crawl' ? 1.14 : 1.16,
+        Math.random()
+      )
+      this.motionAmplitudeOffsets[i] = THREE.MathUtils.lerp(
+        profile.movementMode === 'crawl' ? 0.9 : 0.82,
+        profile.movementMode === 'crawl' ? 1.1 : 1.22,
+        Math.random()
+      )
+      this.motionPauseBiases[i] = Math.random()
+      this.motionDartBiases[i] = Math.random()
+      this.motionTurnBiasOffsets[i] = THREE.MathUtils.lerp(-1, 1, Math.random())
       this.stateCooldowns[i] = Math.random() * (0.8 + profile.turnStartLag)
       
       // Variant-aware cadence spread keeps schools from sharing one rhythm.
@@ -436,23 +474,27 @@ export function applyInstancedTailMotionAttributes(this: any, geometry: THREE.Bu
       const cadence = this.speedMultipliers?.[boidIndex] ?? 1
       const offset = this.randomOffsets?.[boidIndex] ?? 0
       const isCrawler = profile.movementMode === 'crawl'
+      const gaitState = this.gaitStates?.[boidIndex] ?? 'cruise'
+      const dynamics = this.resolveGaitDynamics(gaitState, profile)
+      const cadenceOffset = this.motionTailCadenceOffsets?.[boidIndex] ?? 1
+      const amplitudeOffset = this.motionAmplitudeOffsets?.[boidIndex] ?? 1
       phaseOffsets[i] = phase
       tailAmplitudes[i] = isCrawler
-        ? (0.002 + profile.bodyWiggleAmount * 0.012) * (0.82 + (Math.sin(offset * 1.7) * 0.18))
+        ? (0.002 + profile.bodyWiggleAmount * 0.012) * (0.82 + (Math.sin(offset * 1.7) * 0.18)) * amplitudeOffset
         : (
           0.03 +
           (profile.bodyWiggleAmount * 0.05) +
           (Math.max(0, 1 - profile.yawResponsiveness) * 0.008)
-        ) * (0.78 + (Math.sin(offset * 1.7) * 0.22))
+        ) * (0.78 + (Math.sin(offset * 1.7) * 0.22)) * dynamics.tailAmplitudeMultiplier * amplitudeOffset
       tailFrequencies[i] = Math.max(
         0.45,
-        profile.tailBeatFreq * cadence * (0.84 + Math.cos(offset * 1.3) * 0.16)
+        profile.tailBeatFreq * cadence * dynamics.tailCadenceMultiplier * cadenceOffset * (0.84 + Math.cos(offset * 1.3) * 0.16)
       )
       walkAmplitudes[i] = isCrawler
-        ? (0.038 + profile.curiosityRate * 0.01) * (0.86 + Math.sin(offset * 1.1) * 0.14)
+        ? (0.038 + profile.curiosityRate * 0.01) * (0.86 + Math.sin(offset * 1.1) * 0.14) * amplitudeOffset
         : 0
       walkFrequencies[i] = isCrawler
-        ? Math.max(1.05, (1.34 + profile.cruiseSpeed * 0.55) * cadence * (0.9 + Math.cos(offset * 1.4) * 0.1))
+        ? Math.max(1.05, (1.34 + profile.cruiseSpeed * 0.55) * cadence * cadenceOffset * (0.9 + Math.cos(offset * 1.4) * 0.1))
         : 0
     }
 
