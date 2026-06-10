@@ -418,6 +418,44 @@ describe('BoidsSystem boundary steering', () => {
     expect(disk.preferredDepthY).toBeLessThan(0)
   })
 
+  test('per-boid tuning allows substrate crawlers to move far below swimmer cruise speed', () => {
+    const bounds = new THREE.Box3(new THREE.Vector3(-12, -4, -4), new THREE.Vector3(12, 4, 4))
+    const system = new BoidsSystem(2, bounds)
+    const setBoidTuning = (system as unknown as {
+      setBoidTuning?: (
+        index: number,
+        tuning: {
+          cruiseSpeed?: number
+          activeSpeedMultiplier?: number
+          drag?: number
+        }
+      ) => void
+    }).setBoidTuning?.bind(system)
+    const resolveBoidRuntimeParams = (BoidsSystem.prototype as unknown as {
+      resolveBoidRuntimeParams: (index: number) => {
+        maxSpeed: number
+        drag: number
+      }
+    }).resolveBoidRuntimeParams.bind(system)
+
+    setBoidTuning?.(0, {
+      cruiseSpeed: 0.3,
+      activeSpeedMultiplier: 0.42,
+      drag: 1.1
+    })
+    setBoidTuning?.(1, {
+      cruiseSpeed: 0.96,
+      activeSpeedMultiplier: 1,
+      drag: 0.06
+    })
+
+    const crawler = resolveBoidRuntimeParams(0)
+    const swimmer = resolveBoidRuntimeParams(1)
+
+    expect(crawler.maxSpeed).toBeLessThan(swimmer.maxSpeed * 0.24)
+    expect(crawler.drag).toBeGreaterThan(swimmer.drag)
+  })
+
   test('lane preference does not increase front-glass wall bounce', () => {
     const bounds = new THREE.Box3(new THREE.Vector3(-12, -4, -5), new THREE.Vector3(12, 4, 5))
     const system = new BoidsSystem(1, bounds)

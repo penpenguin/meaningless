@@ -29,15 +29,33 @@ describe('fish presentation rules', () => {
     ])
     expect(variants.find((variant) => variant.name === 'Neon')).toMatchObject({
       locomotionProfileId: 'slender-darter',
+      schoolForwardAxis: [0, 0, 1],
+      heroForwardAxis: [0, 0, 1],
       schoolModelId: 'fish-neon-school',
       heroModelId: 'fish-neon-hero'
     })
-    expect(variants.find((variant) => variant.name === 'Angelfish')?.heroCorrectionQuaternion).toEqual([
-      -0.70710678,
-      0,
-      0,
-      0.70710678
-    ])
+    expect(variants.find((variant) => variant.name === 'YamatoShrimp')).toMatchObject({
+      locomotionProfileId: 'substrate-crawler'
+    })
+    ;[
+      'Tropical',
+      'Angelfish',
+      'Butterflyfish',
+      'Neon',
+      'Goldfish',
+      'AbeniPuffer',
+      'Corydoras',
+      'AfricanLampeye',
+      'RasboraHeteromorpha',
+      'YamatoShrimp'
+    ].forEach((name) => {
+      expect(variants.find((variant) => variant.name === name)).toMatchObject({
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1]
+      })
+      expect(variants.find((variant) => variant.name === name)?.schoolCorrectionQuaternion).toBeUndefined()
+      expect(variants.find((variant) => variant.name === name)?.heroCorrectionQuaternion).toBeUndefined()
+    })
   })
 
   it('resolves default school counts by layout and device class', () => {
@@ -50,9 +68,14 @@ describe('fish presentation rules', () => {
   it('keeps locomotion profiles as pure species tuning data', () => {
     const neonProfile = resolveLocomotionProfile({ locomotionProfileId: 'slender-darter' })
     const goldfishProfile = resolveLocomotionProfile({ locomotionProfileId: 'goldfish-wobble' })
+    const shrimpProfile = resolveLocomotionProfile({ locomotionProfileId: 'substrate-crawler' })
 
     expect(neonProfile.cruiseSpeed).toBeGreaterThan(goldfishProfile.cruiseSpeed)
     expect(goldfishProfile.depthBobAmount).toBeGreaterThan(neonProfile.depthBobAmount)
+    expect(shrimpProfile.movementMode).toBe('crawl')
+    expect(shrimpProfile.cruiseSpeed).toBeLessThan(0.36)
+    expect(shrimpProfile.turnNoise).toBeLessThan(0.03)
+    expect(shrimpProfile.depthBobAmount).toBeLessThan(neonProfile.depthBobAmount)
   })
 
   it('exports lane and depth bias rules without depending on boids or meshes', () => {

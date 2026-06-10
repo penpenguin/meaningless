@@ -161,32 +161,37 @@ describe('DetailedFishSystem locomotion profiles', () => {
     const angelfish = variants.find((variant) => variant.name === 'Angelfish')
     const neon = variants.find((variant) => variant.name === 'Neon')
     const goldfish = variants.find((variant) => variant.name === 'Goldfish')
+    const glbBackedVariants = [
+      'Tropical',
+      'Angelfish',
+      'Butterflyfish',
+      'Neon',
+      'Goldfish',
+      'AbeniPuffer',
+      'Corydoras',
+      'AfricanLampeye',
+      'RasboraHeteromorpha',
+      'YamatoShrimp'
+    ]
 
     expect(tropical?.locomotionProfileId).toBe('calm-cruiser')
     expect(angelfish?.locomotionProfileId).toBe('disk-glider')
     expect(neon?.locomotionProfileId).toBe('slender-darter')
     expect(goldfish?.locomotionProfileId).toBe('goldfish-wobble')
 
-    expect(tropical?.proceduralForwardAxis).toEqual([1, 0, 0])
-    expect(tropical?.schoolForwardAxis).toEqual([0, 0, 1])
-    expect(tropical?.heroForwardAxis).toEqual([0, 0, 1])
-    expect(tropical?.proceduralCorrectionQuaternion).toBeUndefined()
-    expect(tropical?.schoolCorrectionQuaternion).toBeUndefined()
-    expect(tropical?.heroCorrectionQuaternion).toBeUndefined()
-
-    const angelfishCorrection = [-Math.sin(Math.PI / 4), 0, 0, Math.cos(Math.PI / 4)] as [number, number, number, number]
-    expect(angelfish?.proceduralForwardAxis).toEqual([1, 0, 0])
-    expect(angelfish?.schoolForwardAxis).toEqual([1, 0, 0])
-    expect(angelfish?.heroForwardAxis).toEqual([1, 0, 0])
-    angelfishCorrection.forEach((value, index) => {
-      expect(angelfish?.schoolCorrectionQuaternion?.[index]).toBeCloseTo(value, 6)
-      expect(angelfish?.heroCorrectionQuaternion?.[index]).toBeCloseTo(value, 6)
+    glbBackedVariants.forEach((name) => {
+      const variant = variants.find((entry) => entry.name === name)
+      expect(variant?.proceduralForwardAxis).toEqual([1, 0, 0])
+      expect(variant?.schoolForwardAxis).toEqual([0, 0, 1])
+      expect(variant?.heroForwardAxis).toEqual([0, 0, 1])
+      expect(variant?.schoolCorrectionQuaternion).toBeUndefined()
+      expect(variant?.heroCorrectionQuaternion).toBeUndefined()
     })
   })
 
-  test('Angelfish school and hero corrections keep nose forward while rotating dorsal upward', () => {
+  test('authored GLB fish render with their nose forward and dorsal side upright', () => {
     const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
-    const { createFishVariants } = DetailedFishSystem.prototype as unknown as {
+    const { createFishVariants, resolveRenderQuaternion } = DetailedFishSystem.prototype as unknown as {
       createFishVariants: () => Array<{
         name: string
         schoolForwardAxis?: [number, number, number]
@@ -194,29 +199,35 @@ describe('DetailedFishSystem locomotion profiles', () => {
         schoolCorrectionQuaternion?: [number, number, number, number]
         heroCorrectionQuaternion?: [number, number, number, number]
       }>
+      resolveRenderQuaternion: (
+        variant: {
+          schoolForwardAxis?: [number, number, number]
+          heroForwardAxis?: [number, number, number]
+          schoolCorrectionQuaternion?: [number, number, number, number]
+          heroCorrectionQuaternion?: [number, number, number, number]
+        },
+        renderPath: 'school' | 'hero',
+        direction: THREE.Vector3
+      ) => THREE.Quaternion
     }
 
-    const angelfish = createFishVariants.bind(instance)().find((variant) => variant.name === 'Angelfish')
-    expect(angelfish).toBeDefined()
+    const variants = createFishVariants.bind(instance)()
+    const swimDirection = new THREE.Vector3(1, 0, 0)
+    const authoredForward = new THREE.Vector3(0, 0, 1)
+    const authoredUp = new THREE.Vector3(0, 1, 0)
 
-    const modelDorsalAxis = new THREE.Vector3(0, 0, 1)
-    const modelVentralAxis = new THREE.Vector3(0, 0, -1)
-    const schoolCorrection = new THREE.Quaternion(...angelfish!.schoolCorrectionQuaternion!)
-    const heroCorrection = new THREE.Quaternion(...angelfish!.heroCorrectionQuaternion!)
+    ;['Angelfish', 'Butterflyfish', 'AbeniPuffer', 'YamatoShrimp'].forEach((name) => {
+      const variant = variants.find((entry) => entry.name === name)
+      expect(variant).toBeDefined()
 
-    const schoolForward = new THREE.Vector3(...angelfish!.schoolForwardAxis!).applyQuaternion(schoolCorrection).normalize()
-    const heroForward = new THREE.Vector3(...angelfish!.heroForwardAxis!).applyQuaternion(heroCorrection).normalize()
-    const schoolDorsal = modelDorsalAxis.clone().applyQuaternion(schoolCorrection).normalize()
-    const heroDorsal = modelDorsalAxis.clone().applyQuaternion(heroCorrection).normalize()
-    const schoolVentral = modelVentralAxis.clone().applyQuaternion(schoolCorrection).normalize()
-    const heroVentral = modelVentralAxis.clone().applyQuaternion(heroCorrection).normalize()
+      const schoolQuaternion = resolveRenderQuaternion.bind(instance)(variant!, 'school', swimDirection).clone()
+      const heroQuaternion = resolveRenderQuaternion.bind(instance)(variant!, 'hero', swimDirection).clone()
 
-    expect(schoolForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
-    expect(heroForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
-    expect(schoolDorsal.angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
-    expect(heroDorsal.angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
-    expect(schoolVentral.angleTo(new THREE.Vector3(0, -1, 0))).toBeLessThan(1e-5)
-    expect(heroVentral.angleTo(new THREE.Vector3(0, -1, 0))).toBeLessThan(1e-5)
+      expect(authoredForward.clone().applyQuaternion(schoolQuaternion).angleTo(swimDirection)).toBeLessThan(1e-5)
+      expect(authoredForward.clone().applyQuaternion(heroQuaternion).angleTo(swimDirection)).toBeLessThan(1e-5)
+      expect(authoredUp.clone().applyQuaternion(schoolQuaternion).angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
+      expect(authoredUp.clone().applyQuaternion(heroQuaternion).angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
+    })
   })
 
   test('resolveHeadingQuaternion aligns corrected per-asset forward axes with velocity', () => {
@@ -275,6 +286,39 @@ describe('DetailedFishSystem locomotion profiles', () => {
     expect(proceduralForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
     expect(schoolForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-5)
     expect(heroForward.angleTo(new THREE.Vector3(0, 0, -1))).toBeLessThan(1e-5)
+  })
+
+  test('Neon school and hero assets use the GLB nose axis without rolling sideways', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const { createFishVariants, resolveRenderQuaternion } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        schoolForwardAxis?: [number, number, number]
+        heroForwardAxis?: [number, number, number]
+      }>
+      resolveRenderQuaternion: (
+        variant: {
+          schoolForwardAxis?: [number, number, number]
+          heroForwardAxis?: [number, number, number]
+        },
+        renderPath: 'school' | 'hero',
+        direction: THREE.Vector3
+      ) => THREE.Quaternion
+    }
+
+    const neon = createFishVariants.bind(instance)().find((variant) => variant.name === 'Neon')
+    expect(neon).toBeDefined()
+
+    const authoredForward = new THREE.Vector3(0, 0, 1)
+    const authoredUp = new THREE.Vector3(0, 1, 0)
+    const swimDirection = new THREE.Vector3(1, 0, 0)
+    const schoolQuaternion = resolveRenderQuaternion.bind(instance)(neon!, 'school', swimDirection).clone()
+    const heroQuaternion = resolveRenderQuaternion.bind(instance)(neon!, 'hero', swimDirection).clone()
+
+    expect(authoredForward.clone().applyQuaternion(schoolQuaternion).angleTo(swimDirection)).toBeLessThan(1e-5)
+    expect(authoredForward.clone().applyQuaternion(heroQuaternion).angleTo(swimDirection)).toBeLessThan(1e-5)
+    expect(authoredUp.clone().applyQuaternion(schoolQuaternion).angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
+    expect(authoredUp.clone().applyQuaternion(heroQuaternion).angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-5)
   })
 
   test('resolveFishSafeExtents keeps procedural extents at world-scaled geometry size', () => {
@@ -529,6 +573,385 @@ describe('DetailedFishSystem locomotion profiles', () => {
     expect(tuning.fishSafeExtents.noseExtent).toBeGreaterThan(tuning.fishSafeExtents.halfBodyWidth)
     expect(tuning.fishSafeExtents.tailExtent).toBeGreaterThan(0)
     expect(tuning.fishSafeExtents.halfBodyHeight).toBeGreaterThan(0)
+  })
+
+  test('Yamato shrimp locomotion tuning stays slow enough to read as walking', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const setBoidTuning = vi.fn()
+
+    ;(instance as unknown as {
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        locomotionProfileId?: 'substrate-crawler'
+        schoolForwardAxis?: [number, number, number]
+      }>
+      boidVariantIndices: number[]
+      boids: {
+        boids: unknown[]
+        setBoidTuning: (index: number, tuning: unknown) => void
+      }
+      visualAssets: null
+    }).variants = [{
+      name: 'YamatoShrimp',
+      scale: 0.42,
+      speed: 0.76,
+      locomotionProfileId: 'substrate-crawler',
+      schoolForwardAxis: [0, 0, 1]
+    }]
+    ;(instance as unknown as {
+      boidVariantIndices: number[]
+      boids: {
+        boids: unknown[]
+        setBoidTuning: (index: number, tuning: unknown) => void
+      }
+      visualAssets: null
+    }).boidVariantIndices = [0]
+    ;(instance as unknown as {
+      boids: {
+        boids: unknown[]
+        setBoidTuning: (index: number, tuning: unknown) => void
+      }
+      visualAssets: null
+    }).boids = {
+      boids: [{}],
+      setBoidTuning
+    }
+    ;(instance as unknown as {
+      visualAssets: null
+    }).visualAssets = null
+
+    const applyVariantLocomotionTuning = (DetailedFishSystem.prototype as unknown as {
+      applyVariantLocomotionTuning: () => void
+    }).applyVariantLocomotionTuning.bind(instance)
+
+    applyVariantLocomotionTuning()
+
+    const tuning = setBoidTuning.mock.calls[0]?.[1] as {
+      cruiseSpeed: number
+      activeSpeedMultiplier?: number
+      drag: number
+      depthPull: number
+      preferredDepthY: number
+    }
+    expect(tuning.cruiseSpeed).toBeLessThan(0.36)
+    expect(tuning.activeSpeedMultiplier).toBeLessThanOrEqual(0.46)
+    expect(tuning.drag).toBeGreaterThanOrEqual(1.05)
+    expect(tuning.depthPull).toBeGreaterThan(1)
+    expect(tuning.preferredDepthY).toBeLessThanOrEqual(-10 + 20 * 0.05)
+  })
+
+  test('Yamato shrimp locomotion stays near the substrate and suppresses fish tail swimming', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const geometry = new THREE.BoxGeometry(1, 0.2, 2)
+    const { createFishVariants, getLocomotionProfile, resolveWanderTarget, applyInstancedTailMotionAttributes } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        locomotionProfileId?: string
+      }>
+      getLocomotionProfile: (variant: { locomotionProfileId?: string }) => {
+        movementMode?: 'swim' | 'crawl'
+        inspectCuriosity: number
+      }
+      resolveWanderTarget: (
+        index: number,
+        profile: { movementMode?: 'swim' | 'crawl'; inspectCuriosity: number },
+        boidPosition: THREE.Vector3,
+        bounds: THREE.Box3,
+        boundsSize: THREE.Vector3
+      ) => THREE.Vector3
+      applyInstancedTailMotionAttributes: (
+        geometry: THREE.BufferGeometry,
+        variant: { name: string; locomotionProfileId?: string },
+        boidStartIndex: number,
+        instanceCount: number
+      ) => void
+    }
+
+    const shrimp = createFishVariants.bind(instance)().find((variant) => variant.name === 'YamatoShrimp')
+    expect(shrimp).toBeDefined()
+    const profile = getLocomotionProfile.bind(instance)(shrimp!)
+
+    const internals = instance as unknown as {
+      layoutStyle: 'nature-showcase'
+      gaitStates: Array<'cruise' | 'inspect' | 'glide' | 'burst' | 'hover'>
+      preferredDepthBands: Array<'upper' | 'mid' | 'hardscape-near'>
+      preferredLateralLanes: Array<'left' | 'center' | 'right'>
+      interestSeeds: Float32Array
+      activeInterestPoints: Array<unknown>
+      tempWanderDirection: THREE.Vector3
+      tempWanderTarget: THREE.Vector3
+      pickInterestPoint?: (index: number) => null
+      getLocomotionProfile: (variant: { locomotionProfileId?: string }) => typeof profile
+      swimPhases: Float32Array
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+    }
+    internals.layoutStyle = 'nature-showcase'
+    internals.gaitStates = ['cruise']
+    internals.preferredDepthBands = ['hardscape-near']
+    internals.preferredLateralLanes = ['center']
+    internals.interestSeeds = new Float32Array([0.5])
+    internals.activeInterestPoints = []
+    internals.tempWanderDirection = new THREE.Vector3()
+    internals.tempWanderTarget = new THREE.Vector3()
+    internals.pickInterestPoint = () => null
+    internals.getLocomotionProfile = () => profile
+    internals.swimPhases = new Float32Array([0])
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0])
+
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -4, -5), new THREE.Vector3(5, 4, 5))
+    const boundsSize = bounds.getSize(new THREE.Vector3())
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+    const target = resolveWanderTarget.bind(instance)(
+      0,
+      profile,
+      new THREE.Vector3(0, -3.35, 0),
+      bounds,
+      boundsSize
+    )
+    applyInstancedTailMotionAttributes.bind(instance)(geometry, shrimp!, 0, 1)
+
+    const tailAmplitudes = geometry.getAttribute('instanceTailAmplitude') as THREE.InstancedBufferAttribute
+    const walkAmplitudes = geometry.getAttribute('instanceWalkAmplitude') as THREE.InstancedBufferAttribute
+    expect(profile.movementMode).toBe('crawl')
+    expect(target.y).toBeLessThanOrEqual(bounds.min.y + boundsSize.y * 0.05)
+    expect(tailAmplitudes.getX(0)).toBeLessThan(0.012)
+    expect(walkAmplitudes.getX(0)).toBeGreaterThan(tailAmplitudes.getX(0))
+
+    randomSpy.mockRestore()
+  })
+
+  test('Yamato shrimp school material uses crawler walk deformation instead of fish tail swimming', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const geometry = new THREE.BoxGeometry(1, 0.2, 2)
+    const material = new THREE.MeshPhysicalMaterial()
+    const { createFishVariants, patchInstancedFishMaterial } = DetailedFishSystem.prototype as unknown as {
+      createFishVariants: () => Array<{
+        name: string
+        locomotionProfileId?: string
+        schoolForwardAxis?: [number, number, number]
+      }>
+      patchInstancedFishMaterial: (
+        material: THREE.MeshPhysicalMaterial,
+        geometry: THREE.BufferGeometry,
+        variant: { name: string; locomotionProfileId?: string; schoolForwardAxis?: [number, number, number] },
+        renderPath: 'school'
+      ) => void
+    }
+    const shrimp = createFishVariants.bind(instance)().find((variant) => variant.name === 'YamatoShrimp')
+    expect(shrimp).toBeDefined()
+
+    ;(instance as unknown as {
+      instancedTailMotionUniforms: Array<{ value: number }>
+      tempForwardAxis: THREE.Vector3
+      tempCorrectionQuaternion: THREE.Quaternion
+    }).instancedTailMotionUniforms = []
+    ;(instance as unknown as {
+      tempForwardAxis: THREE.Vector3
+      tempCorrectionQuaternion: THREE.Quaternion
+    }).tempForwardAxis = new THREE.Vector3()
+    ;(instance as unknown as {
+      tempCorrectionQuaternion: THREE.Quaternion
+    }).tempCorrectionQuaternion = new THREE.Quaternion()
+
+    patchInstancedFishMaterial.bind(instance)(material, geometry, shrimp!, 'school')
+
+    const shader = {
+      uniforms: {},
+      vertexShader: '#include <common>\n#include <begin_vertex>',
+      fragmentShader: ''
+    }
+    material.onBeforeCompile(shader as unknown as THREE.WebGLProgramParametersWithUniforms, {} as THREE.WebGLRenderer)
+
+    expect(material.customProgramCacheKey()).toBe('school-instanced-crawler-walk-motion')
+    expect(shader.vertexShader).toContain('instanceWalkAmplitude')
+    expect(shader.vertexShader).toContain('crawlFootWave')
+    expect(shader.vertexShader).toContain('undersideMask')
+  })
+
+  test('Yamato shrimp mesh sync clamps rendered position to the substrate without throwing', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boid = {
+      position: new THREE.Vector3(0, 0.8, 0),
+      velocity: new THREE.Vector3(0.5, 0.7, 0),
+      acceleration: new THREE.Vector3(),
+      maxSpeed: 4,
+      maxForce: 2
+    }
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 0.2, 2),
+      new THREE.MeshBasicMaterial(),
+      1
+    )
+    const bounds = new THREE.Box3(new THREE.Vector3(-5, -4, -5), new THREE.Vector3(5, 4, 5))
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        locomotionProfileId?: 'substrate-crawler'
+        schoolForwardAxis?: [number, number, number]
+      }>
+      boids: { boids: typeof boid[] }
+      boidVariantIndices: number[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      gaitStates: Array<'cruise'>
+      dummy: THREE.Object3D
+      tempDirection: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      tempCorrectionQuaternion: THREE.Quaternion
+      tempRenderQuaternion: THREE.Quaternion
+      tempHorizontalDirection: THREE.Vector3
+      tempHorizontalPreviousDirection: THREE.Vector3
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
+      headingInitialized: boolean[]
+      heroAssignments: Map<number, unknown>
+    }
+    internals.instancedMeshes = [mesh]
+    internals.variants = [{
+      name: 'YamatoShrimp',
+      scale: 0.42,
+      speed: 0.76,
+      locomotionProfileId: 'substrate-crawler',
+      schoolForwardAxis: [0, 0, 1]
+    }]
+    internals.boids = { boids: [boid] }
+    internals.boidVariantIndices = [0]
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0])
+    internals.swimPhases = new Float32Array([0])
+    internals.gaitStates = ['cruise']
+    internals.dummy = new THREE.Object3D()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.tempCorrectionQuaternion = new THREE.Quaternion()
+    internals.tempRenderQuaternion = new THREE.Quaternion()
+    internals.tempHorizontalDirection = new THREE.Vector3()
+    internals.tempHorizontalPreviousDirection = new THREE.Vector3()
+    internals.smoothedQuaternions = [new THREE.Quaternion()]
+    internals.previousVelocities = [new THREE.Vector3(1, 0, 0)]
+    internals.headingInitialized = [false]
+    internals.heroAssignments = new Map()
+
+    const syncInstancedMeshes = (DetailedFishSystem.prototype as unknown as {
+      syncInstancedMeshes: (
+        bounds: THREE.Box3,
+        behavior: { avoidWalls: number; depthVariance: number; turnBias: number },
+        elapsedTime: number,
+        safeDeltaTime: number
+      ) => void
+    }).syncInstancedMeshes.bind(instance)
+
+    expect(() => syncInstancedMeshes(bounds, { avoidWalls: 0.8, depthVariance: 0.18, turnBias: 0.14 }, 0, 1 / 60))
+      .not.toThrow()
+
+    const matrix = new THREE.Matrix4()
+    const position = new THREE.Vector3()
+    mesh.getMatrixAt(0, matrix)
+    matrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3())
+
+    expect(position.y).toBeLessThanOrEqual(bounds.min.y + bounds.getSize(new THREE.Vector3()).y * 0.05 + 1e-5)
+  })
+
+  test('authored GLB school fish keep their nose on the horizontal swim heading during vertical movement', () => {
+    const instance = Object.create(DetailedFishSystem.prototype) as DetailedFishSystem
+    const boid = {
+      position: new THREE.Vector3(0, 0, 0),
+      velocity: new THREE.Vector3(1, 1.2, 0),
+      acceleration: new THREE.Vector3(),
+      maxSpeed: 4,
+      maxForce: 2
+    }
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+      1
+    )
+    mesh.userData.renderPath = 'school'
+    const internals = instance as unknown as {
+      instancedMeshes: THREE.InstancedMesh[]
+      variants: Array<{
+        name: string
+        scale: number
+        speed: number
+        schoolForwardAxis?: [number, number, number]
+        locomotionProfileId?: 'disk-glider'
+      }>
+      boids: { boids: typeof boid[] }
+      boidVariantIndices: number[]
+      speedMultipliers: Float32Array
+      randomOffsets: Float32Array
+      swimPhases: Float32Array
+      gaitStates: Array<'cruise'>
+      dummy: THREE.Object3D
+      tempDirection: THREE.Vector3
+      tempQuaternion: THREE.Quaternion
+      tempCorrectionQuaternion: THREE.Quaternion
+      tempRenderQuaternion: THREE.Quaternion
+      tempHorizontalDirection: THREE.Vector3
+      tempHorizontalPreviousDirection: THREE.Vector3
+      smoothedQuaternions: THREE.Quaternion[]
+      previousVelocities: THREE.Vector3[]
+      headingInitialized: boolean[]
+      heroAssignments: Map<number, unknown>
+    }
+    internals.instancedMeshes = [mesh]
+    internals.variants = [{
+      name: 'AbeniPuffer',
+      scale: 0.42,
+      speed: 0.72,
+      schoolForwardAxis: [0, 0, 1],
+      locomotionProfileId: 'disk-glider'
+    }]
+    internals.boids = { boids: [boid] }
+    internals.boidVariantIndices = [0]
+    internals.speedMultipliers = new Float32Array([1])
+    internals.randomOffsets = new Float32Array([0])
+    internals.swimPhases = new Float32Array([0])
+    internals.gaitStates = ['cruise']
+    internals.dummy = new THREE.Object3D()
+    internals.tempDirection = new THREE.Vector3()
+    internals.tempQuaternion = new THREE.Quaternion()
+    internals.tempCorrectionQuaternion = new THREE.Quaternion()
+    internals.tempRenderQuaternion = new THREE.Quaternion()
+    internals.tempHorizontalDirection = new THREE.Vector3()
+    internals.tempHorizontalPreviousDirection = new THREE.Vector3()
+    internals.smoothedQuaternions = [new THREE.Quaternion()]
+    internals.previousVelocities = [new THREE.Vector3(1, 0, 0)]
+    internals.headingInitialized = [false]
+    internals.heroAssignments = new Map()
+
+    const syncInstancedMeshes = (DetailedFishSystem.prototype as unknown as {
+      syncInstancedMeshes: (
+        bounds: THREE.Box3,
+        behavior: { avoidWalls: number; depthVariance: number; turnBias: number },
+        elapsedTime: number,
+        safeDeltaTime: number
+      ) => void
+    }).syncInstancedMeshes.bind(instance)
+
+    syncInstancedMeshes(
+      new THREE.Box3(new THREE.Vector3(-5, -4, -5), new THREE.Vector3(5, 4, 5)),
+      { avoidWalls: 0.8, depthVariance: 0.18, turnBias: 0.14 },
+      0,
+      1 / 60
+    )
+
+    const matrix = new THREE.Matrix4()
+    const quaternion = new THREE.Quaternion()
+    mesh.getMatrixAt(0, matrix)
+    matrix.decompose(new THREE.Vector3(), quaternion, new THREE.Vector3())
+
+    const authoredForward = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize()
+    expect(authoredForward.angleTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(0.16)
   })
 })
 

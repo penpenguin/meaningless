@@ -267,12 +267,12 @@ export class BoidsSystem {
   private resolveBoidRuntimeParams(index: number): RuntimeBoidParams {
     const tuning = this.boidTunings[index] ?? {}
     const steeringWeights = tuning.steeringWeights ?? {}
-    const cruiseSpeed = THREE.MathUtils.clamp(tuning.cruiseSpeed ?? 1, 0.58, 1.35)
+    const cruiseSpeed = THREE.MathUtils.clamp(tuning.cruiseSpeed ?? 1, 0.24, 1.35)
     const yawResponsiveness = THREE.MathUtils.clamp(tuning.yawResponsiveness ?? 1, 0.5, 1.4)
     const cruiseBias = THREE.MathUtils.clamp(tuning.cruiseBias ?? 1, 0.52, 1.18)
     const turnNoise = THREE.MathUtils.clamp(tuning.turnNoise ?? 0.08, 0, 0.4)
     const boundaryArcRadius = THREE.MathUtils.clamp(tuning.boundaryArcRadius ?? 0.46, 0.18, 1.18)
-    const activeSpeedMultiplier = THREE.MathUtils.clamp(tuning.activeSpeedMultiplier ?? 1, 0.72, 1.42)
+    const activeSpeedMultiplier = THREE.MathUtils.clamp(tuning.activeSpeedMultiplier ?? 1, 0.34, 1.42)
     const preferredLateralX = THREE.MathUtils.clamp(
       tuning.preferredLateralX ?? this.boundsCenter.x,
       this.bounds.min.x,

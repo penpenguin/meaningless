@@ -20,7 +20,7 @@ export interface FishVariant {
   secondaryColor: THREE.Color
   scale: number
   speed: number
-  locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser'
+  locomotionProfileId?: 'disk-glider' | 'slender-darter' | 'goldfish-wobble' | 'calm-cruiser' | 'substrate-crawler'
   proceduralForwardAxis?: AxisTuple
   schoolForwardAxis?: AxisTuple
   heroForwardAxis?: AxisTuple
@@ -75,6 +75,7 @@ export type HeroPlacement = {
 }
 
 export type LocomotionProfile = {
+  movementMode?: 'swim' | 'crawl'
   cruiseSpeed: number
   yawResponsiveness: number
   bankAmount: number
@@ -106,7 +107,6 @@ export type LocomotionProfile = {
 
 
 export const DEFAULT_FORWARD_AXIS: [number, number, number] = [1, 0, 0]
-export const ANGELFISH_GLB_CORRECTION: QuaternionTuple = [-0.70710678, 0, 0, 0.70710678]
 export const DEFAULT_ORIENTATION_CORRECTION: Required<OrientationCorrection> = {
   modelForwardAxis: DEFAULT_FORWARD_AXIS,
   correctionQuaternion: [0, 0, 0, 1]
@@ -272,6 +272,42 @@ export const LOCOMOTION_PROFILES: Record<NonNullable<FishVariant['locomotionProf
       cohesion: 0.98,
       separation: 0.88
     }
+  },
+  'substrate-crawler': {
+    movementMode: 'crawl',
+    cruiseSpeed: 0.3,
+    yawResponsiveness: 0.72,
+    bankAmount: 0.02,
+    tailBeatFreq: 0.34,
+    bodyWiggleAmount: 0.018,
+    curiosityRate: 0.3,
+    depthBobAmount: 0.006,
+    boundaryArcRadius: 0.24,
+    cruiseBias: 0.42,
+    turnNoise: 0.018,
+    suddenTurnRate: 0.0008,
+    burstMultiplier: 1,
+    glideFactor: 0.58,
+    hoverDrag: 1.4,
+    inspectCuriosity: 0.54,
+    turnStartLag: 0.32,
+    lanePull: 0.18,
+    depthPull: 0.92,
+    interestWeight: 0.08,
+    retargetIntervalRange: [9.2, 16.4],
+    stateDurationRange: [7.4, 14.8],
+    stateWeights: {
+      cruise: 0.38,
+      inspect: 0.38,
+      glide: 0.01,
+      burst: 0,
+      hover: 0.23
+    },
+    steeringWeights: {
+      alignment: 0.18,
+      cohesion: 0.2,
+      separation: 1.22
+    }
   }
 }
 
@@ -315,10 +351,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 0.8,
         locomotionProfileId: 'disk-glider',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
-        schoolCorrectionQuaternion: ANGELFISH_GLB_CORRECTION,
-        heroCorrectionQuaternion: ANGELFISH_GLB_CORRECTION,
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-angelfish',
         baseColorTextureId: 'fish-angelfish-basecolor',
         normalTextureId: 'fish-angelfish-normal',
@@ -348,8 +382,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 0.82,
         locomotionProfileId: 'disk-glider',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-butterflyfish',
         baseColorTextureId: 'fish-butterflyfish-basecolor',
         normalTextureId: 'fish-butterflyfish-normal',
@@ -379,8 +413,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 1.5,
         locomotionProfileId: 'slender-darter',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-neon',
         baseColorTextureId: 'fish-neon-basecolor',
         normalTextureId: 'fish-neon-normal',
@@ -410,8 +444,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 0.9,
         locomotionProfileId: 'goldfish-wobble',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-goldfish',
         baseColorTextureId: 'fish-goldfish-basecolor',
         normalTextureId: 'fish-goldfish-normal',
@@ -441,8 +475,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 0.72,
         locomotionProfileId: 'goldfish-wobble',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-goldfish',
         baseColorTextureId: 'fish-goldfish-basecolor',
         normalTextureId: 'fish-goldfish-normal',
@@ -472,8 +506,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 0.68,
         locomotionProfileId: 'calm-cruiser',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-goldfish',
         baseColorTextureId: 'fish-goldfish-basecolor',
         normalTextureId: 'fish-goldfish-normal',
@@ -503,8 +537,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 1.28,
         locomotionProfileId: 'slender-darter',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-neon',
         baseColorTextureId: 'fish-neon-basecolor',
         normalTextureId: 'fish-neon-normal',
@@ -534,8 +568,8 @@ export const createFishVariants = (): FishVariant[] => [
         speed: 1.16,
         locomotionProfileId: 'slender-darter',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-tropical',
         baseColorTextureId: 'fish-tropical-basecolor',
         normalTextureId: 'fish-tropical-normal',
@@ -563,10 +597,10 @@ export const createFishVariants = (): FishVariant[] => [
         secondaryColor: new THREE.Color(0x76684f),
         scale: 0.42,
         speed: 0.76,
-        locomotionProfileId: 'calm-cruiser',
+        locomotionProfileId: 'substrate-crawler',
         proceduralForwardAxis: [1, 0, 0],
-        schoolForwardAxis: [1, 0, 0],
-        heroForwardAxis: [1, 0, 0],
+        schoolForwardAxis: [0, 0, 1],
+        heroForwardAxis: [0, 0, 1],
         patternTextureId: 'fish-goldfish',
         baseColorTextureId: 'fish-goldfish-basecolor',
         normalTextureId: 'fish-goldfish-normal',

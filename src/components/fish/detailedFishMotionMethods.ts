@@ -8,6 +8,7 @@ import { getFishContent, getFishContentList } from '../../content/registry'
 import { resolveRuntimeLayoutSeed, resolveSubstrateHardscapeAnchors, resolveSubstratePlantAnchors } from '../aquascape/Aquascaping'
 import { createFishSafeBounds, resolveFishAxisExtents } from '../../utils/layout/sceneBounds'
 import { DEFAULT_ORIENTATION_CORRECTION, FISH_SAFE_PADDING_BY_PATH, LOCOMOTION_PROFILES, createFishVariants as createFishVariantDefinitions, resolveDefaultFishCount as resolveDefaultFishCountRule, resolveHeroAccentDepthMultiplier as resolveHeroAccentDepthMultiplierRule, resolveHeroAccentScaleMultiplier as resolveHeroAccentScaleMultiplierRule, resolveHeroPlacements as resolveHeroPlacementRules, resolveHeroPriorityMultiplier as resolveHeroPriorityMultiplierRule, resolveLocomotionProfile, resolvePreferredDepthBand, resolvePreferredLateralLane } from './fishPresentation'
+import { clampCrawlerSubstrateY, resolveCrawlerSubstrateY } from './detailedFishSubstrate'
 
 export function pickInterestPoint(this: any, index: number): HabitatInterestPoint | null {
     const points = this.habitatInterestPoints ?? []
@@ -51,6 +52,8 @@ export function resolveWanderTarget(this: any, index: number, profile: Locomotio
     const wanderTarget = this.tempWanderTarget ?? new THREE.Vector3()
     this.tempWanderDirection = wanderDirection
     this.tempWanderTarget = wanderTarget
+    const isCrawler = profile.movementMode === 'crawl'
+    const substrateY = resolveCrawlerSubstrateY(bounds, boundsSize)
     const gaitState = this.gaitStates[index] ?? 'cruise'
     const laneX = this.resolvePreferredLaneX(index, bounds, boundsSize)
     const depthY = this.resolvePreferredDepthY(index, bounds, boundsSize)
@@ -61,28 +64,34 @@ export function resolveWanderTarget(this: any, index: number, profile: Locomotio
 
     const anchor = interestPoint?.position ?? new THREE.Vector3(
       laneX,
-      depthY,
+      isCrawler ? substrateY : depthY,
       THREE.MathUtils.lerp(
         bounds.min.z + (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.3 : 0.26)),
         bounds.max.z - (boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.42 : 0.28)),
         0.5 + ((this.interestSeeds[index] ?? 0.5) - 0.5) * (this.layoutStyle === 'nature-showcase' ? 0.62 : 0.8)
       )
     )
-    const lateralSpread = gaitState === 'glide'
-      ? boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.13 : 0.18)
+    const lateralSpread = isCrawler
+      ? boundsSize.x * 0.026
+      : gaitState === 'glide'
+        ? boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.13 : 0.18)
+        : gaitState === 'hover'
+          ? boundsSize.x * 0.04
+          : boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.08 : 0.12)
+    const verticalSpread = isCrawler
+      ? boundsSize.y * 0.006
       : gaitState === 'hover'
-        ? boundsSize.x * 0.04
-        : boundsSize.x * (this.layoutStyle === 'nature-showcase' ? 0.08 : 0.12)
-    const verticalSpread = gaitState === 'hover'
       ? boundsSize.y * 0.03
       : boundsSize.y * (this.layoutStyle === 'nature-showcase' ? 0.07 : 0.08)
-    const depthSpread = gaitState === 'inspect'
-      ? boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.03 : 0.05)
-      : boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.04 : 0.08)
+    const depthSpread = isCrawler
+      ? boundsSize.z * 0.018
+      : gaitState === 'inspect'
+        ? boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.03 : 0.05)
+        : boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.04 : 0.08)
 
     wanderDirection.set(
       (Math.random() - 0.5) * 2,
-      (Math.random() - 0.5) * 0.9,
+      isCrawler ? 0 : (Math.random() - 0.5) * 0.9,
       (Math.random() - 0.5) * 0.8
     ).normalize()
 
@@ -100,11 +109,19 @@ export function resolveWanderTarget(this: any, index: number, profile: Locomotio
       bounds.min.x + boundsSize.x * 0.08,
       bounds.max.x - boundsSize.x * 0.08
     )
-    wanderTarget.y = THREE.MathUtils.clamp(
-      wanderTarget.y,
-      bounds.min.y + boundsSize.y * 0.18,
-      bounds.max.y - boundsSize.y * 0.16
-    )
+    if (isCrawler) {
+      wanderTarget.y = clampCrawlerSubstrateY(
+        substrateY,
+        bounds,
+        boundsSize
+      )
+    } else {
+      wanderTarget.y = THREE.MathUtils.clamp(
+        wanderTarget.y,
+        bounds.min.y + boundsSize.y * 0.18,
+        bounds.max.y - boundsSize.y * 0.16
+      )
+    }
     wanderTarget.z = THREE.MathUtils.clamp(
       wanderTarget.z,
       bounds.min.z + boundsSize.z * (this.layoutStyle === 'nature-showcase' ? 0.24 : 0.2),
@@ -231,7 +248,11 @@ export function updatePerFishBoidTuning(this: any, index: number, profile: Locom
       return
     }
     const dynamics = this.resolveGaitDynamics(gaitState, profile)
-    const preferredDepthY = behavior
+    const isCrawler = profile.movementMode === 'crawl'
+    const substrateY = resolveCrawlerSubstrateY(bounds, boundsSize)
+    const preferredDepthY = isCrawler
+      ? substrateY
+      : behavior
       ? THREE.MathUtils.lerp(
         this.resolvePreferredDepthY(index, bounds, boundsSize),
         bounds.max.y - (behavior.preferredDepth * boundsSize.y),
@@ -239,12 +260,12 @@ export function updatePerFishBoidTuning(this: any, index: number, profile: Locom
       )
       : this.resolvePreferredDepthY(index, bounds, boundsSize)
     this.boids.setBoidTuning(index, {
-      activeSpeedMultiplier: dynamics.speedMultiplier,
+      activeSpeedMultiplier: dynamics.speedMultiplier * (isCrawler ? 0.42 : 1),
       preferredLateralX: this.resolvePreferredLaneX(index, bounds, boundsSize),
       preferredDepthY,
       lanePull: profile.lanePull * dynamics.lanePullMultiplier,
-      depthPull: profile.depthPull * dynamics.depthPullMultiplier,
-      drag: dynamics.drag
+      depthPull: profile.depthPull * dynamics.depthPullMultiplier * (isCrawler ? 1.6 : 1),
+      drag: isCrawler ? Math.max(dynamics.drag, 1.1) : dynamics.drag
     })
   }
 
@@ -262,6 +283,8 @@ export function applyVariantLocomotionTuning(this: any): void {
       if (!variant) return
 
       const profile = this.getLocomotionProfile(variant)
+      const isCrawler = profile.movementMode === 'crawl'
+      const substrateY = resolveCrawlerSubstrateY(bounds, boundsSize)
       const renderPath = this.getVisualModel(variant.schoolModelId)?.sourceMesh ? 'school' : 'procedural'
       this.boids.setBoidTuning(index, {
         cruiseSpeed: profile.cruiseSpeed,
@@ -271,10 +294,11 @@ export function applyVariantLocomotionTuning(this: any): void {
         boundaryArcRadius: profile.boundaryArcRadius,
         fishSafeExtents: this.resolveFishSafeExtents(variant, renderPath),
         preferredLateralX: this.resolvePreferredLaneX(index, bounds, boundsSize),
-        preferredDepthY: this.resolvePreferredDepthY(index, bounds, boundsSize),
+        preferredDepthY: isCrawler ? substrateY : this.resolvePreferredDepthY(index, bounds, boundsSize),
         lanePull: profile.lanePull,
-        depthPull: profile.depthPull,
-        drag: 0.06,
+        depthPull: profile.depthPull * (isCrawler ? 1.6 : 1),
+        activeSpeedMultiplier: isCrawler ? 0.42 : 1,
+        drag: isCrawler ? 1.1 : 0.06,
         steeringWeights: profile.steeringWeights
       })
     })
@@ -403,33 +427,48 @@ export function applyInstancedTailMotionAttributes(this: any, geometry: THREE.Bu
     const phaseOffsets = new Float32Array(instanceCount)
     const tailAmplitudes = new Float32Array(instanceCount)
     const tailFrequencies = new Float32Array(instanceCount)
+    const walkAmplitudes = new Float32Array(instanceCount)
+    const walkFrequencies = new Float32Array(instanceCount)
 
     for (let i = 0; i < instanceCount; i++) {
       const boidIndex = boidStartIndex + i
       const phase = this.swimPhases?.[boidIndex] ?? 0
       const cadence = this.speedMultipliers?.[boidIndex] ?? 1
       const offset = this.randomOffsets?.[boidIndex] ?? 0
+      const isCrawler = profile.movementMode === 'crawl'
       phaseOffsets[i] = phase
-      tailAmplitudes[i] = (
-        0.03 +
-        (profile.bodyWiggleAmount * 0.05) +
-        (Math.max(0, 1 - profile.yawResponsiveness) * 0.008)
-      ) * (0.78 + (Math.sin(offset * 1.7) * 0.22))
+      tailAmplitudes[i] = isCrawler
+        ? (0.002 + profile.bodyWiggleAmount * 0.012) * (0.82 + (Math.sin(offset * 1.7) * 0.18))
+        : (
+          0.03 +
+          (profile.bodyWiggleAmount * 0.05) +
+          (Math.max(0, 1 - profile.yawResponsiveness) * 0.008)
+        ) * (0.78 + (Math.sin(offset * 1.7) * 0.22))
       tailFrequencies[i] = Math.max(
         0.45,
         profile.tailBeatFreq * cadence * (0.84 + Math.cos(offset * 1.3) * 0.16)
       )
+      walkAmplitudes[i] = isCrawler
+        ? (0.038 + profile.curiosityRate * 0.01) * (0.86 + Math.sin(offset * 1.1) * 0.14)
+        : 0
+      walkFrequencies[i] = isCrawler
+        ? Math.max(1.05, (1.34 + profile.cruiseSpeed * 0.55) * cadence * (0.9 + Math.cos(offset * 1.4) * 0.1))
+        : 0
     }
 
     geometry.setAttribute('instancePhaseOffset', new THREE.InstancedBufferAttribute(phaseOffsets, 1))
     geometry.setAttribute('instanceTailAmplitude', new THREE.InstancedBufferAttribute(tailAmplitudes, 1))
     geometry.setAttribute('instanceTailFrequency', new THREE.InstancedBufferAttribute(tailFrequencies, 1))
+    geometry.setAttribute('instanceWalkAmplitude', new THREE.InstancedBufferAttribute(walkAmplitudes, 1))
+    geometry.setAttribute('instanceWalkFrequency', new THREE.InstancedBufferAttribute(walkFrequencies, 1))
   }
 
 export function patchInstancedFishMaterial(this: any, material: THREE.MeshPhysicalMaterial, geometry: THREE.BufferGeometry, variant: FishVariant, renderPath: Exclude<FishRenderPath, 'hero'>): void {
     if (!this.instancedTailMotionUniforms) {
       this.instancedTailMotionUniforms = []
     }
+    const profile = this.getLocomotionProfile(variant)
+    const isCrawler = profile.movementMode === 'crawl'
     const forwardAxis = this.getModelForwardAxis(variant, renderPath).clone()
     const positionAttribute = geometry.getAttribute('position')
     let minProjection = 0
@@ -469,13 +508,37 @@ export function patchInstancedFishMaterial(this: any, material: THREE.MeshPhysic
 attribute float instancePhaseOffset;
 attribute float instanceTailAmplitude;
 attribute float instanceTailFrequency;
+attribute float instanceWalkAmplitude;
+attribute float instanceWalkFrequency;
 uniform float uFishMotionTime;
 uniform vec3 uFishForwardAxis;
 uniform vec2 uFishForwardRange;`
         )
         .replace(
           '#include <begin_vertex>',
-          `vec3 transformed = vec3(position);
+          isCrawler
+            ? `vec3 transformed = vec3(position);
+vec3 fishForwardAxis = normalize(uFishForwardAxis);
+vec3 fishSideAxis = normalize(cross(vec3(0.0, 1.0, 0.0), fishForwardAxis));
+if (length(fishSideAxis) < 0.0001) {
+  fishSideAxis = vec3(0.0, 0.0, 1.0);
+}
+vec3 fishUpAxis = normalize(cross(fishForwardAxis, fishSideAxis));
+float forwardProjection = dot(transformed, fishForwardAxis);
+float normalizedForward = clamp((forwardProjection - uFishForwardRange.x) / max(0.0001, uFishForwardRange.y - uFishForwardRange.x), 0.0, 1.0);
+float upProjection = dot(transformed, fishUpAxis);
+float sideProjection = dot(transformed, fishSideAxis);
+float undersideMask = 1.0 - smoothstep(-0.05, 0.12, upProjection);
+float midBodyMask = smoothstep(0.12, 0.32, normalizedForward) * (1.0 - smoothstep(0.86, 0.98, normalizedForward));
+float sideMask = smoothstep(0.012, 0.08, abs(sideProjection));
+float sidePhase = sideProjection < 0.0 ? 3.14159265 : 0.0;
+float crawlFootWave = sin((uFishMotionTime * instanceWalkFrequency) + instancePhaseOffset + sidePhase + normalizedForward * 18.0) * instanceWalkAmplitude;
+float crawlStepLift = abs(crawlFootWave) * undersideMask * midBodyMask * sideMask;
+float bodySettle = sin((uFishMotionTime * instanceWalkFrequency * 0.5) + instancePhaseOffset) * instanceWalkAmplitude * 0.18;
+transformed += fishSideAxis * crawlFootWave * undersideMask * midBodyMask * sideMask;
+transformed += fishForwardAxis * crawlStepLift * 0.18;
+transformed += fishUpAxis * (crawlStepLift * 0.34 + bodySettle * midBodyMask);`
+            : `vec3 transformed = vec3(position);
 vec3 fishForwardAxis = normalize(uFishForwardAxis);
 vec3 fishSideAxis = normalize(cross(vec3(0.0, 1.0, 0.0), fishForwardAxis));
 if (length(fishSideAxis) < 0.0001) {
@@ -495,6 +558,6 @@ transformed.y += sin((uFishMotionTime * instanceTailFrequency * 0.45) + instance
         )
     }
 
-    material.customProgramCacheKey = () => `${renderPath}-instanced-tail-motion`
+    material.customProgramCacheKey = () => `${renderPath}-${isCrawler ? 'instanced-crawler-walk-motion' : 'instanced-tail-motion'}`
     material.needsUpdate = true
   }

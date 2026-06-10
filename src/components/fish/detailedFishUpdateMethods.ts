@@ -9,6 +9,7 @@ import { resolveRuntimeLayoutSeed, resolveSubstrateHardscapeAnchors, resolveSubs
 import { createFishSafeBounds, resolveFishAxisExtents } from '../../utils/layout/sceneBounds'
 import { DEFAULT_BEHAVIOR_PROFILE } from './detailedFishBehaviorProfile'
 import { DEFAULT_ORIENTATION_CORRECTION, FISH_SAFE_PADDING_BY_PATH, LOCOMOTION_PROFILES, createFishVariants as createFishVariantDefinitions, resolveDefaultFishCount as resolveDefaultFishCountRule, resolveHeroAccentDepthMultiplier as resolveHeroAccentDepthMultiplierRule, resolveHeroAccentScaleMultiplier as resolveHeroAccentScaleMultiplierRule, resolveHeroPlacements as resolveHeroPlacementRules, resolveHeroPriorityMultiplier as resolveHeroPriorityMultiplierRule, resolveLocomotionProfile, resolvePreferredDepthBand, resolvePreferredLateralLane } from './fishPresentation'
+import { clampCrawlerSubstrateY, resolveCrawlerSubstrateY } from './detailedFishSubstrate'
 
 export function update(this: any, deltaTime: number, elapsedTime: number): void {
     this.updateWanderTargets(elapsedTime)
@@ -59,6 +60,7 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
       if (!variant) return
 
       const locomotion = this.getLocomotionProfile(variant)
+      const isCrawler = locomotion.movementMode === 'crawl'
       const gaitState = this.gaitStates[index] ?? 'cruise'
       const dynamics = this.resolveGaitDynamics(gaitState, locomotion)
       this.updatePerFishBoidTuning(index, locomotion, gaitState, bounds, boundsSize, behavior)
@@ -67,13 +69,18 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
         : behavior.schoolMood === 'feeding'
           ? 0.94
           : 0.88
-      const wanderStrength = (0.18 + locomotion.curiosityRate * 0.16) * moodCruiseStrength * dynamics.wanderScale
-      const jitterScale = locomotion.turnNoise * (0.035 + behavior.turnBias * 0.04) * dynamics.jitterScale
+      const crawlerMotionScale = isCrawler ? 0.34 : 1
+      const wanderStrength = (0.18 + locomotion.curiosityRate * 0.16) * moodCruiseStrength * dynamics.wanderScale * crawlerMotionScale
+      const jitterScale = locomotion.turnNoise * (0.035 + behavior.turnBias * 0.04) * dynamics.jitterScale * crawlerMotionScale
       const curiosityRate = locomotion.curiosityRate * (0.014 + behavior.turnBias * 0.028) * dynamics.curiosityScale
       const suddenTurnRate = locomotion.suddenTurnRate * (0.7 + behavior.turnBias * 0.4) * dynamics.suddenTurnScale
-      const turnNoiseScale = locomotion.turnNoise * (0.05 + behavior.turnBias * 0.06) * dynamics.turnNoiseScale
-      const depthRange = boundsSize.y * (0.08 + behavior.depthVariance * 0.18 + locomotion.depthBobAmount * 0.04) * dynamics.depthBobScale
-      const depthForceScale = (0.45 + behavior.depthVariance * 0.9 + locomotion.depthBobAmount * 0.5) * dynamics.depthPullMultiplier
+      const turnNoiseScale = locomotion.turnNoise * (0.05 + behavior.turnBias * 0.06) * dynamics.turnNoiseScale * crawlerMotionScale
+      const depthRange = isCrawler
+        ? boundsSize.y * 0.004
+        : boundsSize.y * (0.08 + behavior.depthVariance * 0.18 + locomotion.depthBobAmount * 0.04) * dynamics.depthBobScale
+      const depthForceScale = (isCrawler
+        ? 1.8
+        : 0.45 + behavior.depthVariance * 0.9 + locomotion.depthBobAmount * 0.5) * dynamics.depthPullMultiplier
 
       this.tempWanderForce.copy(this.wanderTargets[index]).sub(boid.position)
       if (this.tempWanderForce.lengthSq() > 0) {
@@ -83,17 +90,20 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
 
       this.tempJitter.set(
         (Math.random() - 0.5) * jitterScale,
-        (Math.random() - 0.5) * jitterScale * 0.28,
+        isCrawler ? 0 : (Math.random() - 0.5) * jitterScale * 0.28,
         (Math.random() - 0.5) * jitterScale * 0.18
       )
 
       this.tempNoiseForce.set(
         Math.sin(elapsedTime * (0.18 + locomotion.tailBeatFreq * 0.16) + this.randomOffsets[index]) * turnNoiseScale,
-        Math.sin(elapsedTime * (0.14 + locomotion.depthBobAmount * 0.5) + this.randomOffsets[index] * 1.6) * turnNoiseScale * 0.28,
-        Math.sin(elapsedTime * (0.12 + locomotion.boundaryArcRadius * 0.26) + this.randomOffsets[index] * 2.4) * turnNoiseScale * 0.22
+        isCrawler ? 0 : Math.sin(elapsedTime * (0.14 + locomotion.depthBobAmount * 0.5) + this.randomOffsets[index] * 1.6) * turnNoiseScale * 0.28,
+        Math.sin(elapsedTime * (0.12 + locomotion.boundaryArcRadius * 0.26) + this.randomOffsets[index] * 2.4) * turnNoiseScale * (isCrawler ? 0.08 : 0.22)
       )
 
-      const desiredDepthCenter = THREE.MathUtils.lerp(
+      const substrateY = resolveCrawlerSubstrateY(bounds, boundsSize)
+      const desiredDepthCenter = isCrawler
+        ? substrateY
+        : THREE.MathUtils.lerp(
         this.resolvePreferredDepthY(index, bounds, boundsSize),
         bounds.max.y - (behavior.preferredDepth * boundsSize.y),
         0.58
@@ -114,7 +124,7 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
       if (this.shouldTrigger(curiosityRate, safeDeltaTime)) {
         this.tempCuriosityForce.set(
           (Math.random() - 0.5) * (0.24 + locomotion.curiosityRate * 0.22),
-          (Math.random() - 0.5) * (0.1 + locomotion.depthBobAmount * 0.16),
+          isCrawler ? 0 : (Math.random() - 0.5) * (0.1 + locomotion.depthBobAmount * 0.16),
           (Math.random() - 0.5) * (0.1 + locomotion.turnNoise * 0.18)
         )
         boid.acceleration.add(this.tempCuriosityForce)
@@ -123,7 +133,7 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
       if (this.shouldTrigger(suddenTurnRate, safeDeltaTime)) {
         this.tempSuddenTurn.set(
           (Math.random() - 0.5) * (0.16 + locomotion.yawResponsiveness * 0.18),
-          (Math.random() - 0.5) * (0.08 + locomotion.depthBobAmount * 0.12),
+          isCrawler ? 0 : (Math.random() - 0.5) * (0.08 + locomotion.depthBobAmount * 0.12),
           (Math.random() - 0.5) * (0.08 + locomotion.turnNoise * 0.14)
         )
         boid.acceleration.add(this.tempSuddenTurn)
@@ -141,6 +151,11 @@ export function applyBehaviorForces(this: any, bounds: THREE.Box3, boundsSize: T
 export function syncInstancedMeshes(this: any, bounds: THREE.Box3, behavior: BehaviorProfile, elapsedTime: number, safeDeltaTime: number): void {
     const horizontalDirection = this.tempHorizontalDirection ?? new THREE.Vector3()
     const horizontalPreviousDirection = this.tempHorizontalPreviousDirection ?? new THREE.Vector3()
+    const renderDirection = this.tempRenderDirection ?? new THREE.Vector3()
+    this.tempRenderDirection = renderDirection
+    const boundsSize = this.tempBoundsSize ?? new THREE.Vector3()
+    bounds.getSize(boundsSize)
+    this.tempBoundsSize = boundsSize
     let boidIndex = 0
 
     this.instancedMeshes.forEach((mesh, meshIndex) => {
@@ -152,6 +167,7 @@ export function syncInstancedMeshes(this: any, bounds: THREE.Box3, behavior: Beh
 
       const renderPath = mesh.userData.renderPath === 'school' ? 'school' : 'procedural'
       const locomotion = this.getLocomotionProfile(variant)
+      const isCrawler = locomotion.movementMode === 'crawl'
       const instanceCount = mesh.count
 
       for (let i = 0; i < instanceCount && boidIndex < this.boids.boids.length; i++, boidIndex++) {
@@ -171,12 +187,26 @@ export function syncInstancedMeshes(this: any, bounds: THREE.Box3, behavior: Beh
 
         this.dummy.position.copy(boid.position)
         this.tempDirection.copy(boid.velocity)
+        if (isCrawler) {
+          this.tempDirection.y = 0
+          this.dummy.position.y = clampCrawlerSubstrateY(
+            resolveCrawlerSubstrateY(bounds, boundsSize),
+            bounds,
+            boundsSize
+          )
+        }
 
         let climbAngle = 0
         let bank = 0
         if (this.tempDirection.lengthSq() > 0) {
           this.tempDirection.normalize()
-          const targetQuaternion = this.resolveRenderQuaternion(variant, renderPath, this.tempDirection)
+          renderDirection.copy(this.tempDirection).setY(0)
+          if (renderDirection.lengthSq() > 0) {
+            renderDirection.normalize()
+          } else {
+            renderDirection.copy(this.tempDirection)
+          }
+          const targetQuaternion = this.resolveRenderQuaternion(variant, renderPath, renderDirection)
 
           if (!this.headingInitialized[boidIndex]) {
             smoothedQuaternion.copy(targetQuaternion)
@@ -209,24 +239,30 @@ export function syncInstancedMeshes(this: any, bounds: THREE.Box3, behavior: Beh
             -locomotion.bankAmount,
             locomotion.bankAmount
           )
-          this.dummy.rotation.x += climbAngle * (0.18 + locomotion.yawResponsiveness * 0.06)
-          this.dummy.rotation.z += bank
+          if (!isCrawler) {
+            this.dummy.rotation.x += climbAngle * (0.18 + locomotion.yawResponsiveness * 0.06)
+            this.dummy.rotation.z += bank
+          }
           previousVelocity.copy(boid.velocity)
         }
 
         const swimFreq = locomotion.tailBeatFreq * speedMult * dynamics.tailBeatMultiplier * (0.92 + Math.sin(randomOffset) * 0.18)
-        const bodySway = Math.sin(elapsedTime * swimFreq + swimPhase) * locomotion.bodyWiggleAmount * 0.045 * dynamics.bodyMotionScale
-        const microPitch = Math.sin(elapsedTime * (swimFreq * 0.52) + swimPhase * 0.7) * locomotion.bodyWiggleAmount * 0.014 * dynamics.bodyMotionScale
-        const tailWave = Math.sin(elapsedTime * (swimFreq * 1.35) + swimPhase * 1.35) * locomotion.bodyWiggleAmount * 0.28 * dynamics.tailBeatMultiplier
+        const bodySway = Math.sin(elapsedTime * swimFreq + swimPhase) * locomotion.bodyWiggleAmount * (isCrawler ? 0.004 : 0.045) * dynamics.bodyMotionScale
+        const microPitch = Math.sin(elapsedTime * (swimFreq * 0.52) + swimPhase * 0.7) * locomotion.bodyWiggleAmount * (isCrawler ? 0.001 : 0.014) * dynamics.bodyMotionScale
+        const tailWave = Math.sin(elapsedTime * (swimFreq * 1.35) + swimPhase * 1.35) * locomotion.bodyWiggleAmount * (isCrawler ? 0.01 : 0.28) * dynamics.tailBeatMultiplier
         this.dummy.rotation.x += microPitch * 0.35
 
-        const floatWave = Math.sin(elapsedTime * (0.52 + locomotion.depthBobAmount * 0.38) + randomOffset) *
+        const floatWave = isCrawler
+          ? 0
+          : Math.sin(elapsedTime * (0.52 + locomotion.depthBobAmount * 0.38) + randomOffset) *
           (0.004 + behavior.depthVariance * 0.008 + locomotion.depthBobAmount * 0.006) *
           speedMult *
           dynamics.floatScale
         this.dummy.position.y += floatWave
 
-        const sideDrift = Math.sin(elapsedTime * (0.36 + locomotion.turnNoise * 0.24) + randomOffset * 2) *
+        const sideDrift = isCrawler
+          ? 0
+          : Math.sin(elapsedTime * (0.36 + locomotion.turnNoise * 0.24) + randomOffset * 2) *
           locomotion.bodyWiggleAmount *
           0.0025
         this.dummy.position.x += sideDrift
@@ -249,14 +285,21 @@ export function syncInstancedMeshes(this: any, bounds: THREE.Box3, behavior: Beh
             this.tempDirection.lengthSq() > 0 ? this.tempDirection : previousVelocity
           )
           if (this.tempDirection.lengthSq() > 0) {
-            const heroQuaternion = this.resolveRenderQuaternion(variant, 'hero', this.tempDirection)
+            const heroQuaternion = this.resolveRenderQuaternion(variant, 'hero', renderDirection)
             heroAssignment.object.quaternion.copy(heroQuaternion)
-            heroAssignment.object.rotation.x += climbAngle * (0.18 + locomotion.yawResponsiveness * 0.06)
-            heroAssignment.object.rotation.z += bank
+            if (!isCrawler) {
+              heroAssignment.object.rotation.x += climbAngle * (0.18 + locomotion.yawResponsiveness * 0.06)
+              heroAssignment.object.rotation.z += bank
+            }
           } else {
             heroAssignment.object.quaternion.copy(this.dummy.quaternion)
           }
-          this.applyHeroLocalMotion(heroAssignment.object, bodySway, microPitch, tailWave)
+          this.applyHeroLocalMotion(
+            heroAssignment.object,
+            isCrawler ? bodySway * 0.25 : bodySway,
+            isCrawler ? microPitch * 0.2 : microPitch,
+            isCrawler ? 0 : tailWave
+          )
           heroAssignment.object.scale.setScalar(scale * heroAssignment.scaleMultiplier)
           heroAssignment.object.updateMatrixWorld()
           this.dummy.scale.setScalar(0.0001)
