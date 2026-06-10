@@ -18,7 +18,6 @@ export const africanLampeye = createFishContent({
   gameplay: {
     unlockCost: 58,
     purchaseCostPerFish: 4,
-    baseIncomePerMinute: 0.5,
     preferredLane: 'top',
   }
 })

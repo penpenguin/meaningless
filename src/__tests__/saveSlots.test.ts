@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createState } from './fixtures/aquariumState'
-import { createSaveSlot, deleteSaveSlot, getSaveSlot, getSaveSlots, updateSaveSlot } from '../utils/storage'
+import { createSaveSlot, deleteSaveSlot, getSaveSlot, getSaveSlots, updateSaveSlot } from '../utils/storage/storage'
 
 beforeEach(() => {
   localStorage.clear()

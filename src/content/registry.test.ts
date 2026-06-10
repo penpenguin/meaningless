@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createContentRegistry,
-  getDecorContent,
   getFishContent,
-  getStarterDecorContentIds,
   getStarterFishContentIds
 } from './registry'
 import type { FishContentDefinition } from './types'
@@ -23,6 +21,7 @@ describe('content registry', () => {
         archetype: 'Tropical'
       }
     })
+    expect(clownfish?.gameplay).not.toHaveProperty('baseIncomePerMinute')
   })
 
   it('registers abeni puffer as a dedicated pufferfish archetype', () => {
@@ -92,33 +91,6 @@ describe('content registry', () => {
 
   it('derives starter content ids from registered entries', () => {
     expect(getStarterFishContentIds()).toEqual(['neon-tetra'])
-    expect(getStarterDecorContentIds()).toEqual(['plant'])
-  })
-
-  it('keeps decor definitions aligned with the shipped freshwater asset families', () => {
-    expect(getDecorContent('plant')).toMatchObject({
-      displayName: 'Plant Cluster',
-      visual: {
-        assetFamily: 'plant',
-        shortLabel: 'PL'
-      }
-    })
-
-    expect(getDecorContent('coral')).toMatchObject({
-      displayName: 'Driftwood Branch',
-      visual: {
-        assetFamily: 'driftwood',
-        shortLabel: 'DW'
-      }
-    })
-
-    expect(getDecorContent('cave')).toMatchObject({
-      displayName: 'River Rock',
-      visual: {
-        assetFamily: 'rock',
-        shortLabel: 'RK'
-      }
-    })
   })
 
   it('rejects duplicate fish ids while building a registry', () => {
@@ -140,7 +112,6 @@ describe('content registry', () => {
         gameplay: {
           unlockCost: 0,
           purchaseCostPerFish: 1,
-          baseIncomePerMinute: 0.2,
           preferredLane: 'middle',
         }
       },
@@ -162,12 +133,11 @@ describe('content registry', () => {
         gameplay: {
           unlockCost: 1,
           purchaseCostPerFish: 1,
-          baseIncomePerMinute: 0.3,
           preferredLane: 'top',
         }
       }
     ]
 
-    expect(() => createContentRegistry({ fish: duplicateFish, decor: [] })).toThrow('Duplicate fish content id: test-fish')
+    expect(() => createContentRegistry({ fish: duplicateFish })).toThrow('Duplicate fish content id: test-fish')
   })
 })

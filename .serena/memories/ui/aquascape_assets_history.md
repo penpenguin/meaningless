@@ -1,0 +1,9 @@
+Aquascape and asset history compressed from dated UI memories:
+
+- Visual assets: `src/assets/visualAssets.ts` resolves URLs through `import.meta.env.BASE_URL`, preloads textures/GLBs/environment assets, validates school fish models, and returns nullable assets with procedural fallbacks. Aquarium assets live under `public/assets/aquarium/`.
+- Plants evolved from procedural cylinders to ribbon/sword/fan leaves, then to species-driven planted zones with seeded Poisson-like sampling. Material policy favors opaque alpha-cutout foliage with darker olive/deep-green tints; only select hero/epiphyte materials keep weak translucency.
+- Amazon sword is a concrete `PlantType` and asset (`plant-amazon-sword`) used as the left-rear nature-showcase core, with strap/sword procedural fallback and surrounding stem/hygrophila/matsumo satellites to avoid a single-species curtain.
+- Hardscape: driftwood and rock use asset-backed GLBs/textures when present, preserving authored maps and supplementing missing bark/rock maps plus AO/uv2. Procedural fallback driftwood uses deformed branches, branchlets, roots, broken stubs, burial shadows, and detritus mounds.
+- Hero driftwood moved from a single core to a multipiece composition with secondary branches, bark AO/cavity mask shader tuning, local fill/rim lights, and lighter bark floors so it remains readable. Shadow/burial opacities were reduced to avoid black silhouettes.
+- Substrate uses authored sand PBR maps where available, preserves depth/caustic layers, has hardscape/plant-contact berms, and keeps the front-right sand path open in nature-showcase.
+- Tests historically cover manifest entries, material preservation/fallbacks, plant sampling/species diversity, hardscape anchors, substrate anchors, and hero composition readability.

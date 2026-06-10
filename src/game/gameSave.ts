@@ -1,17 +1,16 @@
-import { migrateProfileState } from '../utils/profileSchema'
-import { migrateSettingsState } from '../utils/settingsSchema'
-import { migrateTankState } from '../utils/tankSchema'
+import { migrateProfileState } from '../utils/storage/profileSchema'
+import { migrateSettingsState } from '../utils/storage/settingsSchema'
+import { migrateTankState } from '../utils/storage/tankSchema'
 import {
   DEFAULT_TANK_NAME,
   GRID_COLUMNS,
   GRID_ROWS,
-  STARTER_DECOR_ID,
   STARTER_FISH_ID
 } from './catalog'
-import { refreshTankProgression, simulateGameSave } from './simulation'
-import type { GameAppState, GameSave, Lane, PhotoModeFollowMode } from './types'
+import { simulateGameSave } from './simulation'
+import type { GameAppState, GameSave, GameTank, Lane, PhotoModeFollowMode } from './types'
 
-export const CURRENT_GAME_SCHEMA_VERSION = 3
+export const CURRENT_GAME_SCHEMA_VERSION = 5
 
 const createDefaultProfile = () => ({
   stats: {
@@ -35,7 +34,7 @@ const getLaneFromPreferredDepth = (preferredDepth: unknown): Lane => {
   return 'middle'
 }
 
-const createDefaultTank = () => refreshTankProgression({
+const createDefaultTank = (): GameTank => ({
   id: 'tank-front-1',
   name: DEFAULT_TANK_NAME,
   layout: {
@@ -51,13 +50,7 @@ const createDefaultTank = () => refreshTankProgression({
       lane: 'middle'
     }
   ],
-  rareFish: [],
-  decor: [],
-  progression: {
-    comfort: 0,
-    incomePerMinute: 0,
-    lastCollectedAt: null
-  }
+  rareFish: []
 })
 
 export const createDefaultGameSave = (nowIso = new Date().toISOString()): GameSave => {
@@ -129,11 +122,10 @@ export const migrateLegacySave = (options: {
         totalViewedSeconds: migratedProfile?.stats?.totalViewSeconds ?? fallbackState.profile.stats.totalViewedSeconds
       }
     },
-    tanks: [refreshTankProgression({
+    tanks: [{
       ...tank,
-      fishSchools,
-      decor: tank.decor
-    })],
+      fishSchools
+    }],
     activeTankId: tank.id
   }
 }
@@ -149,9 +141,9 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
   const profileSource = isRecord(value.profile) ? value.profile : {}
   const preferencesSource = isRecord(profileSource.preferences) ? profileSource.preferences : {}
 
-  const tanks = value.tanks
+  const tanks: GameTank[] = value.tanks
     .filter(isRecord)
-    .map((tank, index) => {
+    .map((tank, index): GameTank => {
       const base = fallback.tanks[0]
       const fishSchools = Array.isArray(tank.fishSchools)
         ? tank.fishSchools.filter(isRecord).map((school, schoolIndex) => ({
@@ -163,17 +155,7 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
               : 'middle'
           }))
         : base.fishSchools
-      const decor = Array.isArray(tank.decor)
-        ? tank.decor.filter(isRecord).map((placement, placementIndex) => ({
-            id: typeof placement.id === 'string' ? placement.id : `decor-${index}-${placementIndex}`,
-            decorId: typeof placement.decorId === 'string' ? placement.decorId : STARTER_DECOR_ID,
-            x: typeof placement.x === 'number' ? Math.max(0, Math.floor(placement.x)) : 0,
-            y: typeof placement.y === 'number' ? Math.max(0, Math.floor(placement.y)) : 0
-          }))
-        : []
-      const progression = isRecord(tank.progression) ? tank.progression : {}
-
-      return refreshTankProgression({
+      return {
         id: typeof tank.id === 'string' ? tank.id : `tank-${index}`,
         name: typeof tank.name === 'string' ? tank.name : base.name,
         layout: {
@@ -186,14 +168,8 @@ export const migrateGameSave = (value: unknown, nowIso = new Date().toISOString(
             : GRID_ROWS
         },
         fishSchools,
-        rareFish: [],
-        decor,
-      progression: {
-          comfort: typeof progression.comfort === 'number' ? Math.max(0, Math.floor(progression.comfort)) : 0,
-          incomePerMinute: typeof progression.incomePerMinute === 'number' ? Math.max(1, Math.floor(progression.incomePerMinute)) : 1,
-          lastCollectedAt: typeof progression.lastCollectedAt === 'string' ? progression.lastCollectedAt : null
-        }
-      })
+        rareFish: []
+      }
     })
 
   const activeTankId = typeof value.activeTankId === 'string' && tanks.some((tank) => tank.id === value.activeTankId)

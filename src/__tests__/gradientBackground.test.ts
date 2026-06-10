@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
-import { applyGradientBackground, applyThemeToScene } from '../components/AdvancedScene'
+import { applyGradientBackground, applyThemeToScene } from '../components/scene/AdvancedScene'
 import type { Theme } from '../types/aquarium'
 
 const theme: Theme = {

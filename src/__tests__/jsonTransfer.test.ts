@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createState } from './fixtures/aquariumState'
-import { exportState, importState } from '../utils/serialization'
+import { exportState, importState } from '../utils/storage/serialization'
 
 
 describe('json export/import', () => {

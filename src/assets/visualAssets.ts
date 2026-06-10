@@ -4,11 +4,10 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import {
   environmentAssetPath,
   fishModelAssetPath,
-  fishTextureAssetPath,
   modelAssetPath,
   textureAssetPath
 } from './assetPathConventions.js'
-import type { AssetLoadTimingStats, PerformanceLike } from '../utils/performanceStats'
+import type { AssetLoadTimingStats, PerformanceLike } from '../utils/performance/performanceStats'
 
 export type AssetUsageTag =
   | 'plant'
@@ -230,42 +229,6 @@ export const createAquariumAssetManifest = (
   baseUrl: string = import.meta.env.BASE_URL ?? '/'
 ): AssetManifest => ({
   textures: [
-    { id: 'leaf-diffuse', url: resolvePublicAssetUrl(textureAssetPath('plants', 'leaf-diffuse.png'), baseUrl), usageTag: 'plant', lod: 'high' },
-    { id: 'leaf-alpha', url: resolvePublicAssetUrl(textureAssetPath('plants', 'leaf-alpha.png'), baseUrl), usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
-    { id: 'leaf-normal', url: resolvePublicAssetUrl(textureAssetPath('plants', 'leaf-normal.png'), baseUrl), usageTag: 'plant', lod: 'high', colorSpace: 'linear' },
-    { id: 'leaf-roughness', url: resolvePublicAssetUrl(textureAssetPath('plants', 'leaf-roughness.png'), baseUrl), usageTag: 'plant', lod: 'medium', colorSpace: 'linear' },
-    { id: 'rock-diffuse', url: resolvePublicAssetUrl(textureAssetPath('rocks', 'rock-diffuse.png'), baseUrl), usageTag: 'rock', lod: 'high' },
-    { id: 'rock-normal', url: resolvePublicAssetUrl(textureAssetPath('rocks', 'rock-normal.png'), baseUrl), usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
-    { id: 'rock-roughness', url: resolvePublicAssetUrl(textureAssetPath('rocks', 'rock-roughness.png'), baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
-    { id: 'driftwood-diffuse', url: resolvePublicAssetUrl(textureAssetPath('driftwood', 'driftwood-diffuse.png'), baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'driftwood-normal', url: resolvePublicAssetUrl(textureAssetPath('driftwood', 'driftwood-normal.png'), baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
-    { id: 'driftwood-roughness', url: resolvePublicAssetUrl(textureAssetPath('driftwood', 'driftwood-roughness.png'), baseUrl), usageTag: 'wood', lod: 'medium', colorSpace: 'linear' },
-    { id: 'driftwood-ao', url: resolvePublicAssetUrl(textureAssetPath('driftwood', 'driftwood-ao.png'), baseUrl), usageTag: 'wood', lod: 'medium', colorSpace: 'linear' },
-    { id: 'driftwood-bark-ao', url: resolvePublicAssetUrl(textureAssetPath('driftwood', 'driftwood-bark-ao.png'), baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
-    { id: 'driftwood-bark-cavity-mask', url: resolvePublicAssetUrl(textureAssetPath('driftwood', 'driftwood-bark-cavity-mask.png'), baseUrl), usageTag: 'wood', lod: 'high', colorSpace: 'linear' },
-    { id: 'backdrop-depth', url: resolvePublicAssetUrl(textureAssetPath('backdrop', 'backdrop-depth.png'), baseUrl), usageTag: 'backdrop', lod: 'high' },
-    { id: 'fish-tropical-basecolor', url: resolvePublicAssetUrl(fishTextureAssetPath('tropical', 'basecolor'), baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-tropical-normal', url: resolvePublicAssetUrl(fishTextureAssetPath('tropical', 'normal'), baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-tropical-roughness', url: resolvePublicAssetUrl(fishTextureAssetPath('tropical', 'roughness'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-tropical-alpha', url: resolvePublicAssetUrl(fishTextureAssetPath('tropical', 'alpha'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-angelfish-basecolor', url: resolvePublicAssetUrl(fishTextureAssetPath('angelfish', 'basecolor'), baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-angelfish-normal', url: resolvePublicAssetUrl(fishTextureAssetPath('angelfish', 'normal'), baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-angelfish-roughness', url: resolvePublicAssetUrl(fishTextureAssetPath('angelfish', 'roughness'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-angelfish-alpha', url: resolvePublicAssetUrl(fishTextureAssetPath('angelfish', 'alpha'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-butterflyfish-basecolor', url: resolvePublicAssetUrl(fishTextureAssetPath('butterflyfish', 'basecolor'), baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-butterflyfish-normal', url: resolvePublicAssetUrl(fishTextureAssetPath('butterflyfish', 'normal'), baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-butterflyfish-roughness', url: resolvePublicAssetUrl(fishTextureAssetPath('butterflyfish', 'roughness'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-butterflyfish-alpha', url: resolvePublicAssetUrl(fishTextureAssetPath('butterflyfish', 'alpha'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-neon-basecolor', url: resolvePublicAssetUrl(fishTextureAssetPath('neon', 'basecolor'), baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-neon-normal', url: resolvePublicAssetUrl(fishTextureAssetPath('neon', 'normal'), baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-neon-roughness', url: resolvePublicAssetUrl(fishTextureAssetPath('neon', 'roughness'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-neon-alpha', url: resolvePublicAssetUrl(fishTextureAssetPath('neon', 'alpha'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-goldfish-basecolor', url: resolvePublicAssetUrl(fishTextureAssetPath('goldfish', 'basecolor'), baseUrl), usageTag: 'fish', lod: 'high' },
-    { id: 'fish-goldfish-normal', url: resolvePublicAssetUrl(fishTextureAssetPath('goldfish', 'normal'), baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-goldfish-roughness', url: resolvePublicAssetUrl(fishTextureAssetPath('goldfish', 'roughness'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-goldfish-alpha', url: resolvePublicAssetUrl(fishTextureAssetPath('goldfish', 'alpha'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
-    { id: 'fish-scale-normal', url: resolvePublicAssetUrl(textureAssetPath('fish', 'fish-scale-normal.svg'), baseUrl), usageTag: 'fish', lod: 'high', colorSpace: 'linear' },
-    { id: 'fish-scale-roughness', url: resolvePublicAssetUrl(textureAssetPath('fish', 'fish-scale-roughness.svg'), baseUrl), usageTag: 'fish', lod: 'medium', colorSpace: 'linear' },
     { id: 'substrate-sand-albedo', url: resolvePublicAssetUrl(textureAssetPath('substrate', 'substrate-sand-albedo.png'), baseUrl), usageTag: 'rock', lod: 'high' },
     { id: 'substrate-sand-normal', url: resolvePublicAssetUrl(textureAssetPath('substrate', 'substrate-sand-normal.png'), baseUrl), usageTag: 'rock', lod: 'high', colorSpace: 'linear' },
     { id: 'substrate-sand-roughness', url: resolvePublicAssetUrl(textureAssetPath('substrate', 'substrate-sand-roughness.png'), baseUrl), usageTag: 'rock', lod: 'medium', colorSpace: 'linear' },
@@ -298,30 +261,21 @@ export const createAquariumAssetManifest = (
     { id: 'plant-hygrophila-rear', url: resolvePublicAssetUrl(modelAssetPath('plants', 'plant-hygrophila-rear.glb'), baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'plant-vallisneria-tall', url: resolvePublicAssetUrl(modelAssetPath('plants', 'plant-vallisneria-tall.glb'), baseUrl), usageTag: 'plant', lod: 'high' },
     { id: 'driftwood-hero', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-hero.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
-    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-ridge-hero.glb'), baseUrl), usageTag: 'rock', lod: 'high' }
+    { id: 'driftwood-accent-02', url: resolvePublicAssetUrl(modelAssetPath('driftwood', 'driftwood-accent-02.glb'), baseUrl), usageTag: 'wood', lod: 'high' },
+    { id: 'rock-ridge-hero', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-ridge-hero.glb'), baseUrl), usageTag: 'rock', lod: 'high' },
+    { id: 'rock-accent-02', url: resolvePublicAssetUrl(modelAssetPath('rocks', 'rock-accent-02.glb'), baseUrl), usageTag: 'rock', lod: 'high' }
   ],
   environment: [
     { id: 'aquarium-hdri', url: resolvePublicAssetUrl(environmentAssetPath('aquarium-hdri.hdr'), baseUrl), usageTag: 'environment', lod: 'high' }
   ]
 })
 
-const bootFishTextureIds = new Set([
-  'fish-neon-basecolor',
-  'fish-neon-normal',
-  'fish-neon-roughness',
-  'fish-neon-alpha',
-  'fish-scale-normal',
-  'fish-scale-roughness'
-])
-
 const bootFishModelIds = new Set([
   'fish-neon-school',
   'fish-neon-hero'
 ])
 
-const isBootTextureEntry = (entry: ManifestTextureEntry): boolean => (
-  entry.usageTag !== 'fish' || bootFishTextureIds.has(entry.id)
-)
+const isBootTextureEntry = (_entry: ManifestTextureEntry): boolean => true
 
 const isBootModelEntry = (entry: ManifestModelEntry): boolean => (
   entry.usageTag !== 'fish' || bootFishModelIds.has(entry.id)

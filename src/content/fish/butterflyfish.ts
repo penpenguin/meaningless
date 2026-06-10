@@ -18,7 +18,6 @@ export const butterflyfish = createFishContent({
   gameplay: {
     unlockCost: 40,
     purchaseCostPerFish: 4,
-    baseIncomePerMinute: 0.48,
     preferredLane: 'middle',
   }
 })

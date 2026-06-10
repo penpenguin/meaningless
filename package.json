@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "generate:fish-assets": "node scripts/generate-fish-assets.mjs",
     "measure:performance": "node scripts/measure-aquarium-performance.mjs",
     "screenshot": "node scripts/capture-aquarium-screenshot.mjs",
     "build": "tsc && vite build",
@@ -13,7 +12,7 @@
     "test": "vitest run",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "verify:soc": "depcruise --config .dependency-cruiser.cjs --include-only '^src' --output-type err --progress none src"
+    "verify:soc": "node scripts/check-file-line-count.mjs && depcruise --config .dependency-cruiser.cjs --include-only '^src' --output-type err --progress none src"
   },
   "dependencies": {
     "three": "^0.184.0",

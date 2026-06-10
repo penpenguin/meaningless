@@ -22,7 +22,7 @@ describe('createAquariumRenderModel', () => {
     expect(renderModel.theme.fogDensity).toBeCloseTo(0.018, 3)
   })
 
-  it('adds premium water and glass theme values for clear tanks', () => {
+  it('adds fixed premium water and glass theme values', () => {
     const renderModel = createAquariumRenderModel(createState())
 
     expect(renderModel.theme.glassTint).toBe('#cfe7ee')
@@ -42,13 +42,13 @@ describe('createAquariumRenderModel', () => {
     const legacyDirtyState = createState()
     const tank = legacyDirtyState.game.tanks[0]
     if (!tank) throw new Error('tank missing')
-    legacyDirtyState.game.tanks[0] = {
+    legacyDirtyState.game.tanks[0] = ({
       ...tank,
       progression: {
-        ...tank.progression,
+        comfort: 72,
         waterQuality: 12
-      } as typeof tank.progression & { waterQuality: number }
-    }
+      }
+    } as typeof tank & { progression: { comfort: number; waterQuality: number } })
 
     const clear = createAquariumRenderModel(clearState)
     const legacyDirty = createAquariumRenderModel(legacyDirtyState)
@@ -59,7 +59,7 @@ describe('createAquariumRenderModel', () => {
     expect(legacyDirty.theme.causticsStrength).toBe(clear.theme.causticsStrength)
   })
 
-  it('marks healthy surface schools as feeding with broader vertical motion', () => {
+  it('keeps surface schools calm while preserving top-lane depth', () => {
     const state = createState()
     const tank = state.game.tanks[0]
     if (!tank) throw new Error('tank missing')
@@ -71,19 +71,15 @@ describe('createAquariumRenderModel', () => {
           ...tank.fishSchools[0],
           lane: 'top'
         }
-      ],
-      progression: {
-        ...tank.progression,
-        comfort: 72
-      }
+      ]
     }
 
     const renderModel = createAquariumRenderModel(state)
     const feedingSchool = renderModel.fishGroups[0]
 
-    expect(feedingSchool?.tuning?.schoolMood).toBe('feeding')
-    expect(feedingSchool?.tuning?.preferredDepth).toBeLessThan(0.2)
-    expect(feedingSchool?.tuning?.depthVariance).toBeGreaterThan(0.2)
+    expect(feedingSchool?.tuning?.schoolMood).toBe('calm')
+    expect(feedingSchool?.tuning?.preferredDepth).toBeCloseTo(0.2, 2)
+    expect(feedingSchool?.tuning?.depthVariance).toBeCloseTo(0.18, 2)
   })
 
   it('marks stressed schools as alert and keeps them deeper in the tank', () => {

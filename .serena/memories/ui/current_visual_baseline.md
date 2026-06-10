@@ -1,0 +1,8 @@
+Current aquarium visual baseline compressed from the UI history:
+
+- The primary visual target is the `nature-showcase` freshwater planted layout: wider tank proportions, left-heavy rock mound, curved pale sand beach/open right foreground, multipiece driftwood fan, species-layered plants, subdued fish as supporting cast, and a natural freshwater color script rather than a blue-box/panel look.
+- Layout constants are centralized through `src/components/aquariumLayout.ts`; camera/framing, tank bounds, shadows, fish bounds, and hardscape anchors should stay tank-relative.
+- Aquascaping is in `src/components/Aquascaping.ts`: deterministic sampled plant placements/anchors by layout style + seed; concrete plant species include java fern, anubias, crypt, stem bush, vallisneria, hygrophila, and Amazon sword; hardscape plant anchors attach epiphytes to driftwood/rock features.
+- Fish presentation is in `src/components/DetailedFish.ts`: lower default density for `nature-showcase`, subtle hero accents, depth/lane bias preserving hardscape readability, asset-backed school/hero models when available, and procedural fallbacks when assets fail.
+- Lighting/water baseline: broader daylight canopy lighting, darker natural backdrops, softened caustics, layered near-surface/midwater light sheets, screen-space haze/godrays where quality allows, and reduced glass overlay/panel feel.
+- Performance-sensitive visual layers are quality-aware: simple quality can bypass post-processing, throttle godray depth/water motion, lower fish LOD, and use adaptive render scaling in standard quality under sustained stress.

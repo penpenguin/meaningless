@@ -17,7 +17,6 @@ export const angelfish = createFishContent({
   gameplay: {
     unlockCost: 32,
     purchaseCostPerFish: 3,
-    baseIncomePerMinute: 0.38,
     preferredLane: 'top',
   }
 })

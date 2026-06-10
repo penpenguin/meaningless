@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { areFishGroupsEqual } from '../utils/fishGroups'
+import { areFishGroupsEqual } from '../utils/fish/fishGroups'
 import type { FishGroup } from '../types/aquarium'
 
 describe('areFishGroupsEqual', () => {

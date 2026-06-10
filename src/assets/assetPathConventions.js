@@ -1,4 +1,3 @@
-/** @typedef {'basecolor' | 'normal' | 'roughness' | 'alpha'} FishTextureKind */
 /** @typedef {'school' | 'hero'} FishModelKind */
 
 /**
@@ -47,23 +46,10 @@ export const environmentAssetPath = (filename) => assetPublicPath('environment',
 
 /**
  * @param {string} fishId
- * @param {FishTextureKind | FishModelKind} kind
+ * @param {FishModelKind} kind
  * @returns {string}
  */
-export const fishAssetFileName = (fishId, kind) => {
-  if (kind === 'school' || kind === 'hero') {
-    return `fish-${fishId}-${kind}.glb`
-  }
-
-  return `fish-${fishId}-${kind}.png`
-}
-
-/**
- * @param {string} fishId
- * @param {FishTextureKind} kind
- * @returns {string}
- */
-export const fishTextureAssetPath = (fishId, kind) => textureAssetPath('fish', fishAssetFileName(fishId, kind))
+export const fishAssetFileName = (fishId, kind) => `fish-${fishId}-${kind}.glb`
 
 /**
  * @param {string} fishId

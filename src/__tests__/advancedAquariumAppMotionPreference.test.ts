@@ -3,7 +3,7 @@ import { AdvancedAquariumApp } from '../AdvancedAquariumApp'
 
 let lastSetMotionEnabled: ReturnType<typeof vi.fn> | null = null
 
-vi.mock('../components/AdvancedScene', () => {
+vi.mock('../components/scene/AdvancedScene', () => {
   return {
     AdvancedAquariumScene: class {
       setMotionEnabled: ReturnType<typeof vi.fn>
@@ -35,7 +35,7 @@ vi.mock('../components/AdvancedScene', () => {
   }
 })
 
-vi.mock('../components/AudioManager', () => {
+vi.mock('../components/audio/AudioManager', () => {
   return {
     AudioManager: class {
       setEnabled = vi.fn()
@@ -45,7 +45,7 @@ vi.mock('../components/AudioManager', () => {
   }
 })
 
-vi.mock('../components/GameControlPane', () => {
+vi.mock('../components/ui/GameControlPane', () => {
   return {
     createGameControlPane: () => {
       const overlay = document.createElement('div')
@@ -72,28 +72,28 @@ vi.mock('../assets/visualAssets', () => {
   }
 })
 
-vi.mock('../utils/tankStorage', () => {
+vi.mock('../utils/storage/tankStorage', () => {
   return {
     loadTankState: () => null,
     saveTankState: vi.fn()
   }
 })
 
-vi.mock('../utils/profileStorage', () => {
+vi.mock('../utils/storage/profileStorage', () => {
   return {
     loadProfileState: () => null,
     saveProfileState: vi.fn()
   }
 })
 
-vi.mock('../utils/settingsStorage', () => {
+vi.mock('../utils/storage/settingsStorage', () => {
   return {
     loadSettingsState: () => null,
     saveSettingsState: vi.fn()
   }
 })
 
-vi.mock('../utils/storage', () => {
+vi.mock('../utils/storage/storage', () => {
   return {
     getAutoSave: () => null
   }

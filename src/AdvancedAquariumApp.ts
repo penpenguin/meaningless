@@ -3,22 +3,20 @@ import { createHydratedGameAppState } from './game/gameSave'
 import { createRenderStateApplier } from './game/createRenderStateApplier'
 import { createAquariumRenderModel } from './game/renderModel'
 import { loadGameSave, resolveBootGameSave, saveGameSave } from './game/storage'
-import { AdvancedAquariumScene } from './components/AdvancedScene'
-import { AudioManager } from './components/AudioManager'
-import { createGameControlPane } from './components/GameControlPane'
-import { hideLoadingOverlay, showBubbleLoadingAnimation } from './utils/loadingScreen'
-import { loadProfileState } from './utils/profileStorage'
-import { loadSettingsState } from './utils/settingsStorage'
-import { getAutoSave } from './utils/storage'
-import { loadTankState } from './utils/tankStorage'
+import { AdvancedAquariumScene, AudioManager, createGameControlPane } from './components'
+import { hideLoadingOverlay, showBubbleLoadingAnimation } from './utils/dom/loadingScreen'
+import { loadProfileState } from './utils/storage/profileStorage'
+import { loadSettingsState } from './utils/storage/settingsStorage'
+import { getAutoSave } from './utils/storage/storage'
+import { loadTankState } from './utils/storage/tankStorage'
 import {
   createBootAquariumAssetManifest,
   createDeferredAquariumAssetManifest,
   loadVisualAssets,
   type VisualAssetBundle
 } from './assets/visualAssets'
-import { createEmptyPerformanceStats, type PerformanceStats } from './utils/performanceStats'
-import { resolvePerformanceTuningOptions } from './utils/performanceTuning'
+import { createEmptyPerformanceStats, type PerformanceStats } from './utils/performance/performanceStats'
+import { resolvePerformanceTuningOptions } from './utils/performance/performanceTuning'
 import type { GameAppState } from './game/types'
 
 type ControlPaneHandle = ReturnType<typeof createGameControlPane>

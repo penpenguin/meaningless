@@ -59,7 +59,7 @@ describe('createGameStore', () => {
     store.destroy()
   })
 
-  it('stocks every catalog species without unlocks or coins', () => {
+  it('stocks every catalog species without unlocks, coins, income, or comfort progression', () => {
     const seeded = createHydratedGameAppState({ nowIso: '2026-03-08T00:00:00.000Z' })
     const store = createGameStore({
       initialState: seeded
@@ -69,7 +69,7 @@ describe('createGameStore', () => {
 
     const state = store.getState()
     expect(state.game.profile).not.toHaveProperty('unlockedFishIds')
-    expect(state.game.tanks[0]?.progression.incomePerMinute).toBeGreaterThan(1)
+    expect(state.game.tanks[0]).not.toHaveProperty('progression')
 
     store.destroy()
   })

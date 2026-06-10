@@ -6,13 +6,15 @@ describe('gameSave', () => {
     const now = '2026-03-08T00:00:00.000Z'
     const save = createDefaultGameSave(now)
 
-    expect(save.schemaVersion).toBe(3)
+    expect(save.schemaVersion).toBe(5)
     expect(save.lastSimulatedAt).toBe(now)
     expect(save.tanks).toHaveLength(1)
     expect(save.activeTankId).toBe(save.tanks[0]?.id)
     expect(save.profile).not.toHaveProperty('currency')
     expect(save.profile).not.toHaveProperty('unlockedFishIds')
     expect(save.profile).not.toHaveProperty('unlockedDecorIds')
+    expect(save.tanks[0]).not.toHaveProperty('decor')
+    expect(save.tanks[0]).not.toHaveProperty('progression')
     expect(save.profile.preferences).not.toHaveProperty('quality')
     expect(save.profile.preferences).not.toHaveProperty('hudVisible')
     expect(save.profile.preferences.photoMode).toEqual({
@@ -23,7 +25,6 @@ describe('gameSave', () => {
       speciesId: 'neon-tetra',
       lane: 'middle'
     })
-    expect(save.tanks[0]?.progression).not.toHaveProperty('waterQuality')
     expect(save.profile.stats).not.toHaveProperty('totalMaintenanceActions')
   })
 
@@ -112,7 +113,7 @@ describe('gameSave', () => {
     expect(hydrated.game.lastSimulatedAt).toBe('2026-03-08T02:00:00.000Z')
   })
 
-  it('drops legacy water quality fields during save hydration', () => {
+  it('drops legacy decor and progression fields during save hydration', () => {
     const save = createDefaultGameSave('2026-03-08T00:00:00.000Z')
     const tank = save.tanks[0]
     if (!tank) throw new Error('tank missing')
@@ -129,20 +130,25 @@ describe('gameSave', () => {
           } as typeof save.profile.stats & { totalMaintenanceActions: number }
         },
         tanks: [
-          {
+          ({
             ...tank,
+            decor: [
+              { id: 'legacy-decor', decorId: 'plant', x: 0, y: 0 }
+            ],
             progression: {
-              ...tank.progression,
+              comfort: 72,
+              incomePerMinute: 12,
               waterQuality: 14
-            } as typeof tank.progression & { waterQuality: number }
-          }
+            }
+          } as unknown as typeof tank)
         ]
       },
       nowIso: '2026-03-08T00:00:00.000Z'
     })
 
-    expect(hydrated.game.schemaVersion).toBe(3)
-    expect(hydrated.game.tanks[0]?.progression).not.toHaveProperty('waterQuality')
+    expect(hydrated.game.schemaVersion).toBe(5)
+    expect(hydrated.game.tanks[0]).not.toHaveProperty('decor')
+    expect(hydrated.game.tanks[0]).not.toHaveProperty('progression')
     expect(hydrated.game.profile.stats).not.toHaveProperty('totalMaintenanceActions')
   })
 })

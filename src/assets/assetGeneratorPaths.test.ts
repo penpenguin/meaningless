@@ -1,34 +1,63 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { assetPublicOutputPath } from './assetPathConventions.js'
+import { createAquariumAssetManifest } from './visualAssets'
 
-const readScript = (path: string): string => readFileSync(path, 'utf8')
+const removedGeneratorScripts = [
+  'scripts/generate-fish-assets.mjs',
+  'scripts/generate-shared-aquarium-textures.mjs',
+  'scripts/generate-driftwood-hero-asset.mjs'
+]
 
-describe('aquarium asset generator output paths', () => {
-  it('writes generated fish assets to the same public paths used by the manifest', () => {
-    const script = readScript('scripts/generate-fish-assets.mjs')
+const existsInRepo = (path: string): boolean => existsSync(resolve(process.cwd(), path))
+const readPackageJson = (): { scripts?: Record<string, string> } => (
+  JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')) as { scripts?: Record<string, string> }
+)
+const publicUrlToRepoPath = (url: string): string => `public/${url.replace(/^\/+/, '')}`
+const listFiles = (directory: string): string[] => {
+  const entries = readdirSync(resolve(process.cwd(), directory), { recursive: true, withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => `${entry.parentPath}/${entry.name}`.replace(`${process.cwd()}/`, ''))
+    .sort()
+}
 
-    expect(assetPublicOutputPath('textures', 'fish')).toBe('public/assets/textures/fish')
-    expect(assetPublicOutputPath('models', 'fish')).toBe('public/assets/models/fish')
-    expect(script).toContain("assetPublicOutputPath('textures', 'fish')")
-    expect(script).toContain("assetPublicOutputPath('models', 'fish')")
-    expect(script).toContain('fishAssetFileName(config.id')
-    expect(script).not.toContain("public/assets/aquarium/textures/fish")
-    expect(script).not.toContain("public/assets/aquarium/models/fish")
+describe('fixed aquarium asset files', () => {
+  it('does not keep one-off asset generator scripts in the runtime repository', () => {
+    removedGeneratorScripts.forEach((scriptPath) => {
+      expect(existsInRepo(scriptPath)).toBe(false)
+    })
+    expect(readPackageJson().scripts).not.toHaveProperty('generate:fish-assets')
   })
 
-  it('keeps shared texture and hardscape generators aligned with the flattened assets directory', () => {
-    const scripts = [
-      'scripts/generate-shared-aquarium-textures.mjs',
-      'scripts/generate-driftwood-hero-asset.mjs'
-    ].map(readScript)
+  it('keeps manifest-referenced fish and driftwood models plus substrate textures checked in under public assets', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const authoredAssetUrls = [
+      ...manifest.textures
+        .filter((entry) => entry.id.startsWith('substrate-sand-'))
+        .map((entry) => entry.url),
+      ...manifest.models
+        .filter((entry) => entry.usageTag === 'fish' || entry.usageTag === 'wood')
+        .map((entry) => entry.url)
+    ]
 
-    scripts.forEach((script) => {
-      expect(script).not.toContain("public/assets/aquarium/")
-      expect(script).toContain('assetPublicOutputPath')
+    expect(authoredAssetUrls.length).toBeGreaterThan(0)
+    authoredAssetUrls.forEach((url) => {
+      expect(existsInRepo(publicUrlToRepoPath(url))).toBe(true)
     })
-    expect(assetPublicOutputPath('textures', 'plants')).toBe('public/assets/textures/plants')
-    expect(assetPublicOutputPath('models', 'driftwood')).toBe('public/assets/models/driftwood')
-    expect(assetPublicOutputPath('models', 'rocks')).toBe('public/assets/models/rocks')
+  })
+
+  it('does not keep non-substrate files under public texture assets', () => {
+    const textureFiles = listFiles('public/assets/textures')
+    expect(textureFiles.length).toBeGreaterThan(0)
+    expect(textureFiles.every((file) => file.startsWith('public/assets/textures/substrate/'))).toBe(true)
+  })
+
+  it('does not keep substrate texture files that are not referenced by the manifest', () => {
+    const manifest = createAquariumAssetManifest('/')
+    const manifestTextureFiles = manifest.textures.map((entry) => publicUrlToRepoPath(entry.url)).sort()
+    const textureFiles = listFiles('public/assets/textures/substrate')
+
+    expect(textureFiles).toEqual(manifestTextureFiles)
   })
 })

@@ -18,7 +18,6 @@ export const abeniPuffer = createFishContent({
   gameplay: {
     unlockCost: 56,
     purchaseCostPerFish: 6,
-    baseIncomePerMinute: 0.62,
     preferredLane: 'middle',
   }
 })

@@ -18,7 +18,6 @@ export const corydoras = createFishContent({
   gameplay: {
     unlockCost: 52,
     purchaseCostPerFish: 5,
-    baseIncomePerMinute: 0.58,
     preferredLane: 'bottom',
   }
 })

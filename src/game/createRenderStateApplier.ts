@@ -1,4 +1,4 @@
-import { areFishGroupsEqual } from '../utils/fishGroups'
+import { areFishGroupsEqual } from '../utils/fish/fishGroups'
 import type { GameAppState } from './types'
 import { createAquariumFishGroups, createAquariumTheme } from './renderModel'
 
