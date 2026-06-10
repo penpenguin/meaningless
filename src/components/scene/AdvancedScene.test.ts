@@ -592,8 +592,8 @@ describe('AdvancedAquariumScene camera', () => {
     const ultrawide = createCoverageSnapshot(21 / 9)
     const portrait = createCoverageSnapshot(390 / 844)
 
-    expect(standard.coverage).toBeGreaterThan(0.89)
-    expect(standard.coverage).toBeLessThan(0.91)
+    expect(standard.coverage).toBeGreaterThan(0.912)
+    expect(standard.coverage).toBeLessThan(0.918)
     expect(Math.abs(fourThree.coverage - standard.coverage)).toBeLessThan(0.03)
     expect(Math.abs(ultrawide.coverage - standard.coverage)).toBeLessThan(0.03)
     expect(Math.abs(portrait.coverage - standard.coverage)).toBeLessThan(0.03)
